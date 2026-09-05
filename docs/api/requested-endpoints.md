@@ -12,6 +12,7 @@ Use `api-request-template.md`, assign both the semantic owner and gap layer, and
 | REQ-002 | As-of-dated FX reference so non-USD listing prices can include a USD equivalent | `components/stocks/StockTickerIdentity.tsx` via `lib/stock-ticker-chrome.ts` | Deferred until source and canonical semantics exist | Normal | `draft` | `finance-data-ops` → `finance-feature-store` → `finance-backend` |
 | REQ-003 | Per-ticker standing or an explicit absence reason for Long term, Income, and Short term investor readings | `app/(app)/stocks/[ticker]/page.tsx` beside the research score in `components/stocks/StockOverviewClient.tsx` | `GET /tickers/{ticker}/readings` | High | `draft` | `finance-feature-store` → `finance-backend` |
 | REQ-004 | Downloadable price-series and fundamentals CSV exports alongside the existing signal-history export | `components/stocks/TickerExportButton.tsx` in `components/stocks/StockTickerChrome.tsx` | Draft local `GET /api/export-ticker?ticker=AAPL&dataset=prices\|fundamentals`; no new backend endpoint proposed | Normal | `draft` | `spy-signal-site`, with canonical fields owned by `finance-feature-store` |
+| REQ-005 | A currently materialized, well-connected atlas subject for the homepage relationship map | `components/marketing/HomeNeighborhood.tsx` | Deferred until canonical subject-selection semantics exist | Normal | `draft` | `finance-feature-store` |
 
 **REQ-001 detail.** `GET /screener/rankings` returns `symbol`, `name`, `sector`, `score`,
 `coverage` and `components` — no price and no series. The existing per-symbol helpers
@@ -91,6 +92,30 @@ useful without it. Revisit before adding sparklines or a day-change column.
 - **Approval state:** `draft`.
 - **Contract evidence:** Current signal-export route tests/behavior are the access and download precedent. Backend OpenAPI schemas named above are input evidence; no price/fundamentals CSV schema or example exists yet. Approval must add synthetic CSV fixtures for both datasets plus empty, partial, malformed, unauthorized, and unentitled cases.
 - **Frontend fallback until available:** Keep the control useful by exporting signal history only. Render no price/fundamentals option, disabled item, placeholder, client-side derivation, fan-out, or third-party substitute.
+
+### REQ-005 — Homepage relationship-map subject
+
+- **Need / user outcome:** Give the homepage relationship map a well-connected company whose atlas neighborhood is currently materialized, without maintaining a hand-picked frontend list.
+- **Frontend consumer:** `components/marketing/HomeNeighborhood.tsx`.
+- **Why existing contracts are insufficient:** The atlas neighborhood route answers for a caller-selected ticker, but no contract identifies a suitable current subject. A failed or sparse neighborhood therefore cannot be distinguished in advance from a useful homepage candidate.
+- **Backend contract lookup result:** At `finance-backend` commit `6bf5f1ec87a1a3739888be62aa4af3222981c1c0`, `docs/api-contract.json` was checked first and `docs/openapi.json` second. Both contain `GET /network/neighborhoods/{ticker}` with caller-supplied `ticker`, `window`, `view`, `limit`, and optional `asOf`; neither contains a subject-selection endpoint, candidate field, materialization index, or well-connected-subject response.
+- **Semantic owner:** `finance-feature-store`, which owns the canonical atlas materialization and must define what makes a subject suitable and current.
+- **Gap layer:** Canonical-derived semantic.
+- **Upstream evidence:** The existing atlas neighborhood contract and materialized graph can answer a known ticker, but no approved methodology ranks or selects homepage subjects.
+- **Why HTTP exposure is the correct missing layer:** It is not yet the correct missing layer. Selection semantics do not exist upstream, so proposing transport now would invent product meaning. `finance-feature-store` must first define a canonical, currently-materialized, well-connected subject contract.
+- **Proposed method and endpoint:** Deferred until the canonical selection semantics are approved; no backend endpoint is proposed by this request.
+- **Minimum request fields:** To be defined after the canonical contract exists. Expected concerns include atlas window, view, and an as-of date, but their exact shape and defaults are not approved.
+- **Minimum response fields:** To be defined after the canonical contract exists. It must at least identify the selected canonical symbol and the selection/materialization as-of value; eligibility, connectivity, methodology, and null semantics require owner approval.
+- **Authentication/authorization:** To be defined by `finance-backend` only if HTTP exposure is later approved; browser code must continue through a same-origin server boundary.
+- **Errors:** The future contract must distinguish no eligible materialized subject, stale or partial atlas data, timeout, and retryable upstream failure. Exact status codes and partial-data behavior are not yet approved.
+- **Caching/pagination/rate limits:** A single daily subject is expected rather than a paginated browser list, but freshness, revalidation, and rate limits depend on the approved materialization semantics.
+- **Privacy and logging constraints:** No user data is required. Do not log service credentials or unrelated request context.
+- **Priority:** Normal.
+- **Dependencies and owners:** `finance-feature-store` owns selection and materialization semantics; `finance-backend` would own transport only after those semantics exist; `spy-signal-site` replaces its single selection seam after implementation and contract verification.
+- **Compatibility/versioning:** Any future selection methodology, universe, connectivity threshold, or rotation rule is contract meaning and must be versioned or changed compatibly.
+- **Approval state:** `draft`.
+- **Contract evidence:** The existing neighborhood schemas prove only caller-selected lookup. No selection schema, test, or synthetic example exists. A future contract test must cover a valid materialized subject and an explicit no-subject outcome without fabricating a fallback.
+- **Frontend fallback until available:** Rotate a verified eight-symbol shortlist by UTC date, make at most two neighborhood requests through the existing cached server helper, and omit the entire section if neither produces a focus node with at least five distinct connections. Render no placeholder, estimate, empty container, third-party substitute, or wider fan-out.
 
 ## Confirmed Phase 2 contract gaps
 

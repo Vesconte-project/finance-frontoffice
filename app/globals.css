@@ -2730,14 +2730,6 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel butto
   margin: 0 auto 24px;
   text-align: center;
 }
-.dock-search__kicker {
-  margin: 0;
-  color: var(--brand-spark);
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  line-height: 1.4;
-}
 .dock-search__title {
   margin: 10px 0 0;
   color: var(--content-primary);
@@ -2746,12 +2738,6 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel butto
   font-weight: 700;
   letter-spacing: -0.055em;
   line-height: 0.98;
-}
-.dock-search__description {
-  margin: 12px auto 0;
-  color: var(--content-secondary);
-  font-size: 15px;
-  line-height: 1.5;
 }
 .dock-search__field {
   width: 100%;
@@ -2844,9 +2830,6 @@ html.chrome-scrolled .dock-search {
   .dock-search__title {
     font-size: clamp(2rem, 10vw, 2.8rem);
   }
-  .dock-search__description {
-    font-size: 14px;
-  }
   .dock-search__support {
     align-items: center;
     flex-direction: column;
@@ -2856,13 +2839,6 @@ html.chrome-scrolled .dock-search {
 }
 
 @media (max-width: 389px) {
-  .dock-search__kicker {
-    font-size: 10px;
-    letter-spacing: 0.1em;
-  }
-  .dock-search__description {
-    max-width: 28ch;
-  }
   .dock-search__field :is(input) {
     height: 52px;
   }

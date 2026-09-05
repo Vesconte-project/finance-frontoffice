@@ -26,6 +26,10 @@ Study the rendered pattern, its responsive states, and its direct styling before
 | Complex hero motion | `components/marketing/HeroConstellation.tsx`, `components/motion/ScrollRuntime.tsx`, and `docs/design/motion-guidelines.md` | Singleton Lenis ownership, explicit page profiles, scoped GSAP scenes, cleanup, nonblank static content, and reduced-motion behavior |
 | Focus and compact control states | `components/ui/Button.tsx`, `Input.tsx`, `SegmentedControl.tsx`, and `FilterChip.tsx` | Visible focus rings, state semantics, touch sizing, pressed/selected contrast, shared timing, and `motion-reduce` behavior |
 
+### Unmounted motion reference — 2026-09-05
+
+`components/marketing/HomeTickerStory.tsx` is retained as the repository's unmounted reference implementation of scroll-driven collapse/scatter choreography with FLIP-style source capture. It no longer supplies or owns homepage content: callers must provide real card data, and its authored mobile/desktop position tables intentionally cap the technique at five items. The homepage stopped mounting it because its former hardcoded financial values were fabricated; the motion mechanics remain useful without preserving those claims.
+
 There is not yet a repository-wide modal or drawer exemplar with a complete focus-management contract. Inspect current implementations for local context, but do not promote one to a shared pattern until focus entry, containment, Escape, backdrop behavior, and focus restoration are verified.
 
 ## Expanding selector study — 2026-07-21

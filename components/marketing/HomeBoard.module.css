@@ -1,0 +1,251 @@
+.section {
+  position: relative;
+}
+
+.container {
+  width: 100%;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: 24px;
+}
+
+.panel {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  background: var(--page-bg);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 68px;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.heading {
+  margin: 0;
+  color: var(--content-primary);
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(1.6rem, 2.6vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1;
+}
+
+.snapshot {
+  flex: none;
+  color: var(--content-muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.column {
+  min-width: 0;
+  padding: 22px 24px 26px;
+}
+
+.column + .column {
+  border-left: 1px solid var(--color-border);
+}
+
+.columnHeader {
+  min-width: 0;
+}
+
+.readingLink {
+  display: inline-block;
+  color: var(--content-primary);
+  font-family: var(--font-display), sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  text-decoration: none;
+}
+
+.readingLink:hover {
+  color: var(--brand-spark);
+}
+
+.readingLink:focus-visible,
+.row:focus-visible,
+.mobileLink:focus-visible {
+  outline: 2px solid var(--brand-spark);
+  outline-offset: 3px;
+}
+
+.reader {
+  min-height: 3.75rem;
+  margin: 7px 0 0;
+  color: var(--content-secondary);
+  font-size: 0.78rem;
+  line-height: 1.48;
+}
+
+.rows {
+  margin-top: 14px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 2rem minmax(3.75rem, auto) minmax(0, 1fr) 2.75rem;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 36px;
+  margin-inline: -8px;
+  padding-inline: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.row:hover {
+  background: color-mix(in srgb, var(--brand-spark) 7%, transparent);
+}
+
+.rank,
+.symbol,
+.score {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.75rem;
+}
+
+.rank {
+  color: var(--content-muted);
+  text-align: right;
+}
+
+.symbol {
+  overflow: hidden;
+  color: var(--content-primary);
+  font-weight: 600;
+  letter-spacing: 0.015em;
+  text-overflow: ellipsis;
+}
+
+.row:first-child .symbol {
+  color: var(--brand-spark);
+}
+
+.company {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--content-secondary);
+  font-size: 0.77rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.score {
+  grid-column: -2 / -1;
+  color: var(--content-primary);
+  font-weight: 500;
+  text-align: right;
+}
+
+.state {
+  margin: 18px 0 0;
+  color: var(--content-secondary);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.mobileLink {
+  display: none;
+}
+
+.caveat {
+  margin: 10px 0 0;
+  color: var(--content-muted);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+@media (min-width: 640px) {
+  .container {
+    padding-inline: 40px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    padding-inline: 64px;
+  }
+}
+
+@media (max-width: 1279px) {
+  .row {
+    grid-template-columns: 2rem minmax(0, 1fr) 2.75rem;
+  }
+
+  .company {
+    display: none;
+  }
+}
+
+@media (max-width: 1023px) {
+  .panelHeader {
+    padding-inline: 16px;
+  }
+
+  .column {
+    padding: 18px 14px 22px;
+  }
+
+  .row {
+    grid-template-columns: 1.65rem minmax(0, 1fr) 2.5rem;
+    gap: 7px;
+  }
+}
+
+@media (max-width: 767px) {
+  .panelHeader {
+    min-height: 62px;
+    padding: 16px;
+  }
+
+  .columns {
+    grid-template-columns: 1fr;
+  }
+
+  .column {
+    padding: 20px 16px 22px;
+  }
+
+  .column + .column {
+    border-top: 1px solid var(--color-border);
+    border-left: 0;
+  }
+
+  .reader {
+    min-height: 0;
+  }
+
+  /* Only rows already entitled to this viewer are hidden for mobile density;
+     non-entitled rows never reach the browser and must never copy this pattern. */
+  .row:nth-child(n + 6) {
+    display: none;
+  }
+
+  .mobileLink {
+    display: inline-block;
+    margin-top: 13px;
+    color: var(--content-secondary);
+    font-family: var(--font-mono), monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .mobileLink:hover {
+    color: var(--brand-spark);
+  }
+}

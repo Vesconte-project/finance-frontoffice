@@ -1,9 +1,9 @@
-import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
 import { Sora, JetBrains_Mono, Inter } from 'next/font/google'
 import { SiteHeader } from '@/components/marketing/site-chrome'
-import HomeTickerStory from '@/components/marketing/HomeTickerStory'
+import HomeBoard, { homeBoardHasData, loadHomeBoardData } from '@/components/marketing/HomeBoard'
+import HomeClose from '@/components/marketing/HomeClose'
 import HeroConstellation from '@/components/marketing/HeroConstellation'
+import HomeNeighborhood, { loadHomeNeighborhood } from '@/components/marketing/HomeNeighborhood'
 import DockingSearch from '@/components/marketing/DockingSearch'
 import { ScrollExperience } from '@/components/motion/ScrollRuntime'
 
@@ -11,59 +11,27 @@ const sora = Sora({ subsets: ['latin'], weight: ['400', '600', '700', '800'], di
 const inter = Inter({ subsets: ['latin'], display: 'swap' })
 const mono = JetBrains_Mono({ subsets: ['latin'], weight: ['400', '500', '600'], display: 'swap' })
 
-function Sections() {
+async function Sections() {
+  const [boardData, neighborhood] = await Promise.all([
+    loadHomeBoardData(),
+    loadHomeNeighborhood(),
+  ])
+  const longTerm = boardData.longTerm
+  const countsAvailable = longTerm.status === 'ok'
+  const boardHasData = homeBoardHasData(boardData)
+
   return (
     <div className="relative z-30 text-content-primary">
-      <div className="-mt-32 md:-mt-28">
-        <HomeTickerStory />
+      <div className="pt-24 md:pt-28 lg:pt-32">
+        <HomeBoard data={boardData} />
+        <HomeNeighborhood detail={neighborhood} />
       </div>
-
-      <section
-        id="pricing"
-        className="relative overflow-hidden border-t border-border px-6 py-28 text-center sm:px-10"
-      >
-        {/* momento de marca — spark teal usado com parcimónia */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,var(--brand-spark),transparent)] opacity-60"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[440px] w-[860px] max-w-[92vw] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--brand-spark)_14%,transparent),transparent)] blur-2xl"
-        />
-
-        <p
-          style={{ fontFamily: 'var(--font-mono)' }}
-          className="text-xs uppercase tracking-[0.28em] text-brand-spark"
-        >
-          Pricing
-        </p>
-        <h2
-          style={{ fontFamily: 'var(--font-display)' }}
-          className="mx-auto mt-5 max-w-3xl text-4xl font-extrabold leading-[1.02] tracking-tight md:text-6xl"
-        >
-          Signals, research, and alerts in one workspace.
-        </h2>
-        <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-content-secondary">
-          Access the signal workspace, markets and ticker pages, watchlists, research context, alerts, and the
-          weekly signal that sets the tone before Monday starts.
-        </p>
-
-        <Link
-          href="/sign-up"
-          className="mt-10 inline-flex h-14 items-center justify-center gap-3 rounded-full bg-brand-spark px-8 font-semibold text-[color:var(--brand-spark-on)] shadow-[0_18px_50px_-12px_var(--brand-spark)] transition hover:brightness-110"
-        >
-          Create account <ArrowRight className="size-5" />
-        </Link>
-        <div>
-          <Link
-            href="/pricing"
-            className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-content-secondary transition hover:text-brand-spark"
-          >
-            Open the full pricing page <ArrowRight className="size-4" />
-          </Link>
-        </div>
-      </section>
+      <HomeClose
+        lockedCount={countsAvailable ? longTerm.lockedCount : 0}
+        totalRanked={countsAvailable ? longTerm.totalRanked : 0}
+        boardHasData={boardHasData}
+        countsAvailable={countsAvailable}
+      />
     </div>
   )
 }
