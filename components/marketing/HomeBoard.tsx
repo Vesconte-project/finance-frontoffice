@@ -64,6 +64,7 @@ function ReadingColumn({ reading, result }: { reading: PickReadingKey; result: V
         <p className={styles.state}>{stateMessage}</p>
       ) : result.status === 'ok' ? (
         <div className={styles.rows}>
+          {/* Homepage presentation cap, not an entitlement cut. */}
           {result.items.slice(0, 5).map((item, index) => {
             const rank = index + 1
             return (
