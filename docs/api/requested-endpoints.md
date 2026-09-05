@@ -13,6 +13,7 @@ Use `api-request-template.md`, assign both the semantic owner and gap layer, and
 | REQ-003 | Per-ticker standing or an explicit absence reason for Long term, Income, and Short term investor readings | `app/(app)/stocks/[ticker]/page.tsx` beside the research score in `components/stocks/StockOverviewClient.tsx` | `GET /tickers/{ticker}/readings` | High | `draft` | `finance-feature-store` → `finance-backend` |
 | REQ-004 | Downloadable price-series and fundamentals CSV exports alongside the existing signal-history export | `components/stocks/TickerExportButton.tsx` in `components/stocks/StockTickerChrome.tsx` | Draft local `GET /api/export-ticker?ticker=AAPL&dataset=prices\|fundamentals`; no new backend endpoint proposed | Normal | `draft` | `spy-signal-site`, with canonical fields owned by `finance-feature-store` |
 | REQ-005 | A currently materialized, well-connected atlas subject for the homepage relationship map | `components/marketing/HomeNeighborhood.tsx` | Deferred until canonical subject-selection semantics exist | Normal | `draft` | `finance-feature-store` |
+| REQ-006 | Company names across ranked symbols and atlas nodes | Homepage board and neighborhood; ranked/mapped company surfaces | None; populate canonical names in existing contracts | High | `draft` | `finance-feature-store` |
 
 **REQ-001 detail.** `GET /screener/rankings` returns `symbol`, `name`, `sector`, `score`,
 `coverage` and `components` — no price and no series. The existing per-symbol helpers
@@ -116,6 +117,30 @@ useful without it. Revisit before adding sparklines or a day-change column.
 - **Approval state:** `draft`.
 - **Contract evidence:** The existing neighborhood schemas prove only caller-selected lookup. No selection schema, test, or synthetic example exists. A future contract test must cover a valid materialized subject and an explicit no-subject outcome without fabricating a fallback.
 - **Frontend fallback until available:** Rotate a verified eight-symbol shortlist by UTC date, make at most two neighborhood requests through the existing cached server helper, and omit the entire section if neither produces a focus node with at least five distinct connections. Render no placeholder, estimate, empty container, third-party substitute, or wider fan-out.
+
+### REQ-006 — Company names are missing across ranked symbols
+
+- **Need / user outcome:** Populate company names for every symbol the scorecard rankings and atlas can return, so readers can identify companies without already recognizing their tickers.
+- **Frontend consumer:** `components/marketing/HomeBoard.tsx` and `components/marketing/HomeNeighborhood.tsx`; applies to every ranked or mapped company surface.
+- **Why existing contracts are insufficient:** `PickItem.name` is null for most leading symbols. Observed in preview review on 2026-09-05: `VOR`, `PRTH`, `IRWD`, `ABUS`, `GUBRA.CO`, `600036.SS`, `IRE.AX`, `RENE.LS`, `2395.TW`, and others. The neighborhood showed no distinct company name for `AMZN`, `AFRM`, or `SHOP`, while `SNAP` and `TSLA` had names. Rows cannot explain an unfamiliar ticker.
+- **Backend contract lookup result:** At `finance-backend` commit `6bf5f1ec87a1a3739888be62aa4af3222981c1c0`, checked `docs/api-contract.json` then `docs/openapi.json`. Existing rankings and neighborhood endpoints already expose names; no endpoint is missing. Rankings have no detailed OpenAPI response schema, so `app/scorecard_rankings.py` supplies semantic evidence. `AtlasNodeResponse.name` is a required string; a missing canonical name is currently replaced by the symbol, not represented as null.
+- **Semantic owner:** `finance-feature-store`.
+- **Gap layer:** Canonical-derived semantic.
+- **Upstream evidence:** Rankings SQL left-joins `feature_store.entity_attributes_static` and returns its `name` (`app/scorecard_rankings.py`). Atlas serialization returns `str(name or symbol)` (`app/relationship_atlas.py`), which satisfies the string schema without supplying a company name. Frontend `PickItem.name` permits null; `AtlasNode.name` is a string and symbol-equal names are omitted from the neighborhood's secondary text.
+- **Why HTTP exposure is the correct missing layer:** It is not. Transport and name fields exist; canonical population is incomplete.
+- **Proposed method and endpoint:** None. Populate company names in the existing scorecard/ranking and atlas contracts.
+- **Minimum request fields:** Existing request fields remain unchanged.
+- **Minimum response fields:** A populated canonical company name for every returned symbol. No new field or response shape is proposed.
+- **Authentication/authorization:** Existing server-side backend authentication and ranking entitlement gate remain unchanged.
+- **Errors:** Missing names must not cause companies to disappear from rankings, alter ranks, or become substitute/estimated values. Existing unavailable, partial, and upstream-error behavior remains.
+- **Caching/pagination/rate limits:** Existing contracts and caches remain unchanged; canonical population must propagate through normal refreshes.
+- **Privacy and logging constraints:** Public company identity only; no credentials or user data in evidence.
+- **Priority:** High.
+- **Dependencies and owners:** `finance-feature-store` owns canonical name coverage; `finance-data-ops` owns any missing underlying identity source; `finance-backend` transports existing fields; `spy-signal-site` consumes without lookup or enrichment.
+- **Compatibility/versioning:** Populate existing fields compatibly; retain canonical symbols and ranking order.
+- **Approval state:** `draft`.
+- **Contract evidence:** Existing `GET /screener/rankings`, `GET /network/neighborhoods/{ticker}`, `AtlasNodeResponse`, rankings SQL, and atlas serializer. Closure requires names populated for every symbol these surfaces can return.
+- **Frontend fallback until available:** Render the symbol alone when no distinct name exists. Do not filter or renumber rankings, reserve missing-name width in the neighborhood list, render a placeholder, or fetch names elsewhere.
 
 ## Confirmed Phase 2 contract gaps
 

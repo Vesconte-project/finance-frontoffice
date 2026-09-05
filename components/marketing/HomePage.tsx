@@ -1,6 +1,6 @@
 import { Sora, JetBrains_Mono, Inter } from 'next/font/google'
 import { SiteHeader } from '@/components/marketing/site-chrome'
-import HomeBoard, { homeBoardHasData, loadHomeBoardData } from '@/components/marketing/HomeBoard'
+import HomeBoard, { loadHomeBoardData } from '@/components/marketing/HomeBoard'
 import HomeClose from '@/components/marketing/HomeClose'
 import HeroConstellation from '@/components/marketing/HeroConstellation'
 import HomeNeighborhood, { loadHomeNeighborhood } from '@/components/marketing/HomeNeighborhood'
@@ -16,9 +16,6 @@ async function Sections() {
     loadHomeBoardData(),
     loadHomeNeighborhood(),
   ])
-  const longTerm = boardData.longTerm
-  const countsAvailable = longTerm.status === 'ok'
-  const boardHasData = homeBoardHasData(boardData)
 
   return (
     <div className="relative z-30 text-content-primary">
@@ -26,12 +23,7 @@ async function Sections() {
         <HomeBoard data={boardData} />
         <HomeNeighborhood detail={neighborhood} />
       </div>
-      <HomeClose
-        lockedCount={countsAvailable ? longTerm.lockedCount : 0}
-        totalRanked={countsAvailable ? longTerm.totalRanked : 0}
-        boardHasData={boardHasData}
-        countsAvailable={countsAvailable}
-      />
+      <HomeClose />
     </div>
   )
 }

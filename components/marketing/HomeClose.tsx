@@ -1,40 +1,11 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 
-type HomeCloseProps = {
-  lockedCount: number
-  totalRanked: number
-  boardHasData: boolean
-  countsAvailable: boolean
-}
-
-export default function HomeClose({
-  lockedCount,
-  totalRanked,
-  boardHasData,
-  countsAvailable,
-}: HomeCloseProps) {
-  const hasTrustworthyCounts = boardHasData && countsAvailable
-  const isLocked = hasTrustworthyCounts && lockedCount > 0
-  const visible = totalRanked - lockedCount
-
-  const heading = !hasTrustworthyCounts
-    ? 'Signals, research, and alerts in one workspace.'
-    : isLocked
-      ? `You are seeing ${visible} of ${totalRanked} in each list.`
-      : 'You have the full list.'
-  const description = !hasTrustworthyCounts
-    ? null
-    : isLocked
-      ? 'The rest, the alerts, and the weekly signal are behind a free account.'
-      : 'Open the workspace to sort it, filter it, and set alerts on it.'
-  const primaryHref = hasTrustworthyCounts && !isLocked ? '/picks/long-term' : '/sign-up'
-  const primaryLabel = hasTrustworthyCounts && !isLocked ? 'Open the workspace' : 'Create account'
-
+export default function HomeClose() {
   return (
     <section
       id="pricing"
-      className="relative overflow-hidden border-t border-border px-6 py-28 text-center sm:px-10"
+      className="relative isolate overflow-hidden border-t border-border bg-[var(--page-bg)] px-6 py-28 text-center text-[color:var(--content-primary)] sm:px-10"
       aria-labelledby="home-close-heading"
     >
       <div
@@ -49,26 +20,24 @@ export default function HomeClose({
       <h2
         id="home-close-heading"
         style={{ fontFamily: 'var(--font-display)' }}
-        className="mx-auto max-w-3xl text-4xl font-extrabold leading-[1.02] tracking-tight md:text-6xl"
+        className="mx-auto max-w-3xl text-[clamp(1.6rem,2.6vw,2.25rem)] font-bold leading-tight tracking-tight"
       >
-        {heading}
+        A ranked list is where the work starts.
       </h2>
-      {description ? (
-        <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-content-secondary">
-          {description}
-        </p>
-      ) : null}
+      <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-[color:var(--content-secondary)]">
+        Filter the full ranking by sector, follow what changes, and get the weekly signal before Monday.
+      </p>
 
       <Link
-        href={primaryHref}
+        href="/sign-up"
         className="mt-10 inline-flex h-14 items-center justify-center gap-3 rounded-full bg-brand-spark px-8 font-semibold text-[color:var(--brand-spark-on)] shadow-[0_18px_50px_-12px_var(--brand-spark)] transition hover:brightness-110"
       >
-        {primaryLabel} <ArrowRight className="size-5" aria-hidden="true" />
+        Create account <ArrowRight className="size-5" aria-hidden="true" />
       </Link>
       <div>
         <Link
           href="/pricing"
-          className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-content-secondary transition hover:text-brand-spark"
+          className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--content-secondary)] transition hover:text-brand-spark"
         >
           Open the full pricing page <ArrowRight className="size-4" aria-hidden="true" />
         </Link>

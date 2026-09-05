@@ -64,7 +64,7 @@ function ReadingColumn({ reading, result }: { reading: PickReadingKey; result: V
         <p className={styles.state}>{stateMessage}</p>
       ) : result.status === 'ok' ? (
         <div className={styles.rows}>
-          {result.items.map((item, index) => {
+          {result.items.slice(0, 5).map((item, index) => {
             const rank = index + 1
             return (
               <Link
@@ -82,10 +82,6 @@ function ReadingColumn({ reading, result }: { reading: PickReadingKey; result: V
           })}
         </div>
       ) : null}
-
-      <Link href={readingHref} className={styles.mobileLink}>
-        See all ten →
-      </Link>
     </section>
   )
 }
@@ -110,7 +106,7 @@ export default async function HomeBoard({ data }: { data: HomeBoardData }) {
             ) : null}
           </header>
 
-          <div className={styles.columns}>
+          <div className={styles.columns} data-chrome-collision="">
             {PICK_READING_KEYS.map((reading) => (
               <ReadingColumn key={reading} reading={reading} result={data[reading]} />
             ))}
