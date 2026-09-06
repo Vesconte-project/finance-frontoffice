@@ -1579,7 +1579,9 @@ html.chrome-scrolled .site-header[data-internal] .site-header__row:not([data-men
 html.chrome-scrolled .site-header__row::before,
 .site-header__row[data-menu-open]::before,
 html[data-scroll-profile='operational'].chrome-scrolled .site-header[data-internal] .site-header__row::before,
-html[data-scroll-profile='operational'] .site-header[data-internal] .site-header__row[data-menu-open]::before {
+html[data-scroll-profile='operational'] .site-header[data-internal] .site-header__row[data-menu-open]::before,
+html.chrome-scrolled .site-header[data-internal][data-active-href='/pricing'] .site-header__row::before,
+.site-header[data-internal][data-active-href='/pricing'] .site-header__row[data-menu-open]::before {
   opacity: 1;
 }
 

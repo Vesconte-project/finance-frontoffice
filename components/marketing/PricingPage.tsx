@@ -64,7 +64,7 @@ export default async function PricingPage() {
       <SiteHeader activeHref="/pricing" />
       <div className={sharedHeaderSpacerClass} aria-hidden="true" />
 
-      <section className="pricing-plans mx-auto grid max-w-[1280px] gap-4 px-6 pb-14 sm:px-10 md:grid-cols-3 lg:px-16 lg:pb-18" aria-label="Plans">
+      <section className="pricing-plans mx-auto grid max-w-[1280px] gap-4 px-6 pb-14 pt-6 sm:px-10 md:grid-cols-3 lg:px-16 lg:pb-18 lg:pt-10" aria-label="Plans">
         <GlassPanel className="pricing-plan-card pricing-plan-card--free p-6 sm:p-7">
           <div className="pricing-plan-heading">
             <div>
