@@ -104,6 +104,9 @@ export default function HeroConstellation() {
     let scrollWithRuntime: ((top: number, onComplete: () => void) => void) | null = null
     const revealStartedAt = performance.now()
     let reveal = reducedMotion ? 1 : 0
+    // Softens the field while the headline reveals over it, then clears as the
+    // headline rises — the network sharpens exactly as the copy settles.
+    let introBlur = reducedMotion ? 0 : 1
     let revealFinishedByGesture = reducedMotion
 
     const TICKERS = ['SPY','NVDA','AAPL','MSFT','QQQ','AMZN','META','TSLA','GOOGL','JPM','XOM','AVGO','AMD','LLY','V','COST','NFLX','HD','BRK.B','GLD']
@@ -190,7 +193,12 @@ export default function HeroConstellation() {
     function render() {
       rafId = 0
       if (document.hidden) return
-      if (!revealFinishedByGesture) reveal = Math.min(1, (performance.now() - revealStartedAt) / 800)
+      if (!revealFinishedByGesture) {
+        const revealElapsed = performance.now() - revealStartedAt
+        reveal = Math.min(1, revealElapsed / 800)
+        // Matches the 700-900ms window the heading uses to rise (globals.css).
+        introBlur = 1 - smooth(700, 900, revealElapsed)
+      }
       tt += reducedMotion ? 0 : (focus.i < 0 ? 0.016 : 0.016 * 0.22)
       p += (targetP - p) * 0.07; if (focus.i < 0) { mx += (tmx - mx) * 0.03; my += (tmy - my) * 0.03 }
       searchMode += (searchModeTarget - searchMode) * 0.08
@@ -214,7 +222,8 @@ export default function HeroConstellation() {
       }
       if (focus.i >= 0 && nodes[focus.i]) { const fn = nodes[focus.i]; for (const n of nodes) { const ddx = n.bx - fn.bx, ddy = n.by - fn.by, ddz = n.bz - fn.bz; n.clar = 1 - smooth(R * 0.12, R * 0.95, Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz)) } } else { for (const n of nodes) n.clar = 1 }
       stageEl.style.opacity = String(Math.max(0, 1 - focus.t * 1.3))
-      c.style.filter = searchMode > 0.002 ? 'blur(' + (searchMode * 6.5).toFixed(2) + 'px)' : 'none'
+      const canvasBlur = searchMode * 6.5 + introBlur * 4
+      c.style.filter = canvasBlur > 0.002 ? 'blur(' + canvasBlur.toFixed(2) + 'px)' : 'none'
       if (focus.t < 0.01 || focus.i < 0 || !nodes[focus.i]) {
         x.setTransform(DPR, 0, 0, DPR, 0, 0); x.clearRect(0, 0, W, H)
         drawScene(x, sig, 'all')
@@ -254,7 +263,7 @@ export default function HeroConstellation() {
       window.addEventListener('mouseout', onOut)
     }
     window.addEventListener('resize', onResize)
-    const finishReveal = () => { revealFinishedByGesture = true; reveal = 1 }
+    const finishReveal = () => { revealFinishedByGesture = true; reveal = 1; introBlur = 0 }
     window.addEventListener('pointerdown', finishReveal, { passive: true })
     window.addEventListener('keydown', finishReveal)
     window.addEventListener('wheel', finishReveal, { passive: true })

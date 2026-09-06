@@ -2714,6 +2714,11 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel butto
 
 .dock-search {
   --dock-search-open-lift: 0px;
+  /* The distance the fixed hero column is pulled up from its 42vh anchor. */
+  --dock-search-dock-offset: clamp(108px, 8.6vw, 124px);
+  /* How far the heading sits below the viewport's middle once docked, so the
+     arrival can start centred and rise into place. */
+  --dock-search-intro-lift: calc(8vh + var(--dock-search-dock-offset) - 32px);
   --dock-search-motion-duration: 500ms;
   --dock-search-motion-easing: var(--chrome-ease);
   position: fixed;
@@ -2721,7 +2726,7 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel butto
   left: 50%;
   top: 42vh;
   width: min(700px, calc(100vw - 48px));
-  transform: translate(-50%, calc(-1 * clamp(108px, 8.6vw, 124px))) translateY(var(--dock-search-open-lift));
+  transform: translate(-50%, calc(-1 * var(--dock-search-dock-offset))) translateY(var(--dock-search-open-lift));
   transition:
     opacity 0.45s var(--chrome-ease),
     transform var(--dock-search-motion-duration) var(--dock-search-motion-easing);
@@ -2729,6 +2734,17 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel butto
 .dock-search__intro {
   margin: 0 auto 24px;
   text-align: center;
+}
+/* Starts centred on the viewport while the headline reveals, then rises into
+   place as the last word lands — arriving exactly as the subtitle fades in at
+   900ms. Nothing after it moves: the subtitle, field and support keep the
+   delays they already had. */
+.dock-search[data-reveal-ready='true'] .dock-search__intro {
+  animation: dock-search-intro-settle 200ms cubic-bezier(0.22, 1, 0.36, 1) 700ms both;
+}
+@keyframes dock-search-intro-settle {
+  from { transform: translateY(var(--dock-search-intro-lift)); }
+  to { transform: translateY(0); }
 }
 .dock-search__title {
   margin: 10px 0 0;
@@ -2938,6 +2954,7 @@ html.chrome-scrolled .dock-search {
   html.chrome-scrolled main.marketing-home .dock-search {
     transform: none;
   }
+  .dock-search__intro,
   .dock-search__word,
   .dock-search__subtitle,
   .dock-search__field,
