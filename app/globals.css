@@ -2481,6 +2481,12 @@ html.chrome-scrolled .site-header__row[data-home]:not([data-menu-open]) .site-he
 html.chrome-scrolled .site-header__row[data-home]:not([data-menu-open]) .site-header__account .site-nav__chev {
   display: none;
 }
+/* The header input reserves pr-10 for a trailing control the condensed pill
+   does not have, which left "Search…" about 30px short of fitting and clipped
+   it. Reclaiming that costs the row nothing. */
+html.chrome-scrolled .site-header__pill-search :is(input) {
+  padding-right: 12px;
+}
 html.chrome-scrolled .site-header__pill-search {
   max-width: 150px;
   opacity: 1;
@@ -2490,8 +2496,12 @@ html.chrome-scrolled .site-header__pill-search {
      panel (absolute, at top-full) and the input's focus ring. */
   overflow: visible;
 }
+/* Focused, the row grows to 600px — wider than the content needs — and the
+   slack pooled between the field and the nav. The field takes it instead. */
 html.chrome-scrolled .site-header__row[data-home]:focus-within .site-header__pill-search {
-  max-width: 280px;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 340px;
 }
 /* The panel is absolutely positioned, so it is free to be wider than the field
    it hangs from. At the pill's 280px the row grid (40px icon + name + symbol +
