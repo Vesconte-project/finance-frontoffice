@@ -40,20 +40,13 @@ export default function DockingSearch() {
     return () => { cancelled = true }
   }, [])
 
-  let characterIndex = 0
-
   return (
     <div data-dock-search className="dock-search" data-reveal-ready={revealReady ? 'true' : 'false'} onFocus={onFocus} onBlur={onBlur}>
       <div className="dock-search__intro">
         <h1 className="dock-search__title" aria-label={HEADLINE}>
           {HEADLINE.split(' ').map((word, wordIndex) => (
             <Fragment key={word}>
-              <span className="dock-search__word" aria-hidden="true">
-                {[...word].map((character) => {
-                  const index = characterIndex++
-                  return <span key={index} className="dock-search__character" aria-hidden="true" style={{ ['--i' as string]: index } as CSSProperties}>{character}</span>
-                })}
-              </span>
+              <span className="dock-search__word" aria-hidden="true" style={{ ['--i' as string]: wordIndex } as CSSProperties}>{word}</span>
               {wordIndex < HEADLINE.split(' ').length - 1 ? ' ' : null}
             </Fragment>
           ))}

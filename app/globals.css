@@ -2742,15 +2742,13 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel butto
 .dock-search__word {
   display: inline-block;
   white-space: nowrap;
-}
-.dock-search__character {
-  display: inline-block;
   opacity: 0;
-  transform: translateY(0.4em);
+  filter: blur(8px);
+  transform: translateY(0.35em);
 }
-.dock-search[data-reveal-ready='true'] .dock-search__character {
-  animation: dock-search-character-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: calc(var(--i) * 28ms);
+.dock-search[data-reveal-ready='true'] .dock-search__word {
+  animation: dock-search-word-in 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i) * 70ms);
 }
 .dock-search__subtitle {
   margin: 10px 0 0;
@@ -2775,9 +2773,9 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel butto
 .dock-search[data-reveal-ready='true'] .dock-search__readings {
   animation-delay: 1.12s;
 }
-@keyframes dock-search-character-in {
-  from { opacity: 0; transform: translateY(0.4em); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes dock-search-word-in {
+  from { opacity: 0; filter: blur(8px); transform: translateY(0.35em); }
+  to { opacity: 1; filter: blur(0); transform: translateY(0); }
 }
 @keyframes dock-search-copy-in {
   from { opacity: 0; }
@@ -2947,7 +2945,7 @@ html.chrome-scrolled .dock-search {
   html.chrome-scrolled main.marketing-home .dock-search {
     transform: none;
   }
-  .dock-search__character,
+  .dock-search__word,
   .dock-search__subtitle,
   .dock-search__readings {
     animation: none !important;
