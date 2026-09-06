@@ -1926,8 +1926,10 @@ html.chrome-scrolled .site-header__row:not([data-menu-open]) [data-header-search
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--content-primary) 14%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--brand-spark) 16%, transparent);
-  color: var(--content-primary);
+  /* Neutral rather than branded: this stands in for a missing photo, so it
+     should read as an absence, not as an accent. */
+  background: color-mix(in srgb, var(--content-primary) 9%, transparent);
+  color: color-mix(in srgb, var(--content-primary) 70%, transparent);
   font-size: 12px;
   font-weight: 700;
   line-height: 1;

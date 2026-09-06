@@ -64,7 +64,11 @@ export default function HeaderAccountControl({
       className="site-header__account"
     >
       <span className="site-header__account-avatar" aria-hidden="true">
-        {user?.imageUrl ? (
+        {/* `imageUrl` is always populated — without a photo Clerk serves its own
+            generated purple avatar, which is another product's branding sitting
+            in our header. `hasImage` is the flag that separates a real picture
+            from that default. */}
+        {user?.hasImage && user.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={user.imageUrl} alt="" width={28} height={28} />
         ) : (
