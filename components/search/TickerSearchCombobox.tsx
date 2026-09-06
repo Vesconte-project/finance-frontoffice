@@ -25,6 +25,10 @@ type TickerSearchComboboxProps = {
   label?: string
   maxSuggestions?: number
   placeholder: string
+  /* Cycled through the placeholder as if typed, until the field is first used.
+     These are input examples, not data — the accessible name stays
+     `placeholder` so a screen reader is never read a moving target. */
+  typingHints?: readonly string[]
   routeForTicker: (symbol: string) => string
   submitLabel?: string | null
   variant: 'header' | 'panel'
@@ -180,12 +184,18 @@ export default function TickerSearchCombobox({
   label,
   maxSuggestions = 8,
   placeholder,
+  typingHints,
   routeForTicker,
   submitLabel = null,
   variant,
 }: TickerSearchComboboxProps) {
   const router = useRouter()
   const [search, setSearch] = useState(initialValue)
+  const [typedHint, setTypedHint] = useState<string | null>(null)
+  // Once the visitor has touched the field the hints never come back: a
+  // placeholder that resumes typing after you have used the input reads as a
+  // glitch rather than a suggestion.
+  const [hasBeenUsed, setHasBeenUsed] = useState(false)
   const [tickerIndex, setTickerIndex] = useState<CachedTickerIndex | null>(memoryTickerIndex)
   const [recentTickers, setRecentTickers] = useState<string[]>([])
   const [isOpen, setIsOpen] = useState(false)
@@ -198,6 +208,50 @@ export default function TickerSearchCombobox({
   const inputId = useId()
   const listboxId = `${inputId}-listbox`
   const normalizedSearch = normalizeTickerSearchQuery(search)
+
+  const hintsActive = !!typingHints?.length && !hasBeenUsed && !search
+  useEffect(() => {
+    if (!hintsActive || !typingHints?.length) {
+      setTypedHint(null)
+      return
+    }
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let index = 0
+    let cut = 0
+    let erasing = false
+
+    const step = () => {
+      if (cancelled) return
+      // Idle in a background tab rather than typing to nobody.
+      if (document.hidden) {
+        timer = setTimeout(step, 400)
+        return
+      }
+      const word = typingHints[index % typingHints.length]
+      cut += erasing ? -1 : 1
+      setTypedHint(word.slice(0, cut))
+
+      let wait = erasing ? 34 : 58
+      if (!erasing && cut >= word.length) {
+        erasing = true
+        wait = 1400
+      } else if (erasing && cut <= 0) {
+        erasing = false
+        index += 1
+        wait = 260
+      }
+      timer = setTimeout(step, wait)
+    }
+
+    timer = setTimeout(step, 900)
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
+  }, [hintsActive, typingHints])
 
   useEffect(() => {
     setSearch(initialValue)
@@ -594,6 +648,7 @@ export default function TickerSearchCombobox({
         onKeyDown={onKeyDown}
         onFocus={() => {
           cancelBlurClose()
+          setHasBeenUsed(true)
           setIsOpen(true)
           queueTickerIndexLoad()
         }}
@@ -604,7 +659,7 @@ export default function TickerSearchCombobox({
             blurTimeoutRef.current = null
           }, 120)
         }}
-        placeholder={placeholder}
+        placeholder={typedHint === null ? placeholder : `${typedHint}\u258f`}
         className={inputClassName}
         role="combobox"
         aria-expanded={shouldShowDropdown}

@@ -2472,6 +2472,15 @@ html.chrome-scrolled .site-header__row[data-home]:focus-within:not([data-menu-op
   height: 32px;
   font-size: 13px;
 }
+/* The condensed row is capped at 418px and every element competes for it. The
+   avatar alone is affordance enough at that size, so the chevron gives its width
+   back to the search, which was truncating its own placeholder. */
+html.chrome-scrolled .site-header__row[data-home]:not([data-menu-open]) .site-header__account {
+  padding-inline: 2px;
+}
+html.chrome-scrolled .site-header__row[data-home]:not([data-menu-open]) .site-header__account .site-nav__chev {
+  display: none;
+}
 html.chrome-scrolled .site-header__pill-search {
   max-width: 150px;
   opacity: 1;

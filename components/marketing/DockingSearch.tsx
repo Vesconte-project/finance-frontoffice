@@ -7,6 +7,11 @@ import HeaderSearch from '@/components/HeaderSearch'
 
 const HEADLINE = 'Be a better investor'
 
+/* Typed into the hero's placeholder as examples of what the field takes. Real,
+   widely recognised listings — they claim nothing about any of them, they only
+   show the two shapes the search accepts: a symbol or a company name. */
+const TYPING_HINTS = ['AAPL', 'Microsoft', 'NVDA', 'Tesla', 'JPM'] as const
+
 /**
  * Homepage hero search.
  *
@@ -62,7 +67,7 @@ export default function DockingSearch() {
         <p className="dock-search__subtitle">{"Don't guess. Analyze."}</p>
       </div>
       <div className="dock-search__field">
-        <HeaderSearch className="w-full" maxSuggestions={4} placeholder="Search a ticker or company…" />
+        <HeaderSearch className="w-full" maxSuggestions={4} placeholder="Search a ticker or company…" typingHints={TYPING_HINTS} />
       </div>
       <div className="dock-search__support">
         <Link
