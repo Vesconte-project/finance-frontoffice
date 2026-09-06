@@ -1490,20 +1490,15 @@ html.chrome-scrolled .site-header__row:not([data-menu-open]) .site-header__brand
 
 /* Internal marketing pages keep a visible chrome boundary from the first
    frame, then inherit the homepage's compact sticky pill once scrolled. */
+/* Every internal page already owns its own chrome under the header — the ticker
+   hero is a rounded panel, pricing has its plan cards, the marketing pages open
+   on a display heading. Stacking the glass box on top reads as two slabs, so at
+   rest the header stays boxless everywhere and only materialises as the scrolled
+   pill, exactly like the homepage. */
 .site-header[data-internal] .site-header__row::before {
-  opacity: 1;
-}
-.site-header[data-internal] .site-header__row {
-  border-radius: var(--radius-2xl);
-}
-/* Operational routes (the app) already own their page chrome — the ticker hero is
-   itself a rounded panel. Stacking the internal-page glass box on top of it reads as
-   two slabs, so at rest the header stays boxless here and only materialises as the
-   scrolled pill, exactly like the homepage. */
-html[data-scroll-profile='operational'] .site-header[data-internal] .site-header__row::before {
   opacity: 0;
 }
-html[data-scroll-profile='operational'] .site-header[data-internal] .site-header__row {
+.site-header[data-internal] .site-header__row {
   border-radius: var(--radius-pill);
 }
 .site-header[data-internal] .site-header__bar {
@@ -1566,8 +1561,8 @@ html.chrome-scrolled .site-header[data-internal] .site-header__row:not([data-men
 }
 html.chrome-scrolled .site-header__row::before,
 .site-header__row[data-menu-open]::before,
-html[data-scroll-profile='operational'].chrome-scrolled .site-header[data-internal] .site-header__row::before,
-html[data-scroll-profile='operational'] .site-header[data-internal] .site-header__row[data-menu-open]::before {
+html.chrome-scrolled .site-header[data-internal] .site-header__row::before,
+.site-header[data-internal] .site-header__row[data-menu-open]::before {
   opacity: 1;
 }
 

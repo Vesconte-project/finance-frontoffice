@@ -57,7 +57,7 @@ export default function ProductPage() {
     <main
       data-theme="light"
       style={productThemeStyle}
-      className="marketing-product relative min-h-screen overflow-x-clip bg-[var(--page-bg)] text-content-primary"
+      className="marketing-product relative min-h-screen overflow-x-clip bg-[var(--page-bg)] text-[color:var(--content-primary)]"
     >
       <SiteHeader activeHref="/product" />
       <div className={sharedHeaderSpacerClass} aria-hidden="true" />
@@ -107,7 +107,7 @@ export default function ProductPage() {
                     <p style={{ fontFamily: 'var(--font-mono)' }} className="text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-spark">
                       0{index + 1} / {step.label}
                     </p>
-                    <p className="mt-1 text-base font-semibold text-content-primary">{step.body}</p>
+                    <p className="mt-1 text-base font-semibold text-[color:var(--content-primary)]">{step.body}</p>
                   </div>
                   <span className="hidden text-xs text-content-muted sm:block">{index === productPath.length - 1 ? 'return' : 'next'}</span>
                 </div>
@@ -161,7 +161,7 @@ export default function ProductPage() {
           <div className="divide-y divide-border border-y border-border">
             {tickerAreas.map((area) => (
               <div key={area.label} className="grid gap-2 py-5 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-6">
-                <h3 className="text-sm font-semibold text-content-primary">{area.label}</h3>
+                <h3 className="text-sm font-semibold text-[color:var(--content-primary)]">{area.label}</h3>
                 <p className="text-base leading-7 text-content-secondary">{area.body}</p>
               </div>
             ))}
@@ -276,7 +276,7 @@ export default function ProductPage() {
           <div className="divide-y divide-border border-y border-border">
             {signalReading.map((item) => (
               <div key={item.label} className="grid gap-2 py-5 sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-6">
-                <h3 className="font-semibold text-content-primary">{item.label}</h3>
+                <h3 className="font-semibold text-[color:var(--content-primary)]">{item.label}</h3>
                 <p className="text-base leading-7 text-content-secondary">{item.body}</p>
               </div>
             ))}

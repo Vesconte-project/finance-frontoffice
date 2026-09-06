@@ -138,7 +138,7 @@ export default function FaqPage() {
     <main
       data-theme="light"
       style={faqThemeStyle}
-      className="marketing-faq relative min-h-screen overflow-x-clip bg-[var(--page-bg)] text-content-primary"
+      className="marketing-faq relative min-h-screen overflow-x-clip bg-[var(--page-bg)] text-[color:var(--content-primary)]"
     >
       <SiteHeader activeHref="/faq" />
       <div className={sharedHeaderSpacerClass} aria-hidden="true" />
@@ -172,13 +172,13 @@ export default function FaqPage() {
             >
               Still stuck?
             </p>
-            <p style={{ fontFamily: 'var(--font-display)' }} className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-content-primary sm:text-3xl">
+            <p style={{ fontFamily: 'var(--font-display)' }} className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[color:var(--content-primary)] sm:text-3xl">
               Ask us directly.
             </p>
           </div>
           <Link
             href={contactHref}
-            className="group inline-flex w-fit items-center gap-2 text-sm font-semibold text-content-primary transition-colors duration-200 hover:text-brand-spark focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-spark"
+            className="group inline-flex w-fit items-center gap-2 text-sm font-semibold text-[color:var(--content-primary)] transition-colors duration-200 hover:text-brand-spark focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-spark"
           >
             Email the team
             <ArrowUpRight className="size-4 transition-transform duration-200 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden="true" />
