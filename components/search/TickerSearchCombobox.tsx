@@ -248,10 +248,13 @@ export default function TickerSearchCombobox({
       timer = setTimeout(step, wait)
     }
 
-    // The real placeholder holds first, so the field reads as a search box
-    // before it starts demonstrating itself. Also the pause before the hints
-    // return after someone opens the field and leaves without typing.
-    timer = setTimeout(step, 2200)
+    // The hints are a nudge for someone who has not acted, not an animation that
+    // plays at everyone. The real placeholder holds well past the point where a
+    // visitor who knew what they wanted would already be typing — and note this
+    // clock starts at mount, roughly a second before the field finishes
+    // arriving. The same wait is the pause before hints return once someone
+    // opens the field and leaves without typing.
+    timer = setTimeout(step, 7000)
     return () => {
       cancelled = true
       if (timer) clearTimeout(timer)
