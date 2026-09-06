@@ -110,6 +110,12 @@ export type EarningsHistoryRow = {
 
 export type TickerPageSummary = {
   ticker: string
+  asset?: {
+    currency: string | null
+    exchange: string | null
+    exchangeMic: string | null
+    region: string | null
+  } | null
   quote: MarketQuoteSnapshot | null
   marketStats: MarketStatsSnapshot | null
   coverage: SymbolCoverageRow

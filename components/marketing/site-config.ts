@@ -13,6 +13,7 @@ export const MARKETING_NAV_ITEMS = [
 ] as const
 
 export const FOOTER_SECONDARY_LINKS = [
+  { label: 'Community', href: '/community' },
   { label: 'Data coverage', href: '/product#ticker-pages' },
   { label: 'Methodology', href: '/product#methodology' },
   { label: 'Disclosures', href: '/product#limits' },

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Suspense, use, useMemo, useState } from 'react'
+import { Suspense, use, useMemo, useRef, useState } from 'react'
 import SegmentedControl from '@/components/ui/SegmentedControl'
 import TemporalLineChart from '@/components/charts/TemporalLineChart'
 import type { OhlcPoint, PricePoint } from '@/lib/finance'
@@ -17,8 +17,9 @@ import styles from './StockOverviewClient.module.css'
 import ScorecardDisc from './ScorecardDisc'
 
 type SignalDirection = 'bullish' | 'neutral' | 'bearish'
-type ChartTimeframe = '1D' | '5D' | '1M' | '3M' | 'YTD' | '1Y' | '5Y'
+type ChartTimeframe = '1D' | '5D' | '1M' | '3M' | 'YTD' | '1Y' | '5Y' | '10Y' | 'ALL'
 type HistoricalChartState = 'loaded' | 'empty' | 'error'
+type FullHistoryState = 'idle' | 'loading' | 'loaded' | 'error'
 
 type OverviewStat = {
   label: string
@@ -50,11 +51,6 @@ type OverviewHolding = {
   symbol: string
   name: string
   weightPercent: number | null
-}
-
-type OverviewProfileDetail = {
-  label: string
-  value: string
 }
 
 type OverviewSectorWeight = {
@@ -95,17 +91,15 @@ type StockOverviewClientProps = {
   keyStats: OverviewStat[]
   fundamentalGroups: OverviewFundGroup[]
   holdings: OverviewHolding[]
-  profileDetails: OverviewProfileDetail[]
   sectorWeights: OverviewSectorWeight[]
   nextEarnings: OverviewEarnings | null
   volatility30d: number | null
   relatedAssets: Promise<OverviewRelatedAsset[]>
   regimeSignals: OverviewRegimePoint[]
   scorecard: Scorecard
-  about: string | null
 }
 
-const HERO_TIMEFRAMES: ChartTimeframe[] = ['1D', '5D', '1M', '3M', 'YTD', '1Y', '5Y']
+const HERO_TIMEFRAMES: ChartTimeframe[] = ['1D', '5D', '1M', '3M', 'YTD', '1Y', '5Y', '10Y', 'ALL']
 const SIGNAL_TIMEFRAMES: TechnicalTimeframe[] = ['1D', '1W', '1M']
 
 function formatDate(value: string | null, options?: Intl.DateTimeFormatOptions): string {
@@ -179,16 +173,19 @@ function parseChartDate(value: string): number {
 }
 
 function startDateForHeroTimeframe(timeframe: ChartTimeframe, latestDate: Date): number | null {
+  if (timeframe === 'ALL') return null
   if (timeframe === '1D') return latestDate.getTime() - 1 * 24 * 60 * 60 * 1000
   if (timeframe === '5D') return latestDate.getTime() - 5 * 24 * 60 * 60 * 1000
   if (timeframe === '1M') return latestDate.getTime() - 30 * 24 * 60 * 60 * 1000
   if (timeframe === '3M') return latestDate.getTime() - 90 * 24 * 60 * 60 * 1000
   if (timeframe === 'YTD') return Date.UTC(latestDate.getUTCFullYear(), 0, 1)
   if (timeframe === '1Y') return latestDate.getTime() - 365 * 24 * 60 * 60 * 1000
-  return latestDate.getTime() - 1825 * 24 * 60 * 60 * 1000
+  if (timeframe === '5Y') return latestDate.getTime() - 1825 * 24 * 60 * 60 * 1000
+  return latestDate.getTime() - 3650 * 24 * 60 * 60 * 1000
 }
 
 function filterChartData(data: PricePoint[], timeframe: ChartTimeframe): PricePoint[] {
+  if (timeframe === 'ALL') return data
   if (data.length <= 2) return data
   if (timeframe === '1D') return data.slice(-2)
   if (timeframe === '5D') return data.slice(-5)
@@ -398,19 +395,26 @@ export default function StockOverviewClient({
   keyStats,
   fundamentalGroups,
   holdings,
-  profileDetails,
   sectorWeights,
   nextEarnings,
   volatility30d,
   relatedAssets: relatedAssetsPromise,
   scorecard,
-  about,
 }: StockOverviewClientProps) {
   const [heroTimeframe, setHeroTimeframe] = useState<ChartTimeframe>('1M')
+  const [fullHistoricalData, setFullHistoricalData] = useState<PricePoint[] | null>(null)
+  const [fullHistoryState, setFullHistoryState] = useState<FullHistoryState>('idle')
+  const fullHistoryRequested = useRef(false)
   const [signalTimeframe, setSignalTimeframe] = useState<TechnicalTimeframe>('1D')
   const scorecardMessage = scorecardReadinessMessage(scorecard)
 
-  const filteredChartData = useMemo(() => filterChartData(historicalData, heroTimeframe), [historicalData, heroTimeframe])
+  const chartHistory = (heroTimeframe === '10Y' || heroTimeframe === 'ALL') && fullHistoricalData
+    ? fullHistoricalData
+    : historicalData
+  const filteredChartData = useMemo(
+    () => filterChartData(chartHistory, heroTimeframe),
+    [chartHistory, heroTimeframe],
+  )
   const technicalSummary = useMemo(
     () => buildTechnicalSummary(ohlcData, signalTimeframe),
     [ohlcData, signalTimeframe]
@@ -430,45 +434,84 @@ export default function StockOverviewClient({
     { key: 'oscillators', label: 'Oscillators', gauge: technicalSummary.gauges.oscillators },
     { key: 'moving-averages', label: 'Moving averages', gauge: technicalSummary.gauges.movingAverages },
   ] as const
-  const profileRows = profileDetails
-    .filter((row) => !/ticker|name|market cap|isin|identifier/i.test(row.label))
-    .slice(0, 3)
-  const marketReference = ['Market Cap', 'Net Assets', 'Volume', 'P/E']
-    .map((label) => keyStats.find((stat) => stat.label === label))
-    .find((stat): stat is OverviewStat => Boolean(stat))
+  const marketCapReference = keyStats.find((stat) => stat.label === 'Market Cap')
   const orderedFundamentalGroups = assetBadgeLabel === 'ETF'
     ? [...fundamentalGroups].sort((left, right) => Number(right.key === 'fund') - Number(left.key === 'fund'))
     : fundamentalGroups
   const visibleFundamentalGroups = orderedFundamentalGroups.slice(0, 6)
   const availableScorecardAxes = scorecard.axes.filter((axis) => axis.available && axis.score !== null).length
 
-  const researchSnapshot = [
+  const selectHeroTimeframe = (timeframe: ChartTimeframe) => {
+    const needsFullHistory = timeframe === '10Y' || timeframe === 'ALL'
+    if (!needsFullHistory) {
+      setHeroTimeframe(timeframe)
+      return
+    }
+
+    if (fullHistoricalData) {
+      setHeroTimeframe(timeframe)
+      return
+    }
+    if (fullHistoryRequested.current) {
+      setHeroTimeframe(fullHistoryState === 'error' ? '5Y' : timeframe)
+      return
+    }
+
+    fullHistoryRequested.current = true
+    setHeroTimeframe(timeframe)
+    setFullHistoryState('loading')
+
+    void fetch(`/api/stocks/${encodeURIComponent(ticker)}/history`)
+      .then(async (response) => {
+        const payload: unknown = await response.json().catch(() => null)
+        if (!response.ok || !Array.isArray(payload)) throw new Error('Full history request failed.')
+
+        const points = payload.filter((point): point is PricePoint => {
+          if (!point || typeof point !== 'object') return false
+          const candidate = point as Partial<PricePoint>
+          return typeof candidate.date === 'string'
+            && typeof candidate.close === 'number'
+            && Number.isFinite(candidate.close)
+        })
+        if (points.length < 2) throw new Error('Full history is empty.')
+
+        setFullHistoricalData(points)
+        setFullHistoryState('loaded')
+      })
+      .catch(() => {
+        setFullHistoryState('error')
+        setHeroTimeframe((current) => current === '10Y' || current === 'ALL' ? '5Y' : current)
+      })
+  }
+
+  const researchVerdicts = [
     {
       label: 'Model signal',
       value: latestSignal ? regimeCopy(latestSignal.direction) : 'Unavailable',
-      detail: latestSignal ? `${formatConviction(latestSignal.conviction)} conviction` : 'No current model signal',
+      detail: latestSignal?.conviction !== null
+        && latestSignal?.conviction !== undefined
+        && Number.isFinite(latestSignal.conviction)
+        ? `${formatConviction(latestSignal.conviction)} conviction`
+        : null,
     },
     {
       label: `Technical · ${signalTimeframe}`,
       value: hasTechnicalData ? technicalSummary.gauges.summary.verdict : 'Data pending',
-      detail: hasTechnicalData ? `${Math.round(technicalSummary.gauges.summary.position)} / 100` : 'Insufficient price history',
-    },
-    {
-      label: '30D volatility',
-      value: volatility30d === null ? '—' : `${volatility30d.toFixed(1)}%`,
-      detail: 'Realized price movement',
-    },
-    {
-      label: marketReference?.label ?? 'Market reference',
-      value: marketReference?.value ?? '—',
-      detail: 'Latest available observation',
-    },
-    {
-      label: 'Next earnings',
-      value: nextEarnings?.date ? formatDate(nextEarnings.date, { month: 'short', day: 'numeric' }) : 'Data pending',
-      detail: nextEarnings?.fiscalPeriod ?? 'No confirmed fiscal period',
+      detail: hasTechnicalData ? `${Math.round(technicalSummary.gauges.summary.position)} / 100` : null,
     },
   ]
+  const nextEarningsReference = nextEarnings?.date
+    ? formatDate(nextEarnings.date, { month: 'short', day: 'numeric' })
+    : null
+  const referenceFacts = [
+    marketCapReference ? { label: 'Market cap', value: marketCapReference.value } : null,
+    nextEarningsReference && nextEarningsReference !== '—'
+      ? { label: 'Next earnings', value: nextEarningsReference }
+      : null,
+    volatility30d !== null && Number.isFinite(volatility30d)
+      ? { label: '30D volatility', value: `${volatility30d.toFixed(1)}%` }
+      : null,
+  ].filter((fact): fact is OverviewStat => fact !== null)
 
   const timingSection = (
     <article id="signals" className={styles.editorialChapter} aria-labelledby="timing-heading">
@@ -565,20 +608,39 @@ export default function StockOverviewClient({
         <div className={styles.heroBody}>
           <div className={styles.heroChartColumn}>
             <h2 className="sr-only">Quick Read</h2>
-            <div className={styles.chartToolbar}>
-              <SegmentedControl
-                options={HERO_TIMEFRAMES}
-                value={heroTimeframe}
-                onChange={setHeroTimeframe}
-                ariaLabel="Chart timeframe"
+            <div className={styles.heroChartWrap} aria-busy={fullHistoryState === 'loading'}>
+              <HeroPriceChart
+                data={filteredChartData}
+                state={fullHistoryState === 'error' ? 'error' : historicalChartState}
+                currency={currency}
               />
+              {fullHistoryState === 'loading' ? <span className="sr-only" role="status">Loading full price history.</span> : null}
+              {fullHistoryState === 'error' ? (
+                <p className={styles.chartStatus} role="status">Historical price data could not be loaded. Showing the longest available range.</p>
+              ) : null}
             </div>
-            <div className={styles.heroChartWrap}>
-              <HeroPriceChart data={filteredChartData} state={historicalChartState} currency={currency} />
+            <div className={styles.chartFooter}>
+              {referenceFacts.length > 0 ? (
+                <dl className={styles.referenceLine} aria-label="Market reference">
+                  {referenceFacts.map((fact) => (
+                    <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>
+                  ))}
+                </dl>
+              ) : null}
+              <div className={styles.chartFooterControl}>
+                <div className={styles.chartFooterControlInner}>
+                  <SegmentedControl
+                    options={HERO_TIMEFRAMES}
+                    value={heroTimeframe}
+                    onChange={selectHeroTimeframe}
+                    ariaLabel="Chart timeframe"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
-          <aside className={styles.snapshotEditorial} aria-label="Final grade" data-overview-grade="">
+          <aside className={styles.snapshotEditorial} aria-label="Research score and verdicts" data-overview-grade="">
             <Link href={`/stocks/${ticker}/methodology`} className={styles.snapshotGradeLink} aria-label="Open score breakdown">
               <div className={styles.snapshotScorecard}>
                 <ScorecardDisc scorecard={scorecard} size={184} compact className={styles.overviewScorecardDisc} />
@@ -589,23 +651,17 @@ export default function StockOverviewClient({
                 </div>
               </div>
             </Link>
+            {/* REQ-003: show no investor reading until its endpoint exists and its contract is verified. */}
+            <dl className={styles.snapshotVerdicts} aria-label="Current research snapshot">
+              {researchVerdicts.map((verdict) => (
+                <div key={verdict.label} className={styles.snapshotVerdict}>
+                  <dt>{verdict.label}</dt>
+                  <dd>{verdict.value}</dd>
+                  {verdict.detail ? <p>{verdict.detail}</p> : null}
+                </div>
+              ))}
+            </dl>
           </aside>
-        </div>
-
-        <section className={styles.researchSnapshot} aria-label="Current research snapshot">
-          {researchSnapshot.map((item) => (
-            <div key={item.label}>
-              <span>{item.label}</span>
-              <strong>{item.value}</strong>
-              <small>{item.detail}</small>
-            </div>
-          ))}
-        </section>
-
-        <div className={styles.profileIntro}>
-          {about ? <p>{about}</p> : <span className={styles.previewNote}>{assetBadgeLabel === 'ETF' ? 'Fund profile' : 'Company profile'} · Data pending</span>}
-          {profileRows.length > 0 ? <dl>{profileRows.map((row) => <div key={row.label}><dt>{row.label}</dt><dd>{row.value}</dd></div>)}</dl> : null}
-          <Link href={`/stocks/${ticker}/profile`}>{assetBadgeLabel === 'ETF' ? 'Fund profile' : 'Company profile'} →</Link>
         </div>
       </section>
 

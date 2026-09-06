@@ -7,10 +7,6 @@
   min-width: 0;
 }
 
-.content {
-  display: contents;
-}
-
 .nodeRail {
   --selected-node-tone: var(--brand-spark);
   position: relative;
@@ -19,18 +15,6 @@
   grid-row: 1;
   justify-content: center;
   padding-top: 2px;
-}
-
-.nodeRail[data-tone='bullish'] {
-  --selected-node-tone: var(--color-positive);
-}
-
-.nodeRail[data-tone='neutral'] {
-  --selected-node-tone: #d99a0b;
-}
-
-.nodeRail[data-tone='bearish'] {
-  --selected-node-tone: var(--color-negative);
 }
 
 .node {
@@ -99,52 +83,25 @@
   white-space: nowrap;
 }
 
-.assetBadge,
-.regimeBadge,
-.signalDateBadge {
-  display: inline-flex;
-  align-items: center;
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
-}
-
-.assetBadge {
-  padding: 2px 8px;
-  background: var(--bg-surface-raised);
-  color: var(--text-secondary);
-  font-size: 10px;
-}
-
-.quoteRow,
-.signalRow {
-  grid-column: 1 / -1;
-  margin-left: calc((var(--selected-node-column) - var(--selected-node-size)) / 2);
-}
-
-.quoteRow {
+.quote {
   display: flex;
-  grid-row: 2;
-  min-height: 31px;
-  flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
   align-items: baseline;
-  margin-top: 4px;
+  white-space: nowrap;
 }
 
 .price {
   color: var(--color-text-primary);
-  font-size: 31px;
+  font-size: 20px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  line-height: 1;
-  letter-spacing: -0.55px;
+  letter-spacing: -0.4px;
 }
 
 .delta {
   font-size: 13px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  line-height: 1;
 }
 
 .deltaPositive {
@@ -157,49 +114,6 @@
 
 .deltaNeutral {
   color: var(--color-neutral);
-}
-
-.signalRow {
-  display: flex;
-  grid-row: 3;
-  min-height: 22px;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  margin-top: 3px;
-}
-
-.regimeBadge,
-.signalDateBadge {
-  padding: 3px 9px;
-  font-size: 10px;
-}
-
-.regimeBadge {
-  border: 1px solid transparent;
-}
-
-.regimeBadge[data-tone='bullish'] {
-  border-color: rgba(22, 163, 74, 0.18);
-  background: var(--color-positive-bg);
-  color: var(--color-positive);
-}
-
-.regimeBadge[data-tone='bearish'] {
-  border-color: rgba(220, 38, 38, 0.18);
-  background: var(--color-negative-bg);
-  color: var(--color-negative);
-}
-
-.regimeBadge[data-tone='neutral'] {
-  border-color: rgba(245, 158, 11, 0.2);
-  background: rgba(245, 158, 11, 0.14);
-  color: #fbbf24;
-}
-
-.signalDateBadge {
-  background: #1f2937;
-  color: #9ca3af;
 }
 
 @media (max-width: 560px) {
@@ -218,23 +132,6 @@
     font-size: 19px;
   }
 
-  .price {
-    font-size: 29px;
-  }
-
-  .delta {
-    font-size: 12px;
-  }
-}
-
-@media (max-width: 480px) {
-  .price {
-    font-size: 28px;
-  }
-
-  .signalRow {
-    width: 100%;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

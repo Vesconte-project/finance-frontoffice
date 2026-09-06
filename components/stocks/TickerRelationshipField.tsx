@@ -12,7 +12,7 @@ export type TickerRelationshipFieldNode = {
 
 type TickerRelationshipFieldProps = {
   ticker: string
-  tone: 'bullish' | 'neutral' | 'bearish' | 'brand'
+  accentColor: string
   relationships: Promise<TickerRelationshipFieldNode[]>
 }
 
@@ -231,14 +231,21 @@ function buildField(
 }
 
 export function TickerRelationshipFieldFallback({
-  tone,
-}: Pick<TickerRelationshipFieldProps, 'tone'>) {
-  return <div className={styles.fallback} data-ticker-relationship-field="fallback" data-tone={tone} aria-hidden="true" />
+  accentColor,
+}: Pick<TickerRelationshipFieldProps, 'accentColor'>) {
+  return (
+    <div
+      className={styles.fallback}
+      data-ticker-relationship-field="fallback"
+      style={{ ['--relationship-accent' as never]: accentColor }}
+      aria-hidden="true"
+    />
+  )
 }
 
 export default function TickerRelationshipField({
   ticker,
-  tone,
+  accentColor,
   relationships: relationshipsPromise,
 }: TickerRelationshipFieldProps) {
   const relationships = use(relationshipsPromise)
@@ -567,7 +574,7 @@ export default function TickerRelationshipField({
       data-ticker-relationship-field="canvas"
       data-projection="focused-3d"
       data-anchor-source="selected-ticker-node"
-      data-tone={tone}
+      style={{ ['--relationship-accent' as never]: accentColor }}
       aria-hidden="true"
     >
       <canvas ref={canvasRef} />

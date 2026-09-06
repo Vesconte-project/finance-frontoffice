@@ -141,7 +141,8 @@ export default function TemporalLineChart({
         const hoverPoint = hoverIndex === null ? null : renderedPoints[hoverIndex] ?? null
         const tooltipLeft = hoverPoint ? Math.min(width - 156, Math.max(8, hoverPoint.x + 14)) : 0
         const tooltipTop = hoverPoint ? Math.max(8, Math.min(height - 100, hoverPoint.y - 82)) : 0
-        const rangeBaseValue = points[0]?.value ?? null
+        const firstRenderedPoint = renderedPoints[0] ?? null
+        const rangeBaseValue = firstRenderedPoint?.value ?? null
         const rangeChange = hoverPoint && rangeBaseValue !== null && rangeBaseValue !== 0
           ? ((hoverPoint.value - rangeBaseValue) / Math.abs(rangeBaseValue)) * 100
           : null
@@ -208,13 +209,13 @@ export default function TemporalLineChart({
 
             {hoverPoint ? (
               <div className={styles.tooltip} data-chart-tooltip="" style={{ left: tooltipLeft, top: tooltipTop }}>
+                <div className={styles.tooltipMeta}>{formatDate(hoverPoint.date)}</div>
                 <div className={styles.tooltipValue}>{formatChartValue(hoverPoint.value, valueFormat, currency)}</div>
-                {showRangeChange && rangeChange !== null ? (
+                {showRangeChange && rangeChange !== null && firstRenderedPoint ? (
                   <div className={cn(styles.tooltipChange, rangeChange > 0 ? styles.positive : rangeChange < 0 ? styles.negative : styles.neutral)}>
-                    {formatRangeChange(rangeChange)} <span>in range</span>
+                    {formatRangeChange(rangeChange)} <span>since {formatDate(firstRenderedPoint.date)}</span>
                   </div>
                 ) : null}
-                <div className={styles.tooltipMeta}>{formatDate(hoverPoint.date)}</div>
                 {hoverPoint.tooltipMeta ? <div className={styles.tooltipMeta}>{hoverPoint.tooltipMeta}</div> : null}
               </div>
             ) : null}

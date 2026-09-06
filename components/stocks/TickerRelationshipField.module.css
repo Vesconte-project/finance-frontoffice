@@ -11,21 +11,6 @@
   pointer-events: none;
 }
 
-.field[data-tone='bullish'],
-.fallback[data-tone='bullish'] {
-  --relationship-accent: #16a34a;
-}
-
-.field[data-tone='neutral'],
-.fallback[data-tone='neutral'] {
-  --relationship-accent: #d99a0b;
-}
-
-.field[data-tone='bearish'],
-.fallback[data-tone='bearish'] {
-  --relationship-accent: #dc2626;
-}
-
 .field canvas {
   display: block;
   width: 100%;

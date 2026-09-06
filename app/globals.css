@@ -626,10 +626,6 @@
     linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 18%);
 }
 
-.app-header {
-  isolation: isolate;
-}
-
 /* Picks hero — rank 1 gets the navy treatment so the top of a ranking reads as a
    conclusion rather than as the first row of a table. Deep enough that the white
    type on it clears contrast in both themes, which is why it does not use the
@@ -650,15 +646,6 @@
   pointer-events: none;
   border-radius: inherit;
   border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.app-header__inner {
-  border-bottom: 1px solid color-mix(in srgb, var(--brand-spark) 10%, var(--border));
-  background: linear-gradient(180deg, color-mix(in srgb, var(--glass-bg) 82%, transparent), transparent);
-}
-
-.app-header:focus-within .app-header__inner {
-  border-bottom-color: color-mix(in srgb, var(--brand-spark) 28%, var(--border));
 }
 
 /* ── Immersive atlas route (/markets/network) ──────────────────────────────
@@ -1419,6 +1406,13 @@ html.atlas-immersive .atlas-view {
 html.chrome-past-fold.chrome-scroll-down .site-header:not(:focus-within) {
   transform: translateY(-100%);
 }
+html.chrome-collision .site-header:not(:focus-within) {
+  transform: translateY(-100%);
+}
+html.chrome-collision .site-header:focus-within {
+  transform: translateY(0);
+  transition-duration: 0s;
+}
 
 /* The header row is ONE glass container that morphs between states:
    TOP (not scrolled): boxless bar. SCROLLED: a compact liquid-glass pill.
@@ -1465,6 +1459,16 @@ html.chrome-scrolled .site-header__row:not([data-menu-open]) .site-header__brand
 .site-header[data-internal] .site-header__row {
   border-radius: var(--radius-2xl);
 }
+/* Operational routes (the app) already own their page chrome — the ticker hero is
+   itself a rounded panel. Stacking the internal-page glass box on top of it reads as
+   two slabs, so at rest the header stays boxless here and only materialises as the
+   scrolled pill, exactly like the homepage. */
+html[data-scroll-profile='operational'] .site-header[data-internal] .site-header__row::before {
+  opacity: 0;
+}
+html[data-scroll-profile='operational'] .site-header[data-internal] .site-header__row {
+  border-radius: var(--radius-pill);
+}
 .site-header[data-internal] .site-header__bar {
   grid-template-columns: minmax(0, 1fr) minmax(0, 520px) minmax(0, 1fr);
 }
@@ -1485,6 +1489,9 @@ html.chrome-scrolled .site-header[data-internal] .site-header__row:not([data-men
 }
 html.chrome-scrolled .site-header[data-internal] .site-header__bar {
   grid-template-columns: minmax(0, 1fr) minmax(0, 150px) minmax(0, 1fr);
+}
+html[data-scroll-profile='operational'].chrome-scrolled .site-header[data-internal] .site-header__row:not([data-menu-open]) .site-header__bar {
+  gap: 10px;
 }
 html.chrome-scrolled .site-header[data-internal] .site-header__row:not([data-menu-open]) [data-header-search] {
   max-width: 150px;
@@ -1521,7 +1528,9 @@ html.chrome-scrolled .site-header[data-internal] .site-header__row:not([data-men
   pointer-events: none;
 }
 html.chrome-scrolled .site-header__row::before,
-.site-header__row[data-menu-open]::before {
+.site-header__row[data-menu-open]::before,
+html[data-scroll-profile='operational'].chrome-scrolled .site-header[data-internal] .site-header__row::before,
+html[data-scroll-profile='operational'] .site-header[data-internal] .site-header__row[data-menu-open]::before {
   opacity: 1;
 }
 
@@ -1537,7 +1546,8 @@ html.chrome-scrolled .site-header__bar {
 /* MENU OPEN: grow into a wide, tall panel (beats the scrolled/home widths). */
 .site-header__row[data-menu-open],
 html.chrome-scrolled .site-header__row[data-menu-open],
-html.chrome-scrolled .site-header__row[data-home][data-menu-open] {
+html.chrome-scrolled .site-header__row[data-home][data-menu-open],
+html[data-scroll-profile='operational'] .site-header[data-internal] .site-header__row[data-menu-open] {
   max-width: 1160px;
   /* A step rounder than --radius-2xl (24px): at this size 24 read as a slab.
      Stays above the 16px tiles so the corners nest instead of fighting. */
@@ -2720,14 +2730,6 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel butto
   margin: 0 auto 24px;
   text-align: center;
 }
-.dock-search__kicker {
-  margin: 0;
-  color: var(--brand-spark);
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  line-height: 1.4;
-}
 .dock-search__title {
   margin: 10px 0 0;
   color: var(--content-primary);
@@ -2736,12 +2738,6 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel butto
   font-weight: 700;
   letter-spacing: -0.055em;
   line-height: 0.98;
-}
-.dock-search__description {
-  margin: 12px auto 0;
-  color: var(--content-secondary);
-  font-size: 15px;
-  line-height: 1.5;
 }
 .dock-search__field {
   width: 100%;
@@ -2834,9 +2830,6 @@ html.chrome-scrolled .dock-search {
   .dock-search__title {
     font-size: clamp(2rem, 10vw, 2.8rem);
   }
-  .dock-search__description {
-    font-size: 14px;
-  }
   .dock-search__support {
     align-items: center;
     flex-direction: column;
@@ -2846,13 +2839,6 @@ html.chrome-scrolled .dock-search {
 }
 
 @media (max-width: 389px) {
-  .dock-search__kicker {
-    font-size: 10px;
-    letter-spacing: 0.1em;
-  }
-  .dock-search__description {
-    max-width: 28ch;
-  }
   .dock-search__field :is(input) {
     height: 52px;
   }
@@ -2879,6 +2865,9 @@ html.chrome-scrolled .dock-search {
   }
   html.chrome-scroll-down .site-header:not(:focus-within) {
     transform: none;
+  }
+  html.chrome-collision .site-header:not(:focus-within) {
+    transform: translateY(-100%);
   }
   [data-reveal] {
     opacity: 1;

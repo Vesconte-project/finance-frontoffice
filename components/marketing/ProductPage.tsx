@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { ArrowRight, ArrowUpRight, Bookmark, BrainCircuit, GitBranch, History, Search, ShieldCheck, SlidersHorizontal, Sparkles } from 'lucide-react'
 import { Inter, JetBrains_Mono, Sora } from 'next/font/google'
-import { MarketingHeader, sharedHeaderSpacerClass } from '@/components/marketing/site-chrome'
+import { SiteHeader, sharedHeaderSpacerClass } from '@/components/marketing/site-chrome'
 
 const sora = Sora({ subsets: ['latin'], weight: ['400', '600', '700', '800'], display: 'swap' })
 const inter = Inter({ subsets: ['latin'], display: 'swap' })
@@ -59,7 +59,7 @@ export default function ProductPage() {
       style={productThemeStyle}
       className="marketing-product relative min-h-screen overflow-x-clip bg-[var(--page-bg)] text-content-primary"
     >
-      <MarketingHeader activeHref="/product" />
+      <SiteHeader activeHref="/product" />
       <div className={sharedHeaderSpacerClass} aria-hidden="true" />
 
       <section className="relative overflow-hidden border-b border-border" aria-labelledby="product-title">

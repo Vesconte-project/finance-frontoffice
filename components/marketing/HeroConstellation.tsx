@@ -36,10 +36,13 @@ const CSS = `
 }
 .hc-root *{box-sizing:border-box}
 .hc-root #hc-bg{position:fixed;inset:0;z-index:0;display:block;background:var(--bg)}
-.hc-root .hc-veil{position:fixed;inset:0;z-index:1;pointer-events:none;background:
+.hc-root .hc-veil{position:fixed;inset:0;z-index:1;pointer-events:none}
+.hc-root .hc-veil::before,.hc-root .hc-veil::after{content:"";position:absolute;inset:0}
+.hc-root .hc-veil::after{background:var(--bg);opacity:calc(var(--hc-field-progress,0) * .65)}
+.hc-root .hc-veil::before{opacity:calc(1 - var(--hc-field-progress,0));background:
   linear-gradient(90deg,rgba(243,239,230,.76),rgba(243,239,230,.34) 34%,rgba(243,239,230,.08) 60%,transparent 80%),
   radial-gradient(120% 90% at 50% 50%,transparent 55%,rgba(243,239,230,.24))}
-.hc-root[data-theme="dark"] .hc-veil,[data-theme="dark"] .hc-root .hc-veil{background:
+.hc-root[data-theme="dark"] .hc-veil::before,[data-theme="dark"] .hc-root .hc-veil::before{background:
   linear-gradient(90deg,rgba(4,6,12,.93),rgba(4,6,12,.58) 34%,rgba(4,6,12,.16) 60%,transparent 80%),
   radial-gradient(120% 90% at 50% 50%,transparent 55%,rgba(4,6,12,.55))}
 .hc-root .hc-progress{position:fixed;left:0;top:0;height:2px;width:0;background:linear-gradient(90deg,var(--spark),var(--spark-2));z-index:60;box-shadow:0 0 12px var(--spark)}
@@ -47,23 +50,10 @@ const CSS = `
 .hc-root .hc-beat{position:absolute;inset:0;display:flex;align-items:center;padding:0 clamp(24px,6vw,90px);will-change:opacity,transform}
 .hc-root .hc-in{max-width:1080px;width:100%;margin:0 auto}
 .hc-root .hc-in a,.hc-root .hc-in button{pointer-events:auto}
-.hc-root .hc-eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--spark)}
-.hc-root .hc-h1{font-family:var(--font-display);font-weight:800;font-size:clamp(40px,7.4vw,92px);line-height:.95;letter-spacing:-.04em;margin:14px 0 12px;text-shadow:0 4px 40px rgba(20,41,67,.16)}
-.hc-root .hc-h1 em{font-style:normal;color:var(--spark)}
-.hc-root .hc-sub{color:var(--text-2);font-size:clamp(16px,1.8vw,20px);max-width:44ch;line-height:1.5;margin:0}
 .hc-root .hc-card{display:flex;align-items:center;gap:16px;width:fit-content;margin-top:26px;padding:14px 18px;border-radius:18px;background:var(--glass);border:1px solid var(--glass-border);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 24px 60px -24px #000;backdrop-filter:blur(16px) saturate(1.5);-webkit-backdrop-filter:blur(16px) saturate(1.5)}
 .hc-root .hc-badge{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:12px;padding:6px 11px;border-radius:999px;color:var(--green);background:color-mix(in srgb,var(--green) 15%,transparent);border:1px solid color-mix(in srgb,var(--green) 40%,transparent)}
 .hc-root .hc-badge .d{width:7px;height:7px;border-radius:99px;background:currentColor;box-shadow:0 0 10px currentColor}
 .hc-root .hc-card .v{font-family:var(--font-display);font-weight:700;font-size:20px}
-.hc-root .hc-h2{font-family:var(--font-display);font-weight:700;font-size:clamp(28px,4.6vw,54px);line-height:1.0;letter-spacing:-.03em;margin:10px 0 14px;text-shadow:0 4px 40px rgba(20,41,67,.16)}
-.hc-root .hc-body{color:var(--text-2);font-size:17px;line-height:1.6;max-width:52ch}
-.hc-root .hc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:26px;max-width:620px}
-@media(max-width:820px){.hc-root .hc-grid{grid-template-columns:1fr}}
-.hc-root .hc-panel{background:rgba(255,255,255,.56);border:1px solid var(--hairline);border-radius:16px;padding:18px;backdrop-filter:blur(8px)}
-.hc-root .hc-panel .k{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3);margin-bottom:8px}
-.hc-root .hc-big{font-family:var(--font-display);font-weight:800;font-size:clamp(28px,3.6vw,44px);font-variant-numeric:tabular-nums}
-.hc-root .hc-spark{color:var(--spark)} .hc-root .hc-grn{color:var(--green)}
-.hc-root .hc-cta{display:inline-block;margin-top:24px;padding:13px 22px;font-size:15px;font-weight:600;border-radius:999px;background:var(--spark);color:#04201d;text-decoration:none}
 .hc-root .hc-scrollcue{position:fixed;bottom:16px;left:0;right:0;text-align:center;z-index:40;font-family:var(--font-mono);font-size:11px;color:var(--text-3);pointer-events:none}
 .hc-root #hc-focusLayer{position:fixed;inset:0;z-index:70;opacity:0;pointer-events:none}
 .hc-root #hc-focusDim{position:absolute;inset:0;background:rgba(20,41,67,.16)}
@@ -79,8 +69,6 @@ const CSS = `
 .hc-root .hc-fc-stats .s .k{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
 .hc-root .hc-fc-stats .s .v{font-family:var(--font-display);font-weight:700;font-size:17px;font-variant-numeric:tabular-nums;margin-top:4px}
 .hc-root .hc-fc-open{display:inline-block;margin-top:18px;font-weight:600;font-size:14px;color:#04201d;background:var(--spark);padding:11px 18px;border-radius:12px;text-decoration:none}
-.hc-root[data-theme="dark"] .hc-h1,.hc-root[data-theme="dark"] .hc-h2,[data-theme="dark"] .hc-root .hc-h1,[data-theme="dark"] .hc-root .hc-h2{text-shadow:0 4px 40px rgba(4,6,12,.7)}
-.hc-root[data-theme="dark"] .hc-panel,[data-theme="dark"] .hc-root .hc-panel{background:rgba(8,11,19,.62)}
 html[data-theme="dark"] .hc-root #hc-focusDim,.hc-root[data-theme="dark"] #hc-focusDim{background:rgba(0,4,10,.52)}
 @media(max-width:720px){.hc-root #hc-focusCard{left:12px;right:12px;top:auto;bottom:16px;width:auto;padding:20px}.hc-root .hc-fc-ticker{font-size:30px}.hc-root .hc-fc-stats{gap:6px}.hc-root .hc-fc-stats .s{padding:9px 8px}}
 .hc-root[data-reduced-motion="true"] #hc-focusCard{transition:none}
@@ -192,7 +180,8 @@ export default function HeroConstellation() {
       g.globalAlpha = 1
     }
     function render() {
-      if (!heroVisible && focus.i < 0 && focus.t < 0.01) { rafId = requestAnimationFrame(render); return }
+      rafId = 0
+      if (document.hidden) return
       tt += reducedMotion ? 0 : (focus.i < 0 ? 0.016 : 0.016 * 0.22)
       p += (targetP - p) * 0.07; if (focus.i < 0) { mx += (tmx - mx) * 0.03; my += (tmy - my) * 0.03 }
       searchMode += (searchModeTarget - searchMode) * 0.08
@@ -256,7 +245,18 @@ export default function HeroConstellation() {
       window.addEventListener('mouseout', onOut)
     }
     window.addEventListener('resize', onResize)
-    resize(); build(); if (reducedMotion) render(); else rafId = requestAnimationFrame(render)
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(rafId)
+        rafId = 0
+      } else if (reducedMotion) {
+        render()
+      } else if (!rafId) {
+        rafId = requestAnimationFrame(render)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    resize(); build(); onVisibilityChange()
 
     // beats
     const beats = Array.from(root.querySelectorAll<HTMLElement>('.hc-beat'))
@@ -264,6 +264,23 @@ export default function HeroConstellation() {
     const updateBeats = (prog: number) => beats.forEach((el, i) => { const [a, b] = win[i]; const inn = smooth(a, a + 0.05, prog), out = 1 - smooth(b - 0.05, b, prog); const o = Math.max(0, Math.min(1, inn * out)); el.style.opacity = String(o); el.style.transform = 'translateY(' + ((1 - o) * 18) + 'px)' })
     updateBeats(0)
     const setP = (v: number) => { targetP = v; $('hc-prog').style.width = (v * 100) + '%'; const cue = $('hc-cue'); if (cue) cue.style.opacity = v > 0.02 ? '0' : '1'; updateBeats(v) }
+
+    const updateField = (progress: number, interactive = progress < 0.999) => {
+      const strength = Math.max(0, Math.min(1, progress))
+      heroVisible = interactive
+      c.style.opacity = String(1 - strength * 0.55)
+      c.style.pointerEvents = interactive ? 'auto' : 'none'
+      root.style.setProperty('--hc-field-progress', String(strength))
+      $('hc-prog').style.opacity = String(1 - strength)
+    }
+    // Native reduced-motion flow has no pinned scene. Preserve the initial veil,
+    // then settle the static field before the content reaches the viewport.
+    const unsubscribeStaticScroll = reducedMotion
+      ? runtime.subscribeScroll(() => updateField(
+          window.scrollY / Math.max(1, root.offsetTop),
+          root.getBoundingClientRect().top >= 0,
+        ))
+      : undefined
 
     const unregisterScrollScene = runtime.registerScene(({ gsap: runtimeGsap, ScrollTrigger }) => {
       const s = { p: 0 }
@@ -273,23 +290,28 @@ export default function HeroConstellation() {
         scrollTrigger: {
           trigger: stageEl,
           start: 'top top',
-          end: `+=${scrollMotionTokens.homepage.pinDistance}`,
+          end: () => `+=${window.innerHeight}`,
           scrub: scrollMotionTokens.scrub.cinematic,
           pin: true,
           anticipatePin: 1,
           onUpdate: self => setP(self.progress),
         },
       })
-      // esconder o canvas quando saímos do hero
-      const hideTrigger = ScrollTrigger.create({ trigger: stageEl, start: 'top top', end: `+=${scrollMotionTokens.homepage.visibilityDistance}`, onUpdate: self => { const vis = self.progress < 0.999; heroVisible = vis; c.style.opacity = vis ? '1' : '0'; c.style.pointerEvents = vis ? 'auto' : 'none'; const veil = root.querySelector<HTMLElement>('.hc-veil'); if (veil) veil.style.opacity = vis ? '1' : '0'; const prog = root.querySelector<HTMLElement>('.hc-progress'); if (prog) prog.style.opacity = vis ? '1' : '0' } })
+      // Recede by pin release, before the first content frame enters the view.
+      const hideTrigger = ScrollTrigger.create({
+        trigger: stageEl,
+        start: 'top top',
+        end: () => `+=${window.innerHeight}`,
+        onUpdate: self => updateField(self.progress),
+        onRefresh: self => updateField(self.progress),
+      })
+      updateField(hideTrigger.progress)
 
       return () => {
         tween.scrollTrigger?.kill()
         tween.kill()
         hideTrigger.kill()
-        heroVisible = true
-        c.style.opacity = '1'
-        c.style.pointerEvents = 'auto'
+        updateField(0)
       }
     })
 
@@ -361,6 +383,8 @@ export default function HeroConstellation() {
 
     return () => {
       cancelAnimationFrame(rafId)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      unsubscribeStaticScroll?.()
       window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseout', onOut); window.removeEventListener('resize', onResize)
       window.removeEventListener('keydown', onKey); window.removeEventListener('click', onClick, true)
       window.removeEventListener('mousedown', onDown, true); window.removeEventListener('meridian:search-focus', onSearchFocus)
@@ -381,35 +405,6 @@ export default function HeroConstellation() {
         {/* Beat 0 is intentionally empty — the DockingSearch overlay is the
             focal point of the first screen and docks into the header on scroll. */}
         <div className="hc-beat"><div className="hc-in" /></div>
-        <div className="hc-beat" style={{ opacity: 0 }}><div className="hc-in">
-          <div className="hc-eyebrow">The problem</div>
-          <h2 className="hc-h2">Timing is hard.<br />Emotion makes it worse.</h2>
-          <p className="hc-body">Fear after the drops, greed at the tops. Forecasts fail when it matters most. The hard part is knowing when to step out — and staying consistent.</p>
-        </div></div>
-        <div className="hc-beat" style={{ opacity: 0 }}><div className="hc-in">
-          <div className="hc-eyebrow">The proof</div>
-          <h2 className="hc-h2">The same process. In every regime.</h2>
-          <div className="hc-grid">
-            <div className="hc-panel"><div className="k">Model</div><div className="hc-big hc-spark">+238%</div></div>
-            <div className="hc-panel"><div className="k">Buy &amp; hold</div><div className="hc-big">+112%</div></div>
-            <div className="hc-panel"><div className="k">Overrides</div><div className="hc-big">0</div></div>
-          </div>
-        </div></div>
-        <div className="hc-beat" style={{ opacity: 0 }}><div className="hc-in">
-          <div className="hc-eyebrow">The system, live</div>
-          <h2 className="hc-h2">Five conditions. One read.</h2>
-          <div className="hc-grid">
-            <div className="hc-panel"><div className="k">Momentum</div><div className="hc-big hc-grn">0.72</div></div>
-            <div className="hc-panel"><div className="k">Volatility</div><div className="hc-big">−0.28</div></div>
-            <div className="hc-panel"><div className="k">Breadth</div><div className="hc-big hc-spark">0.48</div></div>
-          </div>
-        </div></div>
-        <div className="hc-beat" style={{ opacity: 0 }}><div className="hc-in">
-          <div className="hc-eyebrow">Today&apos;s answer</div>
-          <div className="hc-h1">Stay <em>in</em>.</div>
-          <p className="hc-sub">You&apos;ve reached the center. One clear decision, every day.</p>
-          <a className="hc-cta" href="/screener">See today&apos;s signal →</a>
-        </div></div>
       </div>
 
       <div className="hc-scrollcue" id="hc-cue">▸ scroll · click a particle</div>

@@ -189,7 +189,7 @@ export function SectionHeading({
   )
 }
 
-export function MarketingHeader({ activeHref }: { activeHref?: string }) {
+export function SiteHeader({ activeHref }: { activeHref?: string }) {
   const isHome = activeHref === '/'
   return (
     <header
@@ -226,7 +226,7 @@ export function MarketingPageShell({
       <div className="absolute inset-x-0 top-0 -z-10 h-[34rem] bg-[radial-gradient(circle_at_18%_8%,rgba(7,87,255,0.14),transparent_28%),radial-gradient(circle_at_83%_0%,rgba(255,139,43,0.12),transparent_30%),linear-gradient(180deg,rgba(232,240,255,0.48),rgba(255,255,255,0)_68%)] dark:bg-[radial-gradient(circle_at_18%_8%,rgba(7,87,255,0.22),transparent_28%),radial-gradient(circle_at_83%_0%,rgba(255,139,43,0.12),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.04),transparent)]" />
       <div className="pointer-events-none absolute left-[-5%] top-[8rem] h-72 w-72 rounded-full border border-white/22 bg-white/12 blur-[2px] dark:border-white/8 dark:bg-white/[0.02]" />
       <div className="pointer-events-none absolute right-[-3%] top-[16rem] h-56 w-56 rounded-full border border-[#6f79ff]/26 bg-[#6f79ff]/8 blur-[2px]" />
-      <MarketingHeader activeHref={activeHref} />
+      <SiteHeader activeHref={activeHref} />
       <div className={sharedHeaderSpacerClass} aria-hidden="true" />
 
       <section className="mx-auto grid max-w-[1500px] gap-8 px-6 pb-16 pt-10 sm:px-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(340px,0.7fr)] lg:px-14 lg:pt-16">

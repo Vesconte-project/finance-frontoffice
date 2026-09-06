@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Sora, JetBrains_Mono, Inter } from 'next/font/google'
 import { ArrowRight, Check } from 'lucide-react'
-import { GlassPanel, MarketingHeader, sharedHeaderSpacerClass } from '@/components/marketing/site-chrome'
+import { GlassPanel, SiteHeader, sharedHeaderSpacerClass } from '@/components/marketing/site-chrome'
 import { getViewerAccess } from '@/lib/billing'
 
 const sora = Sora({ subsets: ['latin'], weight: ['400', '600', '700', '800'], display: 'swap' })
@@ -61,7 +61,7 @@ export default async function PricingPage() {
       }}
     >
       <div className="pricing-ambient pricing-ambient--top" aria-hidden="true" />
-      <MarketingHeader activeHref="/pricing" />
+      <SiteHeader activeHref="/pricing" />
       <div className={sharedHeaderSpacerClass} aria-hidden="true" />
 
       <section className="pricing-hero mx-auto max-w-[1280px] px-6 pb-4 pt-5 sm:px-10 lg:px-16">

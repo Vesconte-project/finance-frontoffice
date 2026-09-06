@@ -30,9 +30,7 @@ export default function DockingSearch() {
   return (
     <div data-dock-search className="dock-search" onFocus={onFocus} onBlur={onBlur}>
       <div className="dock-search__intro">
-        <p className="dock-search__kicker">A clearer read on the market.</p>
-        <h1 className="dock-search__title">Search the signal.</h1>
-        <p className="dock-search__description">Find a ticker, then read the context around it.</p>
+        <h1 className="dock-search__title">Nothing moves alone.</h1>
       </div>
       <div className="dock-search__field">
         <HeaderSearch className="w-full" maxSuggestions={4} placeholder="Search a ticker or company…" />

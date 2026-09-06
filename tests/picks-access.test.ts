@@ -20,23 +20,23 @@ const RANKING = Array.from({ length: PICK_FULL_LIST }, (_, index) => ({
   score: 100 - index,
 }))
 
-test('an anonymous viewer receives ten rows and no more', () => {
+test('an anonymous viewer receives five rows and no more', () => {
   const cut = cutToTier(RANKING, 'anonymous')
 
-  assert.equal(cut.items.length, 10)
-  assert.equal(cut.lockedCount, 15)
+  assert.equal(cut.items.length, 5)
+  assert.equal(cut.lockedCount, 20)
   assert.equal(cut.totalRanked, PICK_FULL_LIST)
 })
 
 test('the rows above the cut are absent, not merely unrendered', () => {
   // The defect this guards against is returning the full list alongside a count
-  // and trusting the view to stop at ten. Anything in the returned object reaches
-  // the browser, so the eleventh symbol must not appear anywhere in it.
+  // and trusting the view to stop at five. Anything in the returned object reaches
+  // the browser, so the sixth symbol must not appear anywhere in it.
   const cut = cutToTier(RANKING, 'anonymous')
   const serialized = JSON.stringify(cut)
 
-  assert.doesNotMatch(serialized, /SYM11/)
-  for (const row of RANKING.slice(10)) {
+  assert.doesNotMatch(serialized, /SYM6(?:"|,)/)
+  for (const row of RANKING.slice(5)) {
     assert.equal(
       cut.items.some((item) => item.symbol === row.symbol),
       false,

@@ -3,9 +3,9 @@ import 'server-only'
 import { getViewerUserId } from '@/lib/auth'
 import { currencyForTicker } from '@/lib/currency'
 import { getTickerRelationships, rankTickerRelationshipCandidates } from '@/lib/relationships'
-import { getCachedLatestScreenerRow, getCachedSignalHistoryForTicker } from '@/lib/signals'
 import { stockAssetKind } from '@/lib/stock-asset-kind'
 import { getTickerPageSummary } from '@/lib/ticker-data'
+import { tickerIdentityColor } from '@/lib/ticker-identity-color'
 import { isTickerInWatchlist } from '@/lib/watchlist'
 
 export type StockTickerChromeData = {
@@ -13,14 +13,11 @@ export type StockTickerChromeData = {
   displayName: string
   assetBadgeLabel: 'ETF' | 'Equity'
   currency: string
+  exchange: string | null
   price: number | null
   dailyMoveAmount: number | null
   dailyMovePercent: number | null
-  tone: 'bullish' | 'neutral' | 'bearish' | 'brand'
-  signal: {
-    direction: 'bullish' | 'neutral' | 'bearish'
-    signalDate: string | null
-  } | null
+  identityColor: string
   watchlist: {
     signedIn: boolean
     initialInWatchlist: boolean
@@ -38,11 +35,9 @@ export async function getStockTickerChromeData(tickerRaw: string): Promise<Stock
   const watchlistPromise = viewerUserIdPromise.then((userId) =>
     userId ? isTickerInWatchlist(userId, ticker).catch(() => false) : false
   )
-  const [summary, relationships, screenerRows, historyRows, viewerUserId, initialInWatchlist] = await Promise.all([
+  const [summary, relationships, viewerUserId, initialInWatchlist] = await Promise.all([
     getTickerPageSummary(ticker).catch(() => null),
     getTickerRelationships(ticker, { window: 252, topK: 50 }).catch(() => null),
-    getCachedLatestScreenerRow(ticker).catch(() => []),
-    getCachedSignalHistoryForTicker(ticker, 180).catch(() => []),
     viewerUserIdPromise,
     watchlistPromise,
   ])
@@ -52,10 +47,6 @@ export async function getStockTickerChromeData(tickerRaw: string): Promise<Stock
   const kind = summary
     ? stockAssetKind({ ticker, name: displayName, latestFundamentals: summary.latestFundamentals })
     : 'equity'
-  const latestScreenerSignal = screenerRows[0] ?? null
-  const latestHistorySignal = historyRows[0] ?? null
-  const direction = latestScreenerSignal?.direction ?? latestHistorySignal?.direction ?? null
-  const signalDate = latestScreenerSignal?.signalDate ?? latestHistorySignal?.signal_date ?? null
   const fieldNodes = relationships
     ? rankTickerRelationshipCandidates(relationships, ticker).map(({ symbol, strength, confidence }) => ({
         symbol,
@@ -68,12 +59,12 @@ export async function getStockTickerChromeData(tickerRaw: string): Promise<Stock
     ticker,
     displayName,
     assetBadgeLabel: kind === 'fund' ? 'ETF' : 'Equity',
-    currency: summary?.fundamentalsSummary?.currency || currencyForTicker(ticker),
+    currency: summary?.asset?.currency ?? summary?.fundamentalsSummary?.currency ?? currencyForTicker(ticker),
+    exchange: summary?.asset?.exchange ?? null,
     price: quote?.price ?? summary?.marketStats?.lastPrice ?? null,
     dailyMoveAmount: quote?.change ?? null,
     dailyMovePercent: quote?.changePercent ?? null,
-    tone: direction ?? 'brand',
-    signal: direction ? { direction, signalDate } : null,
+    identityColor: tickerIdentityColor(ticker),
     watchlist: {
       signedIn: Boolean(viewerUserId),
       initialInWatchlist,

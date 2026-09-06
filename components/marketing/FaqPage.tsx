@@ -4,7 +4,7 @@ import { ArrowUpRight } from 'lucide-react'
 import { Inter, JetBrains_Mono, Sora } from 'next/font/google'
 import FaqAccordion, { type FaqGroup } from '@/components/marketing/FaqAccordion'
 import { CONTACT_EMAIL } from '@/components/marketing/site-config'
-import { MarketingHeader, sharedHeaderSpacerClass } from '@/components/marketing/site-chrome'
+import { SiteHeader, sharedHeaderSpacerClass } from '@/components/marketing/site-chrome'
 
 const sora = Sora({ subsets: ['latin'], weight: ['400', '600', '700', '800'], display: 'swap' })
 const inter = Inter({ subsets: ['latin'], display: 'swap' })
@@ -140,7 +140,7 @@ export default function FaqPage() {
       style={faqThemeStyle}
       className="marketing-faq relative min-h-screen overflow-x-clip bg-[var(--page-bg)] text-content-primary"
     >
-      <MarketingHeader activeHref="/faq" />
+      <SiteHeader activeHref="/faq" />
       <div className={sharedHeaderSpacerClass} aria-hidden="true" />
 
       <section id="questions" className="relative overflow-hidden bg-[var(--page-bg)]" aria-labelledby="faq-questions-heading">

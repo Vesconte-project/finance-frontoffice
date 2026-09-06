@@ -584,7 +584,6 @@ export default async function TickerPage({
         keyStats={keyStats}
         fundamentalGroups={fundamentalGroups}
         holdings={holdings}
-        profileDetails={fundamentals?.profile ?? []}
         sectorWeights={fundamentals?.sectorWeights ?? []}
         nextEarnings={tickerSummary.nextEarnings ? {
           date: tickerSummary.nextEarnings.earningsDate,
@@ -602,7 +601,6 @@ export default async function TickerPage({
           episode_status: signal.live_episode_status,
         }))}
         scorecard={scorecard}
-        about={fundamentals?.about ?? null}
       />
     </div>
   )

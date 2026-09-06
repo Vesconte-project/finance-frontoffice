@@ -2,7 +2,7 @@
  * The entitlement rules for picks rankings, kept pure so they can be tested.
  *
  * Deliberately free of `server-only`, imports and I/O. Nothing here is secret — that
- * anonymous readers see ten rows is on the page in words. What must not leak is the
+ * anonymous readers see five rows is on the page in words. What must not leak is the
  * data, and that is enforced in `lib/picks-access.ts`, which is server-only and is
  * the only caller of `cutToTier` that touches a real ranking.
  *
@@ -24,7 +24,7 @@ export const PICK_FULL_LIST = 25
  * bigger number than the ranking contains would be inventing a benefit.
  */
 export const PICK_VISIBLE_LIMITS: Record<PickTier, number> = {
-  anonymous: 10,
+  anonymous: 5,
   free: PICK_FULL_LIST,
   pro: PICK_FULL_LIST,
 }

@@ -8,6 +8,8 @@ import {
 import { getCachedTickerSummary } from './ticker-data'
 
 const FUNDAMENTALS_FRESH_MS = 6 * 60 * 60 * 1000
+/** `period_days` maximum for ticker history and OHLC in finance-backend OpenAPI. */
+export const BACKEND_HISTORY_PERIOD_DAYS_MAX = 25_000
 
 export interface StockQuote {
   ticker: string
@@ -510,7 +512,9 @@ async function loadQuote(tickerRaw: string): Promise<StockQuote | null> {
 
 async function loadHistorical(tickerRaw: string, periodDays: number): Promise<PricePoint[]> {
   const ticker = normalizeTicker(tickerRaw)
-  const safeDays = Number.isFinite(periodDays) && periodDays > 0 ? Math.max(30, Math.min(periodDays, 3650)) : 0
+  const safeDays = Number.isFinite(periodDays) && periodDays > 0
+    ? Math.max(30, Math.min(periodDays, BACKEND_HISTORY_PERIOD_DAYS_MAX))
+    : 0
   const payload = await fetchBackendJson<Array<{ date?: string; close?: number }>>(
     `/tickers/${encodeURIComponent(ticker)}/history?period_days=${safeDays}`,
     { context: 'backend.tickers.history' }
@@ -532,7 +536,9 @@ async function loadOhlc(
   coverageExpectsPrices: boolean
 ): Promise<OhlcLoadResult> {
   const ticker = normalizeTicker(tickerRaw)
-  const safeDays = Number.isFinite(periodDays) && periodDays > 0 ? Math.max(30, Math.min(periodDays, 3650)) : 0
+  const safeDays = Number.isFinite(periodDays) && periodDays > 0
+    ? Math.max(30, Math.min(periodDays, BACKEND_HISTORY_PERIOD_DAYS_MAX))
+    : 0
   const payload = await fetchBackendJson<unknown>(
     `/tickers/${encodeURIComponent(ticker)}/ohlc?period_days=${safeDays}`,
     { context: 'backend.tickers.ohlc' }

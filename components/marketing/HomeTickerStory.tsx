@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef, useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
+import { forwardRef, useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { Activity } from 'lucide-react'
 import { GlassPanel } from '@/components/marketing/site-chrome'
 import { useScrollRuntime } from '@/components/motion/ScrollRuntime'
@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 
 type TickerTone = 'bullish' | 'defensive' | 'watch'
 
-type TickerCardData = {
+export type TickerCardData = {
   symbol: string
   name: string
   price: string
@@ -40,69 +40,6 @@ type CapturedFrame = {
   sources: CapturedTickerSource[]
   viewportWidth: number
 }
-
-const tickerCards: TickerCardData[] = [
-  {
-    symbol: 'SPY',
-    name: 'S&P 500',
-    price: '598.40',
-    move: '+1.2%',
-    moveClassName: 'text-signal-bullish',
-    tone: 'bullish',
-    posture: 'Risk on',
-    read: 'Breadth and trend are still pressing higher.',
-    chips: ['Breadth 74', 'Vol calm'],
-    sparkline: '8,58 28,50 46,52 64,36 82,40 100,22',
-  },
-  {
-    symbol: 'QQQ',
-    name: 'Nasdaq 100',
-    price: '511.82',
-    move: '+0.8%',
-    moveClassName: 'text-signal-bullish',
-    tone: 'bullish',
-    posture: 'Momentum lead',
-    read: 'Leadership remains concentrated but still expanding.',
-    chips: ['Lead group', 'Trend +'],
-    sparkline: '8,62 28,48 46,45 64,34 82,30 100,24',
-  },
-  {
-    symbol: 'VIX',
-    name: 'Volatility',
-    price: '14.3',
-    move: '-1.8%',
-    moveClassName: 'text-signal-bearish',
-    tone: 'watch',
-    posture: 'Pressure off',
-    read: 'Volatility compression is helping risk stay clean.',
-    chips: ['Stress low', 'Range cool'],
-    sparkline: '8,18 28,22 46,28 64,34 82,48 100,54',
-  },
-  {
-    symbol: 'TLT',
-    name: 'Long Bonds',
-    price: '88.22',
-    move: '-0.5%',
-    moveClassName: 'text-signal-bearish',
-    tone: 'defensive',
-    posture: 'No bid',
-    read: 'Rates are not offering a clean safety bid here.',
-    chips: ['Duration weak', 'Macro mixed'],
-    sparkline: '8,24 28,30 46,38 64,44 82,50 100,56',
-  },
-  {
-    symbol: 'GLD',
-    name: 'Gold',
-    price: '318.90',
-    move: '+0.1%',
-    moveClassName: 'text-signal-bullish',
-    tone: 'watch',
-    posture: 'Quiet hedge',
-    read: 'Still acting like a hedge, not a panic tell.',
-    chips: ['Hedge live', 'Panic off'],
-    sparkline: '8,50 28,42 46,38 64,34 82,32 100,30',
-  },
-]
 
 const desktopCollapsedLayout: LayoutPoint[] = [
   { x: -404, y: 0, rotate: 0 },
@@ -188,9 +125,9 @@ function buildDesktopFallbackSources(viewportWidth: number): CapturedTickerSourc
   }))
 }
 
-function buildMobileFallbackSources(viewportWidth: number): CapturedTickerSource[] {
+function buildMobileFallbackSources(viewportWidth: number, cardCount: number): CapturedTickerSource[] {
   const width = Math.min(viewportWidth - 48, 320)
-  return tickerCards.map((_, index) => ({
+  return Array.from({ length: cardCount }, (_, index) => ({
     sourceHeight: 42,
     sourceWidth: width,
     sourceX: (viewportWidth - width) / 2,
@@ -202,11 +139,15 @@ function captureDesktopFrame({
   viewportRef,
   trackViewportRef,
   itemRefs,
+  cards,
 }: {
   viewportRef: RefObject<HTMLDivElement | null>
   trackViewportRef: RefObject<HTMLDivElement | null>
   itemRefs: RefObject<Array<HTMLDivElement | null>>
+  cards: readonly TickerCardData[]
 }): CapturedFrame | null {
+  if (cards.length === 0) return null
+
   const viewportRect = viewportRef.current?.getBoundingClientRect()
   const trackViewportRect = trackViewportRef.current?.getBoundingClientRect()
 
@@ -232,7 +173,7 @@ function captureDesktopFrame({
         sourceWidth: itemRect.width,
         sourceX: itemRect.left - viewportRect.left,
         sourceY: itemRect.top - viewportRect.top,
-        symbol: tickerCards[index % tickerCards.length].symbol,
+        symbol: cards[index % cards.length].symbol,
         trackIndex: index,
       }
     })
@@ -250,7 +191,7 @@ function captureDesktopFrame({
       } => entry !== null
     )
 
-  const sources = tickerCards.map((item) => {
+  const sources = cards.map((item) => {
     const symbolEntries = visibleEntries
       .filter((entry) => entry.symbol === item.symbol)
       .sort((a, b) => Math.abs(a.center - window.innerWidth / 2) - Math.abs(b.center - window.innerWidth / 2))
@@ -281,18 +222,22 @@ function captureDesktopFrame({
 function captureMobileFrame({
   viewportRef,
   itemRefs,
+  cardCount,
 }: {
   viewportRef: RefObject<HTMLDivElement | null>
   itemRefs: RefObject<Array<HTMLDivElement | null>>
+  cardCount: number
 }): CapturedFrame | null {
+  if (cardCount === 0) return null
+
   const viewportRect = viewportRef.current?.getBoundingClientRect()
 
-  if (!viewportRect || itemRefs.current.length < tickerCards.length) {
+  if (!viewportRect || itemRefs.current.length < cardCount) {
     return null
   }
 
   const sources = itemRefs.current
-    .slice(0, tickerCards.length)
+    .slice(0, cardCount)
     .map((node) => {
       if (!node) return null
       const itemRect = node.getBoundingClientRect()
@@ -592,6 +537,7 @@ function DesktopSourceRail({
   focusProgress,
   selectedTextOpacity,
   slotProgress,
+  cards,
 }: {
   opacity: number
   isFrozen: boolean
@@ -602,6 +548,7 @@ function DesktopSourceRail({
   focusProgress: number
   selectedTextOpacity: number
   slotProgress: number
+  cards: readonly TickerCardData[]
 }) {
   return (
     <div
@@ -623,7 +570,7 @@ function DesktopSourceRail({
             animationPlayState: isFrozen ? 'paused' : 'running',
           }}
         >
-          {[...tickerCards, ...tickerCards].map((item, index) => {
+          {[...cards, ...cards].map((item, index) => {
             const isSelected = selectedTrackIndexes.has(index)
             const isHidden = hiddenTrackIndexes.has(index)
 
@@ -677,6 +624,7 @@ function MobileSourceRail({
   focusProgress,
   selectedTextOpacity,
   slotProgress,
+  cards,
 }: {
   opacity: number
   itemRefs: RefObject<Array<HTMLDivElement | null>>
@@ -684,6 +632,7 @@ function MobileSourceRail({
   focusProgress: number
   selectedTextOpacity: number
   slotProgress: number
+  cards: readonly TickerCardData[]
 }) {
   return (
     <div
@@ -694,7 +643,7 @@ function MobileSourceRail({
       }}
     >
       <div className="grid gap-2.5">
-        {tickerCards.map((item, index) => {
+        {cards.map((item, index) => {
           const isHidden = hiddenIndexes.has(index)
 
           return (
@@ -730,8 +679,18 @@ function TickerSceneBackground() {
   )
 }
 
-export default function HomeTickerStory() {
+/**
+ * Reference implementation of scroll-driven collapse/scatter choreography with
+ * FLIP-style source capture. It is deliberately not mounted anywhere, owns no
+ * data, and renders only caller-supplied cards. Its authored layouts support at
+ * most five cards; additional entries are intentionally ignored.
+ */
+export default function HomeTickerStory({ cards }: { cards: TickerCardData[] }) {
   const { reducedMotion, runtime } = useScrollRuntime()
+  const visibleCards = useMemo(
+    () => cards.slice(0, Math.min(cards.length, desktopLayout.length, mobileLayout.length)),
+    [cards]
+  )
   const sectionRef = useRef<HTMLElement | null>(null)
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const desktopTrackViewportRef = useRef<HTMLDivElement | null>(null)
@@ -851,8 +810,10 @@ export default function HomeTickerStory() {
           ? captureMobileFrame({
               itemRefs: mobileItemRefs,
               viewportRef,
+              cardCount: visibleCards.length,
             })
           : captureDesktopFrame({
+              cards: visibleCards,
               itemRefs: desktopItemRefs,
               trackViewportRef: desktopTrackViewportRef,
               viewportRef,
@@ -875,7 +836,7 @@ export default function HomeTickerStory() {
       unsubscribe()
       window.removeEventListener('resize', requestUpdate)
     }
-  }, [reducedMotion, runtime])
+  }, [reducedMotion, runtime, visibleCards])
 
   useEffect(() => {
     if (reducedMotion) return
@@ -920,7 +881,7 @@ export default function HomeTickerStory() {
   const layout = isMobile ? mobileLayout : desktopLayout
   const captureStart = isMobile ? MOBILE_CAPTURE_START : DESKTOP_CAPTURE_START
   const fallbackSources = isMobile
-    ? buildMobileFallbackSources(viewportWidth)
+    ? buildMobileFallbackSources(viewportWidth, visibleCards.length)
     : buildDesktopFallbackSources(viewportWidth)
   const currentMode = isMobile ? 'mobile' : 'desktop'
   const hasCapturedSourceFrame = capturedFrame?.mode === currentMode
@@ -941,7 +902,7 @@ export default function HomeTickerStory() {
   )
   const hiddenDesktopTrackIndexes = new Set(slotCutoverActive ? activeTrackIndexes : [])
   const hiddenMobileIndexes = new Set(
-    slotCutoverActive && (capturedFrame?.mode === 'mobile' || reducedMotion) ? tickerCards.map((_, index) => index) : []
+    slotCutoverActive && (capturedFrame?.mode === 'mobile' || reducedMotion) ? visibleCards.map((_, index) => index) : []
   )
 
   if (reducedMotion) {
@@ -954,7 +915,7 @@ export default function HomeTickerStory() {
           <TickerSceneBackground />
 
           <div className="pointer-events-none absolute inset-0 z-30">
-            {tickerCards.map((item, index) => {
+            {visibleCards.map((item, index) => {
               const source = sourceFrame.sources[index] ?? fallbackSources[index]
               const target = layout[index] ?? layout[0]
 
@@ -998,6 +959,7 @@ export default function HomeTickerStory() {
           focusProgress={desktopFocus}
           selectedTextOpacity={selectedRailTextOpacity}
           slotProgress={slotProgress}
+          cards={visibleCards}
         />
 
         <MobileSourceRail
@@ -1007,11 +969,12 @@ export default function HomeTickerStory() {
           focusProgress={mobileFocus}
           selectedTextOpacity={selectedRailTextOpacity}
           slotProgress={slotProgress}
+          cards={visibleCards}
         />
 
         <div className="pointer-events-none absolute inset-0 z-30">
           {shellsActive
-            ? tickerCards.map((item, index) => {
+            ? visibleCards.map((item, index) => {
                 const source = sourceFrame.sources[index] ?? fallbackSources[index]
                 const target = layout[index] ?? layout[0]
 

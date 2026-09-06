@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { useScrollRuntime } from '@/components/motion/ScrollRuntime'
 
 /**
@@ -24,21 +25,28 @@ import { useScrollRuntime } from '@/components/motion/ScrollRuntime'
  */
 
 const SCROLLED = 40
-// How far you must scroll before the header is allowed to hide on scroll-down.
-// Kept high so the search stays reachable well into the page (incl. the pinned
-// hero) and only tucks away once you're deep past it.
-const FOLD = 1200
+const FOLD_BY_PROFILE = {
+  // The pinned narrative hero keeps search reachable well into the page and
+  // only lets the header tuck away once the reader is deep past it.
+  narrative: 1200,
+  operational: 120,
+  standard: 120,
+} as const
 const DELTA = 5
 
 export default function SiteChromeMotion() {
   const { runtime } = useScrollRuntime()
+  const pathname = usePathname()
 
   useEffect(() => {
     if (typeof window === 'undefined') return
     const root = document.documentElement
+    const header = document.querySelector<HTMLElement>('.site-header')
 
     root.classList.toggle('chrome-scrolled', window.scrollY > SCROLLED)
 
+    let headerHeight = 0
+    let shouldMeasureHeader = true
     let lastY = window.scrollY
     let ticking = false
     const onScroll = () => {
@@ -46,8 +54,22 @@ export default function SiteChromeMotion() {
       ticking = true
       requestAnimationFrame(() => {
         const y = window.scrollY
+        const profile = root.dataset.scrollProfile
+        const fold = profile === 'narrative'
+          ? FOLD_BY_PROFILE.narrative
+          : FOLD_BY_PROFILE[profile === 'operational' ? 'operational' : 'standard']
+        if (shouldMeasureHeader) {
+          headerHeight = header?.getBoundingClientRect().height ?? 0
+          shouldMeasureHeader = false
+        }
+        const collisionElement = document.querySelector<HTMLElement>('[data-chrome-collision]')
+        const collisionRect = collisionElement?.getBoundingClientRect()
+        const hasCollision = Boolean(
+          collisionRect && collisionRect.top < headerHeight && collisionRect.bottom > 0
+        )
         root.classList.toggle('chrome-scrolled', y > SCROLLED)
-        root.classList.toggle('chrome-past-fold', y > FOLD)
+        root.classList.toggle('chrome-past-fold', y > fold)
+        root.classList.toggle('chrome-collision', hasCollision)
         if (Math.abs(y - lastY) > DELTA) {
           const down = y > lastY && y > SCROLLED
           root.classList.toggle('chrome-scroll-down', down)
@@ -57,19 +79,26 @@ export default function SiteChromeMotion() {
         ticking = false
       })
     }
+    const onResize = () => {
+      shouldMeasureHeader = true
+      onScroll()
+    }
 
     const unsubscribe = runtime.subscribeScroll(onScroll)
+    window.addEventListener('resize', onResize)
 
     return () => {
       unsubscribe()
+      window.removeEventListener('resize', onResize)
       root.classList.remove(
         'chrome-scrolled',
         'chrome-past-fold',
         'chrome-scroll-down',
-        'chrome-scroll-up'
+        'chrome-scroll-up',
+        'chrome-collision'
       )
     }
-  }, [runtime])
+  }, [pathname, runtime])
 
   return null
 }

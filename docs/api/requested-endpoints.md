@@ -9,6 +9,11 @@ Use `api-request-template.md`, assign both the semantic owner and gap layer, and
 | ID | Need | Consumer | Proposed endpoint | Priority | Status | Owner |
 | --- | --- | --- | --- | --- | --- | --- |
 | REQ-001 | Batch quote and short price history for a set of symbols, so a ranking page can show price, day change and a sparkline per row | `app/(app)/picks/[reading]/page.tsx` via `lib/picks.ts` | `GET /quotes?symbols=A,B,C` returning last price, previous close and a short close series per symbol | Medium | `draft` | unassigned |
+| REQ-002 | As-of-dated FX reference so non-USD listing prices can include a USD equivalent | `components/stocks/StockTickerIdentity.tsx` via `lib/stock-ticker-chrome.ts` | Deferred until source and canonical semantics exist | Normal | `draft` | `finance-data-ops` → `finance-feature-store` → `finance-backend` |
+| REQ-003 | Per-ticker standing or an explicit absence reason for Long term, Income, and Short term investor readings | `app/(app)/stocks/[ticker]/page.tsx` beside the research score in `components/stocks/StockOverviewClient.tsx` | `GET /tickers/{ticker}/readings` | High | `draft` | `finance-feature-store` → `finance-backend` |
+| REQ-004 | Downloadable price-series and fundamentals CSV exports alongside the existing signal-history export | `components/stocks/TickerExportButton.tsx` in `components/stocks/StockTickerChrome.tsx` | Draft local `GET /api/export-ticker?ticker=AAPL&dataset=prices\|fundamentals`; no new backend endpoint proposed | Normal | `draft` | `spy-signal-site`, with canonical fields owned by `finance-feature-store` |
+| REQ-005 | Homepage relationship-map subject selected from the long-term board | `components/marketing/HomeNeighborhood.tsx` | None; closed by product decision in packet 10 | Normal | `declined` | `spy-signal-site` (product selection) |
+| REQ-006 | Canonical company names for atlas nodes | Homepage neighborhood and every mapped company surface | None; populate canonical names in the existing atlas contract | High | `draft` | `finance-feature-store` |
 
 **REQ-001 detail.** `GET /screener/rankings` returns `symbol`, `name`, `sector`, `score`,
 `coverage` and `components` — no price and no series. The existing per-symbol helpers
@@ -16,6 +21,112 @@ Use `api-request-template.md`, assign both the semantic owner and gap layer, and
 covering 25 rows means roughly 50 backend calls per render, which is why the picks pages
 ship score-led without price visuals rather than fanning out. Not blocking: the pages are
 useful without it. Revisit before adding sparklines or a day-change column.
+
+### REQ-002 — As-of-dated currency conversion reference
+
+- **Need / user outcome:** An FX rate with an explicit as-of date so a non-USD listing price can be shown with a USD equivalent for readers who do not price in the local currency.
+- **Frontend consumer:** `components/stocks/StockTickerIdentity.tsx`, supplied by `lib/stock-ticker-chrome.ts`.
+- **Why existing contracts are insufficient:** The ticker summary identifies the listing currency and exchange but provides no conversion rate or converted value.
+- **Backend contract lookup result:** At `finance-backend` commit `6bf5f1ec87a1a3739888be62aa4af3222981c1c0`, searches of `docs/api-contract.json` followed by `docs/openapi.json` found no FX, currency-rate, or conversion endpoint or field.
+- **Semantic owner:** `finance-data-ops` for source ingestion, then `finance-feature-store` for canonical/derived exposure.
+- **Gap layer:** Source missing in `finance-data-ops` (no FX series is ingested) → canonical/derived exposure in `finance-feature-store` → HTTP exposure in `finance-backend`.
+- **Upstream evidence:** None yet; an authoritative FX source, pair convention, valuation timestamp, market-calendar treatment, and lineage must be approved before transport is designed.
+- **Why HTTP exposure is the correct missing layer:** It is not yet the only missing layer. Source and canonical semantics are absent, so an HTTP route must not be proposed as if the value already exists.
+- **Proposed method and endpoint:** Deferred until upstream source and semantic contracts are approved.
+- **Minimum request fields:** To be defined after the upstream contract exists; expected concerns include source currency, target currency, and as-of date.
+- **Minimum response fields:** To be defined after the upstream contract exists; must include currencies, rate, as-of timestamp/date, source, and nullability semantics.
+- **Authentication/authorization:** To be defined by `finance-backend` if and when HTTP exposure is approved.
+- **Errors:** Must distinguish unsupported pairs, unavailable dates, stale/partial source data, upstream failure, and timeout; exact statuses are not yet approved.
+- **Caching/pagination/rate limits:** To be defined from the approved series frequency and revision behavior; pagination is not expected for a single reference lookup.
+- **Privacy and logging constraints:** No user data is required; avoid logging secrets or unnecessary request context.
+- **Priority:** Normal.
+- **Dependencies and owners:** `finance-data-ops` source ingestion, `finance-feature-store` canonical semantics, then `finance-backend` transport.
+- **Compatibility/versioning:** Additive contract only; conversion semantics and timestamp basis must be versioned if they can change.
+- **Approval state:** `draft`.
+- **Contract evidence:** No backend schema or examples exist yet.
+- **Frontend fallback until available:** Show the backend-supplied local listing currency only. Render no conversion, estimate, approximation, third-party lookup, or unavailable placeholder.
+
+### REQ-003 — Per-ticker investor-reading standings
+
+- **Need / user outcome:** A ticker page can say where a company stands in each of Long term, Income, and Short term, or state exactly why a reading does not apply or cannot be ranked.
+- **Frontend consumer:** `app/(app)/stocks/[ticker]/page.tsx`, rendered beside the research score in `components/stocks/StockOverviewClient.tsx` only after the endpoint is implemented and verified.
+- **Why existing contracts are insufficient:** `GET /tickers/{ticker}/scorecard` returns one overall grade and five axes (`value`, `potential`, `health`, `income`, and `momentum`) but no investor readings. `GET /screener/rankings?reading=…` is a top-N leaderboard, and the frontend deliberately pins it to `PICK_FULL_LIST = 25`; a ticker outside that list is absent rather than given a standing or exclusion reason. Raising the rankings limit was considered and declined because it would assign per-ticker meaning to a list-shaped contract, would leave absence ambiguous between applicability and coverage, and would still require three list scans. The Short term reading also barely touches the axes used by the other readings and cannot be derived by reweighting the scorecard.
+- **Backend contract lookup result:** On 2026-09-05 at `finance-backend` commit `6bf5f1ec87a1a3739888be62aa4af3222981c1c0`, `docs/api-contract.json` was checked for `GET /screener/rankings` (`screener_rankings_screener_rankings_get`) and `GET /tickers/{ticker}/scorecard` (`ticker_scorecard_tickers__ticker__scorecard_get`). `docs/openapi.json` was then checked at those paths: rankings has required `reading`, default `limit: 25`, default `minCoverage: 0.6`, default `includeNonCompanies: false`, and an unnamed additional-properties object response; scorecard references `TickerScorecardResponse`, `TickerScorecardOverallResponse`, and `TickerScorecardAxisResponse`. No `/tickers/{ticker}/readings` path or per-ticker reading schema exists.
+- **Semantic owner:** `finance-feature-store`, which defines and materializes the three readings.
+- **Gap layer:** HTTP exposure in `finance-backend`.
+- **Upstream evidence:** `finance-feature-store/docs/scorecard.md`, `feature_store/readings.py`, and `lib/picks-content.ts` establish three distinct reading semantics, fractional coverage, `pays_no_dividend` as a deliberate Income non-applicability reason, and hand-drawn uncalibrated score curves. The ranking order is meaningful; a raw score is not a calibrated mark out of 100.
+- **Why HTTP exposure is the correct missing layer:** The canonical reading semantics and materialization already exist in `finance-feature-store`; only a bounded per-symbol transport that preserves standing and absence meaning is missing.
+- **Proposed method and endpoint:** `GET /tickers/{ticker}/readings` on `finance-backend`.
+- **Minimum request fields:** Required path `ticker: string`, normalized under the existing canonical-ticker rules. No reading, limit, coverage, or asset-filter query parameters; the response is always the same three-reading view so callers cannot redefine the ranked universe.
+- **Minimum response fields:** `ticker: string`; `asOf: string | null` as an ISO date; `readings: array` containing exactly `longTerm`, `income`, and `shortTerm`. Each item has `reading`; `status: ranked | absent`; nullable `standing` with one-based `position: integer`, post-filter `universeSize: integer`, `coverage: number` in `[0,1]`, and optional nullable unitless `rawScore: number`; and nullable `absenceReason`. `standing` and `absenceReason` are mutually exclusive. Required absence reasons are `pays_no_dividend` (Income does not apply), `insufficient_coverage`, `ineligible_asset_type`, `not_tracked`, and `reading_not_materialized`. If `rawScore` is returned for parity or diagnosis, the frontend will not render it as a mark out of 100.
+- **Authentication/authorization:** Existing canonical-ticker service authentication: product servers use `x-backend-shared-secret`; administrative consumers may use the backend service bearer token. The browser must consume it through a local server boundary.
+- **Errors:** `400` invalid ticker syntax; `404` unknown ticker identity; `500` unexpected backend failure; `503` retryable reading materialization/storage unavailability. A known ticker with an inapplicable or unranked reading returns `200` with all three items and explicit per-item absence reasons, never an omitted item or ambiguous empty list. No partial response silently drops a reading.
+- **Caching/pagination/rate limits:** Align freshness with the materialized reading snapshot and the existing 300-second rankings cache; return an explicit `asOf`. No pagination: exactly three bounded items. Use the canonical-ticker endpoint's normal service rate limits.
+- **Privacy and logging constraints:** No user data is required. Log normalized ticker, request ID, status, and materialization/as-of diagnostics; never log shared secrets, service tokens, or unrelated request context.
+- **Priority:** High.
+- **Dependencies and owners:** `finance-feature-store` confirms the per-symbol lookup and absence mapping over the same snapshot/universe used by rankings; `finance-backend` owns endpoint schema, authentication, errors, and contract tests; `spy-signal-site` consumes only after backend implementation and verification.
+- **Compatibility/versioning:** Additive endpoint. Reading keys, position basis, universe-size basis, absence enums, and coverage units are contract fields; additions must be backward compatible, and semantic changes require an explicit version/methodology signal.
+- **Approval state:** `draft`.
+- **Contract evidence:** Backend evidence is the absent path plus the scorecard/rankings schemas named above. Upstream evidence is `finance-feature-store/docs/scorecard.md` and `feature_store/readings.py`. Required synthetic contract example: a ranked Long term item includes `{ position: 42, universeSize: 684, coverage: 0.94 }`, while a non-dividend Income item includes `standing: null` and `absenceReason: "pays_no_dividend"`; contract tests must also cover every absence enum and the exactly-three-items invariant.
+- **Frontend fallback until available:** Render no investor reading at all—no placeholder, derived scorecard reweighting, rankings scan, endpoint fan-out, approximate standing, or empty reserved container.
+
+### REQ-004 — Price-series and fundamentals CSV export
+
+- **Need / user outcome:** A Pro viewer can download canonical price-series and fundamentals evidence alongside the signal-history CSV already available from `/api/export-signals`.
+- **Frontend consumer:** `components/stocks/TickerExportButton.tsx` in the ready-state control rail rendered by `components/stocks/StockTickerChrome.tsx`.
+- **Why existing contracts are insufficient:** `/api/export-signals` serializes signal history only. Canonical price and fundamentals data can be read as backend JSON, but the product has no approved downloadable CSV schemas, dataset boundary, filename contract, or same-origin entitlement/error surface for those exports.
+- **Backend contract lookup result:** On 2026-09-05 at `finance-backend` commit `6bf5f1ec87a1a3739888be62aa4af3222981c1c0`, `docs/api-contract.json` and then `docs/openapi.json` were searched for `export`, `csv`, and `download`; no matching operation exists. Existing paths inspected were `GET /tickers/{ticker}/history` returning `PricePointResponse[]`, `/ohlc` returning `OhlcPointResponse[]`, `/profile` returning `TickerProfileResponse`, and `/financial-statements` returning `FinancialStatementsResponse`.
+- **Semantic owner:** `finance-feature-store` owns the canonical price/fundamentals fields and their methodology; `spy-signal-site` owns the downloadable packaging, Clerk/Pro entitlement, and browser state.
+- **Gap layer:** Frontend consumption/state in `spy-signal-site`; no source, canonical-derived semantic, or backend HTTP exposure gap is currently demonstrated.
+- **Upstream evidence:** The four existing backend paths and named OpenAPI schemas above provide canonical JSON inputs. The current `app/api/export-signals/route.ts` provides the established Clerk/Pro, CSV content-disposition, no-store, and `upgradeUrl` behavior.
+- **Why HTTP exposure is the correct missing layer:** New backend HTTP exposure is not presently the missing layer because the canonical datasets are already exposed to the product server. The missing surface is a same-origin frontend route that serializes an approved subset without browser-to-backend calls or third-party lookup. Escalate to `finance-backend` only if schema review proves a canonical export representation is itself required.
+- **Proposed method and endpoint:** Draft local route `GET /api/export-ticker?ticker=AAPL&dataset=prices|fundamentals`; proposal only. Do not implement until the dataset boundaries and CSV schemas below receive frontend/product review.
+- **Minimum request fields:** Required `ticker: string`; required `dataset: prices | fundamentals`. No client-controlled upstream path, arbitrary field list, or arbitrary history window; the server chooses the canonical bounded/full series and approved fundamentals scope.
+- **Minimum response fields:** Successful response is non-empty `text/csv; charset=utf-8` with `Content-Disposition` filename and `Cache-Control: no-store`. Proposed price columns are `date`, `open`, `high`, `low`, `close`, and `volume`, preserving upstream nullability and price/volume units. Proposed fundamentals use stable long-form rows with `section`, `key`, `label`, `value`, `unit`, `currency`, `periodEnd`, `knownAt`, and `source`; exact included sections and nullable fields remain an approval dependency and must not be inferred from display copy.
+- **Authentication/authorization:** Match `/api/export-signals`: Clerk user plus Pro plan. A 403 includes the billing `upgradeUrl`; backend credentials remain server-side.
+- **Errors:** `400` invalid ticker/dataset; `401` authentication required; `403` Pro required plus `upgradeUrl`; `404` no rows for the selected canonical dataset; `422` approved export schema cannot represent the available dataset; `502` retryable backend failure or malformed canonical payload. Never return a successful empty file or partial file presented as complete.
+- **Caching/pagination/rate limits:** Download response is `no-store`; upstream helpers may retain their documented canonical caches. No pagination in the browser-facing CSV. Define a maximum row/file size and timeout during approval, with a clear 422/502 outcome rather than truncation without metadata.
+- **Privacy and logging constraints:** No user-entered content beyond ticker/dataset. Log user ID only as required for entitlement/audit, plus normalized ticker, dataset, row count, and outcome; never log CSV contents, financial-provider payloads, Clerk tokens, billing URLs, or backend secrets.
+- **Priority:** Normal.
+- **Dependencies and owners:** Product/frontend owner approves datasets and columns; `finance-feature-store` confirms field units, freshness, and null semantics; `spy-signal-site` owns local serialization, entitlement, tests, and accessible recovery. `finance-backend` is consulted only if canonical export semantics are found missing.
+- **Compatibility/versioning:** Additive local endpoint. Dataset keys, column names/order, units, filename, and error payload are versioned contract; future columns append compatibly or require a versioned dataset.
+- **Approval state:** `draft`.
+- **Contract evidence:** Current signal-export route tests/behavior are the access and download precedent. Backend OpenAPI schemas named above are input evidence; no price/fundamentals CSV schema or example exists yet. Approval must add synthetic CSV fixtures for both datasets plus empty, partial, malformed, unauthorized, and unentitled cases.
+- **Frontend fallback until available:** Keep the control useful by exporting signal history only. Render no price/fundamentals option, disabled item, placeholder, client-side derivation, fan-out, or third-party substitute.
+
+### REQ-005 — Homepage relationship-map subject — closed by product
+
+- **Approval state:** `declined` — backend request closed by the product owner's packet 10 decision (2026-09-05), not by new backend support.
+- **Resolution:** The first long-term board symbol is the subject. If its atlas neighborhood is unusable, try the next visible name in order, through the column's five. If none is usable, omit the section. The curated daily shortlist and its selector are removed.
+- **Frontend consumer / owner:** `components/marketing/HomeNeighborhood.tsx`, `spy-signal-site`. The board's existing entitlement gate supplies the candidate items; there is no independent universe lookup.
+- **Contract evidence:** At `finance-backend` commit `6bf5f1ec87a1a3739888be62aa4af3222981c1c0`, `docs/api-contract.json` then `docs/openapi.json` expose caller-selected `GET /network/neighborhoods/{ticker}` with `window`, `view`, `limit`, and optional `asOf`. This existing route is sufficient for the approved selection rule.
+- **Backend work / gap layer:** None remains for subject selection. `finance-feature-store` still owns atlas materialization, but this closed request no longer asks it to choose a homepage subject. No new endpoint, field, authentication, response shape, or selection methodology is proposed.
+- **Consumption:** Existing server helper and hourly per-symbol/day cache remain. A usable answer must match the requested focus and retain the existing focus node plus five distinct connections requirement. At most five sequential candidates; no external lookup, placeholder, or empty frame.
+
+### REQ-006 — Atlas nodes carry the symbol where a company name should be
+
+- **Need / user outcome:** Populate a canonical company name for every symbol the atlas can return, so a mapped company can be identified by someone who does not already recognize its ticker.
+- **Frontend consumer:** `components/marketing/HomeNeighborhood.tsx`; applies to every mapped company surface.
+- **Why existing contracts are insufficient:** `AtlasNodeResponse.name` is a required string, so a symbol is returned in place of a missing name rather than null. The consuming surface cannot distinguish "no name available" from "the name is the symbol", and omits the secondary text either way. Observed in preview review on 2026-09-05: the neighborhood showed no distinct company name for `AMZN`, `AFRM` or `SHOP`, while `SNAP` and `TSLA` had one.
+- **Scope correction, 2026-09-06:** an earlier version of this record also claimed `PickItem.name` was null for leading ranked symbols and listed `VOR`, `PRTH`, `IRWD` and others as evidence. That was wrong. The board renders those names correctly; the original observation was taken from a viewport below 1280px, where the name column is deliberately hidden. The ranking half of this gap does not exist and has been removed.
+- **Backend contract lookup result:** At `finance-backend` commit `6bf5f1ec87a1a3739888be62aa4af3222981c1c0`, checked `docs/api-contract.json` then `docs/openapi.json`. The neighborhood endpoint already exposes a name; no endpoint is missing. `AtlasNodeResponse.name` is a required string, so a missing canonical name is replaced by the symbol rather than represented as null.
+- **Semantic owner:** `finance-feature-store`.
+- **Gap layer:** Canonical-derived semantic.
+- **Upstream evidence:** Atlas serialization returns `str(name or symbol)` (`app/relationship_atlas.py`), which satisfies the required-string schema without supplying a company name. Frontend `AtlasNode.name` is therefore always populated, and symbol-equal names are omitted from the neighborhood's secondary text.
+- **Why HTTP exposure is the correct missing layer:** It is not. Transport and name fields exist; canonical population is incomplete.
+- **Proposed method and endpoint:** None. Populate canonical company names behind the existing atlas contract.
+- **Minimum request fields:** Existing request fields remain unchanged.
+- **Minimum response fields:** A populated canonical company name for every returned symbol. No new field or response shape is proposed.
+- **Authentication/authorization:** Existing server-side backend authentication and ranking entitlement gate remain unchanged.
+- **Errors:** Missing names must not cause nodes to disappear from a map or become substitute/estimated values. Existing unavailable, partial, and upstream-error behavior remains.
+- **Caching/pagination/rate limits:** Existing contracts and caches remain unchanged; canonical population must propagate through normal refreshes.
+- **Privacy and logging constraints:** Public company identity only; no credentials or user data in evidence.
+- **Priority:** High.
+- **Dependencies and owners:** `finance-feature-store` owns canonical name coverage; `finance-data-ops` owns any missing underlying identity source; `finance-backend` transports the existing field; `spy-signal-site` consumes without lookup or enrichment.
+- **Compatibility/versioning:** Populate the existing field compatibly; retain canonical symbols.
+- **Approval state:** `draft`.
+- **Contract evidence:** Existing `GET /network/neighborhoods/{ticker}`, `AtlasNodeResponse`, and the atlas serializer. Closure requires a distinct company name for every symbol the atlas can return.
+- **Frontend fallback until available:** Render the symbol alone when no distinct name exists. Do not reserve missing-name width in the neighborhood list, render a placeholder, or fetch names elsewhere.
 
 ## Confirmed Phase 2 contract gaps
 
