@@ -53,6 +53,7 @@ const CSS = `
 .hc-root .hc-card{display:flex;align-items:center;gap:16px;width:fit-content;margin-top:26px;padding:14px 18px;border-radius:18px;background:var(--glass);border:1px solid var(--glass-border);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 24px 60px -24px #000;backdrop-filter:blur(16px) saturate(1.5);-webkit-backdrop-filter:blur(16px) saturate(1.5)}
 .hc-root .hc-card .v{font-family:var(--font-display);font-weight:700;font-size:20px}
 .hc-root .hc-scrollcue{position:fixed;bottom:16px;left:0;right:0;text-align:center;z-index:40;font-family:var(--font-mono);font-size:11px;color:var(--text-3);pointer-events:none}
+.hc-root .hc-fieldcaption{position:fixed;bottom:16px;left:24px;z-index:40;font-family:var(--font-mono);font-size:11px;color:var(--text-3);pointer-events:none}
 .hc-root #hc-focusLayer{position:fixed;inset:0;z-index:70;opacity:0;pointer-events:none}
 .hc-root #hc-focusDim{position:absolute;inset:0;background:rgba(20,41,67,.16)}
 .hc-root #hc-focusCard{position:absolute;left:54%;top:50%;width:min(360px,46vw);padding:22px;border-radius:20px;background:var(--focus-bg);color:var(--focus-text);border:1px solid var(--focus-border);box-shadow:var(--focus-shadow);backdrop-filter:blur(18px) saturate(1.15);-webkit-backdrop-filter:blur(18px) saturate(1.15)}
@@ -69,6 +70,7 @@ const CSS = `
 .hc-root .hc-fc-open{display:inline-block;margin-top:18px;font-weight:600;font-size:14px;color:var(--spark);text-decoration:none}
 .hc-root .hc-fc-open:hover{text-decoration:underline;text-underline-offset:4px}
 html[data-theme="dark"] .hc-root #hc-focusDim,.hc-root[data-theme="dark"] #hc-focusDim{background:rgba(0,4,10,.52)}
+@media(max-width:767px){.hc-root .hc-fieldcaption{display:none}}
 @media(max-width:720px){.hc-root #hc-focusCard{left:12px;right:12px;top:auto;bottom:16px;width:auto;padding:20px}.hc-root .hc-fc-ticker{font-size:30px}}
 .hc-root[data-reduced-motion="true"] #hc-focusCard{transition:none}
 .hc-root[data-reduced-motion="true"] #hc-stage{height:auto;min-height:0}
@@ -263,7 +265,7 @@ export default function HeroConstellation() {
     const win = [[-0.06, 0.16], [0.20, 0.37], [0.41, 0.57], [0.61, 0.77], [0.81, 1.01]]
     const updateBeats = (prog: number) => beats.forEach((el, i) => { const [a, b] = win[i]; const inn = smooth(a, a + 0.05, prog), out = 1 - smooth(b - 0.05, b, prog); const o = Math.max(0, Math.min(1, inn * out)); el.style.opacity = String(o); el.style.transform = 'translateY(' + ((1 - o) * 18) + 'px)' })
     updateBeats(0)
-    const setP = (v: number) => { targetP = v; $('hc-prog').style.width = (v * 100) + '%'; const cue = $('hc-cue'); if (cue) cue.style.opacity = v > 0.02 ? '0' : '1'; updateBeats(v) }
+    const setP = (v: number) => { targetP = v; $('hc-prog').style.width = (v * 100) + '%'; const cue = $('hc-cue'); const caption = $('hc-caption'); const opacity = v > 0.02 ? '0' : '1'; if (cue) cue.style.opacity = opacity; if (caption) caption.style.opacity = opacity; updateBeats(v) }
 
     const updateField = (progress: number, interactive = progress < 0.999) => {
       const strength = Math.max(0, Math.min(1, progress))
@@ -509,6 +511,7 @@ export default function HeroConstellation() {
       </div>
 
       <div className="hc-scrollcue" id="hc-cue">▸ scroll · click a particle</div>
+      <div className="hc-fieldcaption" id="hc-caption">Nothing moves alone.</div>
 
       <div id="hc-focusLayer" aria-hidden="true">
         <div id="hc-focusDim" />

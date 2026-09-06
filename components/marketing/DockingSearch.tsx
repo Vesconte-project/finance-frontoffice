@@ -1,9 +1,13 @@
 'use client'
 
-import type { FocusEvent } from 'react'
+import { Fragment, useEffect, useState, type CSSProperties, type FocusEvent } from 'react'
 import Link from 'next/link'
 import { ChartNetwork } from 'lucide-react'
 import HeaderSearch from '@/components/HeaderSearch'
+import { PICK_READING_CONTENT, PICK_READING_KEYS } from '@/lib/picks-content'
+
+const HEADLINE = 'Be a better investor'
+const READINGS = PICK_READING_KEYS.map((key) => PICK_READING_CONTENT[key].label).join(' · ')
 
 /**
  * Homepage hero search.
@@ -21,16 +25,40 @@ function emit(focused: boolean) {
 }
 
 export default function DockingSearch() {
+  const [revealReady, setRevealReady] = useState(false)
   const onFocus = () => emit(true)
   const onBlur = (event: FocusEvent<HTMLDivElement>) => {
     // Only when focus truly leaves the search, not when moving within it.
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) emit(false)
   }
 
+  useEffect(() => {
+    let cancelled = false
+    void document.fonts.ready.then(() => {
+      if (!cancelled) setRevealReady(true)
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  let characterIndex = 0
+
   return (
-    <div data-dock-search className="dock-search" onFocus={onFocus} onBlur={onBlur}>
+    <div data-dock-search className="dock-search" data-reveal-ready={revealReady ? 'true' : 'false'} onFocus={onFocus} onBlur={onBlur}>
       <div className="dock-search__intro">
-        <h1 className="dock-search__title">Nothing moves alone.</h1>
+        <h1 className="dock-search__title" aria-label={HEADLINE}>
+          {HEADLINE.split(' ').map((word, wordIndex) => (
+            <Fragment key={word}>
+              <span className="dock-search__word" aria-hidden="true">
+                {[...word].map((character) => {
+                  const index = characterIndex++
+                  return <span key={index} className="dock-search__character" aria-hidden="true" style={{ ['--i' as string]: index } as CSSProperties}>{character}</span>
+                })}
+              </span>
+              {wordIndex < HEADLINE.split(' ').length - 1 ? ' ' : null}
+            </Fragment>
+          ))}
+        </h1>
+        <p className="dock-search__subtitle">{"Don't guess. Analyze."}</p>
       </div>
       <div className="dock-search__field">
         <HeaderSearch className="w-full" maxSuggestions={4} placeholder="Search a ticker or company…" />
@@ -46,6 +74,7 @@ export default function DockingSearch() {
           <span className="dock-search__cta-label">Correlations</span>
         </Link>
       </div>
+      <p className="dock-search__readings">{READINGS}</p>
     </div>
   )
 }
