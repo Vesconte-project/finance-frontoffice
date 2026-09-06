@@ -2941,7 +2941,12 @@ html.chrome-scrolled .dock-search {
   .dock-search__word,
   .dock-search__subtitle,
   .dock-search__field,
-  .dock-search__support,
+  .dock-search__support {
+    animation: none;
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
 }
 
 /* FAQ accordion: the scoped override wins over arbitrary Tailwind durations. */
