@@ -45,10 +45,15 @@ export default function HeaderAccountControl({
       aria-label={`Account menu for ${label}`}
       // Same reason as the other triggers: focusing on mousedown widens the
       // condensed row and moves the button out from under the cursor before
-      // mouseup, so the click never lands. Take focus after the press.
+      // mouseup, so the click never lands.
       onMouseDown={(event) => event.preventDefault()}
       onClick={(event) => {
-        event.currentTarget.focus()
+        // `detail` counts clicks, so it is 0 for keyboard activation. A keyboard
+        // user keeps focus here; a pointer user must not, because suppressing
+        // the mousedown focus above makes the browser treat any focus that lands
+        // afterwards as keyboard-driven, so :focus-visible stays lit after the
+        // menu closes — and :focus-within also holds the condensed row open.
+        if (event.detail > 0) event.currentTarget.blur()
         onToggleAccount()
       }}
       className="site-header__account"
