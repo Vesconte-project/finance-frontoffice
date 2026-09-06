@@ -14,6 +14,9 @@ Use `api-request-template.md`, assign both the semantic owner and gap layer, and
 | REQ-004 | Downloadable price-series and fundamentals CSV exports alongside the existing signal-history export | `components/stocks/TickerExportButton.tsx` in `components/stocks/StockTickerChrome.tsx` | Draft local `GET /api/export-ticker?ticker=AAPL&dataset=prices\|fundamentals`; no new backend endpoint proposed | Normal | `draft` | `spy-signal-site`, with canonical fields owned by `finance-feature-store` |
 | REQ-005 | Homepage relationship-map subject selected from the long-term board | `components/marketing/HomeNeighborhood.tsx` | None; closed by product decision in packet 10 | Normal | `declined` | `spy-signal-site` (product selection) |
 | REQ-006 | Canonical company names for atlas nodes | Homepage neighborhood and every mapped company surface | None; populate canonical names in the existing atlas contract | High | `draft` | `finance-feature-store` |
+| REQ-007 | Reported margins and balance-sheet ratios as canonical metrics, so the Fundamentals view can answer profitability and solvency without the frontend dividing one line item by another | `lib/stock-fundamentals-view.ts`, rendered by `components/stocks/StockFundamentalsResearch.tsx` | Extend `GET /tickers/{ticker}/market-metrics` with `gross_margin`, `operating_margin`, `net_margin`, `return_on_equity`, `current_ratio`, `debt_to_equity`, carrying the same period semantics as the existing multiples | High | `draft` | `finance-feature-store` → `finance-backend` |
+| REQ-008 | A documented line-item vocabulary for `GET /tickers/{ticker}/financial-statements` | `lib/stock-fundamentals-view.ts` | None; publish the canonical `lineItemId` set per statement type in the contract | Normal | `draft` | `finance-backend` |
+| REQ-009 | Peer and sector fundamental reference values, so a reported figure can be read against something other than the company's own past | `components/stocks/StockFundamentalsResearch.tsx` | Deferred until canonical peer membership exists; blocked behind the peer/sector gap already recorded under Relationships below | High | `draft` | `finance-feature-store` |
 
 **REQ-001 detail.** `GET /screener/rankings` returns `symbol`, `name`, `sector`, `score`,
 `coverage` and `components` — no price and no series. The existing per-symbol helpers
@@ -243,3 +246,38 @@ The current reduced-scope Relationships view consumes only the existing `/relati
 - Holdings overlap, issuer, index tracked, AUM, constituent comparison, fund-level factors, creation/redemption data, and fund relationship methodology.
 
 Until these contracts are defined and verified by finance-backend owners, the frontend must keep these areas deferred. It must not label co-movement as influence, derive peers from prices, infer structural relationships, or fabricate strength/confidence values.
+
+
+### REQ-007 — Margins and ratios are the missing half of Fundamentals
+
+The Fundamentals view asks four questions about the business: is it growing, does it
+earn on what it sells, can it carry itself, does it pay its holders. Two of those are
+ratio questions, and `GET /tickers/{ticker}/financial-statements` returns levels only.
+
+The arithmetic is trivial — operating margin is operating income over revenue, both of
+them line items of the same statement and period — and that is exactly why it is not
+done here. A margin published by the frontend has no methodology version, no data
+quality flags, and no agreement about which revenue line it divides by; two surfaces
+computing it slightly differently is the failure this repository's rule against
+derivation exists to prevent.
+
+Until this lands, `Profitability` and `Financial health` show reported levels with
+their full history — gross profit, operating income, EBITDA; cash, total debt, equity —
+which answers the direction of both questions without answering their intensity.
+
+### REQ-008 — The line-item vocabulary is undocumented
+
+`FinancialStatementLineItem.lineItemId` is the join key the Fundamentals view curates
+against, and no published list of its values exists. The view names the spellings this
+contract is known to use and anchors each match, so an unmatched name yields no card
+rather than the wrong one, and a chapter that matches nothing falls back to its
+statement's own row order. That fallback is a safety net, not a design.
+
+### REQ-009 — Without peers, a company can only be read against itself
+
+The first question a reader has about a reported figure is whether it is high, and the
+only reference point this frontend can honestly supply today is the company's own
+history. That is why every measure on the Fundamentals view carries its full series
+rather than a single current value: the series is standing in for the comparison we
+cannot make. Peer and sector membership is already recorded as missing under
+Relationships; this records the fundamentals-side consumer of it.

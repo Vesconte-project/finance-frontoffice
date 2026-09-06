@@ -234,127 +234,9 @@
   text-transform: uppercase;
 }
 
-.themeNav {
-  display: flex;
-  gap: 18px;
-  overflow-x: auto;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--research-line);
-  scrollbar-width: none;
-}
-
-.themeNav::-webkit-scrollbar {
-  display: none;
-}
-
-.themeNav a {
-  color: var(--color-text-muted);
-  font-size: 11px;
-  font-weight: 700;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.themeNav a:first-child,
-.themeNav a:hover,
-.themeNav a:focus-visible {
-  color: var(--color-accent);
-}
-
-.themes {
-  display: grid;
-  gap: 0;
-}
-
-.theme {
-  display: grid;
-  grid-template-columns: minmax(190px, 0.4fr) minmax(0, 1fr);
-  gap: 44px;
-  min-width: 0;
-  padding: 34px 0;
-  border-bottom: 1px solid var(--research-line);
-  scroll-margin-top: 108px;
-}
-
-.theme[data-priority='true'] .themeTitle::before {
-  content: '';
-  display: inline-block;
-  width: 18px;
-  height: 2px;
-  margin-right: 10px;
-  vertical-align: middle;
-  background: var(--color-accent);
-}
-
-.themeTitle h2 {
-  margin: 0;
-  font-size: 1.15rem;
-}
-
-.themeTitle p {
-  margin: 7px 0 0;
-  color: var(--color-text-muted);
-  font-size: 10px;
-  line-height: 1.45;
-}
-
-.themeEvidence {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(190px, 0.38fr);
-  gap: 32px;
-  min-width: 0;
-}
-
 .metricList {
   margin: 0;
   border-top: 1px solid var(--research-line);
-}
-
-.metricMeta {
-  display: block;
-  margin-top: 3px;
-  color: var(--color-text-muted);
-  font-size: 9px;
-  font-weight: 500;
-}
-
-.trendPlaceholder {
-  position: relative;
-  display: grid;
-  min-height: 160px;
-  align-content: end;
-  overflow: hidden;
-  padding: 14px;
-  border-left: 1px solid var(--research-line);
-  color: var(--color-text-muted);
-}
-
-.trendPlaceholder::before,
-.trendPlaceholder::after {
-  content: '';
-  position: absolute;
-  inset-inline: 14px;
-  border-top: 1px solid var(--research-line);
-}
-
-.trendPlaceholder::before { top: 32%; }
-.trendPlaceholder::after { top: 64%; }
-
-.trendPlaceholder strong,
-.trendPlaceholder span {
-  position: relative;
-  z-index: 1;
-}
-
-.trendPlaceholder strong {
-  color: var(--color-text-secondary);
-  font-size: 11px;
-}
-
-.trendPlaceholder span {
-  margin-top: 3px;
-  font-size: 9px;
-  text-transform: uppercase;
 }
 
 .statementToolbar {
@@ -593,19 +475,8 @@
     position: static;
   }
 
-  .theme {
-    grid-template-columns: 150px minmax(0, 1fr);
-    gap: 24px;
-  }
-
-  .themeEvidence {
-    grid-template-columns: 1fr;
-  }
-
-  .trendPlaceholder {
-    min-height: 120px;
-    border-top: 1px solid var(--research-line);
-    border-left: 0;
+  .measureGrid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   }
 }
 
@@ -638,11 +509,22 @@
     gap: 12px;
   }
 
-  .profileChapter,
-  .theme {
+  .profileChapter {
     grid-template-columns: 1fr;
     gap: 14px;
     padding: 26px 0;
+  }
+
+  .questionRow {
+    grid-template-columns: 1fr;
+  }
+
+  .measureGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .handoff {
+    grid-template-columns: 1fr;
   }
 
   .statementToolbar {
@@ -695,4 +577,213 @@
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* -------------------------------------------------------------------------
+   Fundamentals — four questions about the business, each answered with a
+   figure and the series behind it. The multiples live in the Valuation view
+   and the line items in Financials, so neither is repeated here.
+   ------------------------------------------------------------------------- */
+
+.questionRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1px;
+  background: var(--research-line);
+  border-block: 1px solid var(--research-line);
+}
+
+.questionRow a {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 18px 20px 20px;
+  background: var(--color-surface, var(--color-page-bg, transparent));
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 0.16s ease;
+}
+
+.questionRow a:hover,
+.questionRow a:focus-visible {
+  background: color-mix(in srgb, var(--color-accent) 6%, var(--color-surface, transparent));
+}
+
+.questionAsk {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  letter-spacing: -0.005em;
+}
+
+.questionRow strong {
+  font-size: clamp(1.35rem, 2.4vw, 1.75rem);
+  font-weight: 660;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.questionMeta {
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.chapters {
+  display: grid;
+  gap: 0;
+}
+
+.chapter {
+  display: grid;
+  gap: 20px;
+  padding: 34px 0;
+  border-bottom: 1px solid var(--research-line);
+  scroll-margin-top: 108px;
+}
+
+.chapterHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.chapterHead h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+/* The reporting span belongs to the chapter, not to every row in it. The old
+   layout printed the same observation date on all fourteen metrics. */
+.chapterHead p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.measureGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1px;
+  background: var(--research-line);
+  border: 1px solid var(--research-line);
+}
+
+.measure {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  padding: 16px 18px 14px;
+  background: var(--color-surface, var(--color-page-bg, transparent));
+  min-width: 0;
+}
+
+.measure h3 {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.measureValue {
+  margin: 0;
+  font-size: clamp(1.3rem, 2.2vw, 1.6rem);
+  font-weight: 660;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.measureChange {
+  margin: 0;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.measureChange span {
+  color: var(--color-text-secondary);
+}
+
+.measureChange span[data-direction='up'] {
+  color: var(--color-accent);
+}
+
+.sparkline {
+  width: 100%;
+  height: 30px;
+  margin-top: 8px;
+  overflow: visible;
+  fill: none;
+  stroke: color-mix(in srgb, var(--color-text-primary) 42%, transparent);
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sparklineHead {
+  stroke: var(--color-accent);
+  stroke-width: 3.5;
+}
+
+/* The long tail. Kept in full — the point was never to show less, it was to
+   stop giving fourteen measures the same weight as the four that lead. */
+.tailList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0 32px;
+  margin: 0;
+}
+
+.tailList div {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--research-line);
+}
+
+.tailList dt {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.tailList dd {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 620;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.handoff {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.28fr) minmax(0, 1fr);
+  gap: 24px 44px;
+  align-items: start;
+  padding: 30px 0;
+  border-bottom: 1px solid var(--research-line);
+}
+
+.handoff h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.handoff p {
+  margin: 7px 0 0;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.handoff .tailList {
+  grid-column: 2;
+}
+
+.handoff a {
+  grid-column: 2;
 }

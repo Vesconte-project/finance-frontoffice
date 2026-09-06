@@ -47,6 +47,33 @@ function normalizeLabel(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
 }
 
+/**
+ * Identity for de-duplication, which `normalizeLabel` cannot be: it keeps the
+ * separators as spaces, so `trailing_pe` became `trailing pe` and `Trailing
+ * P/E` became `trailing p e`. The same metric arrived by two paths and never
+ * collided, and the page printed it twice. Dropping separators entirely makes
+ * both resolve to one key. Kept separate from `normalizeLabel` because the
+ * theme matchers below are written with spaces in them.
+ */
+function dedupeKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '')
+}
+
+// Acronyms arrive as snake_case keys that have been title-cased upstream, so
+// the page showed `Eps` and `Ebitda`. Repaired word-wise rather than by
+// rewriting whole labels, so a label the backend spells properly is untouched.
+const ACRONYMS = new Map(
+  ['eps', 'ebitda', 'ebit', 'roe', 'roa', 'roic', 'roce', 'pe', 'peg', 'ev', 'fcf', 'nav', 'aum', 'ttm', 'yoy', 'usd']
+    .map((word) => [word, word.toUpperCase()]),
+)
+
+function repairLabel(value: string): string {
+  return value
+    .split(' ')
+    .map((word) => ACRONYMS.get(word.toLowerCase()) ?? word)
+    .join(' ')
+}
+
 function formatMetricValue(row: LatestFundamentalsRow, currency: string): string | null {
   const display = row.valueDisplay?.trim()
   const value = row.valueNumber
@@ -60,19 +87,22 @@ function formatMetricValue(row: LatestFundamentalsRow, currency: string): string
   if (/(market cap|revenue|sales|ebitda|cash|debt|asset|liabilit|equity|income|cash flow|free cash flow|enterprise value|profit)/.test(label)) {
     return formatCompactMoney(value, currency)
   }
-  return display || new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value)
+  // `display` last, not first: the backend sends full precision in it, so a
+  // trailing P/E rendered as 37.681973 on a page of two-decimal figures.
+  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value)
 }
 
 function latestMetrics(rows: LatestFundamentalsRow[], currency: string): ResearchMetric[] {
   const seen = new Set<string>()
   return rows.flatMap((row) => {
     const key = normalizeLabel(row.metric || row.metricLabel)
+    const identity = dedupeKey(row.metric || row.metricLabel)
     const value = formatMetricValue(row, currency)
-    if (!key || seen.has(key) || !value || value === '—') return []
-    seen.add(key)
+    if (!key || seen.has(identity) || !value || value === '—') return []
+    seen.add(identity)
     return [{
       key,
-      label: row.metricLabel || row.metric,
+      label: repairLabel(row.metricLabel || row.metric),
       value,
       period: row.periodEnd,
       unit: row.unit,
@@ -81,13 +111,14 @@ function latestMetrics(rows: LatestFundamentalsRow[], currency: string): Researc
 }
 
 function appendFormattedRows(metrics: ResearchMetric[], rows: TickerFinancialRow[]): ResearchMetric[] {
-  const seen = new Set(metrics.map((row) => row.key))
+  const seen = new Set(metrics.map((row) => dedupeKey(row.key)))
   const next = [...metrics]
   for (const row of rows) {
     const key = normalizeLabel(row.label)
-    if (!key || seen.has(key) || !row.value || row.value === '—') continue
-    seen.add(key)
-    next.push({ key, label: row.label, value: row.value, period: null, unit: null })
+    const identity = dedupeKey(row.label)
+    if (!key || seen.has(identity) || !row.value || row.value === '—') continue
+    seen.add(identity)
+    next.push({ key, label: repairLabel(row.label), value: row.value, period: null, unit: null })
   }
   return next
 }
