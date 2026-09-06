@@ -51,7 +51,7 @@ export default function HeaderAccountControl({
         event.currentTarget.focus()
         onToggleAccount()
       }}
-      className="site-header__account site-nav__trigger"
+      className="site-header__account"
     >
       <span className="site-header__account-avatar" aria-hidden="true">
         {user?.imageUrl ? (

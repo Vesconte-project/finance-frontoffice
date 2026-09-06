@@ -1848,13 +1848,33 @@ html.chrome-scrolled .site-header__row:not([data-menu-open]) [data-header-search
   height: 40px;
   padding: 0 8px 0 4px;
   border: 0;
-  /* .site-nav__trigger paints a background when expanded; the text triggers get
-     their radius from .site-header__navlink, so this one brings its own. */
   border-radius: var(--radius-pill);
   background: none;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Deliberately not .site-nav__trigger: that paints a filled background when
+   expanded, which around an avatar and a chevron reads as a stray container
+   however it is rounded. The open state marks the avatar instead. */
+.site-header__account .site-nav__chev {
+  color: var(--content-secondary);
+  transition: transform 0.25s var(--chrome-ease);
+}
+.site-header__account[aria-expanded='true'] .site-nav__chev {
+  transform: rotate(180deg);
+}
+.site-header__account[aria-expanded='true'] .site-header__account-avatar {
+  border-color: transparent;
+  box-shadow: 0 0 0 2px var(--brand-spark);
+}
+.site-header__account:focus-visible {
+  outline: none;
+}
+.site-header__account:focus-visible .site-header__account-avatar {
+  box-shadow: 0 0 0 2px var(--brand-spark), 0 0 0 5px color-mix(in srgb, var(--brand-spark) 22%, transparent);
 }
 .site-header__account-avatar {
+  transition: box-shadow 180ms ease, border-color 180ms ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
