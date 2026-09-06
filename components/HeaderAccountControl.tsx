@@ -23,8 +23,13 @@ export default function HeaderAccountControl({
   accountOpen: boolean
   onToggleAccount: () => void
 }) {
-  const { isSignedIn } = useAuth()
+  const { isLoaded, isSignedIn } = useAuth()
   const { user } = useUser()
+
+  // Clerk resolves after hydration. Rendering Join in the meantime showed a
+  // signed-in visitor the wrong control for a beat, then swapped it. Hold a
+  // slot the same size instead so the row does not reflow either.
+  if (!isLoaded) return <span className="site-header__account-slot" aria-hidden="true" />
 
   if (!isSignedIn) {
     return (

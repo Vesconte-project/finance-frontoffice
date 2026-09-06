@@ -1401,6 +1401,40 @@ html.atlas-immersive .atlas-view {
   will-change: transform;
 }
 
+/* The homepage chrome waits out the headline reveal and then drops in from
+   above, so the first screen is the phrase over a softened field and nothing
+   else. It also hides the moment Clerk resolves: the account control settles
+   while the bar is still off-screen.
+
+   `backwards` rather than `both` is load-bearing — a forwards fill would freeze
+   this transform and the scroll-driven translateY(-100%) above would stop
+   working for the rest of the session. */
+html:not(.hero-reveal-ready) .marketing-home .site-header {
+  transform: translateY(-100%);
+}
+html.hero-reveal-ready .marketing-home .site-header {
+  animation: hero-chrome-in 520ms var(--chrome-ease) 900ms backwards;
+}
+@keyframes hero-chrome-in {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html:not(.hero-reveal-ready) .marketing-home .site-header {
+    transform: none;
+  }
+  html.hero-reveal-ready .marketing-home .site-header {
+    animation: none;
+  }
+}
+/* Reserves the account control's width while Clerk resolves, so the nav row
+   does not reflow when the real control replaces it. */
+.site-header__account-slot {
+  display: inline-block;
+  width: 56px;
+  height: 40px;
+}
+
 /* Slide the whole bar away while actively scrolling down past the fold.
    :focus-within keeps it in place if the user is tabbing through the nav. */
 html.chrome-past-fold.chrome-scroll-down .site-header:not(:focus-within) {

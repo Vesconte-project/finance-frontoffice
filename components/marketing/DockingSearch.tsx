@@ -38,6 +38,16 @@ export default function DockingSearch() {
     return () => { cancelled = true }
   }, [])
 
+  // The header keys off the same signal, so its entrance stays in step with the
+  // copy however long the display font takes. See the .site-header rules under
+  // `hero-reveal-ready` in globals.css.
+  useEffect(() => {
+    if (!revealReady) return
+    const root = document.documentElement
+    root.classList.add('hero-reveal-ready')
+    return () => root.classList.remove('hero-reveal-ready')
+  }, [revealReady])
+
   return (
     <div data-dock-search className="dock-search" data-reveal-ready={revealReady ? 'true' : 'false'} onFocus={onFocus} onBlur={onBlur}>
       <div className="dock-search__intro">
