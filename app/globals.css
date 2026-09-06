@@ -1430,7 +1430,10 @@ html.chrome-collision .site-header:focus-within {
   border-radius: var(--radius-pill);
   transition:
     max-width var(--chrome-dur) var(--chrome-ease),
-    border-radius var(--chrome-dur) var(--chrome-ease);
+    /* Closing: hold the panel's corner until the dropdown has collapsed (its
+       max-height runs 0.42s), so the pill radius is never applied to a box that
+       is still tall. */
+    border-radius 200ms var(--chrome-ease) 240ms;
 }
 
 /* Horizontal bar (brand / search / nav / Join) — always the top row. */
@@ -1552,6 +1555,12 @@ html[data-scroll-profile='operational'] .site-header[data-internal] .site-header
   /* A step rounder than --radius-2xl (24px): at this size 24 read as a slab.
      Stays above the 16px tiles so the corners nest instead of fighting. */
   border-radius: 32px;
+  /* Opening: square the corner off before the panel has any height. At
+     --chrome-dur the radius outlasted the dropdown's growth, so mid-open the
+     box was already tall while still carrying most of the pill. */
+  transition:
+    max-width var(--chrome-dur) var(--chrome-ease),
+    border-radius 140ms var(--chrome-ease);
 }
 .site-header__row[data-menu-open] .site-header__bar {
   gap: 16px;
