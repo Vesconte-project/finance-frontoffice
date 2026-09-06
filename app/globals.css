@@ -2902,11 +2902,20 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel butto
   to { opacity: 1; transform: translateY(0); }
 }
 .dock-search__field {
+  --dock-search-input-height: 62px;
   width: 100%;
   opacity: 0;
 }
+/* The icon is absolutely centred on .ticker-search__root, and in this context
+   alone the suggestion panel sits in flow inside that root rather than being
+   absolutely positioned. Opening it makes the root much taller, so `top: 50%`
+   walks down to the middle of field-plus-list while the column lifts — the icon
+   looks like it stayed behind. Anchor it to the field instead. */
+.marketing-home .dock-search .ticker-search__icon {
+  top: calc(var(--dock-search-input-height) / 2);
+}
 .dock-search__field :is(input) {
-  height: 62px;
+  height: var(--dock-search-input-height);
   font-size: 17px;
   border-radius: 16px;
   border-color: color-mix(in srgb, var(--content-primary) 18%, transparent);

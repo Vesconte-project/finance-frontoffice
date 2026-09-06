@@ -581,7 +581,7 @@ export default function TickerSearchCombobox({
 
       <Search
         className={cn(
-          'pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-content-muted',
+          'ticker-search__icon pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-content-muted',
           label ? 'top-[calc(50%+17px)]' : 'left-4'
         )}
       />
