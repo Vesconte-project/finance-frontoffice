@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { useAuth, useUser } from '@clerk/nextjs'
 import { ChevronDown } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 const joinClassName =
   'site-header__join inline-flex items-center justify-center rounded-full bg-brand-spark px-4 font-semibold text-[color:var(--brand-spark-on)] shadow-[0_10px_24px_-8px_var(--brand-spark)] transition duration-200 hover:brightness-[1.08]'
@@ -52,7 +51,7 @@ export default function HeaderAccountControl({
         event.currentTarget.focus()
         onToggleAccount()
       }}
-      className={cn('site-header__account site-nav__trigger', accountOpen && 'is-open')}
+      className="site-header__account site-nav__trigger"
     >
       <span className="site-header__account-avatar" aria-hidden="true">
         {user?.imageUrl ? (
