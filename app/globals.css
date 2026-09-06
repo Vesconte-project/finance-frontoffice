@@ -2771,6 +2771,7 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel butto
 }
 .dock-search__field {
   width: 100%;
+  opacity: 0;
 }
 .dock-search__field :is(input) {
   height: 62px;
@@ -2800,6 +2801,10 @@ html[data-theme="dark"] .marketing-home .dock-search__field :is(input) {
   position: relative;
   z-index: 60;
   transition: transform 220ms var(--motion-ease-standard);
+  opacity: 0;
+}
+.dock-search[data-reveal-ready='true'] :is(.dock-search__field, .dock-search__support) {
+  animation: dock-search-copy-in 220ms ease-out 1s both;
 }
 .dock-search:has(.ticker-search__root[data-open='true']) {
   --dock-search-open-lift: clamp(-88px, -6vw, -56px);
@@ -2935,6 +2940,8 @@ html.chrome-scrolled .dock-search {
   }
   .dock-search__word,
   .dock-search__subtitle,
+  .dock-search__field,
+  .dock-search__support,
 }
 
 /* FAQ accordion: the scoped override wins over arbitrary Tailwind durations. */
