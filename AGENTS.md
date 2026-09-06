@@ -29,7 +29,6 @@ Specialists are conditional, not gates or a mandatory team. Use the smallest set
 - `npm run verify`: lint, strict typecheck, and unit/contract tests.
 - `npm run qa:browser`: browser preflight plus Playwright on its owned fixed server.
 - `npm run qa:frontend`: verify, production build, and browser QA.
-- `npm run agents:sync` after canonical agent-source changes; never hand-edit managed `.codex` mirrors.
 
 Do not manually run a QA server, choose a port, kill processes, or launch Chromium. Use `PLAYWRIGHT_BASE_URL` only for an intentionally external server. Run checks in proportion to the changed surface.
 

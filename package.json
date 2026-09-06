@@ -14,9 +14,6 @@
     "verify": "npm run lint && npm run typecheck && npm test",
     "qa:browser": "node scripts/check-browser-qa.mjs && playwright test",
     "qa:frontend": "npm run verify && npm run build && npm run qa:browser",
-    "agents:sync": "node scripts/sync-codex-agents.mjs --apply",
-    "agents:check": "node scripts/sync-codex-agents.mjs --check",
-    "test:agents": "node --test tests/sync-codex-agents.test.mjs",
     "test": "rm -rf /tmp/spy-signal-site-tests && tsc --module commonjs --target ES2022 --moduleResolution node --outDir /tmp/spy-signal-site-tests --esModuleInterop --skipLibCheck --types node tests/scorecard-types.test.ts tests/homepage-motion-architecture.test.ts tests/ticker-readiness.test.ts tests/ticker-search.test.ts tests/ticker-index-route.test.ts tests/ticker-autocomplete-architecture.test.ts tests/ticker-page-architecture.test.ts tests/ticker-page-scorecard.test.ts tests/ticker-page-stats.test.ts tests/ohlc-data.test.ts tests/network.test.ts tests/market-universe-layout.test.ts tests/relationship-visibility.test.ts tests/picks-access.test.ts tests/watchlist-signed-out-recovery.test.ts tests/proxy-auth-context.test.ts lib/picks-access-rules.ts lib/picks-content.ts app/api/tickers/index/route.ts lib/backend.ts lib/ticker-index-proxy.ts lib/scorecard-types.ts lib/ticker-readiness.ts lib/ticker-search.ts lib/ticker-page-scorecard.ts lib/ticker-page-stats.ts lib/ohlc-data.ts lib/network.ts lib/network-atlas.ts lib/market-universe-layout.ts lib/relationship-visibility.ts lib/relationships.ts && mkdir -p /tmp/spy-signal-site-tests/node_modules/server-only && printf '' > /tmp/spy-signal-site-tests/node_modules/server-only/index.js && node --test /tmp/spy-signal-site-tests/tests/*.test.js",
     "test:e2e": "npm run qa:browser --",
     "test:e2e:screenshots": "PLAYWRIGHT_CAPTURE=1 npm run qa:browser --"

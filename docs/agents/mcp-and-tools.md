@@ -2,9 +2,9 @@
 
 No optional context tool is required for this repository today. Prefer built-in shell search, repository docs, Playwright, and narrowly scoped agents until a recurring bottleneck is measured.
 
-## Codex roles
+## Specialist agents
 
-The persistent role configuration is local and versioned in `docs/agents/codex/`; it adds no MCP server, connector, dependency, browser binary, or network permission. Roles inherit the parent tool surface. Read-only role files set a read-only sandbox default, but Main must keep the parent session compatible because a live parent sandbox override can be inherited by spawned agents. See `setup.md` for installation and `roles.md` for when to use each role.
+Specialists add no MCP server, connector, dependency, browser binary, or network permission: they inherit the parent tool surface. A read-only specialist stays read-only only if the parent session's sandbox allows it, because a live parent override can be inherited by spawned agents — the runtime's own scoping is what enforces this, and Main is responsible for choosing a compatible parent permission mode. See `roles.md` for when a specialist is worth creating.
 
 | Option | Purpose and expected benefit | Complexity / risk | Data it may store | Recommendation |
 | --- | --- | --- | --- | --- |

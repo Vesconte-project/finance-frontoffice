@@ -1,6 +1,6 @@
 # Agent Roles
 
-Executable model and reasoning defaults live only in `docs/agents/codex/config.toml` and its referenced role files. A role is conditional and never permission to create a team automatically.
+A role is conditional and never permission to create a team automatically. Model and reasoning defaults are the agent runtime's own concern; this repository no longer pins them.
 
 | Role | Create when | Editing |
 | --- | --- | --- |

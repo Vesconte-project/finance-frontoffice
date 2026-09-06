@@ -35,14 +35,9 @@ jobs:
             base="$(git rev-list --max-parents=0 "$HEAD_SHA")"
           fi
 
-          agents=false
           verify=false
           frontend=false
           while IFS= read -r file; do
-            case "$file" in
-              docs/agents/codex/*|.codex/*|scripts/sync-codex-agents.mjs|tests/sync-codex-agents.test.mjs)
-                agents=true ;;
-            esac
             case "$file" in
               app/*|components/*|hooks/*|public/*|e2e/*|playwright.config.*|next.config.*|postcss.config.*|proxy.ts|vercel.json)
                 frontend=true ;;
@@ -52,9 +47,8 @@ jobs:
           done < <(git diff --name-only "$base" "$HEAD_SHA")
 
           if [[ "$frontend" == true ]]; then verify=false; fi
-          echo "agents=$agents" >> "$GITHUB_OUTPUT"
           echo "verify=$verify" >> "$GITHUB_OUTPUT"
-          echo "needed=$([[ "$agents" == true || "$verify" == true ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "needed=$verify" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-node@v4
         if: steps.route.outputs.needed == 'true'
@@ -66,18 +60,10 @@ jobs:
         if: steps.route.outputs.needed == 'true'
         run: npm ci
 
-      - name: Check canonical agent mirrors
-        if: steps.route.outputs.agents == 'true'
-        run: npm run agents:check
-
-      - name: Test agent synchronization
-        if: steps.route.outputs.agents == 'true'
-        run: npm run test:agents
-
       - name: Verify non-visual changes
         if: steps.route.outputs.verify == 'true'
         run: npm run verify
 
       - name: Record not-applicable result
         if: steps.route.outputs.needed != 'true'
-        run: echo "No agent or non-visual runtime validation applies to these changes."
+        run: echo "No non-visual runtime validation applies to these changes."
