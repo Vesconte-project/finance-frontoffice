@@ -104,20 +104,35 @@ export default function HeroConstellation() {
     let scrollWithRuntime: ((top: number, onComplete: () => void) => void) | null = null
     const revealStartedAt = performance.now()
     let reveal = reducedMotion ? 1 : 0
-    // Softens the field for the whole arrival and clears last, once the copy,
-    // the search and the support row are all in place. The network coming into
-    // focus is the closing beat rather than something that finishes early and
-    // leaves the last elements arriving on a settled screen.
-    let introBlur = reducedMotion ? 0 : 1
     let revealFinishedByGesture = reducedMotion
-    // A permanent softening of the field, and the only one that outlives the
-    // arrival. The far dust is drawn at a 1.1px radius, so a blur of this size
-    // takes its hard edge off entirely while the labelled hubs — three times
-    // that radius — keep their shape and stay the things worth reaching for.
+    // The extra softening the field carries through the arrival, on its own
+    // clock rather than the reveal's. It runs long and starts early — under
+    // the last two words — so the network resolves *with* the copy landing on
+    // it. Held to the end of the arrival instead, it read as a late snap: a
+    // held value has no direction, and 290ms is not enough distance to give it
+    // one.
+    let introBlur = reducedMotion ? 0 : 1
+    let introBlurFrom = introBlur
+    let introBlurStartsAt = revealStartedAt + 470
+    let introBlurClearsAt = revealStartedAt + 1500
+    // A softening the field keeps once the arrival is over. The far dust is
+    // drawn at a 1.1px radius, so a blur of this size takes its hard edge off
+    // entirely while the labelled hubs — three times that radius — keep their
+    // shape and stay the things worth reaching for.
     // Applies under reduced motion too: it is a static treatment, not motion.
     // Not free, but not a new cost either: the same CSS filter already runs at
     // 4px through the intro and 6.5px whenever the search is focused.
     const FIELD_SOFTEN = 1
+    // Where that softening has gone by the time the hero copy has left. It only
+    // ever existed to keep the field from competing with the writing over it;
+    // with the column faded out there is nothing to yield to, so the network
+    // sharpens instead of staying soft for no one. The hero fades from a scroll
+    // of 40px, a few percent of the pin — start just under that and finish well
+    // clear of it, so this reads as the field coming into focus rather than as
+    // a second thing happening at the same moment.
+    const SOFTEN_CLEARS_FROM = 0.03
+    const SOFTEN_CLEARS_BY = 0.32
+    let fieldProgress = 0
 
     const TICKERS = ['SPY','NVDA','AAPL','MSFT','QQQ','AMZN','META','TSLA','GOOGL','JPM','XOM','AVGO','AMD','LLY','V','COST','NFLX','HD','BRK.B','GLD']
     const COLORS: [number, number, number][] = darkMode ? [[25,201,182],[63,224,205],[139,123,255],[110,168,255]] : [[43,73,96],[78,103,119],[110,110,128],[86,106,123]]
@@ -200,16 +215,20 @@ export default function HeroConstellation() {
       const lab = fn.label; if (lab) { g.globalAlpha = Math.min(1, focus.t); g.font = '700 14px JetBrains Mono, monospace'; g.fillStyle = darkMode ? '#eef3ff' : '#142943'; g.fillText(lab, aX + rr + 14, aY + 5) }
       g.globalAlpha = 1
     }
+    // Also called from updateField, which is the only thing that moves the
+    // filter under reduced motion — the canvas is static there and render()
+    // does not run on scroll.
+    const applyCanvasFilter = () => {
+      const resting = FIELD_SOFTEN * (1 - smooth(SOFTEN_CLEARS_FROM, SOFTEN_CLEARS_BY, fieldProgress))
+      const canvasBlur = resting + searchMode * 6.5 + introBlur * 4
+      c.style.filter = canvasBlur > 0.002 ? 'blur(' + canvasBlur.toFixed(2) + 'px)' : 'none'
+    }
     function render() {
       rafId = 0
       if (document.hidden) return
-      if (!revealFinishedByGesture) {
-        const revealElapsed = performance.now() - revealStartedAt
-        reveal = Math.min(1, revealElapsed / 800)
-        // Starts once the support row has landed (1.05s + 220ms in globals.css)
-        // and resolves shortly after, so nothing arrives on an already-sharp field.
-        introBlur = 1 - smooth(1270, 1560, revealElapsed)
-      }
+      const now = performance.now()
+      if (!revealFinishedByGesture) reveal = Math.min(1, (now - revealStartedAt) / 800)
+      introBlur = introBlurFrom * (1 - smooth(introBlurStartsAt, introBlurClearsAt, now))
       tt += reducedMotion ? 0 : (focus.i < 0 ? 0.016 : 0.016 * 0.22)
       p += (targetP - p) * 0.07; if (focus.i < 0) { mx += (tmx - mx) * 0.03; my += (tmy - my) * 0.03 }
       searchMode += (searchModeTarget - searchMode) * 0.08
@@ -233,8 +252,7 @@ export default function HeroConstellation() {
       }
       if (focus.i >= 0 && nodes[focus.i]) { const fn = nodes[focus.i]; for (const n of nodes) { const ddx = n.bx - fn.bx, ddy = n.by - fn.by, ddz = n.bz - fn.bz; n.clar = 1 - smooth(R * 0.12, R * 0.95, Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz)) } } else { for (const n of nodes) n.clar = 1 }
       stageEl.style.opacity = String(Math.max(0, 1 - focus.t * 1.3))
-      const canvasBlur = FIELD_SOFTEN + searchMode * 6.5 + introBlur * 4
-      c.style.filter = canvasBlur > 0.002 ? 'blur(' + canvasBlur.toFixed(2) + 'px)' : 'none'
+      applyCanvasFilter()
       if (focus.t < 0.01 || focus.i < 0 || !nodes[focus.i]) {
         x.setTransform(DPR, 0, 0, DPR, 0, 0); x.clearRect(0, 0, W, H)
         drawScene(x, sig, 'all')
@@ -274,7 +292,19 @@ export default function HeroConstellation() {
       window.addEventListener('mouseout', onOut)
     }
     window.addEventListener('resize', onResize)
-    const finishReveal = () => { revealFinishedByGesture = true; reveal = 1; introBlur = 0 }
+    const finishReveal = () => {
+      revealFinishedByGesture = true
+      reveal = 1
+      // Cut the softening short from wherever it currently is rather than
+      // dropping it to zero. Somebody who acts during the arrival should not be
+      // shown a step change as their reward for it.
+      const now = performance.now()
+      if (now < introBlurClearsAt) {
+        introBlurFrom = introBlur
+        introBlurStartsAt = now
+        introBlurClearsAt = now + 220
+      }
+    }
     window.addEventListener('pointerdown', finishReveal, { passive: true })
     window.addEventListener('keydown', finishReveal)
     window.addEventListener('wheel', finishReveal, { passive: true })
@@ -303,6 +333,8 @@ export default function HeroConstellation() {
     const updateField = (progress: number, interactive = progress < 0.999) => {
       const strength = Math.max(0, Math.min(1, progress))
       heroVisible = interactive
+      fieldProgress = strength
+      applyCanvasFilter()
       c.style.opacity = String(1 - strength * 0.55)
       c.style.pointerEvents = interactive ? 'auto' : 'none'
       root.style.setProperty('--hc-field-progress', String(strength))
