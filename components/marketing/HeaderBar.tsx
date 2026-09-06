@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useAuth, useClerk, useUser } from '@clerk/nextjs'
 import { ArrowRight, ChevronDown } from 'lucide-react'
 import HeaderAccountControl from '@/components/HeaderAccountControl'
@@ -112,6 +113,7 @@ const ACCOUNT_TILES: Tile[] = [
 ]
 
 export default function HeaderBar({ isHome }: { isHome: boolean }) {
+  const router = useRouter()
   const { isSignedIn } = useAuth()
   const { user } = useUser()
   const clerk = useClerk()
@@ -235,7 +237,7 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
             'site-header__cluster md:justify-self-end'
           )}
         >
-          <nav className="hidden items-center md:flex">
+          <nav className="flex items-center">
             {MENUS.map((m) => (
               <button
                 key={m.key}
@@ -248,6 +250,13 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
                 // two presses. Preventing that mousedown is the fix.
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={(event) => {
+                  // Below md there's no room for the tile mega-menu, and it was
+                  // never reachable there at all before — go straight to the
+                  // page instead of opening a panel designed for a wide screen.
+                  if (window.matchMedia('(max-width: 767px)').matches) {
+                    router.push(m.href)
+                    return
+                  }
                   // `detail` is 0 for keyboard activation, where focus must stay
                   // put. A pointer click releases it: suppressing the mousedown
                   // focus above makes the browser read any focus landing
@@ -261,7 +270,7 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
                 className="site-header__navlink site-nav__trigger"
               >
                 {m.label}
-                <ChevronDown className="site-nav__chev size-3.5" aria-hidden="true" />
+                <ChevronDown className="site-nav__chev size-3.5 max-md:hidden" aria-hidden="true" />
               </button>
             ))}
           </nav>

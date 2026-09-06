@@ -3074,14 +3074,27 @@ html.chrome-scrolled .dock-search {
 }
 
 @media (max-width: 767px) {
+  /* The big DockingSearch overlay is the search while it's showing, so this
+     in-flow row would be a redundant second search field at rest. Once it's
+     scrolled and faded away (below), there is otherwise no search left on
+     mobile — the desktop pill search and header search are both md:block —
+     so this row takes over as mobile's docked search. */
   .marketing-home .site-header__inner > .mt-3 {
     display: none;
+  }
+  html.chrome-scrolled .marketing-home .site-header__inner > .mt-3 {
+    display: block;
   }
   .dock-search {
     --dock-search-motion-duration: 280ms;
     --dock-search-motion-easing: var(--motion-ease-soft);
     position: absolute;
-    top: clamp(210px, 44vh, 370px);
+    /* svh (small viewport height) resolves against the viewport with the
+       browser's address/toolbar chrome accounted for. vh resolves against the
+       large viewport as if that chrome were hidden, so on first paint — when
+       the toolbar is always showing — vh overstates the available height and
+       pushes the hero far lower than what's actually visible. */
+    top: clamp(170px, 36svh, 300px);
     width: calc(100vw - 32px);
     transition: transform var(--dock-search-motion-duration) var(--dock-search-motion-easing);
   }
@@ -3099,6 +3112,14 @@ html.chrome-scrolled .dock-search {
     flex-direction: column;
     gap: 2px;
     margin-top: 12px;
+  }
+  /* Opening results lifts the whole dock block — the same mechanism the
+     desktop lift uses, just far larger here. The field sits ~250px into the
+     block (title + subtitle above it), so a lift this size moves the field
+     near the top of the screen and pushes the title/subtitle off-screen
+     above it, leaving the keyboard the most room it can get for the panel. */
+  .dock-search:has(.ticker-search__root[data-open='true']) {
+    --dock-search-open-lift: -240px;
   }
 }
 
