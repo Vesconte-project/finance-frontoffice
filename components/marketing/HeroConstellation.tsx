@@ -123,16 +123,55 @@ export default function HeroConstellation() {
     // Not free, but not a new cost either: the same CSS filter already runs at
     // 4px through the intro and 6.5px whenever the search is focused.
     const FIELD_SOFTEN = 1
-    // Where that softening has gone by the time the hero copy has left. It only
-    // ever existed to keep the field from competing with the writing over it;
-    // with the column faded out there is nothing to yield to, so the network
-    // sharpens instead of staying soft for no one. The hero fades from a scroll
-    // of 40px, a few percent of the pin — start just under that and finish well
-    // clear of it, so this reads as the field coming into focus rather than as
-    // a second thing happening at the same moment.
-    const SOFTEN_CLEARS_FROM = 0.03
-    const SOFTEN_CLEARS_BY = 0.32
-    let fieldProgress = 0
+    // ...and only while something is painted over it. The softening exists to
+    // keep the field from competing with the copy on top of it, so with nothing
+    // on top there is nothing to yield to and the network comes into focus.
+    // Between the hero column fading out and the sections arriving, the field
+    // has a full viewport to itself; that stretch is the one where it is sharp.
+    //
+    // Driven by presence, not by scroll position. Tying it to scroll distance
+    // made it a scrubbed parameter — it moved because the reader moved, which
+    // is not what it is about. It flips on a state change and then eases on its
+    // own clock, so it takes the same time whether the reader arrives fast or
+    // slowly.
+    //
+    // What counts as foreground is declared in the markup with
+    // `data-field-foreground` rather than found here by selector, so a new
+    // section cannot silently start or stop counting.
+    const SOFTEN_FADE = 520
+    // How often the roster is re-read. Presence changes on scroll, and this is
+    // well inside the ease it starts, so it is imperceptible — while being
+    // immune to a missed signal in a way an event subscription is not, since
+    // the class this depends on is set by another component's own scroll tick.
+    const FOREGROUND_POLL = 100
+    let soften = 1
+    let softenFrom = 1
+    let softenTarget = 1
+    let softenStartedAt = 0
+    let foregroundReadAt = 0
+    // `pointer-events` is the honest signal for whether the hero column is
+    // still foreground: unlike its opacity it is not transitioned, so it flips
+    // the moment the column stops being something the reader can reach, rather
+    // than 450ms later when the fade finishes. It also excludes the field's own
+    // two corner captions, which are permanently `pointer-events: none` — they
+    // annotate the field rather than sit on top of it.
+    const isPainted = (el: HTMLElement) => {
+      const style = getComputedStyle(el)
+      if (style.pointerEvents === 'none' || style.visibility === 'hidden') return false
+      const rect = el.getBoundingClientRect()
+      return rect.bottom > 0 && rect.top < window.innerHeight
+    }
+    const readForeground = (now: number) => {
+      const marked = document.querySelectorAll<HTMLElement>('[data-field-foreground]')
+      // The sections stream in after this effect mounts. An empty roster means
+      // "not known yet", so hold the softening rather than sharpen for a frame.
+      const present = marked.length === 0 || Array.from(marked).some(isPainted)
+      const next = present ? 1 : 0
+      if (next === softenTarget) return
+      softenFrom = soften
+      softenTarget = next
+      softenStartedAt = now
+    }
 
     const TICKERS = ['SPY','NVDA','AAPL','MSFT','QQQ','AMZN','META','TSLA','GOOGL','JPM','XOM','AVGO','AMD','LLY','V','COST','NFLX','HD','BRK.B','GLD']
     const COLORS: [number, number, number][] = darkMode ? [[25,201,182],[63,224,205],[139,123,255],[110,168,255]] : [[43,73,96],[78,103,119],[110,110,128],[86,106,123]]
@@ -215,12 +254,8 @@ export default function HeroConstellation() {
       const lab = fn.label; if (lab) { g.globalAlpha = Math.min(1, focus.t); g.font = '700 14px JetBrains Mono, monospace'; g.fillStyle = darkMode ? '#eef3ff' : '#142943'; g.fillText(lab, aX + rr + 14, aY + 5) }
       g.globalAlpha = 1
     }
-    // Also called from updateField, which is the only thing that moves the
-    // filter under reduced motion — the canvas is static there and render()
-    // does not run on scroll.
     const applyCanvasFilter = () => {
-      const resting = FIELD_SOFTEN * (1 - smooth(SOFTEN_CLEARS_FROM, SOFTEN_CLEARS_BY, fieldProgress))
-      const canvasBlur = resting + searchMode * 6.5 + introBlur * 4
+      const canvasBlur = FIELD_SOFTEN * soften + searchMode * 6.5 + introBlur * 4
       c.style.filter = canvasBlur > 0.002 ? 'blur(' + canvasBlur.toFixed(2) + 'px)' : 'none'
     }
     function render() {
@@ -229,6 +264,13 @@ export default function HeroConstellation() {
       const now = performance.now()
       if (!revealFinishedByGesture) reveal = Math.min(1, (now - revealStartedAt) / 800)
       introBlur = introBlurFrom * (1 - smooth(introBlurStartsAt, introBlurClearsAt, now))
+      // Reduced motion has no frame loop to ease on, and a blur that steps
+      // between two values is worse than one that simply stays put, so there
+      // the field keeps its softening throughout.
+      if (!reducedMotion) {
+        if (now - foregroundReadAt >= FOREGROUND_POLL) { foregroundReadAt = now; readForeground(now) }
+        soften = softenFrom + (softenTarget - softenFrom) * smooth(softenStartedAt, softenStartedAt + SOFTEN_FADE, now)
+      }
       tt += reducedMotion ? 0 : (focus.i < 0 ? 0.016 : 0.016 * 0.22)
       p += (targetP - p) * 0.07; if (focus.i < 0) { mx += (tmx - mx) * 0.03; my += (tmy - my) * 0.03 }
       searchMode += (searchModeTarget - searchMode) * 0.08
@@ -333,8 +375,6 @@ export default function HeroConstellation() {
     const updateField = (progress: number, interactive = progress < 0.999) => {
       const strength = Math.max(0, Math.min(1, progress))
       heroVisible = interactive
-      fieldProgress = strength
-      applyCanvasFilter()
       c.style.opacity = String(1 - strength * 0.55)
       c.style.pointerEvents = interactive ? 'auto' : 'none'
       root.style.setProperty('--hc-field-progress', String(strength))
