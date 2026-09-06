@@ -16,11 +16,14 @@ const HEADLINE = 'Be a better investor'
 
    Deliberately not a list of US mega-caps: coverage spans Europe, Asia and the
    Gulf, and a hint that only ever shows Silicon Valley teaches a visitor the
-   wrong boundary. Every name has to be big enough that a non-investor knows it.
+   wrong boundary. Every name has to be big enough that a non-investor knows it,
+   and spelled out rather than abbreviated — an acronym is a ticker wearing a
+   different hat, and the whole point is showing someone who does not know
+   tickers what to type.
 
    A hint is an implicit promise that the search finds what it shows, so confirm
    a name resolves in /api/tickers/index before adding it here. */
-const TYPING_HINTS = ['Apple', 'Siemens', 'Samsung', 'Saudi Aramco', 'Alibaba', 'Microsoft'] as const
+const TYPING_HINTS = ['Apple', 'Siemens', 'Samsung', 'Toyota', 'Alibaba', 'Microsoft'] as const
 
 /**
  * Homepage hero search.

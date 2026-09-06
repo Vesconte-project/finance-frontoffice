@@ -192,6 +192,8 @@ export default function TickerSearchCombobox({
   const router = useRouter()
   const [search, setSearch] = useState(initialValue)
   const [typedHint, setTypedHint] = useState<string | null>(null)
+  const [caretOn, setCaretOn] = useState(true)
+  const lastKeystrokeAt = useRef(0)
   const [tickerIndex, setTickerIndex] = useState<CachedTickerIndex | null>(memoryTickerIndex)
   const [recentTickers, setRecentTickers] = useState<string[]>([])
   const [isOpen, setIsOpen] = useState(false)
@@ -215,9 +217,12 @@ export default function TickerSearchCombobox({
 
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | null = null
-    let index = 0
-    let cut = 0
-    let erasing = false
+    // The first thing erased is the real placeholder, so the hint grows out of
+    // the label the field already had instead of replacing it in one frame.
+    let current = placeholder
+    let index = -1
+    let cut = placeholder.length
+    let erasing = true
 
     const step = () => {
       if (cancelled) return
@@ -226,18 +231,19 @@ export default function TickerSearchCombobox({
         timer = setTimeout(step, 400)
         return
       }
-      const word = typingHints[index % typingHints.length]
       cut += erasing ? -1 : 1
-      setTypedHint(word.slice(0, cut))
+      lastKeystrokeAt.current = Date.now()
+      setTypedHint(current.slice(0, cut))
 
-      let wait = erasing ? 45 : 95
-      if (!erasing && cut >= word.length) {
+      let wait = erasing ? 55 : 120
+      if (!erasing && cut >= current.length) {
         erasing = true
-        wait = 2200
+        wait = 2800
       } else if (erasing && cut <= 0) {
         erasing = false
         index += 1
-        wait = 600
+        current = typingHints[index % typingHints.length]
+        wait = 700
       }
       timer = setTimeout(step, wait)
     }
@@ -245,12 +251,26 @@ export default function TickerSearchCombobox({
     // The real placeholder holds first, so the field reads as a search box
     // before it starts demonstrating itself. Also the pause before the hints
     // return after someone opens the field and leaves without typing.
-    timer = setTimeout(step, 2600)
+    timer = setTimeout(step, 2200)
     return () => {
       cancelled = true
       if (timer) clearTimeout(timer)
     }
-  }, [hintsActive, typingHints])
+  }, [hintsActive, typingHints, placeholder])
+
+  // A real caret holds steady while characters are landing and blinks once the
+  // typing pauses. A block that never blinks reads as a glyph, not a cursor.
+  useEffect(() => {
+    if (!hintsActive) return
+    const id = setInterval(() => {
+      if (Date.now() - lastKeystrokeAt.current < 400) {
+        setCaretOn(true)
+        return
+      }
+      setCaretOn((on) => !on)
+    }, 530)
+    return () => clearInterval(id)
+  }, [hintsActive])
 
   useEffect(() => {
     setSearch(initialValue)
@@ -657,7 +677,7 @@ export default function TickerSearchCombobox({
             blurTimeoutRef.current = null
           }, 120)
         }}
-        placeholder={typedHint === null ? placeholder : `${typedHint}\u258f`}
+        placeholder={typedHint === null ? placeholder : `${typedHint}${caretOn ? '\u258f' : ' '}`}
         className={inputClassName}
         role="combobox"
         aria-expanded={shouldShowDropdown}
