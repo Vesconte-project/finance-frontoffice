@@ -1,9 +1,11 @@
 'use client'
 
-import type { FocusEvent } from 'react'
+import { Fragment, useEffect, useState, type CSSProperties, type FocusEvent } from 'react'
 import Link from 'next/link'
 import { ChartNetwork } from 'lucide-react'
 import HeaderSearch from '@/components/HeaderSearch'
+
+const HEADLINE = 'Be a better investor'
 
 /**
  * Homepage hero search.
@@ -21,16 +23,33 @@ function emit(focused: boolean) {
 }
 
 export default function DockingSearch() {
+  const [revealReady, setRevealReady] = useState(false)
   const onFocus = () => emit(true)
   const onBlur = (event: FocusEvent<HTMLDivElement>) => {
     // Only when focus truly leaves the search, not when moving within it.
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) emit(false)
   }
 
+  useEffect(() => {
+    let cancelled = false
+    void document.fonts.ready.then(() => {
+      if (!cancelled) setRevealReady(true)
+    })
+    return () => { cancelled = true }
+  }, [])
+
   return (
-    <div data-dock-search className="dock-search" onFocus={onFocus} onBlur={onBlur}>
+    <div data-dock-search className="dock-search" data-reveal-ready={revealReady ? 'true' : 'false'} onFocus={onFocus} onBlur={onBlur}>
       <div className="dock-search__intro">
-        <h1 className="dock-search__title">Nothing moves alone.</h1>
+        <h1 className="dock-search__title" aria-label={HEADLINE}>
+          {HEADLINE.split(' ').map((word, wordIndex) => (
+            <Fragment key={word}>
+              <span className="dock-search__word" aria-hidden="true" style={{ ['--i' as string]: wordIndex } as CSSProperties}>{word}</span>
+              {wordIndex < HEADLINE.split(' ').length - 1 ? ' ' : null}
+            </Fragment>
+          ))}
+        </h1>
+        <p className="dock-search__subtitle">{"Don't guess. Analyze."}</p>
       </div>
       <div className="dock-search__field">
         <HeaderSearch className="w-full" maxSuggestions={4} placeholder="Search a ticker or company…" />

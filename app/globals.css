@@ -2603,6 +2603,23 @@ html[data-theme="light"] .marketing-home .site-header__tile {
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
 }
+.marketing-home .dock-search .ticker-search__root[data-open='true'] {
+  border-radius: 16px 16px 22px 22px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-spark) 18%, transparent);
+  transition: box-shadow 180ms ease;
+}
+/* The ring now belongs to the root, so the field keeps only its drop shadow —
+   two rings meeting at the seam read as two stacked boxes. */
+.marketing-home .dock-search .ticker-search__root[data-open='true'] :is(input):focus-visible {
+  box-shadow: 0 14px 32px rgba(25, 40, 53, 0.08);
+}
+.marketing-home[data-theme="dark"] .dock-search .ticker-search__root[data-open='true'] :is(input):focus-visible,
+html[data-theme="dark"] .marketing-home .dock-search .ticker-search__root[data-open='true'] :is(input):focus-visible {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 18px 45px rgba(0, 0, 0, 0.22);
+}
+.marketing-home .dock-search .ticker-search__root[data-open='true'] .ticker-search__panel {
+  border-color: var(--brand-spark);
+}
 .marketing-home .dock-search .ticker-search__panel::before {
   content: '';
   position: absolute;
@@ -2714,6 +2731,11 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel butto
 
 .dock-search {
   --dock-search-open-lift: 0px;
+  /* The distance the fixed hero column is pulled up from its 42vh anchor. */
+  --dock-search-dock-offset: clamp(70px, 5.6vw, 82px);
+  /* How far the heading sits below the viewport's middle once docked, so the
+     arrival can start centred and rise into place. */
+  --dock-search-intro-lift: calc(8vh + var(--dock-search-dock-offset) - 32px);
   --dock-search-motion-duration: 500ms;
   --dock-search-motion-easing: var(--chrome-ease);
   position: fixed;
@@ -2721,7 +2743,7 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel butto
   left: 50%;
   top: 42vh;
   width: min(700px, calc(100vw - 48px));
-  transform: translate(-50%, calc(-1 * clamp(108px, 8.6vw, 124px))) translateY(var(--dock-search-open-lift));
+  transform: translate(-50%, calc(-1 * var(--dock-search-dock-offset))) translateY(var(--dock-search-open-lift));
   transition:
     opacity 0.45s var(--chrome-ease),
     transform var(--dock-search-motion-duration) var(--dock-search-motion-easing);
@@ -2730,21 +2752,67 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel butto
   margin: 0 auto 24px;
   text-align: center;
 }
+/* Starts centred on the viewport while the headline reveals, then rises into
+   place as the last word lands — arriving exactly as the subtitle fades in at
+   900ms. Nothing after it moves: the subtitle, field and support keep the
+   delays they already had. */
+.dock-search[data-reveal-ready='true'] .dock-search__intro {
+  animation: dock-search-intro-settle 200ms cubic-bezier(0.22, 1, 0.36, 1) 700ms both;
+}
+@keyframes dock-search-intro-settle {
+  from { transform: translateY(var(--dock-search-intro-lift)); }
+  to { transform: translateY(0); }
+}
 .dock-search__title {
   margin: 10px 0 0;
   color: var(--content-primary);
   font-family: var(--font-display, ui-sans-serif, sans-serif);
-  font-size: clamp(2.2rem, 5vw, 4.1rem);
+  font-size: clamp(1.9rem, 3.2vw, 2.9rem);
   font-weight: 700;
   letter-spacing: -0.055em;
   line-height: 0.98;
 }
+.dock-search__word {
+  display: inline-block;
+  white-space: nowrap;
+  opacity: 0;
+  filter: blur(8px);
+  transform: translateY(0.35em);
+}
+.dock-search[data-reveal-ready='true'] .dock-search__word {
+  animation: dock-search-word-in 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i) * 70ms);
+}
+.dock-search__subtitle {
+  margin: 10px 0 0;
+  color: var(--content-secondary);
+  font-size: 15px;
+  line-height: 1.5;
+  opacity: 0;
+}
+.dock-search[data-reveal-ready='true'] .dock-search__subtitle {
+  --dock-search-rise-from: 6px;
+  animation: dock-search-rise-in 240ms cubic-bezier(0.22, 1, 0.36, 1) 900ms both;
+}
+@keyframes dock-search-word-in {
+  from { opacity: 0; filter: blur(8px); transform: translateY(0.35em); }
+  to { opacity: 1; filter: blur(0); transform: translateY(0); }
+}
+@keyframes dock-search-copy-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes dock-search-rise-in {
+  from { opacity: 0; transform: translateY(var(--dock-search-rise-from, 10px)); }
+  to { opacity: 1; transform: translateY(0); }
+}
 .dock-search__field {
   width: 100%;
+  opacity: 0;
 }
 .dock-search__field :is(input) {
-  height: 54px;
-  font-size: 16px;
+  height: 62px;
+  font-size: 17px;
   border-radius: 16px;
   border-color: color-mix(in srgb, var(--content-primary) 18%, transparent);
   background: color-mix(in srgb, var(--page-bg) 68%, white);
@@ -2770,6 +2838,16 @@ html[data-theme="dark"] .marketing-home .dock-search__field :is(input) {
   position: relative;
   z-index: 60;
   transition: transform 220ms var(--motion-ease-standard);
+  opacity: 0;
+}
+.dock-search[data-reveal-ready='true'] .dock-search__field {
+  --dock-search-rise-from: 10px;
+  animation: dock-search-rise-in 280ms cubic-bezier(0.22, 1, 0.36, 1) 970ms both;
+}
+/* Opacity only: this row owns a `transition: transform` for the open-panel
+   shift, and a filled transform animation would freeze that value. */
+.dock-search[data-reveal-ready='true'] .dock-search__support {
+  animation: dock-search-copy-in 220ms ease-out 1.05s both;
 }
 .dock-search:has(.ticker-search__root[data-open='true']) {
   --dock-search-open-lift: clamp(-88px, -6vw, -56px);
@@ -2828,7 +2906,10 @@ html.chrome-scrolled .dock-search {
     margin-bottom: 20px;
   }
   .dock-search__title {
-    font-size: clamp(2rem, 10vw, 2.8rem);
+    font-size: clamp(1.8rem, 8.8vw, 2.5rem);
+  }
+  .dock-search__subtitle {
+    font-size: 14px;
   }
   .dock-search__support {
     align-items: center;
@@ -2840,7 +2921,7 @@ html.chrome-scrolled .dock-search {
 
 @media (max-width: 389px) {
   .dock-search__field :is(input) {
-    height: 52px;
+    height: 60px;
   }
 }
 
@@ -2898,6 +2979,16 @@ html.chrome-scrolled .dock-search {
   }
 
   html.chrome-scrolled main.marketing-home .dock-search {
+    transform: none;
+  }
+  .dock-search__intro,
+  .dock-search__word,
+  .dock-search__subtitle,
+  .dock-search__field,
+  .dock-search__support {
+    animation: none;
+    opacity: 1;
+    filter: none;
     transform: none;
   }
 }

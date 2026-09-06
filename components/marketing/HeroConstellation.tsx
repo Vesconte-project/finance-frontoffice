@@ -5,6 +5,7 @@ import gsap from 'gsap'
 import { Sora, JetBrains_Mono, Inter } from 'next/font/google'
 import { useScrollRuntime } from '@/components/motion/ScrollRuntime'
 import { scrollMotionTokens } from '@/components/motion/scroll-tokens'
+import { PICK_READING_CONTENT, PICK_READING_KEYS } from '@/lib/picks-content'
 
 const sora = Sora({ subsets: ['latin'], weight: ['400', '600', '700', '800'], display: 'swap' })
 const inter = Inter({ subsets: ['latin'], display: 'swap' })
@@ -52,7 +53,9 @@ const CSS = `
 .hc-root .hc-in a,.hc-root .hc-in button{pointer-events:auto}
 .hc-root .hc-card{display:flex;align-items:center;gap:16px;width:fit-content;margin-top:26px;padding:14px 18px;border-radius:18px;background:var(--glass);border:1px solid var(--glass-border);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 24px 60px -24px #000;backdrop-filter:blur(16px) saturate(1.5);-webkit-backdrop-filter:blur(16px) saturate(1.5)}
 .hc-root .hc-card .v{font-family:var(--font-display);font-weight:700;font-size:20px}
-.hc-root .hc-scrollcue{position:fixed;bottom:16px;left:0;right:0;text-align:center;z-index:40;font-family:var(--font-mono);font-size:11px;color:var(--text-3);pointer-events:none}
+.hc-root .hc-fieldcaption,.hc-root .hc-fieldreadings{position:fixed;bottom:16px;z-index:40;font-family:var(--font-mono);font-size:11px;color:var(--text-2);pointer-events:none}
+.hc-root .hc-fieldcaption{left:24px}
+.hc-root .hc-fieldreadings{right:24px;text-align:right}
 .hc-root #hc-focusLayer{position:fixed;inset:0;z-index:70;opacity:0;pointer-events:none}
 .hc-root #hc-focusDim{position:absolute;inset:0;background:rgba(20,41,67,.16)}
 .hc-root #hc-focusCard{position:absolute;left:54%;top:50%;width:min(360px,46vw);padding:22px;border-radius:20px;background:var(--focus-bg);color:var(--focus-text);border:1px solid var(--focus-border);box-shadow:var(--focus-shadow);backdrop-filter:blur(18px) saturate(1.15);-webkit-backdrop-filter:blur(18px) saturate(1.15)}
@@ -69,12 +72,12 @@ const CSS = `
 .hc-root .hc-fc-open{display:inline-block;margin-top:18px;font-weight:600;font-size:14px;color:var(--spark);text-decoration:none}
 .hc-root .hc-fc-open:hover{text-decoration:underline;text-underline-offset:4px}
 html[data-theme="dark"] .hc-root #hc-focusDim,.hc-root[data-theme="dark"] #hc-focusDim{background:rgba(0,4,10,.52)}
+@media(max-width:767px){.hc-root .hc-fieldcaption{display:none}}
 @media(max-width:720px){.hc-root #hc-focusCard{left:12px;right:12px;top:auto;bottom:16px;width:auto;padding:20px}.hc-root .hc-fc-ticker{font-size:30px}}
 .hc-root[data-reduced-motion="true"] #hc-focusCard{transition:none}
 .hc-root[data-reduced-motion="true"] #hc-stage{height:auto;min-height:0}
 .hc-root[data-reduced-motion="true"] .hc-beat{position:relative;inset:auto;min-height:0;padding-block:clamp(48px,8vh,80px);opacity:1!important;transform:none!important}
 .hc-root[data-reduced-motion="true"] .hc-beat:first-child{display:none}
-.hc-root[data-reduced-motion="true"] .hc-scrollcue{display:none}
 `
 
 export default function HeroConstellation() {
@@ -99,6 +102,14 @@ export default function HeroConstellation() {
     let heroVisible = true
     let releaseScrollLock: (() => void) | null = null
     let scrollWithRuntime: ((top: number, onComplete: () => void) => void) | null = null
+    const revealStartedAt = performance.now()
+    let reveal = reducedMotion ? 1 : 0
+    // Softens the field for the whole arrival and clears last, once the copy,
+    // the search and the support row are all in place. The network coming into
+    // focus is the closing beat rather than something that finishes early and
+    // leaves the last elements arriving on a settled screen.
+    let introBlur = reducedMotion ? 0 : 1
+    let revealFinishedByGesture = reducedMotion
 
     const TICKERS = ['SPY','NVDA','AAPL','MSFT','QQQ','AMZN','META','TSLA','GOOGL','JPM','XOM','AVGO','AMD','LLY','V','COST','NFLX','HD','BRK.B','GLD']
     const COLORS: [number, number, number][] = darkMode ? [[25,201,182],[63,224,205],[139,123,255],[110,168,255]] : [[43,73,96],[78,103,119],[110,110,128],[86,106,123]]
@@ -142,6 +153,8 @@ export default function HeroConstellation() {
     const oc = document.createElement('canvas'); const octx = oc.getContext('2d')!
 
     function drawScene(g: CanvasRenderingContext2D, sig: number, mode: string) {
+      const nodeReveal = smooth(0, 0.45, reveal)
+      const edgeReveal = smooth(0.35, 1, reveal)
       if (mode !== 'conn') { const gg = g.createRadialGradient(cx, cy, 0, cx, cy, R); gg.addColorStop(0, 'rgba(' + sparkRgb + ',' + ((darkMode ? 0.08 : 0.018) + (darkMode ? 0.06 : 0.012) * p) * (1 - focus.t) + ')'); gg.addColorStop(1, 'rgba(' + sparkRgb + ',0)'); g.fillStyle = gg; g.fillRect(0, 0, W, H) }
       for (let k = 0; k < pairs.length; k += 2) {
         const ia = pairs[k], ib = pairs[k + 1], conn = (ia === focus.i || ib === focus.i)
@@ -149,7 +162,7 @@ export default function HeroConstellation() {
         const a = nodes[ia], b = nodes[ib], da = Math.min(a.da, b.da), hv = Math.max(a.hover, b.hover)
         const clar = conn ? 1 : Math.min(a.clar, b.clar), ld = 1 - focus.t * (1 - (0.06 + 0.94 * clar))
         const aA = conn ? (0.32 + 0.5 * focus.t) : ((0.03 + 0.11 * da + 0.05 * p + 0.25 * hv) * ld)
-        g.strokeStyle = (conn ? (darkMode ? 'rgba(150,245,228,' : 'rgba(19,128,119,') : 'rgba(' + lineRgb + ',') + aA + ')'; g.lineWidth = 1 + hv * 0.5 + (conn ? focus.t * 2 : 0)
+        g.strokeStyle = (conn ? (darkMode ? 'rgba(150,245,228,' : 'rgba(19,128,119,') : 'rgba(' + lineRgb + ',') + (aA * edgeReveal) + ')'; g.lineWidth = 1 + hv * 0.5 + (conn ? focus.t * 2 : 0)
         g.beginPath(); g.moveTo(a.sx, a.sy); g.lineTo(b.sx, b.sy); g.stroke()
       }
       if (mode !== 'conn' && focus.i < 0) {
@@ -163,10 +176,10 @@ export default function HeroConstellation() {
           let col: string; if (n.signal) col = 'rgb(52,211,153)'; else { const bias = sig * (n.label ? 0.55 : 0.25); col = 'rgb(' + Math.round(n.rgb[0] + (G[0] - n.rgb[0]) * bias) + ',' + Math.round(n.rgb[1] + (G[1] - n.rgb[1]) * bias) + ',' + Math.round(n.rgb[2] + (G[2] - n.rgb[2]) * bias) + ')' }
           const r = Math.min(24, Math.max(0.5, ((n.signal ? (n.r + sig * 6) : n.r) + n.hover * 5) * n.sc))
           const dim = 1 - focus.t * (1 - (0.10 + 0.90 * n.clar))
-          g.globalAlpha = Math.min(1, (n.da + n.hover * 0.6) * dim)
+          g.globalAlpha = Math.min(1, (n.da + n.hover * 0.6) * dim * nodeReveal)
           g.beginPath(); g.arc(n.sx, n.sy, r, 0, 6.28); g.fillStyle = col; g.shadowColor = col; g.shadowBlur = (darkMode ? (n.label ? 12 : 5) + n.hover * 16 : (n.label ? 2 : 0) + n.hover * 5) * glow; g.fill(); g.shadowBlur = 0
           const lab = n.label
-          if (lab && (n.da > 0.4 || n.hover > 0.25)) { g.globalAlpha = Math.min(1, (n.da * 0.8 + n.hover) * dim); g.font = '600 10px JetBrains Mono, monospace'; g.fillStyle = labelColor; g.fillText(lab, n.sx + r + 4, n.sy + 3) }
+          if (lab && (n.da > 0.4 || n.hover > 0.25)) { g.globalAlpha = Math.min(1, (n.da * 0.8 + n.hover) * dim * nodeReveal); g.font = '600 10px JetBrains Mono, monospace'; g.fillStyle = labelColor; g.fillText(lab, n.sx + r + 4, n.sy + 3) }
           g.globalAlpha = 1
         }
       }
@@ -182,6 +195,13 @@ export default function HeroConstellation() {
     function render() {
       rafId = 0
       if (document.hidden) return
+      if (!revealFinishedByGesture) {
+        const revealElapsed = performance.now() - revealStartedAt
+        reveal = Math.min(1, revealElapsed / 800)
+        // Starts once the support row has landed (1.05s + 220ms in globals.css)
+        // and resolves shortly after, so nothing arrives on an already-sharp field.
+        introBlur = 1 - smooth(1270, 1560, revealElapsed)
+      }
       tt += reducedMotion ? 0 : (focus.i < 0 ? 0.016 : 0.016 * 0.22)
       p += (targetP - p) * 0.07; if (focus.i < 0) { mx += (tmx - mx) * 0.03; my += (tmy - my) * 0.03 }
       searchMode += (searchModeTarget - searchMode) * 0.08
@@ -205,7 +225,8 @@ export default function HeroConstellation() {
       }
       if (focus.i >= 0 && nodes[focus.i]) { const fn = nodes[focus.i]; for (const n of nodes) { const ddx = n.bx - fn.bx, ddy = n.by - fn.by, ddz = n.bz - fn.bz; n.clar = 1 - smooth(R * 0.12, R * 0.95, Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz)) } } else { for (const n of nodes) n.clar = 1 }
       stageEl.style.opacity = String(Math.max(0, 1 - focus.t * 1.3))
-      c.style.filter = searchMode > 0.002 ? 'blur(' + (searchMode * 6.5).toFixed(2) + 'px)' : 'none'
+      const canvasBlur = searchMode * 6.5 + introBlur * 4
+      c.style.filter = canvasBlur > 0.002 ? 'blur(' + canvasBlur.toFixed(2) + 'px)' : 'none'
       if (focus.t < 0.01 || focus.i < 0 || !nodes[focus.i]) {
         x.setTransform(DPR, 0, 0, DPR, 0, 0); x.clearRect(0, 0, W, H)
         drawScene(x, sig, 'all')
@@ -245,6 +266,12 @@ export default function HeroConstellation() {
       window.addEventListener('mouseout', onOut)
     }
     window.addEventListener('resize', onResize)
+    const finishReveal = () => { revealFinishedByGesture = true; reveal = 1; introBlur = 0 }
+    window.addEventListener('pointerdown', finishReveal, { passive: true })
+    window.addEventListener('keydown', finishReveal)
+    window.addEventListener('wheel', finishReveal, { passive: true })
+    window.addEventListener('touchstart', finishReveal, { passive: true })
+    window.addEventListener('focusin', finishReveal)
     const onVisibilityChange = () => {
       if (document.hidden) {
         cancelAnimationFrame(rafId)
@@ -263,7 +290,7 @@ export default function HeroConstellation() {
     const win = [[-0.06, 0.16], [0.20, 0.37], [0.41, 0.57], [0.61, 0.77], [0.81, 1.01]]
     const updateBeats = (prog: number) => beats.forEach((el, i) => { const [a, b] = win[i]; const inn = smooth(a, a + 0.05, prog), out = 1 - smooth(b - 0.05, b, prog); const o = Math.max(0, Math.min(1, inn * out)); el.style.opacity = String(o); el.style.transform = 'translateY(' + ((1 - o) * 18) + 'px)' })
     updateBeats(0)
-    const setP = (v: number) => { targetP = v; $('hc-prog').style.width = (v * 100) + '%'; const cue = $('hc-cue'); if (cue) cue.style.opacity = v > 0.02 ? '0' : '1'; updateBeats(v) }
+    const setP = (v: number) => { targetP = v; $('hc-prog').style.width = (v * 100) + '%'; const caption = $('hc-caption'); const readings = $('hc-readings'); const opacity = v > 0.02 ? '0' : '1'; caption.style.opacity = opacity; readings.style.opacity = opacity; updateBeats(v) }
 
     const updateField = (progress: number, interactive = progress < 0.999) => {
       const strength = Math.max(0, Math.min(1, progress))
@@ -485,6 +512,7 @@ export default function HeroConstellation() {
       document.removeEventListener('visibilitychange', onVisibilityChange)
       unsubscribeStaticScroll?.()
       window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseout', onOut); window.removeEventListener('resize', onResize)
+      window.removeEventListener('pointerdown', finishReveal); window.removeEventListener('keydown', finishReveal); window.removeEventListener('wheel', finishReveal); window.removeEventListener('touchstart', finishReveal); window.removeEventListener('focusin', finishReveal)
       window.removeEventListener('keydown', onKey); window.removeEventListener('click', onClick, true)
       window.removeEventListener('mousedown', onDown, true); window.removeEventListener('meridian:search-focus', onSearchFocus)
       window.removeEventListener('wheel', onWheel, true); window.removeEventListener('touchstart', onTouchStart, true); window.removeEventListener('touchmove', onTouchMove, true)
@@ -508,7 +536,8 @@ export default function HeroConstellation() {
         <div className="hc-beat"><div className="hc-in" /></div>
       </div>
 
-      <div className="hc-scrollcue" id="hc-cue">▸ scroll · click a particle</div>
+      <div className="hc-fieldcaption" id="hc-caption">Nothing moves alone.</div>
+      <div className="hc-fieldreadings" id="hc-readings">{PICK_READING_KEYS.map((key) => PICK_READING_CONTENT[key].label).join(' · ')}</div>
 
       <div id="hc-focusLayer" aria-hidden="true">
         <div id="hc-focusDim" />
