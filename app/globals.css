@@ -1657,40 +1657,6 @@ html.chrome-scrolled .site-header__row:not([data-menu-open]) [data-header-search
   transform: rotate(180deg);
 }
 
-/* Mobile-only nav: Today/Correlation have no reachable entry point below the
-   md breakpoint otherwise, since the desktop nav and its mega-menu tiles are
-   hidden md:flex. This is a small independent dropdown — not the desktop tile
-   mega-menu — so it doesn't touch .site-header__row[data-menu-open] or
-   .site-header__dropdowns at all. */
-.site-header__mobile-nav {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 20;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 168px;
-  padding: 6px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--glass-border);
-  background: var(--glass-bg);
-  box-shadow: var(--glass-shadow);
-  -webkit-backdrop-filter: blur(24px) saturate(1.6);
-  backdrop-filter: blur(24px) saturate(1.6);
-}
-.site-header__mobile-nav-link {
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--content-primary);
-}
-.site-header__mobile-nav-link:hover,
-.site-header__mobile-nav-link:focus-visible {
-  background-color: color-mix(in srgb, var(--content-primary) 8%, transparent);
-}
-
 /* --- The expanding dropdowns area + tile grid --- */
 .site-header__dropdowns {
   max-height: 0;
@@ -3146,6 +3112,14 @@ html.chrome-scrolled .dock-search {
     flex-direction: column;
     gap: 2px;
     margin-top: 12px;
+  }
+  /* Opening results lifts the whole dock block — the same mechanism the
+     desktop lift uses, just far larger here. The field sits ~250px into the
+     block (title + subtitle above it), so a lift this size moves the field
+     near the top of the screen and pushes the title/subtitle off-screen
+     above it, leaving the keyboard the most room it can get for the panel. */
+  .dock-search:has(.ticker-search__root[data-open='true']) {
+    --dock-search-open-lift: -240px;
   }
 }
 

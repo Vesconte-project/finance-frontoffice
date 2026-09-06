@@ -53,37 +53,40 @@ test('mobile search is reachable again after scrolling the homepage', async ({ p
   expect(box?.width ?? 0).toBeGreaterThan(0)
 })
 
-test('mobile nav menu exposes Today and Correlation, and closes on outside click / Escape', async ({ page }) => {
+test('mobile header exposes the same Today and Correlation triggers as desktop, no toggle/menu icon', async ({ page }) => {
   await stubBackends(page)
   await page.goto('/', { waitUntil: 'load' })
   await page.evaluate(() => document.fonts.ready)
 
-  const toggle = page.getByRole('button', { name: 'Menu' })
-  await expect(toggle).toBeVisible()
-  await toggle.click()
-
-  const panel = page.getByRole('menu')
-  await expect(panel).toBeVisible()
-  await expect(panel.getByRole('menuitem', { name: 'Today' })).toBeVisible()
-  await expect(panel.getByRole('menuitem', { name: 'Correlation' })).toBeVisible()
-
-  await page.keyboard.press('Escape')
-  await expect(panel).toBeHidden()
-
-  await toggle.click()
-  await expect(panel).toBeVisible()
-  await page.mouse.click(200, 500)
-  await expect(panel).toBeHidden()
+  // Same buttons as desktop (not a separate mobile-only element) — below md
+  // they just navigate directly instead of opening the tile mega-menu.
+  await expect(page.locator('.site-header__bar nav button')).toHaveText(['Today', 'Correlation'])
+  await expect(page.locator('.site-header__bar nav a')).toHaveCount(0)
 })
 
-test('mobile nav Correlation link navigates to the network page', async ({ page }) => {
+test('mobile Correlation trigger navigates directly to the network page', async ({ page }) => {
   await stubBackends(page)
   await page.goto('/', { waitUntil: 'load' })
   await page.evaluate(() => document.fonts.ready)
 
-  await page.getByRole('button', { name: 'Menu' }).click()
-  await page.getByRole('menuitem', { name: 'Correlation' }).click()
+  await page.getByRole('button', { name: 'Correlation', exact: true }).click()
   await expect(page).toHaveURL(/\/markets\/network$/)
+})
+
+test('opening hero search results on mobile lifts the field toward the top, clearing room below it', async ({ page }) => {
+  await stubBackends(page)
+  await page.goto('/', { waitUntil: 'load' })
+  await page.evaluate(() => document.fonts.ready)
+  await page.waitForTimeout(1200)
+
+  const field = page.locator('[data-dock-search] input')
+  const before = await field.boundingBox()
+  expect(before?.y ?? 0).toBeGreaterThan(150)
+
+  await field.click()
+  await field.fill('a')
+  await expect(page.locator('[data-dock-search] .ticker-search__root')).toHaveAttribute('data-open', 'true')
+  await expect.poll(() => field.boundingBox().then((box) => box?.y ?? 9999)).toBeLessThan(130)
 })
 
 test('suggestion panel shrinks to fit the visible viewport instead of overflowing it', async ({ page }) => {

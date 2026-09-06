@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useAuth, useClerk, useUser } from '@clerk/nextjs'
-import { ArrowRight, ChevronDown, Menu as MenuIcon, X } from 'lucide-react'
+import { ArrowRight, ChevronDown } from 'lucide-react'
 import HeaderAccountControl from '@/components/HeaderAccountControl'
 import TileArt, { type TileArtKey } from '@/components/marketing/TileArt'
 import HeaderSearch from '@/components/HeaderSearch'
@@ -112,14 +113,13 @@ const ACCOUNT_TILES: Tile[] = [
 ]
 
 export default function HeaderBar({ isHome }: { isHome: boolean }) {
+  const router = useRouter()
   const { isSignedIn } = useAuth()
   const { user } = useUser()
   const clerk = useClerk()
   const [open, setOpen] = useState<string | null>(null)
   const [displayed, setDisplayed] = useState<Menu | null>(null)
-  const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const rowRef = useRef<HTMLDivElement>(null)
-  const mobileNavRef = useRef<HTMLDivElement>(null)
   const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const menus = useMemo<Menu[]>(() => {
@@ -191,32 +191,6 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
     }
   }, [open])
 
-  // The mobile nav is a separate, lightweight panel — not the desktop tile
-  // mega-menu — so it gets its own small close-on-outside/Escape/scroll effect
-  // rather than sharing `open` (which also drives the mega-menu's glass-row
-  // growth and fixed-height dropdown area).
-  useEffect(() => {
-    if (!mobileNavOpen) return
-    const onDown = (e: MouseEvent) => {
-      if (!mobileNavRef.current?.contains(e.target as Node)) setMobileNavOpen(false)
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMobileNavOpen(false)
-    }
-    const openedAt = window.scrollY
-    const onScroll = () => {
-      if (Math.abs(window.scrollY - openedAt) > 24) setMobileNavOpen(false)
-    }
-    window.addEventListener('mousedown', onDown)
-    window.addEventListener('keydown', onKey)
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => {
-      window.removeEventListener('mousedown', onDown)
-      window.removeEventListener('keydown', onKey)
-      window.removeEventListener('scroll', onScroll)
-    }
-  }, [mobileNavOpen])
-
   return (
     <div
       ref={rowRef}
@@ -263,7 +237,7 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
             'site-header__cluster md:justify-self-end'
           )}
         >
-          <nav className="hidden items-center md:flex">
+          <nav className="flex items-center">
             {MENUS.map((m) => (
               <button
                 key={m.key}
@@ -276,6 +250,13 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
                 // two presses. Preventing that mousedown is the fix.
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={(event) => {
+                  // Below md there's no room for the tile mega-menu, and it was
+                  // never reachable there at all before — go straight to the
+                  // page instead of opening a panel designed for a wide screen.
+                  if (window.matchMedia('(max-width: 767px)').matches) {
+                    router.push(m.href)
+                    return
+                  }
                   // `detail` is 0 for keyboard activation, where focus must stay
                   // put. A pointer click releases it: suppressing the mousedown
                   // focus above makes the browser read any focus landing
@@ -289,42 +270,10 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
                 className="site-header__navlink site-nav__trigger"
               >
                 {m.label}
-                <ChevronDown className="site-nav__chev size-3.5" aria-hidden="true" />
+                <ChevronDown className="site-nav__chev size-3.5 max-md:hidden" aria-hidden="true" />
               </button>
             ))}
           </nav>
-          <div className="relative md:hidden" ref={mobileNavRef}>
-            <button
-              type="button"
-              aria-expanded={mobileNavOpen}
-              aria-haspopup="menu"
-              aria-controls="site-header-mobile-nav"
-              aria-label="Menu"
-              onClick={() => setMobileNavOpen((value) => !value)}
-              className="site-header__navlink site-nav__trigger min-h-9 min-w-9 justify-center"
-            >
-              {mobileNavOpen ? (
-                <X className="size-4" aria-hidden="true" />
-              ) : (
-                <MenuIcon className="size-4" aria-hidden="true" />
-              )}
-            </button>
-            {mobileNavOpen ? (
-              <div id="site-header-mobile-nav" className="site-header__mobile-nav" role="menu">
-                {MENUS.map((m) => (
-                  <Link
-                    key={m.key}
-                    href={m.href}
-                    role="menuitem"
-                    className="site-header__mobile-nav-link"
-                    onClick={() => setMobileNavOpen(false)}
-                  >
-                    {m.label}
-                  </Link>
-                ))}
-              </div>
-            ) : null}
-          </div>
           <HeaderAccountControl
             accountOpen={open === 'account'}
             onToggleAccount={() => toggleMenu('account')}
