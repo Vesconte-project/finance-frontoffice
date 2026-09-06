@@ -14,12 +14,13 @@ const HEADLINE = 'Be a better investor'
    about any of these companies, and the field still accepts symbols — which the
    static placeholder says.
 
-   Deliberately not five US mega-caps: coverage is international, and a hint
-   that only ever shows Silicon Valley teaches a visitor the wrong boundary.
-   Novo Nordisk, TotalEnergies and Infosys were each observed in the live
-   rankings (NOVO-B.CO, TTE.PA, INFY.NS), so none of these points the search at
-   something it cannot find. Check that before adding a name here. */
-const TYPING_HINTS = ['Apple', 'Novo Nordisk', 'Microsoft', 'TotalEnergies', 'Infosys'] as const
+   Deliberately not a list of US mega-caps: coverage spans Europe, Asia and the
+   Gulf, and a hint that only ever shows Silicon Valley teaches a visitor the
+   wrong boundary. Every name has to be big enough that a non-investor knows it.
+
+   A hint is an implicit promise that the search finds what it shows, so confirm
+   a name resolves in /api/tickers/index before adding it here. */
+const TYPING_HINTS = ['Apple', 'Siemens', 'Samsung', 'Saudi Aramco', 'Alibaba', 'Microsoft'] as const
 
 /**
  * Homepage hero search.

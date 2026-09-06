@@ -192,10 +192,6 @@ export default function TickerSearchCombobox({
   const router = useRouter()
   const [search, setSearch] = useState(initialValue)
   const [typedHint, setTypedHint] = useState<string | null>(null)
-  // Once the visitor has touched the field the hints never come back: a
-  // placeholder that resumes typing after you have used the input reads as a
-  // glitch rather than a suggestion.
-  const [hasBeenUsed, setHasBeenUsed] = useState(false)
   const [tickerIndex, setTickerIndex] = useState<CachedTickerIndex | null>(memoryTickerIndex)
   const [recentTickers, setRecentTickers] = useState<string[]>([])
   const [isOpen, setIsOpen] = useState(false)
@@ -209,7 +205,7 @@ export default function TickerSearchCombobox({
   const listboxId = `${inputId}-listbox`
   const normalizedSearch = normalizeTickerSearchQuery(search)
 
-  const hintsActive = !!typingHints?.length && !hasBeenUsed && !search
+  const hintsActive = !!typingHints?.length && !isOpen && !search
   useEffect(() => {
     if (!hintsActive || !typingHints?.length) {
       setTypedHint(null)
@@ -234,19 +230,22 @@ export default function TickerSearchCombobox({
       cut += erasing ? -1 : 1
       setTypedHint(word.slice(0, cut))
 
-      let wait = erasing ? 34 : 58
+      let wait = erasing ? 45 : 95
       if (!erasing && cut >= word.length) {
         erasing = true
-        wait = 1400
+        wait = 2200
       } else if (erasing && cut <= 0) {
         erasing = false
         index += 1
-        wait = 260
+        wait = 600
       }
       timer = setTimeout(step, wait)
     }
 
-    timer = setTimeout(step, 900)
+    // The real placeholder holds first, so the field reads as a search box
+    // before it starts demonstrating itself. Also the pause before the hints
+    // return after someone opens the field and leaves without typing.
+    timer = setTimeout(step, 2600)
     return () => {
       cancelled = true
       if (timer) clearTimeout(timer)
@@ -648,7 +647,6 @@ export default function TickerSearchCombobox({
         onKeyDown={onKeyDown}
         onFocus={() => {
           cancelBlurClose()
-          setHasBeenUsed(true)
           setIsOpen(true)
           queueTickerIndexLoad()
         }}
