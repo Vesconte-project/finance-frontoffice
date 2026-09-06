@@ -1,4 +1,0 @@
-interface:
-  display_name: "Frontend Delivery"
-  short_description: "Guardrails for user-facing frontend changes"
-  default_prompt: "Use $frontend-delivery to plan and deliver a user-facing Next.js frontend change."
