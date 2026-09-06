@@ -36,10 +36,13 @@ const CSS = `
 }
 .hc-root *{box-sizing:border-box}
 .hc-root #hc-bg{position:fixed;inset:0;z-index:0;display:block;background:var(--bg)}
-.hc-root .hc-veil{position:fixed;inset:0;z-index:1;pointer-events:none;background:
+.hc-root .hc-veil{position:fixed;inset:0;z-index:1;pointer-events:none}
+.hc-root .hc-veil::before,.hc-root .hc-veil::after{content:"";position:absolute;inset:0}
+.hc-root .hc-veil::after{background:var(--bg);opacity:calc(var(--hc-field-progress,0) * .65)}
+.hc-root .hc-veil::before{opacity:calc(1 - var(--hc-field-progress,0));background:
   linear-gradient(90deg,rgba(243,239,230,.76),rgba(243,239,230,.34) 34%,rgba(243,239,230,.08) 60%,transparent 80%),
   radial-gradient(120% 90% at 50% 50%,transparent 55%,rgba(243,239,230,.24))}
-.hc-root[data-theme="dark"] .hc-veil,[data-theme="dark"] .hc-root .hc-veil{background:
+.hc-root[data-theme="dark"] .hc-veil::before,[data-theme="dark"] .hc-root .hc-veil::before{background:
   linear-gradient(90deg,rgba(4,6,12,.93),rgba(4,6,12,.58) 34%,rgba(4,6,12,.16) 60%,transparent 80%),
   radial-gradient(120% 90% at 50% 50%,transparent 55%,rgba(4,6,12,.55))}
 .hc-root .hc-progress{position:fixed;left:0;top:0;height:2px;width:0;background:linear-gradient(90deg,var(--spark),var(--spark-2));z-index:60;box-shadow:0 0 12px var(--spark)}
@@ -177,7 +180,8 @@ export default function HeroConstellation() {
       g.globalAlpha = 1
     }
     function render() {
-      if (!heroVisible && focus.i < 0 && focus.t < 0.01) { rafId = requestAnimationFrame(render); return }
+      rafId = 0
+      if (document.hidden) return
       tt += reducedMotion ? 0 : (focus.i < 0 ? 0.016 : 0.016 * 0.22)
       p += (targetP - p) * 0.07; if (focus.i < 0) { mx += (tmx - mx) * 0.03; my += (tmy - my) * 0.03 }
       searchMode += (searchModeTarget - searchMode) * 0.08
@@ -241,7 +245,18 @@ export default function HeroConstellation() {
       window.addEventListener('mouseout', onOut)
     }
     window.addEventListener('resize', onResize)
-    resize(); build(); if (reducedMotion) render(); else rafId = requestAnimationFrame(render)
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(rafId)
+        rafId = 0
+      } else if (reducedMotion) {
+        render()
+      } else if (!rafId) {
+        rafId = requestAnimationFrame(render)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    resize(); build(); onVisibilityChange()
 
     // beats
     const beats = Array.from(root.querySelectorAll<HTMLElement>('.hc-beat'))
@@ -249,6 +264,23 @@ export default function HeroConstellation() {
     const updateBeats = (prog: number) => beats.forEach((el, i) => { const [a, b] = win[i]; const inn = smooth(a, a + 0.05, prog), out = 1 - smooth(b - 0.05, b, prog); const o = Math.max(0, Math.min(1, inn * out)); el.style.opacity = String(o); el.style.transform = 'translateY(' + ((1 - o) * 18) + 'px)' })
     updateBeats(0)
     const setP = (v: number) => { targetP = v; $('hc-prog').style.width = (v * 100) + '%'; const cue = $('hc-cue'); if (cue) cue.style.opacity = v > 0.02 ? '0' : '1'; updateBeats(v) }
+
+    const updateField = (progress: number, interactive = progress < 0.999) => {
+      const strength = Math.max(0, Math.min(1, progress))
+      heroVisible = interactive
+      c.style.opacity = String(1 - strength * 0.55)
+      c.style.pointerEvents = interactive ? 'auto' : 'none'
+      root.style.setProperty('--hc-field-progress', String(strength))
+      $('hc-prog').style.opacity = String(1 - strength)
+    }
+    // Native reduced-motion flow has no pinned scene. Preserve the initial veil,
+    // then settle the static field before the content reaches the viewport.
+    const unsubscribeStaticScroll = reducedMotion
+      ? runtime.subscribeScroll(() => updateField(
+          window.scrollY / Math.max(1, root.offsetTop),
+          root.getBoundingClientRect().top >= 0,
+        ))
+      : undefined
 
     const unregisterScrollScene = runtime.registerScene(({ gsap: runtimeGsap, ScrollTrigger }) => {
       const s = { p: 0 }
@@ -265,16 +297,21 @@ export default function HeroConstellation() {
           onUpdate: self => setP(self.progress),
         },
       })
-      // esconder o canvas quando saímos do hero
-      const hideTrigger = ScrollTrigger.create({ trigger: stageEl, start: 'top top', end: `+=${scrollMotionTokens.homepage.visibilityDistance}`, onUpdate: self => { const vis = self.progress < 0.999; heroVisible = vis; c.style.opacity = vis ? '1' : '0'; c.style.pointerEvents = vis ? 'auto' : 'none'; const veil = root.querySelector<HTMLElement>('.hc-veil'); if (veil) veil.style.opacity = vis ? '1' : '0'; const prog = root.querySelector<HTMLElement>('.hc-progress'); if (prog) prog.style.opacity = vis ? '1' : '0' } })
+      // Recede by pin release, before the first content frame enters the view.
+      const hideTrigger = ScrollTrigger.create({
+        trigger: stageEl,
+        start: 'top top',
+        end: () => `+=${window.innerHeight}`,
+        onUpdate: self => updateField(self.progress),
+        onRefresh: self => updateField(self.progress),
+      })
+      updateField(hideTrigger.progress)
 
       return () => {
         tween.scrollTrigger?.kill()
         tween.kill()
         hideTrigger.kill()
-        heroVisible = true
-        c.style.opacity = '1'
-        c.style.pointerEvents = 'auto'
+        updateField(0)
       }
     })
 
@@ -346,6 +383,8 @@ export default function HeroConstellation() {
 
     return () => {
       cancelAnimationFrame(rafId)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      unsubscribeStaticScroll?.()
       window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseout', onOut); window.removeEventListener('resize', onResize)
       window.removeEventListener('keydown', onKey); window.removeEventListener('click', onClick, true)
       window.removeEventListener('mousedown', onDown, true); window.removeEventListener('meridian:search-focus', onSearchFocus)

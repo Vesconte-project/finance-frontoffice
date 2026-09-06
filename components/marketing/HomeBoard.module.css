@@ -1,6 +1,6 @@
 .section {
+  --field-secondary: color-mix(in srgb, var(--content-primary) 30%, var(--content-secondary));
   position: relative;
-  background: var(--page-bg);
   padding-bottom: 24px;
 }
 
@@ -14,7 +14,6 @@
 .panel {
   overflow: hidden;
   border: 1px solid var(--color-border);
-  background: var(--page-bg);
 }
 
 .panelHeader {
@@ -39,7 +38,7 @@
 
 .snapshot {
   flex: none;
-  color: var(--content-muted);
+  color: var(--field-secondary);
   font-family: var(--font-mono), monospace;
   font-size: 0.72rem;
   letter-spacing: 0.04em;
@@ -86,7 +85,7 @@
 .reader {
   min-height: 3.75rem;
   margin: 7px 0 0;
-  color: var(--content-secondary);
+  color: var(--field-secondary);
   font-size: 0.78rem;
   line-height: 1.48;
 }
@@ -135,13 +134,13 @@
 }
 
 .row:first-child .symbol {
-  color: var(--brand-spark);
+  color: var(--accent-text);
 }
 
 .company {
   min-width: 0;
   overflow: hidden;
-  color: var(--content-secondary);
+  color: var(--field-secondary);
   font-size: 0.77rem;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -149,7 +148,7 @@
 
 .score {
   grid-column: -2 / -1;
-  color: var(--content-secondary);
+  color: var(--field-secondary);
   font-size: 0.68rem;
   font-weight: 500;
   text-align: right;
@@ -157,14 +156,14 @@
 
 .state {
   margin: 18px 0 0;
-  color: var(--content-secondary);
+  color: var(--field-secondary);
   font-size: 0.78rem;
   line-height: 1.5;
 }
 
 .caveat {
   margin: 10px 0 0;
-  color: var(--content-muted);
+  color: var(--field-secondary);
   font-size: 0.72rem;
   line-height: 1.5;
 }

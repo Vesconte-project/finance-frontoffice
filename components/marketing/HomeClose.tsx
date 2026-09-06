@@ -5,7 +5,7 @@ export default function HomeClose() {
   return (
     <section
       id="pricing"
-      className="relative isolate overflow-hidden border-t border-border bg-[var(--page-bg)] px-6 py-28 text-center text-[color:var(--content-primary)] sm:px-10"
+      className="relative isolate overflow-hidden border-t border-border px-6 py-28 text-center text-[color:var(--content-primary)] sm:px-10"
       aria-labelledby="home-close-heading"
     >
       <div
@@ -24,20 +24,20 @@ export default function HomeClose() {
       >
         A ranked list is where the work starts.
       </h2>
-      <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-[color:var(--content-secondary)]">
+      <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-[color:color-mix(in_srgb,var(--content-primary)_40%,var(--content-secondary))]">
         Filter the full ranking by sector, follow what changes, and get the weekly signal before Monday.
       </p>
 
       <Link
         href="/sign-up"
-        className="mt-10 inline-flex h-14 items-center justify-center gap-3 rounded-full bg-brand-spark px-8 font-semibold text-[color:var(--brand-spark-on)] shadow-[0_18px_50px_-12px_var(--brand-spark)] transition hover:brightness-110"
+        className="mt-10 inline-flex h-14 items-center justify-center gap-3 rounded-full bg-[var(--brand-spark)] px-8 font-semibold text-[color:var(--brand-spark-on)] shadow-[0_18px_50px_-12px_var(--brand-spark)] transition hover:bg-[var(--accent-text)]"
       >
         Create account <ArrowRight className="size-5" aria-hidden="true" />
       </Link>
       <div>
         <Link
           href="/pricing"
-          className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--content-secondary)] transition hover:text-brand-spark"
+          className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[color:color-mix(in_srgb,var(--content-primary)_40%,var(--content-secondary))] transition hover:text-brand-spark"
         >
           Open the full pricing page <ArrowRight className="size-4" aria-hidden="true" />
         </Link>
