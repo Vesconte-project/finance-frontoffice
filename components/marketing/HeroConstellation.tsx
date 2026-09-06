@@ -23,16 +23,16 @@ const CSS = `
 .hc-root{
   --font-display:"Sora",system-ui,sans-serif;--font-body:"Inter",system-ui,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,monospace;
   --bg:#f3efe6;--text:#142943;--text-2:#5b6978;--text-3:#87929b;
-  --spark:#0b8178;--spark-2:#1ba69a;--green:#1d7f52;--red:#bd514d;
+  --spark:#0b8178;--spark-2:#1ba69a;
   --glass:rgba(255,255,255,.66);--glass-border:rgba(20,41,67,.16);--hairline:rgba(20,41,67,.12);
-  --focus-bg:#142943;--focus-text:#f6f2e9;--focus-muted:#b8c5d0;--focus-border:rgba(246,242,233,.18);--focus-stat:rgba(246,242,233,.08);--focus-shadow:0 28px 80px rgba(20,41,67,.28);
+  --focus-bg:rgba(243,239,230,.94);--focus-text:var(--text);--focus-muted:var(--text-2);--focus-border:var(--hairline);--focus-shadow:0 28px 80px rgba(20,41,67,.18);
   position:relative;background:var(--bg);color:var(--text);font-family:var(--font-body);
 }
 .hc-root[data-theme="dark"],[data-theme="dark"] .hc-root{
   --bg:#04060c;--text:#eaf0ff;--text-2:#9fb0d0;--text-3:#61708f;
-  --spark:#19c9b6;--spark-2:#3fe0cd;--green:#34d399;--red:#fb7185;
+  --spark:#19c9b6;--spark-2:#3fe0cd;
   --glass:rgba(255,255,255,.05);--glass-border:rgba(255,255,255,.14);--hairline:rgba(255,255,255,.10);
-  --focus-bg:rgba(10,14,22,.94);--focus-text:#eef3ff;--focus-muted:#9fb0d0;--focus-border:rgba(255,255,255,.14);--focus-stat:rgba(255,255,255,.04);--focus-shadow:0 40px 100px -30px #000;
+  --focus-bg:rgba(4,6,12,.94);--focus-text:var(--text);--focus-muted:var(--text-2);--focus-border:var(--hairline);--focus-shadow:0 40px 100px -30px #000;
 }
 .hc-root *{box-sizing:border-box}
 .hc-root #hc-bg{position:fixed;inset:0;z-index:0;display:block;background:var(--bg)}
@@ -51,8 +51,6 @@ const CSS = `
 .hc-root .hc-in{max-width:1080px;width:100%;margin:0 auto}
 .hc-root .hc-in a,.hc-root .hc-in button{pointer-events:auto}
 .hc-root .hc-card{display:flex;align-items:center;gap:16px;width:fit-content;margin-top:26px;padding:14px 18px;border-radius:18px;background:var(--glass);border:1px solid var(--glass-border);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 24px 60px -24px #000;backdrop-filter:blur(16px) saturate(1.5);-webkit-backdrop-filter:blur(16px) saturate(1.5)}
-.hc-root .hc-badge{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:12px;padding:6px 11px;border-radius:999px;color:var(--green);background:color-mix(in srgb,var(--green) 15%,transparent);border:1px solid color-mix(in srgb,var(--green) 40%,transparent)}
-.hc-root .hc-badge .d{width:7px;height:7px;border-radius:99px;background:currentColor;box-shadow:0 0 10px currentColor}
 .hc-root .hc-card .v{font-family:var(--font-display);font-weight:700;font-size:20px}
 .hc-root .hc-scrollcue{position:fixed;bottom:16px;left:0;right:0;text-align:center;z-index:40;font-family:var(--font-mono);font-size:11px;color:var(--text-3);pointer-events:none}
 .hc-root #hc-focusLayer{position:fixed;inset:0;z-index:70;opacity:0;pointer-events:none}
@@ -60,17 +58,18 @@ const CSS = `
 .hc-root #hc-focusCard{position:absolute;left:54%;top:50%;width:min(360px,46vw);padding:22px;border-radius:20px;background:var(--focus-bg);color:var(--focus-text);border:1px solid var(--focus-border);box-shadow:var(--focus-shadow);backdrop-filter:blur(18px) saturate(1.15);-webkit-backdrop-filter:blur(18px) saturate(1.15)}
 .hc-root #hc-focusBack{background:none;border:none;color:var(--focus-muted);font-family:var(--font-mono);font-size:12px;cursor:pointer;padding:0;margin-bottom:14px}
 .hc-root #hc-focusBack:hover{color:var(--text)}
-.hc-root #hc-focusBack:focus-visible,.hc-root .hc-fc-open:focus-visible{outline:2px solid var(--spark-2);outline-offset:4px}
-.hc-root .hc-fc-ticker{font-family:var(--font-display);font-weight:800;font-size:36px;letter-spacing:-.03em;line-height:1}
+.hc-root #hc-focusBack:focus-visible,.hc-root .hc-fc-open:focus-visible,.hc-root .hc-fc-connections a:focus-visible{outline:2px solid var(--spark-2);outline-offset:4px}
+.hc-root .hc-fc-ticker{font-family:var(--font-display);font-weight:800;font-size:36px;letter-spacing:-.03em;line-height:1;color:var(--spark)}
 .hc-root .hc-fc-name{color:var(--focus-muted);font-size:13px;margin-top:3px}
-.hc-root .hc-fc-badge{margin-top:14px}
-.hc-root .hc-fc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:16px}
-.hc-root .hc-fc-stats .s{background:var(--focus-stat);border:1px solid var(--focus-border);border-radius:12px;padding:10px}
-.hc-root .hc-fc-stats .s .k{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
-.hc-root .hc-fc-stats .s .v{font-family:var(--font-display);font-weight:700;font-size:17px;font-variant-numeric:tabular-nums;margin-top:4px}
-.hc-root .hc-fc-open{display:inline-block;margin-top:18px;font-weight:600;font-size:14px;color:#04201d;background:var(--spark);padding:11px 18px;border-radius:12px;text-decoration:none}
+.hc-root .hc-fc-connections{margin-top:18px}
+.hc-root .hc-fc-connections>div{font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--focus-muted)}
+.hc-root .hc-fc-connections ul{display:flex;flex-wrap:wrap;gap:8px 14px;margin:8px 0 0;padding:0;list-style:none}
+.hc-root .hc-fc-connections a{font-family:var(--font-mono);font-size:12px;color:var(--focus-text);text-decoration:none}
+.hc-root .hc-fc-connections a:hover{text-decoration:underline;text-decoration-color:var(--spark);text-underline-offset:3px}
+.hc-root .hc-fc-open{display:inline-block;margin-top:18px;font-weight:600;font-size:14px;color:var(--spark);text-decoration:none}
+.hc-root .hc-fc-open:hover{text-decoration:underline;text-underline-offset:4px}
 html[data-theme="dark"] .hc-root #hc-focusDim,.hc-root[data-theme="dark"] #hc-focusDim{background:rgba(0,4,10,.52)}
-@media(max-width:720px){.hc-root #hc-focusCard{left:12px;right:12px;top:auto;bottom:16px;width:auto;padding:20px}.hc-root .hc-fc-ticker{font-size:30px}.hc-root .hc-fc-stats{gap:6px}.hc-root .hc-fc-stats .s{padding:9px 8px}}
+@media(max-width:720px){.hc-root #hc-focusCard{left:12px;right:12px;top:auto;bottom:16px;width:auto;padding:20px}.hc-root .hc-fc-ticker{font-size:30px}}
 .hc-root[data-reduced-motion="true"] #hc-focusCard{transition:none}
 .hc-root[data-reduced-motion="true"] #hc-stage{height:auto;min-height:0}
 .hc-root[data-reduced-motion="true"] .hc-beat{position:relative;inset:auto;min-height:0;padding-block:clamp(48px,8vh,80px);opacity:1!important;transform:none!important}
@@ -99,6 +98,7 @@ export default function HeroConstellation() {
     let rafId = 0
     let heroVisible = true
     let releaseScrollLock: (() => void) | null = null
+    let scrollWithRuntime: ((top: number, onComplete: () => void) => void) | null = null
 
     const TICKERS = ['SPY','NVDA','AAPL','MSFT','QQQ','AMZN','META','TSLA','GOOGL','JPM','XOM','AVGO','AMD','LLY','V','COST','NFLX','HD','BRK.B','GLD']
     const COLORS: [number, number, number][] = darkMode ? [[25,201,182],[63,224,205],[139,123,255],[110,168,255]] : [[43,73,96],[78,103,119],[110,110,128],[86,106,123]]
@@ -282,7 +282,8 @@ export default function HeroConstellation() {
         ))
       : undefined
 
-    const unregisterScrollScene = runtime.registerScene(({ gsap: runtimeGsap, ScrollTrigger }) => {
+    const unregisterScrollScene = runtime.registerScene(({ gsap: runtimeGsap, lenis, ScrollTrigger }) => {
+      scrollWithRuntime = (top, onComplete) => lenis.scrollTo(top, { duration: 0.28, lock: false, onComplete })
       const s = { p: 0 }
       const tween = runtimeGsap.to(s, {
         p: 1,
@@ -308,6 +309,7 @@ export default function HeroConstellation() {
       updateField(hideTrigger.progress)
 
       return () => {
+        scrollWithRuntime = null
         tween.scrollTrigger?.kill()
         tween.kill()
         hideTrigger.kill()
@@ -316,11 +318,51 @@ export default function HeroConstellation() {
     })
 
     // focus / zoom-into-node
-    const NAMES: Record<string, string> = { SPY:'S&P 500 ETF',NVDA:'NVIDIA',AAPL:'Apple',MSFT:'Microsoft',QQQ:'Nasdaq 100 ETF',AMZN:'Amazon',META:'Meta Platforms',TSLA:'Tesla',GOOGL:'Alphabet',JPM:'JPMorgan',XOM:'Exxon Mobil',AVGO:'Broadcom',AMD:'AMD',LLY:'Eli Lilly',V:'Visa',COST:'Costco',NFLX:'Netflix',HD:'Home Depot','BRK.B':'Berkshire H.','GLD':'Gold ETF' }
-    const hashStr = (str: string) => { let h = 0; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0; return h }
-    const stock = (t: string) => { const h = hashStr(t); const sigs = [['Buy', '#34d399'], ['Cash', '#fb7185'], ['Scaled', '#19c9b6']]; const sg = sigs[h % 3]; return { name: NAMES[t] || t, sig: sg[0], tone: sg[1], score: 40 + h % 55, price: (80 + h % 900) + '.' + String(h % 90).padStart(2, '0'), chg: ((h % 400) / 100 - 2).toFixed(2) } }
     const fL = $('hc-focusLayer'), fCard = $('hc-focusCard'), fDim = $('hc-focusDim')
+    const focusConnections = $('hc-fcC')
     let focusReturn: HTMLElement | null = null
+    let focusAbort: AbortController | null = null
+    let focusGeneration = 0
+    const neighborhoodCache = new Map<string, string[]>()
+    const tickerName = (ticker: string) => {
+      try {
+        const raw = window.sessionStorage.getItem('spy_ticker_index_v1')
+        const payload = raw ? JSON.parse(raw) as { items?: Array<{ symbol?: unknown; name?: unknown }> } : null
+        const item = payload?.items?.find((entry) => String(entry.symbol ?? '').trim().toUpperCase() === ticker)
+        return typeof item?.name === 'string' && item.name.trim() && item.name.trim() !== ticker ? item.name.trim() : ''
+      } catch {
+        return ''
+      }
+    }
+    const renderConnections = (connections: string[]) => {
+      focusConnections.replaceChildren()
+      if (!connections.length) return
+      const label = document.createElement('div')
+      label.textContent = 'Moves with'
+      const list = document.createElement('ul')
+      for (const connection of connections) {
+        const item = document.createElement('li')
+        const link = document.createElement('a')
+        link.href = '/stocks/' + encodeURIComponent(connection)
+        link.textContent = connection
+        item.append(link)
+        list.append(item)
+      }
+      focusConnections.append(label, list)
+    }
+    const readConnections = (ticker: string, payload: { focus?: unknown; edges?: Array<{ source?: unknown; target?: unknown; strength?: unknown }> }) => {
+      if (String(payload.focus ?? '').trim().toUpperCase() !== ticker) return []
+      const strengths = new Map<string, number>()
+      for (const edge of payload.edges ?? []) {
+        const source = String(edge.source ?? '').trim().toUpperCase()
+        const target = String(edge.target ?? '').trim().toUpperCase()
+        const symbol = source === ticker ? target : target === ticker ? source : ''
+        const strength = Number(edge.strength)
+        if (!symbol || !Number.isFinite(strength)) continue
+        strengths.set(symbol, Math.max(strengths.get(symbol) ?? -Infinity, strength))
+      }
+      return [...strengths.entries()].sort((left, right) => right[1] - left[1]).slice(0, 3).map(([symbol]) => symbol)
+    }
     const updateCard = () => {
       fL.style.opacity = focus.t > 0.001 ? '1' : '0'
       fCard.style.opacity = String(Math.max(0, (focus.t - 0.45) / 0.55))
@@ -330,19 +372,37 @@ export default function HeroConstellation() {
     const openFocus = (idx: number) => {
       gsap.killTweensOf(focus)
       const n = nodes[idx]; if (!n.label) n.label = TICKERS[idx % TICKERS.length]
-      const sk = stock(n.label); focus.tone = sk.tone as string
-      const T = $('hc-fcT'); T.textContent = n.label; T.style.color = sk.tone as string
-      $('hc-fcN').textContent = sk.name
-      $('hc-fcB').innerHTML = '<span class="hc-badge" style="color:' + sk.tone + ';background:color-mix(in srgb,' + sk.tone + ' 15%,transparent);border-color:color-mix(in srgb,' + sk.tone + ' 40%,transparent)"><span class="d"></span>' + sk.sig + '</span>'
-      const change = Number(sk.chg)
-      $('hc-fcS').innerHTML = '<div class="s"><div class="k">Price</div><div class="v">$' + sk.price + '</div></div><div class="s"><div class="k">Δ day</div><div class="v" style="color:' + (change >= 0 ? '#34d399' : '#fb7185') + '">' + (change >= 0 ? '+' : '') + sk.chg + '%</div></div><div class="s"><div class="k">Score</div><div class="v" style="color:#19c9b6">' + sk.score + '</div></div>'
+      const ticker = n.label
+      const generation = ++focusGeneration
+      focusAbort?.abort()
+      focusAbort = null
+      focus.tone = spark
+      $('hc-fcT').textContent = ticker
+      $('hc-fcN').textContent = tickerName(ticker)
+      renderConnections(neighborhoodCache.get(ticker) ?? [])
       ;($('hc-fcO') as HTMLAnchorElement).href = '/stocks/' + encodeURIComponent(n.label)
       focusReturn = document.activeElement instanceof HTMLElement ? document.activeElement : null
       focus.i = idx; fL.setAttribute('aria-hidden', 'false'); fL.style.pointerEvents = 'auto'; releaseScrollLock ??= runtime.acquireLock()
       if (reducedMotion) { focus.t = 1; updateCard(); backBtn.focus() } else gsap.to(focus, { t: 1, duration: 0.55, ease: 'power2.out', onUpdate: updateCard, onComplete: () => backBtn.focus() })
+      if (neighborhoodCache.has(ticker)) return
+      const controller = new AbortController()
+      focusAbort = controller
+      void fetch('/api/network/atlas/neighborhoods/' + encodeURIComponent(ticker), { signal: controller.signal })
+        .then(async (response) => response.ok ? response.json() as Promise<{ focus?: unknown; edges?: Array<{ source?: unknown; target?: unknown; strength?: unknown }> }> : null)
+        .then((payload) => {
+          if (!payload || controller.signal.aborted) return
+          const connections = readConnections(ticker, payload)
+          neighborhoodCache.set(ticker, connections)
+          if (generation !== focusGeneration || focus.i !== idx || fL.getAttribute('aria-hidden') !== 'false') return
+          renderConnections(connections)
+        })
+        .catch(() => undefined)
     }
     const closeFocus = () => {
       if (focus.i < 0 && focus.t < 0.01) return
+      focusGeneration += 1
+      focusAbort?.abort()
+      focusAbort = null
       gsap.killTweensOf(focus)
       fL.style.pointerEvents = 'none'
       const finishClose = () => {
@@ -358,12 +418,31 @@ export default function HeroConstellation() {
     fDim.addEventListener('click', closeFocus)
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && focus.i >= 0) closeFocus() }
     window.addEventListener('keydown', onKey)
+    let pendingFocus = false
+    const openAfterChromeSettles = (idx: number) => {
+      if (pendingFocus || focus.i >= 0) return
+      if (window.scrollY > 40) { openFocus(idx); return }
+      pendingFocus = true
+      const finish = () => {
+        pendingFocus = false
+        openFocus(idx)
+      }
+      if (reducedMotion) {
+        window.scrollTo({ top: 48, behavior: 'auto' })
+        requestAnimationFrame(() => requestAnimationFrame(finish))
+      } else if (scrollWithRuntime) {
+        scrollWithRuntime(48, finish)
+      } else {
+        finish()
+      }
+    }
     // If a search field is focused when the press starts, the click is dismissing
     // it — don't also grab a particle.
     const searchSel = 'input,textarea,[data-dock-search],[data-header-search],[data-pill-search]'
     const onDown = () => {
       const ae = document.activeElement as HTMLElement | null
-      dismissingSearch = !!(ae && ae.closest && ae.closest(searchSel))
+      const dismissingDisclosure = Boolean(document.querySelector('[data-site-header-row][data-menu-open]'))
+      dismissingSearch = dismissingDisclosure || !!(ae && ae.closest && ae.closest(searchSel))
     }
     window.addEventListener('mousedown', onDown, true)
     const onClick = (e: MouseEvent) => {
@@ -373,9 +452,29 @@ export default function HeroConstellation() {
       if (tgt && tgt.closest && tgt.closest('.hc-in a,.hc-in button,#hc-focusCard,header,nav,[data-dock-search]')) return
       let best = -1, bd = 48
       for (let i = 0; i < nodes.length; i++) { const n = nodes[i]; const d = Math.hypot(n.sx - e.clientX, n.sy - e.clientY); if (d < bd) { bd = d; best = i } }
-      if (best >= 0) openFocus(best)
+      if (best >= 0) openAfterChromeSettles(best)
     }
     window.addEventListener('click', onClick, true)
+    let wheelDistance = 0
+    let touchStartY: number | null = null
+    const closeForScroll = () => {
+      wheelDistance = 0
+      touchStartY = null
+      closeFocus()
+    }
+    const onWheel = (event: WheelEvent) => {
+      if (focus.i < 0) return
+      wheelDistance += Math.abs(event.deltaY)
+      if (wheelDistance >= 60) closeForScroll()
+    }
+    const onTouchStart = (event: TouchEvent) => { touchStartY = focus.i >= 0 ? event.touches[0]?.clientY ?? null : null }
+    const onTouchMove = (event: TouchEvent) => {
+      if (focus.i < 0 || touchStartY === null) return
+      if (Math.abs((event.touches[0]?.clientY ?? touchStartY) - touchStartY) >= 48) closeForScroll()
+    }
+    window.addEventListener('wheel', onWheel, { passive: true, capture: true })
+    window.addEventListener('touchstart', onTouchStart, { passive: true, capture: true })
+    window.addEventListener('touchmove', onTouchMove, { passive: true, capture: true })
     // Zoom-out + blur the constellation while the hero search is focused.
     const onSearchFocus = (e: Event) => { searchModeTarget = (e as CustomEvent).detail?.focused ? 1 : 0 }
     window.addEventListener('meridian:search-focus', onSearchFocus)
@@ -388,7 +487,9 @@ export default function HeroConstellation() {
       window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseout', onOut); window.removeEventListener('resize', onResize)
       window.removeEventListener('keydown', onKey); window.removeEventListener('click', onClick, true)
       window.removeEventListener('mousedown', onDown, true); window.removeEventListener('meridian:search-focus', onSearchFocus)
+      window.removeEventListener('wheel', onWheel, true); window.removeEventListener('touchstart', onTouchStart, true); window.removeEventListener('touchmove', onTouchMove, true)
       backBtn.removeEventListener('click', closeFocus); fDim.removeEventListener('click', closeFocus)
+      focusAbort?.abort()
       releaseScrollLock?.()
       unregisterScrollScene()
     }
@@ -415,8 +516,7 @@ export default function HeroConstellation() {
           <button id="hc-focusBack" type="button">← back</button>
           <div className="hc-fc-ticker" id="hc-fcT" />
           <div className="hc-fc-name" id="hc-fcN" />
-          <div className="hc-fc-badge" id="hc-fcB" />
-          <div className="hc-fc-stats" id="hc-fcS" />
+          <div className="hc-fc-connections" id="hc-fcC" />
           <a className="hc-fc-open" id="hc-fcO" href="#">Open full page →</a>
         </div>
       </div>
