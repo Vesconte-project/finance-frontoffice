@@ -12,8 +12,14 @@ const HEADLINE = 'Be a better investor'
    ticker is learns nothing from watching "AAPL" appear, and the whole point of
    the hint is showing a first-time visitor what to type. They claim nothing
    about any of these companies, and the field still accepts symbols — which the
-   static placeholder says. */
-const TYPING_HINTS = ['Apple', 'Microsoft', 'Nvidia', 'Tesla', 'Amazon'] as const
+   static placeholder says.
+
+   Deliberately not five US mega-caps: coverage is international, and a hint
+   that only ever shows Silicon Valley teaches a visitor the wrong boundary.
+   Novo Nordisk, TotalEnergies and Infosys were each observed in the live
+   rankings (NOVO-B.CO, TTE.PA, INFY.NS), so none of these points the search at
+   something it cannot find. Check that before adding a name here. */
+const TYPING_HINTS = ['Apple', 'Novo Nordisk', 'Microsoft', 'TotalEnergies', 'Infosys'] as const
 
 /**
  * Homepage hero search.
