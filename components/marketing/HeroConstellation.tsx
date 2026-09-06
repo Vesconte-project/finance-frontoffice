@@ -316,11 +316,51 @@ export default function HeroConstellation() {
     })
 
     // focus / zoom-into-node
-    const NAMES: Record<string, string> = { SPY:'S&P 500 ETF',NVDA:'NVIDIA',AAPL:'Apple',MSFT:'Microsoft',QQQ:'Nasdaq 100 ETF',AMZN:'Amazon',META:'Meta Platforms',TSLA:'Tesla',GOOGL:'Alphabet',JPM:'JPMorgan',XOM:'Exxon Mobil',AVGO:'Broadcom',AMD:'AMD',LLY:'Eli Lilly',V:'Visa',COST:'Costco',NFLX:'Netflix',HD:'Home Depot','BRK.B':'Berkshire H.','GLD':'Gold ETF' }
-    const hashStr = (str: string) => { let h = 0; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0; return h }
-    const stock = (t: string) => { const h = hashStr(t); const sigs = [['Buy', '#34d399'], ['Cash', '#fb7185'], ['Scaled', '#19c9b6']]; const sg = sigs[h % 3]; return { name: NAMES[t] || t, sig: sg[0], tone: sg[1], score: 40 + h % 55, price: (80 + h % 900) + '.' + String(h % 90).padStart(2, '0'), chg: ((h % 400) / 100 - 2).toFixed(2) } }
     const fL = $('hc-focusLayer'), fCard = $('hc-focusCard'), fDim = $('hc-focusDim')
+    const focusConnections = $('hc-fcC')
     let focusReturn: HTMLElement | null = null
+    let focusAbort: AbortController | null = null
+    let focusGeneration = 0
+    const neighborhoodCache = new Map<string, string[]>()
+    const tickerName = (ticker: string) => {
+      try {
+        const raw = window.sessionStorage.getItem('spy_ticker_index_v1')
+        const payload = raw ? JSON.parse(raw) as { items?: Array<{ symbol?: unknown; name?: unknown }> } : null
+        const item = payload?.items?.find((entry) => String(entry.symbol ?? '').trim().toUpperCase() === ticker)
+        return typeof item?.name === 'string' && item.name.trim() && item.name.trim() !== ticker ? item.name.trim() : ''
+      } catch {
+        return ''
+      }
+    }
+    const renderConnections = (connections: string[]) => {
+      focusConnections.replaceChildren()
+      if (!connections.length) return
+      const label = document.createElement('div')
+      label.textContent = 'Moves with'
+      const list = document.createElement('ul')
+      for (const connection of connections) {
+        const item = document.createElement('li')
+        const link = document.createElement('a')
+        link.href = '/stocks/' + encodeURIComponent(connection)
+        link.textContent = connection
+        item.append(link)
+        list.append(item)
+      }
+      focusConnections.append(label, list)
+    }
+    const readConnections = (ticker: string, payload: { focus?: unknown; edges?: Array<{ source?: unknown; target?: unknown; strength?: unknown }> }) => {
+      if (String(payload.focus ?? '').trim().toUpperCase() !== ticker) return []
+      const strengths = new Map<string, number>()
+      for (const edge of payload.edges ?? []) {
+        const source = String(edge.source ?? '').trim().toUpperCase()
+        const target = String(edge.target ?? '').trim().toUpperCase()
+        const symbol = source === ticker ? target : target === ticker ? source : ''
+        const strength = Number(edge.strength)
+        if (!symbol || !Number.isFinite(strength)) continue
+        strengths.set(symbol, Math.max(strengths.get(symbol) ?? -Infinity, strength))
+      }
+      return [...strengths.entries()].sort((left, right) => right[1] - left[1]).slice(0, 3).map(([symbol]) => symbol)
+    }
     const updateCard = () => {
       fL.style.opacity = focus.t > 0.001 ? '1' : '0'
       fCard.style.opacity = String(Math.max(0, (focus.t - 0.45) / 0.55))
@@ -330,19 +370,37 @@ export default function HeroConstellation() {
     const openFocus = (idx: number) => {
       gsap.killTweensOf(focus)
       const n = nodes[idx]; if (!n.label) n.label = TICKERS[idx % TICKERS.length]
-      const sk = stock(n.label); focus.tone = sk.tone as string
-      const T = $('hc-fcT'); T.textContent = n.label; T.style.color = sk.tone as string
-      $('hc-fcN').textContent = sk.name
-      $('hc-fcB').innerHTML = '<span class="hc-badge" style="color:' + sk.tone + ';background:color-mix(in srgb,' + sk.tone + ' 15%,transparent);border-color:color-mix(in srgb,' + sk.tone + ' 40%,transparent)"><span class="d"></span>' + sk.sig + '</span>'
-      const change = Number(sk.chg)
-      $('hc-fcS').innerHTML = '<div class="s"><div class="k">Price</div><div class="v">$' + sk.price + '</div></div><div class="s"><div class="k">Δ day</div><div class="v" style="color:' + (change >= 0 ? '#34d399' : '#fb7185') + '">' + (change >= 0 ? '+' : '') + sk.chg + '%</div></div><div class="s"><div class="k">Score</div><div class="v" style="color:#19c9b6">' + sk.score + '</div></div>'
+      const ticker = n.label
+      const generation = ++focusGeneration
+      focusAbort?.abort()
+      focusAbort = null
+      focus.tone = spark
+      $('hc-fcT').textContent = ticker
+      $('hc-fcN').textContent = tickerName(ticker)
+      renderConnections(neighborhoodCache.get(ticker) ?? [])
       ;($('hc-fcO') as HTMLAnchorElement).href = '/stocks/' + encodeURIComponent(n.label)
       focusReturn = document.activeElement instanceof HTMLElement ? document.activeElement : null
       focus.i = idx; fL.setAttribute('aria-hidden', 'false'); fL.style.pointerEvents = 'auto'; releaseScrollLock ??= runtime.acquireLock()
       if (reducedMotion) { focus.t = 1; updateCard(); backBtn.focus() } else gsap.to(focus, { t: 1, duration: 0.55, ease: 'power2.out', onUpdate: updateCard, onComplete: () => backBtn.focus() })
+      if (neighborhoodCache.has(ticker)) return
+      const controller = new AbortController()
+      focusAbort = controller
+      void fetch('/api/network/atlas/neighborhoods/' + encodeURIComponent(ticker), { signal: controller.signal })
+        .then(async (response) => response.ok ? response.json() as Promise<{ focus?: unknown; edges?: Array<{ source?: unknown; target?: unknown; strength?: unknown }> }> : null)
+        .then((payload) => {
+          if (!payload || controller.signal.aborted) return
+          const connections = readConnections(ticker, payload)
+          neighborhoodCache.set(ticker, connections)
+          if (generation !== focusGeneration || focus.i !== idx || fL.getAttribute('aria-hidden') !== 'false') return
+          renderConnections(connections)
+        })
+        .catch(() => undefined)
     }
     const closeFocus = () => {
       if (focus.i < 0 && focus.t < 0.01) return
+      focusGeneration += 1
+      focusAbort?.abort()
+      focusAbort = null
       gsap.killTweensOf(focus)
       fL.style.pointerEvents = 'none'
       const finishClose = () => {
@@ -389,6 +447,7 @@ export default function HeroConstellation() {
       window.removeEventListener('keydown', onKey); window.removeEventListener('click', onClick, true)
       window.removeEventListener('mousedown', onDown, true); window.removeEventListener('meridian:search-focus', onSearchFocus)
       backBtn.removeEventListener('click', closeFocus); fDim.removeEventListener('click', closeFocus)
+      focusAbort?.abort()
       releaseScrollLock?.()
       unregisterScrollScene()
     }
@@ -415,8 +474,7 @@ export default function HeroConstellation() {
           <button id="hc-focusBack" type="button">← back</button>
           <div className="hc-fc-ticker" id="hc-fcT" />
           <div className="hc-fc-name" id="hc-fcN" />
-          <div className="hc-fc-badge" id="hc-fcB" />
-          <div className="hc-fc-stats" id="hc-fcS" />
+          <div className="hc-fc-connections" id="hc-fcC" />
           <a className="hc-fc-open" id="hc-fcO" href="#">Open full page →</a>
         </div>
       </div>
