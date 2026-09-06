@@ -3,7 +3,7 @@ import { SiteHeader } from '@/components/marketing/site-chrome'
 import HomeBoard, { loadHomeBoardData } from '@/components/marketing/HomeBoard'
 import HomeClose from '@/components/marketing/HomeClose'
 import HeroConstellation from '@/components/marketing/HeroConstellation'
-import HomeNeighborhood, { loadHomeNeighborhood } from '@/components/marketing/HomeNeighborhood'
+import HomeNeighborhood from '@/components/marketing/HomeNeighborhood'
 import DockingSearch from '@/components/marketing/DockingSearch'
 import { ScrollExperience } from '@/components/motion/ScrollRuntime'
 
@@ -12,16 +12,13 @@ const inter = Inter({ subsets: ['latin'], display: 'swap' })
 const mono = JetBrains_Mono({ subsets: ['latin'], weight: ['400', '500', '600'], display: 'swap' })
 
 async function Sections() {
-  const [boardData, neighborhood] = await Promise.all([
-    loadHomeBoardData(),
-    loadHomeNeighborhood(),
-  ])
+  const boardData = await loadHomeBoardData()
 
   return (
     <div className="relative z-30 text-content-primary">
       <div className="pt-24 md:pt-28 lg:pt-32">
         <HomeBoard data={boardData} />
-        <HomeNeighborhood detail={neighborhood} />
+        <HomeNeighborhood items={boardData.longTerm.status === 'ok' ? boardData.longTerm.items.slice(0, 5) : []} />
       </div>
       <HomeClose />
     </div>
