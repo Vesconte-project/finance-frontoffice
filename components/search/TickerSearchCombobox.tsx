@@ -25,6 +25,10 @@ type TickerSearchComboboxProps = {
   label?: string
   maxSuggestions?: number
   placeholder: string
+  /* Cycled through the placeholder as if typed, until the field is first used.
+     These are input examples, not data — the accessible name stays
+     `placeholder` so a screen reader is never read a moving target. */
+  typingHints?: readonly string[]
   routeForTicker: (symbol: string) => string
   submitLabel?: string | null
   variant: 'header' | 'panel'
@@ -180,12 +184,16 @@ export default function TickerSearchCombobox({
   label,
   maxSuggestions = 8,
   placeholder,
+  typingHints,
   routeForTicker,
   submitLabel = null,
   variant,
 }: TickerSearchComboboxProps) {
   const router = useRouter()
   const [search, setSearch] = useState(initialValue)
+  const [typedHint, setTypedHint] = useState<string | null>(null)
+  const [caretOn, setCaretOn] = useState(true)
+  const lastKeystrokeAt = useRef(0)
   const [tickerIndex, setTickerIndex] = useState<CachedTickerIndex | null>(memoryTickerIndex)
   const [recentTickers, setRecentTickers] = useState<string[]>([])
   const [isOpen, setIsOpen] = useState(false)
@@ -198,6 +206,74 @@ export default function TickerSearchCombobox({
   const inputId = useId()
   const listboxId = `${inputId}-listbox`
   const normalizedSearch = normalizeTickerSearchQuery(search)
+
+  const hintsActive = !!typingHints?.length && !isOpen && !search
+  useEffect(() => {
+    if (!hintsActive || !typingHints?.length) {
+      setTypedHint(null)
+      return
+    }
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+    // The first thing erased is the real placeholder, so the hint grows out of
+    // the label the field already had instead of replacing it in one frame.
+    let current = placeholder
+    let index = -1
+    let cut = placeholder.length
+    let erasing = true
+
+    const step = () => {
+      if (cancelled) return
+      // Idle in a background tab rather than typing to nobody.
+      if (document.hidden) {
+        timer = setTimeout(step, 400)
+        return
+      }
+      cut += erasing ? -1 : 1
+      lastKeystrokeAt.current = Date.now()
+      setTypedHint(current.slice(0, cut))
+
+      let wait = erasing ? 55 : 120
+      if (!erasing && cut >= current.length) {
+        erasing = true
+        wait = 2800
+      } else if (erasing && cut <= 0) {
+        erasing = false
+        index += 1
+        current = typingHints[index % typingHints.length]
+        wait = 700
+      }
+      timer = setTimeout(step, wait)
+    }
+
+    // The hints are a nudge for someone who has not acted, not an animation that
+    // plays at everyone. The real placeholder holds well past the point where a
+    // visitor who knew what they wanted would already be typing — and note this
+    // clock starts at mount, roughly a second before the field finishes
+    // arriving. The same wait is the pause before hints return once someone
+    // opens the field and leaves without typing.
+    timer = setTimeout(step, 7000)
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
+  }, [hintsActive, typingHints, placeholder])
+
+  // A real caret holds steady while characters are landing and blinks once the
+  // typing pauses. A block that never blinks reads as a glyph, not a cursor.
+  useEffect(() => {
+    if (!hintsActive) return
+    const id = setInterval(() => {
+      if (Date.now() - lastKeystrokeAt.current < 400) {
+        setCaretOn(true)
+        return
+      }
+      setCaretOn((on) => !on)
+    }, 530)
+    return () => clearInterval(id)
+  }, [hintsActive])
 
   useEffect(() => {
     setSearch(initialValue)
@@ -581,7 +657,7 @@ export default function TickerSearchCombobox({
 
       <Search
         className={cn(
-          'pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-content-muted',
+          'ticker-search__icon pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-content-muted',
           label ? 'top-[calc(50%+17px)]' : 'left-4'
         )}
       />
@@ -604,7 +680,7 @@ export default function TickerSearchCombobox({
             blurTimeoutRef.current = null
           }, 120)
         }}
-        placeholder={placeholder}
+        placeholder={typedHint === null ? placeholder : `${typedHint}${caretOn ? '\u258f' : ' '}`}
         className={inputClassName}
         role="combobox"
         aria-expanded={shouldShowDropdown}

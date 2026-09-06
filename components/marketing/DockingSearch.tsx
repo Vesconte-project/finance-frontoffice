@@ -7,6 +7,24 @@ import HeaderSearch from '@/components/HeaderSearch'
 
 const HEADLINE = 'Be a better investor'
 
+/* Typed into the hero's placeholder as examples of what the field takes.
+   Company names only, never symbols: someone who does not already know what a
+   ticker is learns nothing from watching "AAPL" appear, and the whole point of
+   the hint is showing a first-time visitor what to type. They claim nothing
+   about any of these companies, and the field still accepts symbols — which the
+   static placeholder says.
+
+   Deliberately not a list of US mega-caps: coverage spans Europe, Asia and the
+   Gulf, and a hint that only ever shows Silicon Valley teaches a visitor the
+   wrong boundary. Every name has to be big enough that a non-investor knows it,
+   and spelled out rather than abbreviated — an acronym is a ticker wearing a
+   different hat, and the whole point is showing someone who does not know
+   tickers what to type.
+
+   A hint is an implicit promise that the search finds what it shows, so confirm
+   a name resolves in /api/tickers/index before adding it here. */
+const TYPING_HINTS = ['Apple', 'Siemens', 'Samsung', 'Toyota', 'Alibaba', 'Microsoft'] as const
+
 /**
  * Homepage hero search.
  *
@@ -38,6 +56,16 @@ export default function DockingSearch() {
     return () => { cancelled = true }
   }, [])
 
+  // The header keys off the same signal, so its entrance stays in step with the
+  // copy however long the display font takes. See the .site-header rules under
+  // `hero-reveal-ready` in globals.css.
+  useEffect(() => {
+    if (!revealReady) return
+    const root = document.documentElement
+    root.classList.add('hero-reveal-ready')
+    return () => root.classList.remove('hero-reveal-ready')
+  }, [revealReady])
+
   return (
     <div data-dock-search className="dock-search" data-reveal-ready={revealReady ? 'true' : 'false'} onFocus={onFocus} onBlur={onBlur}>
       <div className="dock-search__intro">
@@ -52,7 +80,7 @@ export default function DockingSearch() {
         <p className="dock-search__subtitle">{"Don't guess. Analyze."}</p>
       </div>
       <div className="dock-search__field">
-        <HeaderSearch className="w-full" maxSuggestions={4} placeholder="Search a ticker or company…" />
+        <HeaderSearch className="w-full" maxSuggestions={4} placeholder="Search a ticker or company…" typingHints={TYPING_HINTS} />
       </div>
       <div className="dock-search__support">
         <Link

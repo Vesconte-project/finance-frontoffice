@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useAuth, useClerk, useUser } from '@clerk/nextjs'
 import { ArrowRight, ChevronDown } from 'lucide-react'
 import HeaderAccountControl from '@/components/HeaderAccountControl'
 import TileArt, { type TileArtKey } from '@/components/marketing/TileArt'
@@ -21,7 +22,16 @@ type Tile = {
   inkALight?: string
   inkBLight?: string
 }
-type Menu = { key: string; label: string; href: string; blurb: string; tiles: Tile[] }
+type Menu = {
+  key: string
+  label: string
+  href: string
+  blurb: string
+  tiles: Tile[]
+  /* The account menu swaps the text tile's single View link for the two account
+     actions, which are Clerk calls rather than routes. */
+  kind?: 'account'
+}
 
 // Placeholder content — the media tiles use gradient placeholders instead of
 // photography for now. Swap copy/links/images when ready.
@@ -94,11 +104,36 @@ const MENUS: Menu[] = [
   },
 ]
 
+const ACCOUNT_TILES: Tile[] = [
+  { label: 'Watchlist', href: '/dashboard/watchlist', grad: 'linear-gradient(150deg,#0f9e8e,#0a3a44)', lightGrad: 'linear-gradient(145deg,#d9eee9,#f4efe5 72%)' },
+  { label: 'Alerts', href: '/dashboard/alerts', grad: 'linear-gradient(145deg,#8a5a37,#301a0b)', lightGrad: 'linear-gradient(145deg,#eee4d9,#f4efe5 72%)' },
+  { label: 'Model Lab', href: '/models', grad: 'linear-gradient(150deg,#5b3d8c,#160c30)', lightGrad: 'linear-gradient(145deg,#e3dbf3,#f6f2fb 74%)' },
+  { label: 'Community', href: '/community', grad: 'linear-gradient(150deg,#3a4d8f,#0b1730)', lightGrad: 'linear-gradient(145deg,#dfe8ee,#f4efe5 72%)' },
+]
+
 export default function HeaderBar({ isHome }: { isHome: boolean }) {
+  const { isSignedIn } = useAuth()
+  const { user } = useUser()
+  const clerk = useClerk()
   const [open, setOpen] = useState<string | null>(null)
   const [displayed, setDisplayed] = useState<Menu | null>(null)
   const rowRef = useRef<HTMLDivElement>(null)
   const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const menus = useMemo<Menu[]>(() => {
+    if (!isSignedIn) return MENUS
+    return [
+      ...MENUS,
+      {
+        key: 'account',
+        label: 'Account',
+        href: '/dashboard',
+        blurb: user?.primaryEmailAddress?.emailAddress ?? user?.username ?? 'Signed in.',
+        tiles: ACCOUNT_TILES,
+        kind: 'account',
+      },
+    ]
+  }, [isSignedIn, user])
 
   // Keep the last menu mounted through the close transition.
   useEffect(() => {
@@ -116,7 +151,7 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
       return
     }
     if (clearTimer.current) clearTimeout(clearTimer.current)
-    setDisplayed(MENUS.find((m) => m.key === key) ?? null)
+    setDisplayed(menus.find((m) => m.key === key) ?? null)
     setOpen(key)
   }
 
@@ -210,11 +245,17 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
                 // Focus lands on mousedown, and focusing the row widens the
                 // condensed pill — the trigger shifted out from under the cursor
                 // before mouseup, so no click was ever emitted and the menu took
-                // two presses. Take focus after the press instead, by which point
-                // data-menu-open holds the row at its wide size anyway.
+                // two presses. Preventing that mousedown is the fix.
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={(event) => {
-                  event.currentTarget.focus()
+                  // `detail` is 0 for keyboard activation, where focus must stay
+                  // put. A pointer click releases it: suppressing the mousedown
+                  // focus above makes the browser read any focus landing
+                  // afterwards as keyboard-driven, so the ring stayed lit on the
+                  // previous trigger after switching menus — and :focus-within
+                  // holds the condensed row open once data-menu-open is gone.
+                  if (event.detail > 0) event.currentTarget.blur()
+                  else event.currentTarget.focus()
                   toggleMenu(m.key)
                 }}
                 className="site-header__navlink site-nav__trigger"
@@ -224,7 +265,10 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
               </button>
             ))}
           </nav>
-          <HeaderAccountControl />
+          <HeaderAccountControl
+            accountOpen={open === 'account'}
+            onToggleAccount={() => toggleMenu('account')}
+          />
         </div>
       </div>
 
@@ -240,10 +284,36 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
                 <p className="site-header__tile-eyebrow">{displayed.label}</p>
                 <p className="site-header__tile-blurb">{displayed.blurb}</p>
               </div>
-              <Link href={displayed.href} className="site-header__tile-view" onClick={() => setOpen(null)}>
-                View
-                <ArrowRight className="size-4" />
-              </Link>
+              {displayed.kind === 'account' ? (
+                <div className="site-header__tile-actions">
+                  <button
+                    type="button"
+                    className="site-header__tile-view"
+                    onClick={() => {
+                      setOpen(null)
+                      void clerk.openUserProfile()
+                    }}
+                  >
+                    Manage account
+                    <ArrowRight className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    className="site-header__tile-signout"
+                    onClick={() => {
+                      setOpen(null)
+                      void clerk.signOut()
+                    }}
+                  >
+                    Sign out
+                  </button>
+                </div>
+              ) : (
+                <Link href={displayed.href} className="site-header__tile-view" onClick={() => setOpen(null)}>
+                  View
+                  <ArrowRight className="size-4" />
+                </Link>
+              )}
             </div>
             {displayed.tiles.map((t) => (
               <Link

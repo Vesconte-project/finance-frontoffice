@@ -1401,6 +1401,40 @@ html.atlas-immersive .atlas-view {
   will-change: transform;
 }
 
+/* The homepage chrome waits out the headline reveal and then drops in from
+   above, so the first screen is the phrase over a softened field and nothing
+   else. It also hides the moment Clerk resolves: the account control settles
+   while the bar is still off-screen.
+
+   `backwards` rather than `both` is load-bearing — a forwards fill would freeze
+   this transform and the scroll-driven translateY(-100%) above would stop
+   working for the rest of the session. */
+html:not(.hero-reveal-ready) .marketing-home .site-header {
+  transform: translateY(-100%);
+}
+html.hero-reveal-ready .marketing-home .site-header {
+  animation: hero-chrome-in 520ms var(--chrome-ease) 900ms backwards;
+}
+@keyframes hero-chrome-in {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html:not(.hero-reveal-ready) .marketing-home .site-header {
+    transform: none;
+  }
+  html.hero-reveal-ready .marketing-home .site-header {
+    animation: none;
+  }
+}
+/* Reserves the account control's width while Clerk resolves, so the nav row
+   does not reflow when the real control replaces it. */
+.site-header__account-slot {
+  display: inline-block;
+  width: 56px;
+  height: 40px;
+}
+
 /* Slide the whole bar away while actively scrolling down past the fold.
    :focus-within keeps it in place if the user is tabbing through the nav. */
 html.chrome-past-fold.chrome-scroll-down .site-header:not(:focus-within) {
@@ -1430,7 +1464,10 @@ html.chrome-collision .site-header:focus-within {
   border-radius: var(--radius-pill);
   transition:
     max-width var(--chrome-dur) var(--chrome-ease),
-    border-radius var(--chrome-dur) var(--chrome-ease);
+    /* Closing: hold the panel's corner until the dropdown has collapsed (its
+       max-height runs 0.42s), so the pill radius is never applied to a box that
+       is still tall. */
+    border-radius 200ms var(--chrome-ease) 240ms;
 }
 
 /* Horizontal bar (brand / search / nav / Join) — always the top row. */
@@ -1552,6 +1589,12 @@ html[data-scroll-profile='operational'] .site-header[data-internal] .site-header
   /* A step rounder than --radius-2xl (24px): at this size 24 read as a slab.
      Stays above the 16px tiles so the corners nest instead of fighting. */
   border-radius: 32px;
+  /* Opening: square the corner off before the panel has any height. At
+     --chrome-dur the radius outlasted the dropdown's growth, so mid-open the
+     box was already tall while still carrying most of the pill. */
+  transition:
+    max-width var(--chrome-dur) var(--chrome-ease),
+    border-radius 140ms var(--chrome-ease);
 }
 .site-header__row[data-menu-open] .site-header__bar {
   gap: 16px;
@@ -1807,6 +1850,92 @@ html.chrome-scrolled .site-header__row:not([data-menu-open]) [data-header-search
   border: 1px solid var(--glass-border);
   background-color: color-mix(in srgb, var(--content-primary) 6%, transparent);
   transition: gap 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.site-header__tile-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  align-self: stretch;
+}
+.site-header__tile-actions .site-header__tile-view,
+.site-header__tile-signout {
+  white-space: nowrap;
+}
+.site-header__tile-signout {
+  height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--content-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+.site-header__tile-signout:hover {
+  background-color: color-mix(in srgb, var(--content-primary) 6%, transparent);
+  color: var(--content-primary);
+}
+.site-header__tile-signout:focus-visible {
+  outline: 2px solid var(--brand-spark);
+  outline-offset: 2px;
+}
+/* The account trigger. Sized to match the Join pill it replaces so the row does
+   not change width between signed-out and signed-in. */
+.site-header__account {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 40px;
+  padding: 0 8px 0 4px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Deliberately not .site-nav__trigger: that paints a filled background when
+   expanded, which around an avatar and a chevron reads as a stray container
+   however it is rounded. The open state marks the avatar instead. */
+.site-header__account .site-nav__chev {
+  color: var(--content-secondary);
+  transition: transform 0.25s var(--chrome-ease);
+}
+.site-header__account[aria-expanded='true'] .site-nav__chev {
+  transform: rotate(180deg);
+}
+.site-header__account[aria-expanded='true'] .site-header__account-avatar {
+  border-color: transparent;
+  box-shadow: 0 0 0 2px var(--brand-spark);
+}
+.site-header__account:focus-visible {
+  outline: none;
+}
+.site-header__account:focus-visible .site-header__account-avatar {
+  box-shadow: 0 0 0 2px var(--brand-spark), 0 0 0 5px color-mix(in srgb, var(--brand-spark) 22%, transparent);
+}
+.site-header__account-avatar {
+  transition: box-shadow 180ms ease, border-color 180ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--content-primary) 14%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brand-spark) 16%, transparent);
+  color: var(--content-primary);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+.site-header__account-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .site-header__tile-view:hover {
   gap: 12px;
@@ -2343,6 +2472,21 @@ html.chrome-scrolled .site-header__row[data-home]:focus-within:not([data-menu-op
   height: 32px;
   font-size: 13px;
 }
+/* The condensed row is capped at 418px and every element competes for it. The
+   avatar alone is affordance enough at that size, so the chevron gives its width
+   back to the search, which was truncating its own placeholder. */
+html.chrome-scrolled .site-header__row[data-home]:not([data-menu-open]) .site-header__account {
+  padding-inline: 2px;
+}
+html.chrome-scrolled .site-header__row[data-home]:not([data-menu-open]) .site-header__account .site-nav__chev {
+  display: none;
+}
+/* The header input reserves pr-10 for a trailing control the condensed pill
+   does not have, which left "Search…" about 30px short of fitting and clipped
+   it. Reclaiming that costs the row nothing. */
+html.chrome-scrolled .site-header__pill-search :is(input) {
+  padding-right: 12px;
+}
 html.chrome-scrolled .site-header__pill-search {
   max-width: 150px;
   opacity: 1;
@@ -2352,8 +2496,12 @@ html.chrome-scrolled .site-header__pill-search {
      panel (absolute, at top-full) and the input's focus ring. */
   overflow: visible;
 }
+/* Focused, the row grows to 600px — wider than the content needs — and the
+   slack pooled between the field and the nav. The field takes it instead. */
 html.chrome-scrolled .site-header__row[data-home]:focus-within .site-header__pill-search {
-  max-width: 280px;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 340px;
 }
 /* The panel is absolutely positioned, so it is free to be wider than the field
    it hangs from. At the pill's 280px the row grid (40px icon + name + symbol +
@@ -2807,11 +2955,20 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel butto
   to { opacity: 1; transform: translateY(0); }
 }
 .dock-search__field {
+  --dock-search-input-height: 62px;
   width: 100%;
   opacity: 0;
 }
+/* The icon is absolutely centred on .ticker-search__root, and in this context
+   alone the suggestion panel sits in flow inside that root rather than being
+   absolutely positioned. Opening it makes the root much taller, so `top: 50%`
+   walks down to the middle of field-plus-list while the column lifts — the icon
+   looks like it stayed behind. Anchor it to the field instead. */
+.marketing-home .dock-search .ticker-search__icon {
+  top: calc(var(--dock-search-input-height) / 2);
+}
 .dock-search__field :is(input) {
-  height: 62px;
+  height: var(--dock-search-input-height);
   font-size: 17px;
   border-radius: 16px;
   border-color: color-mix(in srgb, var(--content-primary) 18%, transparent);
