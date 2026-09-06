@@ -1506,6 +1506,15 @@ html[data-scroll-profile='operational'] .site-header[data-internal] .site-header
 html[data-scroll-profile='operational'] .site-header[data-internal] .site-header__row {
   border-radius: var(--radius-pill);
 }
+/* Pricing carries its own plan cards straight under the header, so the internal
+   glass box stacks with them the same way it stacked with the ticker hero. At
+   rest it stays boxless here too, and only materialises as the scrolled pill. */
+.site-header[data-internal][data-active-href='/pricing'] .site-header__row::before {
+  opacity: 0;
+}
+.site-header[data-internal][data-active-href='/pricing'] .site-header__row {
+  border-radius: var(--radius-pill);
+}
 .site-header[data-internal] .site-header__bar {
   grid-template-columns: minmax(0, 1fr) minmax(0, 520px) minmax(0, 1fr);
 }
@@ -1536,6 +1545,9 @@ html.chrome-scrolled .site-header[data-internal] .site-header__row:not([data-men
 }
 html.chrome-scrolled .site-header[data-internal] .site-header__row:not([data-menu-open]) [data-header-search] :is(input) {
   height: 32px;
+  /* The header input reserves pr-10 for a trailing control the condensed field
+     does not have, which clipped the placeholder mid-word. */
+  padding-right: 12px;
 }
 
 /* Liquid-glass surface on ::before so it fades in as one unit. Repo recipe,
@@ -2372,6 +2384,18 @@ main.marketing-pricing .site-header__backdrop {
   .pricing-note-inner {
     grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.8fr);
     align-items: center;
+  }
+}
+
+/* The closing heading reads as one sentence and should sit on one line. That
+   needs both a wider column and a size that fits it, so it only holds where the
+   room exists — below this it wraps normally rather than overflowing. */
+@media (min-width: 1200px) {
+  .pricing-note-inner {
+    grid-template-columns: minmax(0, 1.3fr) minmax(16rem, 0.7fr);
+  }
+  .pricing-note-heading {
+    white-space: nowrap;
   }
 }
 
