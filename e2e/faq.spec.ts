@@ -123,7 +123,10 @@ test('internal marketing headers use the larger search and homepage scroll pill'
 
     expect(initial.searchWidth).toBeGreaterThan(480)
     expect(initial.searchHeight).toBe(48)
-    expect(initial.surfaceOpacity).toBe('1')
+    // Pricing carries its own plan cards straight under the header, so it stays
+    // boxless at rest like the ticker's operational chrome; FAQ keeps the glass
+    // surface from the first frame.
+    expect(initial.surfaceOpacity).toBe(route === '/pricing' ? '0' : '1')
 
     await page.evaluate(() => window.scrollTo(0, 240))
     await expect.poll(() => page.evaluate(() => document.documentElement.classList.contains('chrome-scrolled'))).toBe(true)

@@ -64,13 +64,7 @@ export default async function PricingPage() {
       <SiteHeader activeHref="/pricing" />
       <div className={sharedHeaderSpacerClass} aria-hidden="true" />
 
-      <section className="pricing-hero mx-auto max-w-[1280px] px-6 pb-4 pt-5 sm:px-10 lg:px-16">
-        <div className="max-w-2xl">
-          <p className="pricing-kicker">Pricing / access</p>
-        </div>
-      </section>
-
-      <section className="pricing-plans mx-auto grid max-w-[1280px] gap-4 px-6 pb-14 sm:px-10 md:grid-cols-3 lg:px-16 lg:pb-18" aria-label="Plans">
+      <section className="pricing-plans mx-auto grid max-w-[1280px] gap-4 px-6 pb-14 pt-6 sm:px-10 md:grid-cols-3 lg:px-16 lg:pb-18 lg:pt-10" aria-label="Plans">
         <GlassPanel className="pricing-plan-card pricing-plan-card--free p-6 sm:p-7">
           <div className="pricing-plan-heading">
             <div>
@@ -129,7 +123,7 @@ export default async function PricingPage() {
         <div className="pricing-note-inner">
           <div>
             <p className="pricing-kicker">What is live</p>
-            <h2 id="pricing-note-heading" className="pricing-display mt-3 text-2xl font-bold tracking-[-0.04em] sm:text-3xl">
+            <h2 id="pricing-note-heading" className="pricing-note-heading pricing-display mt-3 text-2xl font-bold tracking-[-0.04em]">
               Start free today. Paid tiers are still being prepared.
             </h2>
           </div>
