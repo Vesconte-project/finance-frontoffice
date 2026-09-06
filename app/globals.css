@@ -1808,6 +1808,66 @@ html.chrome-scrolled .site-header__row:not([data-menu-open]) [data-header-search
   background-color: color-mix(in srgb, var(--content-primary) 6%, transparent);
   transition: gap 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
+.site-header__tile-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+}
+.site-header__tile-signout {
+  height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--content-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+.site-header__tile-signout:hover {
+  background-color: color-mix(in srgb, var(--content-primary) 6%, transparent);
+  color: var(--content-primary);
+}
+.site-header__tile-signout:focus-visible {
+  outline: 2px solid var(--brand-spark);
+  outline-offset: 2px;
+}
+/* The account trigger. Sized to match the Join pill it replaces so the row does
+   not change width between signed-out and signed-in. */
+.site-header__account {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px 0 2px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.site-header__account-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--content-primary) 14%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brand-spark) 16%, transparent);
+  color: var(--content-primary);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+.site-header__account-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.site-header__account.is-open .site-nav__chev {
+  transform: rotate(180deg);
+}
 .site-header__tile-view:hover {
   gap: 12px;
   color: var(--brand-spark);

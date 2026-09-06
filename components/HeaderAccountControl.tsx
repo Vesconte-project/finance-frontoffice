@@ -1,14 +1,31 @@
 'use client'
 
 import Link from 'next/link'
-import { useAuth, UserButton } from '@clerk/nextjs'
-import { Bell, Bookmark, FlaskConical, MessageSquareShare } from 'lucide-react'
+import { useAuth, useUser } from '@clerk/nextjs'
+import { ChevronDown } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 const joinClassName =
   'site-header__join inline-flex items-center justify-center rounded-full bg-brand-spark px-4 font-semibold text-[color:var(--brand-spark-on)] shadow-[0_10px_24px_-8px_var(--brand-spark)] transition duration-200 hover:brightness-[1.08]'
 
-export default function HeaderAccountControl() {
+/**
+ * The header's right-hand control.
+ *
+ * Signed out it is the Join action. Signed in it is a trigger for the header's
+ * own account menu — deliberately not Clerk's `UserButton` dropdown, which
+ * arrives as a dark purple panel with its own branding and reads as another
+ * product's UI dropped onto the page. The menu it opens is the same glass
+ * disclosure the other header menus use; see `HeaderBar`.
+ */
+export default function HeaderAccountControl({
+  accountOpen,
+  onToggleAccount,
+}: {
+  accountOpen: boolean
+  onToggleAccount: () => void
+}) {
   const { isSignedIn } = useAuth()
+  const { user } = useUser()
 
   if (!isSignedIn) {
     return (
@@ -18,36 +35,34 @@ export default function HeaderAccountControl() {
     )
   }
 
+  const label = user?.primaryEmailAddress?.emailAddress ?? user?.username ?? 'Account'
+  const initial = (user?.firstName ?? label).trim().charAt(0).toUpperCase()
+
   return (
-    <UserButton
-      appearance={{
-        elements: {
-          userButtonAvatarBox: 'site-header__join aspect-square',
-        },
+    <button
+      type="button"
+      aria-expanded={accountOpen}
+      aria-haspopup="menu"
+      aria-label={`Account menu for ${label}`}
+      // Same reason as the other triggers: focusing on mousedown widens the
+      // condensed row and moves the button out from under the cursor before
+      // mouseup, so the click never lands. Take focus after the press.
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={(event) => {
+        event.currentTarget.focus()
+        onToggleAccount()
       }}
+      className={cn('site-header__account site-nav__trigger', accountOpen && 'is-open')}
     >
-      <UserButton.MenuItems>
-        <UserButton.Link
-          label="Watchlist"
-          href="/dashboard/watchlist"
-          labelIcon={<Bookmark className="size-4" aria-hidden="true" />}
-        />
-        <UserButton.Link
-          label="Alerts"
-          href="/dashboard/alerts"
-          labelIcon={<Bell className="size-4" aria-hidden="true" />}
-        />
-        <UserButton.Link
-          label="Model Lab"
-          href="/models"
-          labelIcon={<FlaskConical className="size-4" aria-hidden="true" />}
-        />
-        <UserButton.Link
-          label="Community"
-          href="/community"
-          labelIcon={<MessageSquareShare className="size-4" aria-hidden="true" />}
-        />
-      </UserButton.MenuItems>
-    </UserButton>
+      <span className="site-header__account-avatar" aria-hidden="true">
+        {user?.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={user.imageUrl} alt="" width={28} height={28} />
+        ) : (
+          initial
+        )}
+      </span>
+      <ChevronDown className="site-nav__chev size-3.5" aria-hidden="true" />
+    </button>
   )
 }
