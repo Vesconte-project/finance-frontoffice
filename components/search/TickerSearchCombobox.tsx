@@ -203,6 +203,8 @@ export default function TickerSearchCombobox({
   const [loadAttemptToken, setLoadAttemptToken] = useState(0)
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [maxPanelHeight, setMaxPanelHeight] = useState<number | null>(null)
   const inputId = useId()
   const listboxId = `${inputId}-listbox`
   const normalizedSearch = normalizeTickerSearchQuery(search)
@@ -368,6 +370,32 @@ export default function TickerSearchCombobox({
       if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current)
     }
   }, [])
+
+  // The dropdown's fixed 28rem cap assumes a full screen below the field. Once
+  // the on-screen keyboard opens, visualViewport shrinks to the space above
+  // it — cap the panel to whatever of that actually remains below the field,
+  // instead of letting the keyboard just cover the rest of the suggestions.
+  useEffect(() => {
+    if (!isOpen) return
+    const viewport = window.visualViewport
+    const recompute = () => {
+      const scrollEl = scrollRef.current
+      if (!scrollEl) return
+      const viewportHeight = viewport?.height ?? window.innerHeight
+      const fieldTop = scrollEl.getBoundingClientRect().top
+      const available = viewportHeight - fieldTop - 12
+      setMaxPanelHeight(Math.max(120, Math.min(448, available)))
+    }
+    recompute()
+    viewport?.addEventListener('resize', recompute)
+    viewport?.addEventListener('scroll', recompute)
+    window.addEventListener('resize', recompute)
+    return () => {
+      viewport?.removeEventListener('resize', recompute)
+      viewport?.removeEventListener('scroll', recompute)
+      window.removeEventListener('resize', recompute)
+    }
+  }, [isOpen])
 
   const featuredBase = useMemo(() => {
     if (tickerIndex) return getFeaturedTickerIndexResults(tickerIndex.items, 8)
@@ -726,7 +754,12 @@ export default function TickerSearchCombobox({
         aria-hidden={!shouldShowDropdown}
         inert={!shouldShowDropdown ? true : undefined}
       >
-          <div data-lenis-prevent className="ticker-search__scroll max-h-[28rem] overflow-auto p-1.5">
+          <div
+            ref={scrollRef}
+            data-lenis-prevent
+            className="ticker-search__scroll max-h-[28rem] overflow-auto p-1.5"
+            style={maxPanelHeight != null ? { maxHeight: `${maxPanelHeight}px` } : undefined}
+          >
             {visibleSections.map((section, sectionGroupIndex) => {
               let runningIndex = 0
               for (const previousSection of visibleSections) {
