@@ -34,7 +34,11 @@ test('app and ticker pages opt into the operational profile without another cont
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   }
 
-  await expect(page.locator('[data-selected-ticker-node]')).toBeVisible()
+  // Scoped to the resolved hero: while the chrome's Suspense boundary is still
+  // streaming, the fallback and the real section are both in the DOM and both
+  // carry a selected node, so a bare locator hits two elements. Asserting on
+  // the ready state is also stricter — a page stuck loading used to satisfy this.
+  await expect(page.locator('[data-ticker-chrome="ready"] [data-selected-ticker-node]')).toBeVisible()
   await page.mouse.wheel(0, 700)
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(50)
 })
