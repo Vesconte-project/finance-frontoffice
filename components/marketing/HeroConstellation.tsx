@@ -104,8 +104,10 @@ export default function HeroConstellation() {
     let scrollWithRuntime: ((top: number, onComplete: () => void) => void) | null = null
     const revealStartedAt = performance.now()
     let reveal = reducedMotion ? 1 : 0
-    // Softens the field while the headline reveals over it, then clears as the
-    // headline rises — the network sharpens exactly as the copy settles.
+    // Softens the field for the whole arrival and clears last, once the copy,
+    // the search and the support row are all in place. The network coming into
+    // focus is the closing beat rather than something that finishes early and
+    // leaves the last elements arriving on a settled screen.
     let introBlur = reducedMotion ? 0 : 1
     let revealFinishedByGesture = reducedMotion
 
@@ -196,8 +198,9 @@ export default function HeroConstellation() {
       if (!revealFinishedByGesture) {
         const revealElapsed = performance.now() - revealStartedAt
         reveal = Math.min(1, revealElapsed / 800)
-        // Matches the 700-900ms window the heading uses to rise (globals.css).
-        introBlur = 1 - smooth(700, 900, revealElapsed)
+        // Starts once the support row has landed (1.05s + 220ms in globals.css)
+        // and resolves shortly after, so nothing arrives on an already-sharp field.
+        introBlur = 1 - smooth(1270, 1560, revealElapsed)
       }
       tt += reducedMotion ? 0 : (focus.i < 0 ? 0.016 : 0.016 * 0.22)
       p += (targetP - p) * 0.07; if (focus.i < 0) { mx += (tmx - mx) * 0.03; my += (tmy - my) * 0.03 }
