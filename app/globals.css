@@ -2734,7 +2734,7 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel butto
   margin: 10px 0 0;
   color: var(--content-primary);
   font-family: var(--font-display, ui-sans-serif, sans-serif);
-  font-size: clamp(2.2rem, 5vw, 4.1rem);
+  font-size: clamp(1.9rem, 3.2vw, 2.9rem);
   font-weight: 700;
   letter-spacing: -0.055em;
   line-height: 0.98;
@@ -2757,21 +2757,9 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel butto
   line-height: 1.5;
   opacity: 0;
 }
-.dock-search__readings {
-  margin: 10px 0 0;
-  color: color-mix(in srgb, var(--content-primary) 30%, var(--content-secondary));
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
-  text-align: center;
-  opacity: 0;
-}
-.dock-search[data-reveal-ready='true'] :is(.dock-search__subtitle, .dock-search__readings) {
+.dock-search[data-reveal-ready='true'] .dock-search__subtitle {
   animation: dock-search-copy-in 220ms ease-out both;
   animation-delay: 900ms;
-}
-.dock-search[data-reveal-ready='true'] .dock-search__readings {
-  animation-delay: 1.12s;
 }
 @keyframes dock-search-word-in {
   from { opacity: 0; filter: blur(8px); transform: translateY(0.35em); }
@@ -2785,8 +2773,8 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel butto
   width: 100%;
 }
 .dock-search__field :is(input) {
-  height: 54px;
-  font-size: 16px;
+  height: 62px;
+  font-size: 17px;
   border-radius: 16px;
   border-color: color-mix(in srgb, var(--content-primary) 18%, transparent);
   background: color-mix(in srgb, var(--page-bg) 68%, white);
@@ -2870,7 +2858,7 @@ html.chrome-scrolled .dock-search {
     margin-bottom: 20px;
   }
   .dock-search__title {
-    font-size: clamp(2rem, 10vw, 2.8rem);
+    font-size: clamp(1.8rem, 8.8vw, 2.5rem);
   }
   .dock-search__subtitle {
     font-size: 14px;
@@ -2885,7 +2873,7 @@ html.chrome-scrolled .dock-search {
 
 @media (max-width: 389px) {
   .dock-search__field :is(input) {
-    height: 52px;
+    height: 60px;
   }
 }
 
@@ -2947,11 +2935,6 @@ html.chrome-scrolled .dock-search {
   }
   .dock-search__word,
   .dock-search__subtitle,
-  .dock-search__readings {
-    animation: none !important;
-    opacity: 1;
-    transform: none;
-  }
 }
 
 /* FAQ accordion: the scoped override wins over arbitrary Tailwind durations. */

@@ -4,10 +4,8 @@ import { Fragment, useEffect, useState, type CSSProperties, type FocusEvent } fr
 import Link from 'next/link'
 import { ChartNetwork } from 'lucide-react'
 import HeaderSearch from '@/components/HeaderSearch'
-import { PICK_READING_CONTENT, PICK_READING_KEYS } from '@/lib/picks-content'
 
 const HEADLINE = 'Be a better investor'
-const READINGS = PICK_READING_KEYS.map((key) => PICK_READING_CONTENT[key].label).join(' · ')
 
 /**
  * Homepage hero search.
@@ -67,7 +65,6 @@ export default function DockingSearch() {
           <span className="dock-search__cta-label">Correlations</span>
         </Link>
       </div>
-      <p className="dock-search__readings">{READINGS}</p>
     </div>
   )
 }

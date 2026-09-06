@@ -5,6 +5,7 @@ import gsap from 'gsap'
 import { Sora, JetBrains_Mono, Inter } from 'next/font/google'
 import { useScrollRuntime } from '@/components/motion/ScrollRuntime'
 import { scrollMotionTokens } from '@/components/motion/scroll-tokens'
+import { PICK_READING_CONTENT, PICK_READING_KEYS } from '@/lib/picks-content'
 
 const sora = Sora({ subsets: ['latin'], weight: ['400', '600', '700', '800'], display: 'swap' })
 const inter = Inter({ subsets: ['latin'], display: 'swap' })
@@ -52,8 +53,9 @@ const CSS = `
 .hc-root .hc-in a,.hc-root .hc-in button{pointer-events:auto}
 .hc-root .hc-card{display:flex;align-items:center;gap:16px;width:fit-content;margin-top:26px;padding:14px 18px;border-radius:18px;background:var(--glass);border:1px solid var(--glass-border);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 24px 60px -24px #000;backdrop-filter:blur(16px) saturate(1.5);-webkit-backdrop-filter:blur(16px) saturate(1.5)}
 .hc-root .hc-card .v{font-family:var(--font-display);font-weight:700;font-size:20px}
-.hc-root .hc-scrollcue{position:fixed;bottom:16px;left:0;right:0;text-align:center;z-index:40;font-family:var(--font-mono);font-size:11px;color:var(--text-3);pointer-events:none}
-.hc-root .hc-fieldcaption{position:fixed;bottom:16px;left:24px;z-index:40;font-family:var(--font-mono);font-size:11px;color:var(--text-3);pointer-events:none}
+.hc-root .hc-fieldcaption,.hc-root .hc-fieldreadings{position:fixed;bottom:16px;z-index:40;font-family:var(--font-mono);font-size:11px;color:var(--text-2);pointer-events:none}
+.hc-root .hc-fieldcaption{left:24px}
+.hc-root .hc-fieldreadings{right:24px;text-align:right}
 .hc-root #hc-focusLayer{position:fixed;inset:0;z-index:70;opacity:0;pointer-events:none}
 .hc-root #hc-focusDim{position:absolute;inset:0;background:rgba(20,41,67,.16)}
 .hc-root #hc-focusCard{position:absolute;left:54%;top:50%;width:min(360px,46vw);padding:22px;border-radius:20px;background:var(--focus-bg);color:var(--focus-text);border:1px solid var(--focus-border);box-shadow:var(--focus-shadow);backdrop-filter:blur(18px) saturate(1.15);-webkit-backdrop-filter:blur(18px) saturate(1.15)}
@@ -76,7 +78,6 @@ html[data-theme="dark"] .hc-root #hc-focusDim,.hc-root[data-theme="dark"] #hc-fo
 .hc-root[data-reduced-motion="true"] #hc-stage{height:auto;min-height:0}
 .hc-root[data-reduced-motion="true"] .hc-beat{position:relative;inset:auto;min-height:0;padding-block:clamp(48px,8vh,80px);opacity:1!important;transform:none!important}
 .hc-root[data-reduced-motion="true"] .hc-beat:first-child{display:none}
-.hc-root[data-reduced-motion="true"] .hc-scrollcue{display:none}
 `
 
 export default function HeroConstellation() {
@@ -265,7 +266,7 @@ export default function HeroConstellation() {
     const win = [[-0.06, 0.16], [0.20, 0.37], [0.41, 0.57], [0.61, 0.77], [0.81, 1.01]]
     const updateBeats = (prog: number) => beats.forEach((el, i) => { const [a, b] = win[i]; const inn = smooth(a, a + 0.05, prog), out = 1 - smooth(b - 0.05, b, prog); const o = Math.max(0, Math.min(1, inn * out)); el.style.opacity = String(o); el.style.transform = 'translateY(' + ((1 - o) * 18) + 'px)' })
     updateBeats(0)
-    const setP = (v: number) => { targetP = v; $('hc-prog').style.width = (v * 100) + '%'; const cue = $('hc-cue'); const caption = $('hc-caption'); const opacity = v > 0.02 ? '0' : '1'; if (cue) cue.style.opacity = opacity; if (caption) caption.style.opacity = opacity; updateBeats(v) }
+    const setP = (v: number) => { targetP = v; $('hc-prog').style.width = (v * 100) + '%'; const caption = $('hc-caption'); const readings = $('hc-readings'); const opacity = v > 0.02 ? '0' : '1'; caption.style.opacity = opacity; readings.style.opacity = opacity; updateBeats(v) }
 
     const updateField = (progress: number, interactive = progress < 0.999) => {
       const strength = Math.max(0, Math.min(1, progress))
@@ -510,8 +511,8 @@ export default function HeroConstellation() {
         <div className="hc-beat"><div className="hc-in" /></div>
       </div>
 
-      <div className="hc-scrollcue" id="hc-cue">▸ scroll · click a particle</div>
       <div className="hc-fieldcaption" id="hc-caption">Nothing moves alone.</div>
+      <div className="hc-fieldreadings" id="hc-readings">{PICK_READING_KEYS.map((key) => PICK_READING_CONTENT[key].label).join(' · ')}</div>
 
       <div id="hc-focusLayer" aria-hidden="true">
         <div id="hc-focusDim" />
