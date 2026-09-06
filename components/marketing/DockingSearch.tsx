@@ -7,10 +7,13 @@ import HeaderSearch from '@/components/HeaderSearch'
 
 const HEADLINE = 'Be a better investor'
 
-/* Typed into the hero's placeholder as examples of what the field takes. Real,
-   widely recognised listings — they claim nothing about any of them, they only
-   show the two shapes the search accepts: a symbol or a company name. */
-const TYPING_HINTS = ['AAPL', 'Microsoft', 'NVDA', 'Tesla', 'JPM'] as const
+/* Typed into the hero's placeholder as examples of what the field takes.
+   Company names only, never symbols: someone who does not already know what a
+   ticker is learns nothing from watching "AAPL" appear, and the whole point of
+   the hint is showing a first-time visitor what to type. They claim nothing
+   about any of these companies, and the field still accepts symbols — which the
+   static placeholder says. */
+const TYPING_HINTS = ['Apple', 'Microsoft', 'Nvidia', 'Tesla', 'Amazon'] as const
 
 /**
  * Homepage hero search.
