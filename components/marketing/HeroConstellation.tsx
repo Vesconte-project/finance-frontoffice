@@ -110,6 +110,14 @@ export default function HeroConstellation() {
     // leaves the last elements arriving on a settled screen.
     let introBlur = reducedMotion ? 0 : 1
     let revealFinishedByGesture = reducedMotion
+    // A permanent softening of the field, and the only one that outlives the
+    // arrival. The far dust is drawn at a 1.1px radius, so a blur of this size
+    // takes its hard edge off entirely while the labelled hubs — three times
+    // that radius — keep their shape and stay the things worth reaching for.
+    // Applies under reduced motion too: it is a static treatment, not motion.
+    // Not free, but not a new cost either: the same CSS filter already runs at
+    // 4px through the intro and 6.5px whenever the search is focused.
+    const FIELD_SOFTEN = 1
 
     const TICKERS = ['SPY','NVDA','AAPL','MSFT','QQQ','AMZN','META','TSLA','GOOGL','JPM','XOM','AVGO','AMD','LLY','V','COST','NFLX','HD','BRK.B','GLD']
     const COLORS: [number, number, number][] = darkMode ? [[25,201,182],[63,224,205],[139,123,255],[110,168,255]] : [[43,73,96],[78,103,119],[110,110,128],[86,106,123]]
@@ -225,7 +233,7 @@ export default function HeroConstellation() {
       }
       if (focus.i >= 0 && nodes[focus.i]) { const fn = nodes[focus.i]; for (const n of nodes) { const ddx = n.bx - fn.bx, ddy = n.by - fn.by, ddz = n.bz - fn.bz; n.clar = 1 - smooth(R * 0.12, R * 0.95, Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz)) } } else { for (const n of nodes) n.clar = 1 }
       stageEl.style.opacity = String(Math.max(0, 1 - focus.t * 1.3))
-      const canvasBlur = searchMode * 6.5 + introBlur * 4
+      const canvasBlur = FIELD_SOFTEN + searchMode * 6.5 + introBlur * 4
       c.style.filter = canvasBlur > 0.002 ? 'blur(' + canvasBlur.toFixed(2) + 'px)' : 'none'
       if (focus.t < 0.01 || focus.i < 0 || !nodes[focus.i]) {
         x.setTransform(DPR, 0, 0, DPR, 0, 0); x.clearRect(0, 0, W, H)
