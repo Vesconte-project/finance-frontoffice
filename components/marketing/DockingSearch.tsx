@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { ChartNetwork } from 'lucide-react'
 import HeaderSearch from '@/components/HeaderSearch'
 
-const HEADLINE = 'Be a better investor'
+const HEADLINE = 'Become a better investor'
 
 /* Typed into the hero's placeholder as examples of what the field takes.
    Company names only, never symbols: someone who does not already know what a
