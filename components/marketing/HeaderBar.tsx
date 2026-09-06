@@ -245,11 +245,17 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
                 // Focus lands on mousedown, and focusing the row widens the
                 // condensed pill — the trigger shifted out from under the cursor
                 // before mouseup, so no click was ever emitted and the menu took
-                // two presses. Take focus after the press instead, by which point
-                // data-menu-open holds the row at its wide size anyway.
+                // two presses. Preventing that mousedown is the fix.
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={(event) => {
-                  event.currentTarget.focus()
+                  // `detail` is 0 for keyboard activation, where focus must stay
+                  // put. A pointer click releases it: suppressing the mousedown
+                  // focus above makes the browser read any focus landing
+                  // afterwards as keyboard-driven, so the ring stayed lit on the
+                  // previous trigger after switching menus — and :focus-within
+                  // holds the condensed row open once data-menu-open is gone.
+                  if (event.detail > 0) event.currentTarget.blur()
+                  else event.currentTarget.focus()
                   toggleMenu(m.key)
                 }}
                 className="site-header__navlink site-nav__trigger"
