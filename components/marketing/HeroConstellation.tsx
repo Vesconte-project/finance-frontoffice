@@ -23,16 +23,16 @@ const CSS = `
 .hc-root{
   --font-display:"Sora",system-ui,sans-serif;--font-body:"Inter",system-ui,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,monospace;
   --bg:#f3efe6;--text:#142943;--text-2:#5b6978;--text-3:#87929b;
-  --spark:#0b8178;--spark-2:#1ba69a;--green:#1d7f52;--red:#bd514d;
+  --spark:#0b8178;--spark-2:#1ba69a;
   --glass:rgba(255,255,255,.66);--glass-border:rgba(20,41,67,.16);--hairline:rgba(20,41,67,.12);
-  --focus-bg:#142943;--focus-text:#f6f2e9;--focus-muted:#b8c5d0;--focus-border:rgba(246,242,233,.18);--focus-stat:rgba(246,242,233,.08);--focus-shadow:0 28px 80px rgba(20,41,67,.28);
+  --focus-bg:rgba(243,239,230,.94);--focus-text:var(--text);--focus-muted:var(--text-2);--focus-border:var(--hairline);--focus-shadow:0 28px 80px rgba(20,41,67,.18);
   position:relative;background:var(--bg);color:var(--text);font-family:var(--font-body);
 }
 .hc-root[data-theme="dark"],[data-theme="dark"] .hc-root{
   --bg:#04060c;--text:#eaf0ff;--text-2:#9fb0d0;--text-3:#61708f;
-  --spark:#19c9b6;--spark-2:#3fe0cd;--green:#34d399;--red:#fb7185;
+  --spark:#19c9b6;--spark-2:#3fe0cd;
   --glass:rgba(255,255,255,.05);--glass-border:rgba(255,255,255,.14);--hairline:rgba(255,255,255,.10);
-  --focus-bg:rgba(10,14,22,.94);--focus-text:#eef3ff;--focus-muted:#9fb0d0;--focus-border:rgba(255,255,255,.14);--focus-stat:rgba(255,255,255,.04);--focus-shadow:0 40px 100px -30px #000;
+  --focus-bg:rgba(4,6,12,.94);--focus-text:var(--text);--focus-muted:var(--text-2);--focus-border:var(--hairline);--focus-shadow:0 40px 100px -30px #000;
 }
 .hc-root *{box-sizing:border-box}
 .hc-root #hc-bg{position:fixed;inset:0;z-index:0;display:block;background:var(--bg)}
@@ -51,8 +51,6 @@ const CSS = `
 .hc-root .hc-in{max-width:1080px;width:100%;margin:0 auto}
 .hc-root .hc-in a,.hc-root .hc-in button{pointer-events:auto}
 .hc-root .hc-card{display:flex;align-items:center;gap:16px;width:fit-content;margin-top:26px;padding:14px 18px;border-radius:18px;background:var(--glass);border:1px solid var(--glass-border);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 24px 60px -24px #000;backdrop-filter:blur(16px) saturate(1.5);-webkit-backdrop-filter:blur(16px) saturate(1.5)}
-.hc-root .hc-badge{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:12px;padding:6px 11px;border-radius:999px;color:var(--green);background:color-mix(in srgb,var(--green) 15%,transparent);border:1px solid color-mix(in srgb,var(--green) 40%,transparent)}
-.hc-root .hc-badge .d{width:7px;height:7px;border-radius:99px;background:currentColor;box-shadow:0 0 10px currentColor}
 .hc-root .hc-card .v{font-family:var(--font-display);font-weight:700;font-size:20px}
 .hc-root .hc-scrollcue{position:fixed;bottom:16px;left:0;right:0;text-align:center;z-index:40;font-family:var(--font-mono);font-size:11px;color:var(--text-3);pointer-events:none}
 .hc-root #hc-focusLayer{position:fixed;inset:0;z-index:70;opacity:0;pointer-events:none}
@@ -61,16 +59,17 @@ const CSS = `
 .hc-root #hc-focusBack{background:none;border:none;color:var(--focus-muted);font-family:var(--font-mono);font-size:12px;cursor:pointer;padding:0;margin-bottom:14px}
 .hc-root #hc-focusBack:hover{color:var(--text)}
 .hc-root #hc-focusBack:focus-visible,.hc-root .hc-fc-open:focus-visible{outline:2px solid var(--spark-2);outline-offset:4px}
-.hc-root .hc-fc-ticker{font-family:var(--font-display);font-weight:800;font-size:36px;letter-spacing:-.03em;line-height:1}
+.hc-root .hc-fc-ticker{font-family:var(--font-display);font-weight:800;font-size:36px;letter-spacing:-.03em;line-height:1;color:var(--spark)}
 .hc-root .hc-fc-name{color:var(--focus-muted);font-size:13px;margin-top:3px}
-.hc-root .hc-fc-badge{margin-top:14px}
-.hc-root .hc-fc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:16px}
-.hc-root .hc-fc-stats .s{background:var(--focus-stat);border:1px solid var(--focus-border);border-radius:12px;padding:10px}
-.hc-root .hc-fc-stats .s .k{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
-.hc-root .hc-fc-stats .s .v{font-family:var(--font-display);font-weight:700;font-size:17px;font-variant-numeric:tabular-nums;margin-top:4px}
-.hc-root .hc-fc-open{display:inline-block;margin-top:18px;font-weight:600;font-size:14px;color:#04201d;background:var(--spark);padding:11px 18px;border-radius:12px;text-decoration:none}
+.hc-root .hc-fc-connections{margin-top:18px}
+.hc-root .hc-fc-connections>div{font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--focus-muted)}
+.hc-root .hc-fc-connections ul{display:flex;flex-wrap:wrap;gap:8px 14px;margin:8px 0 0;padding:0;list-style:none}
+.hc-root .hc-fc-connections a{font-family:var(--font-mono);font-size:12px;color:var(--focus-text);text-decoration:none}
+.hc-root .hc-fc-connections a:hover{text-decoration:underline;text-decoration-color:var(--spark);text-underline-offset:3px}
+.hc-root .hc-fc-open{display:inline-block;margin-top:18px;font-weight:600;font-size:14px;color:var(--spark);text-decoration:none}
+.hc-root .hc-fc-open:hover{text-decoration:underline;text-underline-offset:4px}
 html[data-theme="dark"] .hc-root #hc-focusDim,.hc-root[data-theme="dark"] #hc-focusDim{background:rgba(0,4,10,.52)}
-@media(max-width:720px){.hc-root #hc-focusCard{left:12px;right:12px;top:auto;bottom:16px;width:auto;padding:20px}.hc-root .hc-fc-ticker{font-size:30px}.hc-root .hc-fc-stats{gap:6px}.hc-root .hc-fc-stats .s{padding:9px 8px}}
+@media(max-width:720px){.hc-root #hc-focusCard{left:12px;right:12px;top:auto;bottom:16px;width:auto;padding:20px}.hc-root .hc-fc-ticker{font-size:30px}}
 .hc-root[data-reduced-motion="true"] #hc-focusCard{transition:none}
 .hc-root[data-reduced-motion="true"] #hc-stage{height:auto;min-height:0}
 .hc-root[data-reduced-motion="true"] .hc-beat{position:relative;inset:auto;min-height:0;padding-block:clamp(48px,8vh,80px);opacity:1!important;transform:none!important}
