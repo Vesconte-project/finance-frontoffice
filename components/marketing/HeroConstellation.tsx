@@ -58,7 +58,7 @@ const CSS = `
 .hc-root #hc-focusCard{position:absolute;left:54%;top:50%;width:min(360px,46vw);padding:22px;border-radius:20px;background:var(--focus-bg);color:var(--focus-text);border:1px solid var(--focus-border);box-shadow:var(--focus-shadow);backdrop-filter:blur(18px) saturate(1.15);-webkit-backdrop-filter:blur(18px) saturate(1.15)}
 .hc-root #hc-focusBack{background:none;border:none;color:var(--focus-muted);font-family:var(--font-mono);font-size:12px;cursor:pointer;padding:0;margin-bottom:14px}
 .hc-root #hc-focusBack:hover{color:var(--text)}
-.hc-root #hc-focusBack:focus-visible,.hc-root .hc-fc-open:focus-visible{outline:2px solid var(--spark-2);outline-offset:4px}
+.hc-root #hc-focusBack:focus-visible,.hc-root .hc-fc-open:focus-visible,.hc-root .hc-fc-connections a:focus-visible{outline:2px solid var(--spark-2);outline-offset:4px}
 .hc-root .hc-fc-ticker{font-family:var(--font-display);font-weight:800;font-size:36px;letter-spacing:-.03em;line-height:1;color:var(--spark)}
 .hc-root .hc-fc-name{color:var(--focus-muted);font-size:13px;margin-top:3px}
 .hc-root .hc-fc-connections{margin-top:18px}
@@ -98,6 +98,7 @@ export default function HeroConstellation() {
     let rafId = 0
     let heroVisible = true
     let releaseScrollLock: (() => void) | null = null
+    let scrollWithRuntime: ((top: number, onComplete: () => void) => void) | null = null
 
     const TICKERS = ['SPY','NVDA','AAPL','MSFT','QQQ','AMZN','META','TSLA','GOOGL','JPM','XOM','AVGO','AMD','LLY','V','COST','NFLX','HD','BRK.B','GLD']
     const COLORS: [number, number, number][] = darkMode ? [[25,201,182],[63,224,205],[139,123,255],[110,168,255]] : [[43,73,96],[78,103,119],[110,110,128],[86,106,123]]
@@ -281,7 +282,8 @@ export default function HeroConstellation() {
         ))
       : undefined
 
-    const unregisterScrollScene = runtime.registerScene(({ gsap: runtimeGsap, ScrollTrigger }) => {
+    const unregisterScrollScene = runtime.registerScene(({ gsap: runtimeGsap, lenis, ScrollTrigger }) => {
+      scrollWithRuntime = (top, onComplete) => lenis.scrollTo(top, { duration: 0.28, lock: false, onComplete })
       const s = { p: 0 }
       const tween = runtimeGsap.to(s, {
         p: 1,
@@ -307,6 +309,7 @@ export default function HeroConstellation() {
       updateField(hideTrigger.progress)
 
       return () => {
+        scrollWithRuntime = null
         tween.scrollTrigger?.kill()
         tween.kill()
         hideTrigger.kill()
@@ -415,12 +418,31 @@ export default function HeroConstellation() {
     fDim.addEventListener('click', closeFocus)
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && focus.i >= 0) closeFocus() }
     window.addEventListener('keydown', onKey)
+    let pendingFocus = false
+    const openAfterChromeSettles = (idx: number) => {
+      if (pendingFocus || focus.i >= 0) return
+      if (window.scrollY > 40) { openFocus(idx); return }
+      pendingFocus = true
+      const finish = () => {
+        pendingFocus = false
+        openFocus(idx)
+      }
+      if (reducedMotion) {
+        window.scrollTo({ top: 48, behavior: 'auto' })
+        requestAnimationFrame(() => requestAnimationFrame(finish))
+      } else if (scrollWithRuntime) {
+        scrollWithRuntime(48, finish)
+      } else {
+        finish()
+      }
+    }
     // If a search field is focused when the press starts, the click is dismissing
     // it — don't also grab a particle.
     const searchSel = 'input,textarea,[data-dock-search],[data-header-search],[data-pill-search]'
     const onDown = () => {
       const ae = document.activeElement as HTMLElement | null
-      dismissingSearch = !!(ae && ae.closest && ae.closest(searchSel))
+      const dismissingDisclosure = Boolean(document.querySelector('[data-site-header-row][data-menu-open]'))
+      dismissingSearch = dismissingDisclosure || !!(ae && ae.closest && ae.closest(searchSel))
     }
     window.addEventListener('mousedown', onDown, true)
     const onClick = (e: MouseEvent) => {
@@ -430,9 +452,29 @@ export default function HeroConstellation() {
       if (tgt && tgt.closest && tgt.closest('.hc-in a,.hc-in button,#hc-focusCard,header,nav,[data-dock-search]')) return
       let best = -1, bd = 48
       for (let i = 0; i < nodes.length; i++) { const n = nodes[i]; const d = Math.hypot(n.sx - e.clientX, n.sy - e.clientY); if (d < bd) { bd = d; best = i } }
-      if (best >= 0) openFocus(best)
+      if (best >= 0) openAfterChromeSettles(best)
     }
     window.addEventListener('click', onClick, true)
+    let wheelDistance = 0
+    let touchStartY: number | null = null
+    const closeForScroll = () => {
+      wheelDistance = 0
+      touchStartY = null
+      closeFocus()
+    }
+    const onWheel = (event: WheelEvent) => {
+      if (focus.i < 0) return
+      wheelDistance += Math.abs(event.deltaY)
+      if (wheelDistance >= 60) closeForScroll()
+    }
+    const onTouchStart = (event: TouchEvent) => { touchStartY = focus.i >= 0 ? event.touches[0]?.clientY ?? null : null }
+    const onTouchMove = (event: TouchEvent) => {
+      if (focus.i < 0 || touchStartY === null) return
+      if (Math.abs((event.touches[0]?.clientY ?? touchStartY) - touchStartY) >= 48) closeForScroll()
+    }
+    window.addEventListener('wheel', onWheel, { passive: true, capture: true })
+    window.addEventListener('touchstart', onTouchStart, { passive: true, capture: true })
+    window.addEventListener('touchmove', onTouchMove, { passive: true, capture: true })
     // Zoom-out + blur the constellation while the hero search is focused.
     const onSearchFocus = (e: Event) => { searchModeTarget = (e as CustomEvent).detail?.focused ? 1 : 0 }
     window.addEventListener('meridian:search-focus', onSearchFocus)
@@ -445,6 +487,7 @@ export default function HeroConstellation() {
       window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseout', onOut); window.removeEventListener('resize', onResize)
       window.removeEventListener('keydown', onKey); window.removeEventListener('click', onClick, true)
       window.removeEventListener('mousedown', onDown, true); window.removeEventListener('meridian:search-focus', onSearchFocus)
+      window.removeEventListener('wheel', onWheel, true); window.removeEventListener('touchstart', onTouchStart, true); window.removeEventListener('touchmove', onTouchMove, true)
       backBtn.removeEventListener('click', closeFocus); fDim.removeEventListener('click', closeFocus)
       focusAbort?.abort()
       releaseScrollLock?.()
