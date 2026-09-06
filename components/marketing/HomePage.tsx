@@ -2,6 +2,7 @@ import { Sora, JetBrains_Mono, Inter } from 'next/font/google'
 import { SiteHeader } from '@/components/marketing/site-chrome'
 import HomeBoard, { loadHomeBoardData } from '@/components/marketing/HomeBoard'
 import HomeClose from '@/components/marketing/HomeClose'
+import HomeIndex from '@/components/marketing/HomeIndex'
 import HeroConstellation from '@/components/marketing/HeroConstellation'
 import HomeNeighborhood from '@/components/marketing/HomeNeighborhood'
 import DockingSearch from '@/components/marketing/DockingSearch'
@@ -19,6 +20,7 @@ async function Sections() {
       <div className="pt-24 md:pt-28 lg:pt-32">
         <HomeBoard data={boardData} />
         <HomeNeighborhood items={boardData.longTerm.status === 'ok' ? boardData.longTerm.items.slice(0, 5) : []} />
+        <HomeIndex />
       </div>
       <HomeClose />
     </div>
