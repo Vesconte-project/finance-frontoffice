@@ -123,11 +123,11 @@ const EQUITY_CHAPTERS: ChapterSpec[] = [
         reject: /per share|margin|discontinued|minority|noncontrolling|extraordinary/i,
       },
       {
-        key: 'diluted-eps',
-        label: 'Diluted EPS',
+        key: 'eps',
+        label: 'EPS',
         format: 'perShare',
         statement: 'income_statement',
-        prefer: /^(diluted_eps|eps_diluted|diluted_earnings_per_share|earnings_per_share_diluted)$/,
+        prefer: /^(eps|diluted_eps|eps_diluted|diluted_earnings_per_share|earnings_per_share_diluted)$/,
         accept: /diluted.*(eps|per share)|(eps|per share).*diluted/i,
         reject: /estimate|surprise|shares|average/i,
       },
@@ -188,6 +188,29 @@ const EQUITY_CHAPTERS: ChapterSpec[] = [
     fallbackHint: /cash|debt|equity|asset|liabilit|capital/i,
     measures: [
       {
+        key: 'total-assets',
+        label: 'Total assets',
+        format: 'currency',
+        statement: 'balance_sheet',
+        prefer: /^total_assets$/,
+        accept: /total assets/i,
+        reject: /current|per share/i,
+      },
+      {
+        key: 'total-liabilities',
+        label: 'Total liabilities',
+        format: 'currency',
+        statement: 'balance_sheet',
+        prefer: /^total_liabilities$/,
+        accept: /total liabilities/i,
+        reject: /current|per share/i,
+      },
+      // Cash, debt and equity would answer this chapter far better, and the
+      // balance sheet this contract returns carries none of them — see
+      // REQ-010. Assets and liabilities are what exists, so they are what is
+      // curated, rather than being reached by the fallback and looking like an
+      // accident.
+      {
         key: 'cash',
         label: 'Cash and equivalents',
         format: 'currency',
@@ -202,26 +225,8 @@ const EQUITY_CHAPTERS: ChapterSpec[] = [
         format: 'currency',
         statement: 'balance_sheet',
         prefer: /^(total_debt|total_debt_and_capital_lease_obligation)$/,
-        accept: /debt/i,
-        reject: /^net_debt$|issuance|repayment|net debt|per share/i,
-      },
-      {
-        key: 'equity',
-        label: 'Shareholder equity',
-        format: 'currency',
-        statement: 'balance_sheet',
-        prefer: /^(stockholders_equity|total_stockholders_equity|common_stock_equity|total_equity_gross_minority_interest)$/,
-        accept: /(stockholder|shareholder|common stock).*equity|total equity/i,
-        reject: /method|investment|per share|minority/i,
-      },
-      {
-        key: 'operating-cash-flow',
-        label: 'Operating cash flow',
-        format: 'currency',
-        statement: 'cash_flow',
-        prefer: /^(operating_cash_flow|cash_flow_from_continuing_operating_activities|total_cash_from_operating_activities)$/,
-        accept: /operating (activities|cash flow)|cash from operations/i,
-        reject: /investing|financing|per share|free/i,
+        accept: /\bdebt\b/i,
+        reject: /^net_debt$|issuance|repayment|per share/i,
       },
     ],
   },
@@ -230,8 +235,20 @@ const EQUITY_CHAPTERS: ChapterSpec[] = [
     label: 'Shareholder return',
     statement: 'cash_flow',
     themeKeys: ['shareholder-return'],
-    fallbackHint: /dividend|repurchase|buyback|stock/i,
+    fallbackHint: /dividend|repurchase|buyback/i,
     measures: [
+      {
+        // Not a dividend and not a cash figure, but the only reported evidence
+        // of return to holders this contract carries: a share count that falls
+        // is a buyback, and the reader owns a larger slice for it.
+        key: 'shares-outstanding',
+        label: 'Shares outstanding',
+        format: 'shares',
+        statement: 'balance_sheet',
+        prefer: /^shares_outstanding$/,
+        accept: /shares outstanding|ordinary shares/i,
+        reject: /per share|issued/i,
+      },
       {
         key: 'dividends-paid',
         label: 'Dividends paid',

@@ -17,6 +17,10 @@ Use `api-request-template.md`, assign both the semantic owner and gap layer, and
 | REQ-007 | Reported margins and balance-sheet ratios as canonical metrics, so the Fundamentals view can answer profitability and solvency without the frontend dividing one line item by another | `lib/stock-fundamentals-view.ts`, rendered by `components/stocks/StockFundamentalsResearch.tsx` | Extend `GET /tickers/{ticker}/market-metrics` with `gross_margin`, `operating_margin`, `net_margin`, `return_on_equity`, `current_ratio`, `debt_to_equity`, carrying the same period semantics as the existing multiples | High | `draft` | `finance-feature-store` → `finance-backend` |
 | REQ-008 | A documented line-item vocabulary for `GET /tickers/{ticker}/financial-statements` | `lib/stock-fundamentals-view.ts` | None; publish the canonical `lineItemId` set per statement type in the contract | Normal | `draft` | `finance-backend` |
 | REQ-009 | Peer and sector fundamental reference values, so a reported figure can be read against something other than the company's own past | `components/stocks/StockFundamentalsResearch.tsx` | Deferred until canonical peer membership exists; blocked behind the peer/sector gap already recorded under Relationships below | High | `draft` | `finance-feature-store` |
+| REQ-010 | A complete statement in `GET /tickers/{ticker}/financial-statements`. Apple returns six income line items, three balance-sheet items and one cash-flow item, against roughly forty per statement in a filing | `components/stocks/StockFinancialStatementsResearch.tsx` and `lib/stock-fundamentals-view.ts` | Extend the existing read model's line-item coverage; no new route | High | `draft` | `finance-feature-store` → `finance-backend` |
+| REQ-011 | An explicit signal for a reported period the response is withholding, so the frontend can mark it as held back rather than absent | `components/stocks/StockFinancialStatementsResearch.tsx` | Add withheld-period metadata to `financial-statements`, alongside documented semantics for the existing `count` | Normal | `draft` | `finance-backend` |
+| REQ-012 | Years of multiple history in `GET /tickers/{ticker}/market-metrics`, and observations for the multiples beyond trailing P/E | `components/stocks/StockValuationResearch.tsx` | Extend the market-metric read model's retention and metric coverage; no new route | High | `draft` | `finance-feature-store` → `finance-backend` |
+| REQ-013 | Documented semantics for `latestOnly` on `GET /tickers/{ticker}/events`, which returns one row per `knownAt` even when set | `app/(app)/stocks/[ticker]/events/page.tsx` | Clarify or fix the flag so the calendar can be requested collapsed rather than collapsed in the frontend | Normal | `draft` | `finance-backend` |
 
 **REQ-001 detail.** `GET /screener/rankings` returns `symbol`, `name`, `sector`, `score`,
 `coverage` and `components` — no price and no series. The existing per-symbol helpers
@@ -281,3 +285,99 @@ history. That is why every measure on the Fundamentals view carries its full ser
 rather than a single current value: the series is standing in for the comparison we
 cannot make. Peer and sector membership is already recorded as missing under
 Relationships; this records the fundamentals-side consumer of it.
+
+
+### REQ-010 — The statements are outlines, not statements
+
+Verified against Apple on 2026-09-07, reading the `lineItemId` values the
+Financials view was printing at the time:
+
+- Income statement: `revenue`, `gross_profit`, `operating_income`, `ebitda`,
+  `net_income`, `eps` — six rows, three annual periods.
+- Balance sheet: `total_assets`, `total_liabilities`, `shares_outstanding` —
+  three rows, four annual periods.
+- Cash flow: `free_cash_flow` — one row.
+
+What is absent shapes two views. There is no cost of revenue, no operating
+expense and no tax line, so the income statement cannot be read as a
+statement — only as six results of one. There is no cash, no debt and no
+equity, so `Financial health` on the Fundamentals view answers with total
+assets and total liabilities, which describe size rather than solvency; the
+margins and ratios recorded under REQ-007 would need these same rows to be
+computed anywhere at all. And with one cash-flow row there is no operating
+cash flow to set free cash flow against, which is the comparison that says
+whether the free cash flow was earned or released.
+
+The annual history is also short — three to four periods where a filing set
+carries ten. Until it lengthens, the change columns on the Fundamentals view
+have two or three entries.
+
+The quarterly series is shorter still: the income statement returns three
+quarters, which cannot cover a year, so the quarterly view cannot show a full
+trailing four and no seasonal comparison is possible against the same quarter a
+year earlier. Four is the minimum that makes the quarterly toggle worth
+offering; eight would let a quarter be read against its own prior year.
+
+### REQ-011 — Absent and withheld are not the same thing
+
+The product intends earlier history to become a paid tier. A frontend cannot
+mark a period as locked unless the response says a period exists and is being
+withheld — drawing a padlock over history the backend simply does not hold
+would be inventing a paywall over missing data, and would tell a reader we have
+something we do not.
+
+`CanonicalAvailability.count` is not that signal, and its semantics are
+undocumented: the income statement reports 500 for a symbol whose rows number
+in the tens, which is the value this frontend sends as `limit`, while the
+balance sheet reports 492 and the cash flow 206. Whatever it counts, it is not
+"periods available to you", so nothing is rendered from it.
+
+Wanted: per-period entitlement state on the response — reported, withheld,
+never filed — and documented `count` semantics. The statement view will mark
+withheld periods when the contract can distinguish them.
+
+
+### REQ-012 — A valuation history that is not a valuation history
+
+Verified against Apple on 2026-09-07: `trailing_pe` returned 41 daily
+observations spanning 29 June to 4 September 2026 — about ten weeks. The other
+four multiples the view asks for (`price_to_sales`, `price_to_book`,
+`price_to_free_cash_flow`, `enterprise_value_to_ebitda`) returned nothing.
+
+Ten weeks cannot answer the only question a valuation page exists for. A P/E of
+37.68x is high or low against the range this company has traded in over years,
+and against its peers; the peer half is already recorded as REQ-009, and this
+records the other half. Over a single summer the observed range is 33.54x to
+41.79x, which is a fact about one quarter and reads as a dramatic line only
+because the axis is that narrow.
+
+The frontend is not truncating this. `getTickerMarketMetrics` sends
+`limit: 250` and 41 rows come back, and the helper sends no date range at all.
+Whether the endpoint accepts one — `/events` does — is unverified from this
+repository; if it does, part of this may be a request we are not making rather
+than history the backend does not hold, and that is the first thing to check
+when this is picked up.
+
+Wanted: multi-year retention on the observation series, and observations for
+the remaining multiples. Until then the view lists all five multiples and says
+plainly which are not covered yet, rather than dropping four of them without
+account or offering a tab that leads to an empty frame.
+
+
+### REQ-013 — `latestOnly` does not appear to mean latest
+
+The events calendar is requested with `latestOnly: true` and still returns one
+row per `knownAt`: Apple's next earnings date came back twenty-five times,
+identical except for the day each observation was recorded, and the page was
+rendering each as its own event.
+
+The frontend now collapses them by event identity and keeps the newest
+observation, which is correct behaviour to have regardless. But it is doing
+work the flag reads as though it should already do, and the count the response
+reports is a count of observations rather than of events — the coverage panel
+was reporting "25 canonical events" for one earnings date.
+
+Wanted: documented semantics for `latestOnly`, and a count that counts events.
+Bitemporal history is worth keeping in the contract — a date that moved is real
+news, and the view surfaces exactly that — but it should be opt-in rather than
+the default shape of a calendar.

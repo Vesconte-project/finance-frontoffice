@@ -78,8 +78,12 @@ test.describe('ticker Signals & Events Phase 2 slice', () => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/stocks/AAPL/events')
     await expectResearchContext(page, 'Events')
-    await expect(page.locator('h1')).toHaveText('Earnings & Events')
-    await expect(page.getByRole('heading', { name: /Next event|Earnings coverage/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Next earnings', exact: true })).toBeVisible()
+    // One entry per event, not one per time we observed it. The read model is
+    // bitemporal, and the next earnings date used to appear once per knownAt.
+    await expect(page.getByRole('listitem').filter({ hasText: 'Earnings 2026Q4' })).toHaveCount(1)
+    // The earnings history is on the page rather than behind a third tab.
+    await expect(page.getByRole('heading', { name: 'Reported against estimate', exact: true })).toBeVisible()
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, 'phase2-events-aapl-desktop')
 
@@ -87,16 +91,10 @@ test.describe('ticker Signals & Events Phase 2 slice', () => {
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, 'phase2-events-aapl-mobile')
 
+    await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/stocks/QQQ/events')
-    await expect(page.locator('h1')).toHaveText('Fund Events')
-    await expect(page.getByText('Earnings are not applicable to this asset.', { exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Reported against estimate', exact: true })).toHaveCount(0)
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, 'phase2-events-qqq-fund')
-
-    await page.goto('/stocks/AAPL/events?view=history')
-    await expect(page.locator('h1')).toHaveText('Earnings & Events')
-    await expect(page.getByRole('link', { name: 'History', exact: true })).toHaveAttribute('aria-current', 'page')
-    await expectNoHorizontalOverflow(page)
-    await capture(page, testInfo, 'phase2-events-aapl-history-partial')
   })
 })

@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import ResearchViewShell, { ResearchAdPlacement } from '@/components/stocks/ResearchViewShell'
+import StatementChart, { type StatementSeries } from '@/components/stocks/StatementChart'
 import { formatCompactMoney } from '@/lib/currency'
+import { tickerIdentityColor } from '@/lib/ticker-identity-color'
 import type { FinancialStatementLineItem, FinancialStatementsPayload } from '@/lib/canonical-research'
 import type { StockResearchData } from '@/lib/stock-research'
 import styles from './ResearchViews.module.css'
@@ -8,43 +10,70 @@ import styles from './ResearchViews.module.css'
 export type StatementKey = 'income' | 'balance-sheet' | 'cash-flow'
 export type StatementPeriod = 'annual' | 'quarterly'
 
+export type StatementBundle = Record<StatementKey, FinancialStatementsPayload | null>
+
 const STATEMENTS: Array<{ key: StatementKey; label: string }> = [
-  { key: 'income', label: 'Income Statement' },
-  { key: 'balance-sheet', label: 'Balance Sheet' },
-  { key: 'cash-flow', label: 'Cash Flow' },
+  { key: 'income', label: 'Income' },
+  { key: 'balance-sheet', label: 'Balance sheet' },
+  { key: 'cash-flow', label: 'Cash flow' },
 ]
 
-function statementHref({
-  ticker,
-  statement,
-  period,
-}: {
-  ticker: string
-  statement: StatementKey
-  period: StatementPeriod
-}) {
-  const params = new URLSearchParams({ statement, period })
-  return `/stocks/${ticker}/financials?${params.toString()}`
+/**
+ * Reading order for each statement.
+ *
+ * The rows arrived alphabetically, so an income statement opened EBITDA, EPS,
+ * Gross Profit, Net Income, Operating Income, Revenue — the top line last and
+ * a per-share figure in the middle of the money. Anything unmatched keeps the
+ * backend's own order behind these, so a line item added later still appears.
+ */
+const STATEMENT_ORDER: Record<StatementKey, RegExp[]> = {
+  income: [
+    /^(total_)?revenue/, /^cost_of/, /^gross_profit/, /^(total_)?operating_expense/,
+    /^operating_income/, /^ebitda/, /^ebit$/, /^interest/, /^pretax/, /^tax/,
+    /^net_income/, /^eps|per_share/,
+  ],
+  'balance-sheet': [
+    /^cash/, /^(short|long)_term_investments/, /^total_current_assets/, /^total_assets/,
+    /^total_current_liabilities/, /^(total_)?debt/, /^total_liabilities/,
+    /^(total_|stockholders_|common_stock_)?equity/, /^shares_outstanding/,
+  ],
+  'cash-flow': [
+    /^operating_cash_flow|operating_activities/, /^capital_expenditure|capex/, /^free_cash_flow/,
+    /^investing/, /^financing/, /^dividend/, /^repurchase|buyback/,
+  ],
 }
 
-function formatPercent(value: number | null): string | null {
-  if (value === null || !Number.isFinite(value)) return null
-  const scaled = Math.abs(value) <= 1.5 ? value * 100 : value
-  return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(scaled)}%`
+/**
+ * The nesting each statement is charted as, outermost first.
+ *
+ * Income narrows from what was sold to what was kept. The balance sheet is
+ * assets with the claim on them inside — the headroom left above the inner bar
+ * is the equity, shown without stating a figure nobody sent us. EBITDA is
+ * absent on purpose: it is an adjusted measure, not a step of the funnel, and
+ * it stays in the table where it cannot imply it belongs in the sequence.
+ */
+const CHART_NESTING: Record<StatementKey, RegExp[]> = {
+  income: [/^(total_)?revenue/, /^gross_profit/, /^operating_income/, /^net_income/],
+  'balance-sheet': [/^total_assets/, /^total_liabilities/],
+  'cash-flow': [/^operating_cash_flow|operating_activities/, /^free_cash_flow/],
+}
+
+function periodHref(ticker: string, period: StatementPeriod) {
+  return `/stocks/${ticker}/financials?period=${period}`
 }
 
 function formatPeriod(row: FinancialStatementLineItem): string {
   if (row.periodType === 'quarterly' && row.fiscalQuarter) {
-    return `${row.fiscalYear ?? ''} ${row.fiscalQuarter}`.trim()
+    return `${row.fiscalQuarter} ${row.fiscalYear ?? ''}`.trim()
   }
-  return row.fiscalYear ? `FY ${row.fiscalYear}` : row.periodEnd
+  return row.fiscalYear ? `FY${row.fiscalYear}` : row.periodEnd
 }
 
 function formatStatementValue(row: FinancialStatementLineItem | undefined, fallbackCurrency: string): string {
-  if (!row || row.value === null || !Number.isFinite(row.value)) return '—'
+  if (!row || row.value === null || !Number.isFinite(row.value)) return ''
   const id = row.lineItemId.toLowerCase()
   if (id.includes('per_share') || id.includes('eps')) {
-    return new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 }).format(row.value)
+    return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(row.value)
   }
   if (id.includes('shares')) {
     return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 }).format(row.value)
@@ -52,63 +81,124 @@ function formatStatementValue(row: FinancialStatementLineItem | undefined, fallb
   return formatCompactMoney(row.value, row.currency || fallbackCurrency)
 }
 
+function rank(patterns: RegExp[], lineItemId: string): number {
+  const index = patterns.findIndex((pattern) => pattern.test(lineItemId.toLowerCase()))
+  return index < 0 ? patterns.length : index
+}
+
+function Statement({
+  statement,
+  label,
+  payload,
+  currency,
+  period,
+  accentColor,
+}: {
+  statement: StatementKey
+  label: string
+  payload: FinancialStatementsPayload | null
+  currency: string
+  period: StatementPeriod
+  accentColor: string
+}) {
+  const rows = payload?.available ? payload.rows : []
+  if (rows.length === 0) return null
+
+  const cells = new Map<string, FinancialStatementLineItem>()
+  for (const row of rows) {
+    const key = `${row.lineItemId}:${row.periodEnd}`
+    if (!cells.has(key)) cells.set(key, row)
+  }
+
+  // Oldest to newest, the way a statement is published and the way the chart
+  // beside it reads. Every reported period, with no cap.
+  const periods = [...new Map(rows.map((row) => [row.periodEnd, row])).values()]
+    .sort((left, right) => left.periodEnd.localeCompare(right.periodEnd))
+
+  const lineItems = [...new Map(rows.map((row) => [row.lineItemId, row])).values()]
+    .map((row, index) => ({ row, index }))
+    .sort((left, right) => {
+      const order = rank(STATEMENT_ORDER[statement], left.row.lineItemId) - rank(STATEMENT_ORDER[statement], right.row.lineItemId)
+      return order !== 0 ? order : left.index - right.index
+    })
+    .map((entry) => entry.row)
+
+  const nesting: StatementSeries[] = CHART_NESTING[statement].flatMap((pattern) => {
+    const match = lineItems.find((item) => pattern.test(item.lineItemId.toLowerCase()))
+    if (!match) return []
+    return [{
+      key: match.lineItemId,
+      label: match.displayLabel || match.lineItemId,
+      values: periods.map((row) => cells.get(`${match.lineItemId}:${row.periodEnd}`)?.value ?? null),
+    }]
+  })
+
+  return (
+    <section className={styles.statement} id={statement}>
+      <h2 className={styles.statementHeading}>{label}</h2>
+      <div className={styles.statementBody}>
+        <StatementChart
+          periods={periods.map(formatPeriod)}
+          series={nesting}
+          currency={currency}
+          accentColor={accentColor}
+          caption={`${label} · ${period === 'annual' ? 'annual' : 'quarterly'} periods`}
+        />
+        <div className={styles.statementTableWrap}>
+          <table className={styles.statementTable}>
+            <thead>
+              <tr>
+                <th scope="col">Line item</th>
+                {periods.map((row) => <th scope="col" key={row.periodEnd}>{formatPeriod(row)}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {lineItems.map((lineItem) => (
+                <tr key={lineItem.lineItemId}>
+                  <th scope="row">{lineItem.displayLabel || lineItem.lineItemId}</th>
+                  {periods.map((row) => (
+                    <td key={row.periodEnd}>{formatStatementValue(cells.get(`${lineItem.lineItemId}:${row.periodEnd}`), currency)}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export default function StockFinancialStatementsResearch({
   data,
-  statement,
   period,
   statements,
 }: {
   data: StockResearchData
-  statement: StatementKey
   period: StatementPeriod
-  statements: FinancialStatementsPayload | null
+  statements: StatementBundle
 }) {
-  const activeStatement = STATEMENTS.find((item) => item.key === statement) ?? STATEMENTS[0]
-  const fundamentals = data.summary.fundamentalsSummary
-  const canonicalRows = statements?.available ? statements.rows : []
-  const periodRows = new Map<string, FinancialStatementLineItem>()
-  for (const row of canonicalRows) {
-    const key = `${row.lineItemId}:${row.periodEnd}`
-    if (!periodRows.has(key)) periodRows.set(key, row)
-  }
-  const periods = [...new Map(canonicalRows.map((row) => [row.periodEnd, row])).values()].slice(0, 5)
-  const lineItems = [...new Map(canonicalRows.map((row) => [row.lineItemId, row])).values()]
-  const latestKnownAt = canonicalRows.reduce<string | null>(
-    (latest, row) => !latest || row.knownAt > latest ? row.knownAt : latest,
-    null,
-  )
-  const currencies = [...new Set(canonicalRows.map((row) => row.currency).filter(Boolean))]
-  const snapshot = [
-    fundamentals?.latestRevenue !== null && fundamentals?.latestRevenue !== undefined
-      ? { label: 'Revenue', value: formatCompactMoney(fundamentals.latestRevenue, data.currency) }
-      : null,
-    fundamentals?.latestEps !== null && fundamentals?.latestEps !== undefined
-      ? { label: 'EPS', value: fundamentals.latestEps.toFixed(2) }
-      : null,
-    fundamentals ? { label: 'Revenue growth', value: formatPercent(fundamentals.revenueGrowthYoy) } : null,
-    fundamentals ? { label: 'Earnings growth', value: formatPercent(fundamentals.earningsGrowthYoy) } : null,
-  ].filter((item): item is { label: string; value: string } => Boolean(item?.value))
+  const available = STATEMENTS.filter((item) => statements[item.key]?.available)
+  const knownAt = Object.values(statements)
+    .flatMap((payload) => payload?.rows ?? [])
+    .reduce<string | null>((latest, row) => !latest || row.knownAt > latest ? row.knownAt : latest, null)
 
   return (
-    <ResearchViewShell data={data} title="Financial Statements">
+    // No page header: the tab above already says Financials. The three
+    // statements are on one page rather than behind three tabs of their own —
+    // this contract returns six income line items, three balance-sheet items
+    // and one cash-flow item, and splitting that across three tabs left each
+    // one nearly empty while the reader clicked between them.
+    <ResearchViewShell data={data} title="Financial Statements" showHeader={false}>
       <div className={styles.statementToolbar}>
-        <nav className={styles.statementTabs} aria-label="Financial statement">
-          {STATEMENTS.map((item) => (
-            <Link
-              key={item.key}
-              href={statementHref({ ticker: data.ticker, statement: item.key, period })}
-              aria-current={item.key === statement ? 'page' : undefined}
-              scroll={false}
-            >
-              {item.label.replace(' Statement', '')}
-            </Link>
-          ))}
-        </nav>
+        {/* The statement links are gone with the tabs they used to switch. All
+            three are on this page, in order, and a jump list over three
+            headings is furniture. */}
         <nav className={styles.periodTabs} aria-label="Reporting frequency">
           {(['annual', 'quarterly'] as const).map((item) => (
             <Link
               key={item}
-              href={statementHref({ ticker: data.ticker, statement, period: item })}
+              href={periodHref(data.ticker, item)}
               aria-current={item === period ? 'page' : undefined}
               scroll={false}
             >
@@ -118,59 +208,36 @@ export default function StockFinancialStatementsResearch({
         </nav>
       </div>
 
-      {snapshot.length > 0 ? (
-        <section aria-labelledby="latest-snapshot">
-          <div className={styles.sectionHeading}>
-            <h2 id="latest-snapshot">Latest available snapshot</h2>
-            <p>{fundamentals?.periodEnd || 'Reporting period unavailable'} · not a complete statement series</p>
-          </div>
-          <div className={styles.snapshotStrip}>
-            {snapshot.map((item) => <div key={item.label}><span>{item.label}</span><strong>{item.value}</strong></div>)}
-          </div>
-        </section>
+      {available.length > 0 ? (
+        available.map((item) => (
+          <Statement
+            key={item.key}
+            statement={item.key}
+            label={item.label}
+            payload={statements[item.key]}
+            currency={data.currency}
+            period={period}
+            accentColor={tickerIdentityColor(data.ticker)}
+          />
+        ))
+      ) : (
+        <p className={styles.statementProvenance}>
+          {statements.income?.reason ?? 'Canonical statement data is unavailable for this symbol.'}
+        </p>
+      )}
+
+      {/* TODO(REQ-011, backend): mark periods the response is withholding once
+          the contract can say so. Earlier history is intended to become a paid
+          tier, but a padlock drawn over periods the backend simply does not
+          hold would invent a paywall over missing data and claim coverage we do
+          not have. `CanonicalAvailability.count` is not that signal — it reports
+          500 for a symbol whose rows number in the tens, which is the limit this
+          page sends. */}
+      {available.length > 0 ? (
+        <p className={styles.statementProvenance}>
+          {data.currency} · as reported{knownAt ? ` · known at ${knownAt}` : ''}
+        </p>
       ) : null}
-
-      <section aria-labelledby="statement-detail">
-        <div className={styles.sectionHeading}>
-          <h2 id="statement-detail">{activeStatement.label}</h2>
-          <p>{period === 'annual' ? 'Annual' : 'Quarterly'} periods</p>
-        </div>
-        <div className={styles.statementCanvas}>
-          <div className={styles.trajectory} aria-label="Canonical statement coverage">
-            <strong>{lineItems.length > 0 ? `${lineItems.length} canonical line items` : 'No canonical statement rows'}</strong>
-            <span>{periods.length > 0 ? `${periods.length} latest reported periods · latest known ${latestKnownAt ?? 'unknown'}` : statements?.reason ?? 'Statement read model unavailable'}</span>
-          </div>
-          <aside className={styles.statementContext} aria-label="Statement context">
-            <div className={styles.contextRow}><span>Coverage</span><strong>{statements?.available ? `${statements.count} observations` : 'Unavailable'}</strong></div>
-            <div className={styles.contextRow}><span>Currency</span><strong>{currencies.join(', ') || data.currency}</strong></div>
-            <div className={styles.contextRow}><span>Unit</span><strong>As reported</strong></div>
-            <div className={styles.contextRow}><span>Known at</span><strong>{latestKnownAt ?? '—'}</strong></div>
-          </aside>
-        </div>
-
-        <div className={styles.statementTableWrap}>
-          <table className={styles.statementTable}>
-            <caption>{activeStatement.label} · {period === 'annual' ? 'annual' : 'quarterly'} canonical observations</caption>
-            <thead>
-              <tr>
-                <th scope="col">Line item</th>
-                {periods.map((row) => <th scope="col" key={row.periodEnd}>{formatPeriod(row)}<small>{row.periodEnd}</small></th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {lineItems.map((lineItem) => (
-                <tr key={lineItem.lineItemId}>
-                  <th scope="row">{lineItem.displayLabel}<small>{lineItem.lineItemId}</small></th>
-                  {periods.map((periodRow) => (
-                    <td key={periodRow.periodEnd}>{formatStatementValue(periodRows.get(`${lineItem.lineItemId}:${periodRow.periodEnd}`), data.currency)}</td>
-                  ))}
-                </tr>
-              ))}
-              {lineItems.length === 0 ? <tr><td className={styles.pendingCell} colSpan={Math.max(2, periods.length + 1)}>{statements?.reason ?? 'Canonical statement data unavailable'}</td></tr> : null}
-            </tbody>
-          </table>
-        </div>
-      </section>
 
       <ResearchAdPlacement />
     </ResearchViewShell>

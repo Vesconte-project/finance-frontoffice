@@ -119,15 +119,13 @@
   top: 108px;
 }
 
-.chapterIntro h2,
-.sectionHeading h2 {
+.chapterIntro h2 {
   margin: 0;
   font-size: 1.2rem;
   letter-spacing: -0.025em;
 }
 
-.chapterIntro p,
-.sectionHeading p {
+.chapterIntro p {
   margin: 8px 0 0;
   color: var(--color-text-muted);
   font-size: 12px;
@@ -249,14 +247,12 @@
   border-bottom: 1px solid var(--research-line);
 }
 
-.statementTabs,
 .periodTabs {
   display: flex;
   gap: 4px;
   align-items: center;
 }
 
-.statementTabs a,
 .periodTabs a {
   display: inline-flex;
   min-height: 38px;
@@ -271,87 +267,27 @@
   text-decoration: none;
 }
 
-.statementTabs a[aria-current='page'],
 .periodTabs a[aria-current='page'] {
   border-color: var(--color-border);
   background: var(--bg-surface-raised);
   color: var(--color-text-primary);
 }
 
-.statementCanvas {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.65fr);
-  gap: 36px;
-  align-items: stretch;
-  padding: 28px 0;
-}
 
-.trajectory {
-  position: relative;
-  display: grid;
-  min-height: 270px;
-  align-content: end;
-  overflow: hidden;
-  padding: 20px;
-  border: 1px solid var(--research-line);
-  border-radius: var(--radius-lg);
-  background:
-    linear-gradient(180deg, rgba(7, 87, 255, 0.05), transparent 70%),
-    var(--bg-surface);
-}
 
-.trajectory::before {
-  content: '';
-  position: absolute;
-  inset: 18px;
-  background: repeating-linear-gradient(to bottom, transparent 0 51px, var(--research-line) 52px);
-}
 
-.trajectory strong,
-.trajectory span {
-  position: relative;
-}
 
-.trajectory strong {
-  font-size: 13px;
-}
 
-.trajectory span {
-  margin-top: 5px;
-  color: var(--color-text-muted);
-  font-size: 10px;
-}
-
-.statementContext {
-  display: grid;
-  align-content: start;
-  border-top: 1px solid var(--research-line);
-}
-
-.contextRow {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 13px 0;
-  border-bottom: 1px solid var(--research-line);
-  color: var(--color-text-muted);
-  font-size: 11px;
-}
-
-.contextRow strong {
-  color: var(--color-text-primary);
-  text-align: right;
-}
 
 .statementTableWrap {
   min-width: 0;
+  overflow-x: auto;
   border-top: 1px solid var(--research-line);
 }
 
 .statementTable {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
 }
 
 .statementTable caption {
@@ -370,11 +306,20 @@
   text-align: right;
 }
 
+.statementTable th,
+.statementTable td {
+  white-space: nowrap;
+}
+
 .statementTable th:first-child,
 .statementTable td:first-child {
-  width: 42%;
+  position: sticky;
+  left: 0;
   padding-left: 0;
+  padding-right: 28px;
+  background: var(--page-bg, var(--color-page-bg));
   color: var(--color-text-primary);
+  font-weight: 560;
   text-align: left;
 }
 
@@ -395,6 +340,7 @@
 
 .statementTable td {
   font-variant-numeric: tabular-nums;
+  font-weight: 560;
 }
 
 .pendingCell {
@@ -461,8 +407,7 @@
 }
 
 @media (max-width: 900px) {
-  .profileGrid,
-  .statementCanvas {
+  .profileGrid {
     grid-template-columns: 1fr;
   }
 
@@ -515,13 +460,6 @@
     align-items: stretch;
   }
 
-  .statementTabs {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    width: 100%;
-  }
-
-  .statementTabs a,
   .periodTabs a {
     min-height: 44px;
     padding-inline: 9px;
@@ -705,5 +643,220 @@
   .changeTable th,
   .changeTable td {
     padding-left: 16px;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Financials — all three statements on one page, each drawn as a nesting and
+   read as a table beside it.
+
+   One hue, light to dark. The series here are nested quantities rather than
+   competing categories, and a nested magnitude wants a sequential ramp — the
+   three unrelated hues this carried before were solving a problem the chart
+   should not have had, which was that grouped bars claimed the lines were
+   siblings.
+
+   The hue is the ticker's own identity colour, the one on the node beside the
+   company name, so the page's data carries the company's mark. It also settles
+   the constraint that ruled out the alternatives: that palette is blues through
+   magentas, so it can never be the green that buy and sell have spoken for on a
+   page about money.
+
+   The innermost step is that colour exactly and the outer ones are it mixed
+   toward the page, distributed across however many series are present. Checked
+   across all seven palette entries: every one holds a monotonic ramp on this
+   surface, which is what a sequential scale needs.
+   ------------------------------------------------------------------------- */
+
+.statement {
+  display: grid;
+  gap: 16px;
+  padding: 26px 0 30px;
+  border-bottom: 1px solid var(--research-line);
+  scroll-margin-top: 108px;
+}
+
+.statementHeading {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 640;
+  letter-spacing: -0.02em;
+}
+
+/* The chart is sized to its data. Three periods do not need eighteen hundred
+   pixels, and the table is what the rest of the width is for. */
+.statementBody {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+  min-width: 0;
+}
+
+.statementChart {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+/* ChartContainer measures its own box, so it has to fill the height its
+   parent was given. */
+.statementChartPlot > div {
+  height: 100%;
+}
+
+.statementChartPlot {
+  min-width: 0;
+}
+
+/* The legend is the readout. A card floating over the plot was half the width
+   and half the height of this chart's box, so no position for it avoided the
+   bars it described, and clamping it inside meant guessing its height before it
+   existed. The legend already lists every line with its swatch and already has
+   the room. */
+.chartLegend {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+}
+
+.chartLegend div {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: baseline;
+}
+
+.chartLegend div::before {
+  content: '';
+  width: 9px;
+  height: 9px;
+  align-self: center;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--statement-ink) var(--tint), transparent);
+}
+
+.chartLegend dt {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 560;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chartLegend dd {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 11px;
+  font-weight: 660;
+  font-variant-numeric: tabular-nums;
+}
+
+.chartReadoutPeriod {
+  margin: 0 0 8px;
+  color: var(--color-text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* `fill`, not `background`: these are SVG rects. A ring in the page's own
+   colour separates each nested step from the one behind it — overlapping marks
+   of one hue need the gap, or the inner quantities merge into the outer. */
+.chartBar {
+  fill: color-mix(in srgb, var(--statement-ink) var(--tint), transparent);
+  stroke: var(--page-bg, var(--color-page-bg));
+  stroke-width: 2;
+  transition: opacity 0.14s ease;
+}
+
+/* The whole column is the hit target. Transparent rather than absent, so it
+   still receives the pointer. */
+.chartHit {
+  fill: transparent;
+}
+
+.statementChart g[data-dimmed] .chartBar {
+  opacity: 0.34;
+}
+
+.chartGrid {
+  stroke: var(--research-line);
+  stroke-width: 1;
+}
+
+.chartGrid[data-zero] {
+  stroke: color-mix(in srgb, var(--color-text-primary) 24%, transparent);
+}
+
+.chartTick,
+.chartPeriod {
+  fill: var(--color-text-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.statementTableWrap {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.statementTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.statementTable th,
+.statementTable td {
+  padding: 9px 0 9px 22px;
+  border-bottom: 1px solid var(--research-line);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.statementTable th:first-child,
+.statementTable td:first-child {
+  position: sticky;
+  left: 0;
+  padding-left: 0;
+  background: var(--page-bg, var(--color-page-bg));
+  color: var(--color-text-primary);
+  font-weight: 560;
+  text-align: left;
+}
+
+.statementTable thead th {
+  color: var(--color-text-muted);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.statementTable td {
+  font-variant-numeric: tabular-nums;
+  font-weight: 560;
+}
+
+.statementTable tbody tr:last-child th,
+.statementTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.statementProvenance {
+  margin: 4px 0 0;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 900px) {
+  .statementBody {
+    grid-template-columns: 1fr;
+    gap: 20px;
   }
 }

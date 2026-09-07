@@ -1,269 +1,163 @@
-.page {
-  --line: color-mix(in srgb, var(--color-border) 84%, transparent);
+/* -------------------------------------------------------------------------
+   Events — when they report, how the last ones went, and what has been filed.
+
+   The page previously listed one row per observation rather than per event, so
+   a single unchanged earnings date filled the timeline twenty-five times and
+   was counted as twenty-five events. Around it sat a coverage panel reading
+   "0 canonical events in this view · NO ROWS", a methodology paragraph written
+   to engineers, and raw domain keys under every row. The earnings history —
+   the one thing here a reader can act on — was behind the third tab.
+   ------------------------------------------------------------------------- */
+
+.next {
   display: grid;
-  gap: 30px;
-  min-width: 0;
-  padding-bottom: 24px;
-  color: var(--color-text-primary);
+  gap: 4px;
+  padding: 6px 0 24px;
+  border-bottom: 1px solid var(--research-line, var(--color-border));
 }
 
-.intro {
-  display: grid;
-  gap: 8px;
-  padding: 26px 0 22px;
-  border-bottom: 1px solid var(--line);
-}
-
-.intro h2,
-.sectionTitle,
-.nextEvent h2,
-.eventSection h2 {
+.next h2 {
   margin: 0;
-  letter-spacing: -0.035em;
-}
-
-.intro h2 {
-  font-size: clamp(1.85rem, 4vw, 3.1rem);
-  line-height: 1;
-}
-
-.eyebrow,
-.sectionLabel,
-.eventType,
-.status {
   color: var(--color-text-muted);
   font-size: 10px;
-  font-weight: 720;
-  letter-spacing: 0.12em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.introMeta,
-.eventMeta,
-.nextMeta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  align-items: center;
-  color: var(--color-text-muted);
-  font-size: 12px;
-}
-
-.nextEvent {
-  display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(220px, 0.7fr);
-  gap: 30px;
-  align-items: end;
-  padding: 20px 0;
-  border-block: 1px solid var(--line);
-}
-
-.nextEvent h2 {
-  margin-top: 7px;
-  font-size: clamp(1.5rem, 3vw, 2.35rem);
-}
-
-.nextFacts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 20px;
-}
-
-.fact {
-  display: grid;
-  gap: 4px;
-  padding: 10px 0;
-  border-top: 1px solid var(--line);
-}
-
-.fact strong {
-  font-size: 13px;
-}
-
-.fact span {
-  color: var(--color-text-muted);
-  font-size: 10px;
-}
-
-.eventGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
-  gap: 32px;
-  align-items: start;
-}
-
-.eventSection {
-  min-width: 0;
-  padding-top: 20px;
-  border-top: 1px solid var(--line);
-}
-
-.eventSection h2 {
-  font-size: clamp(1.35rem, 2.5vw, 1.9rem);
-}
-
-.sectionHeader,
-.eventRow,
-.moduleRow,
-.methodHeader {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.viewNav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 18px 0 0;
-}
-
-.viewLink {
-  padding: 7px 10px;
-  border-bottom: 1px solid transparent;
-  color: var(--color-text-muted);
-  font-size: 11px;
-  font-weight: 650;
-  text-decoration: none;
-}
-
-.viewLink:hover,
-.viewLink:focus-visible,
-.viewActive {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-}
-
-.timeline,
-.eventModules,
-.earningsList,
-.methodology {
-  display: grid;
-  margin-top: 14px;
-  border-top: 1px solid var(--line);
-}
-
-.eventRow,
-.moduleRow,
-.earningsRow {
-  display: grid;
-  grid-template-columns: 116px minmax(0, 1fr) auto;
-  gap: 16px;
-  align-items: center;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.eventRow time,
-.eventRow p,
-.moduleRow p,
-.earningsRow span,
-.pending,
-.methodology p {
+.nextDate {
   margin: 0;
+  font-size: clamp(1.5rem, 2.6vw, 2rem);
+  font-weight: 660;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+
+.nextMeta {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.section {
+  display: grid;
+  gap: 14px;
+  padding: 26px 0 30px;
+  border-bottom: 1px solid var(--research-line, var(--color-border));
+  min-width: 0;
+}
+
+.section h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 640;
+  letter-spacing: -0.02em;
+}
+
+.tableWrap {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.table th,
+.table td {
+  padding: 9px 0 9px 22px;
+  border-bottom: 1px solid var(--research-line, var(--color-border));
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.table th:first-child,
+.table td:first-child {
+  padding-left: 0;
+  color: var(--color-text-primary);
+  font-weight: 560;
+  text-align: left;
+}
+
+.table thead th {
+  color: var(--color-text-muted);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.table td {
+  font-weight: 560;
+}
+
+/* Direction carries a sign as well as a colour, and the palette stays the
+   product's own — no red, no green, as everywhere else. */
+.table td[data-direction='up'] {
+  color: var(--color-accent);
+}
+
+.table td[data-direction='down'] {
+  color: var(--color-text-primary);
+}
+
+.calendar {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.calendar li {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: baseline;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--research-line, var(--color-border));
+}
+
+.calendar time {
   color: var(--color-text-muted);
   font-size: 11px;
-  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.eventRow strong,
-.moduleRow strong,
-.earningsRow strong {
-  display: block;
+.calendar strong {
   font-size: 12px;
+  font-weight: 560;
 }
 
-.eventRow a {
-  display: inline-block;
-  margin-top: 4px;
+/* The one thing a revision history is worth surfacing for. Everything else it
+   carries is bookkeeping about when we heard, not about the company. */
+.calendar p {
+  margin: 3px 0 0;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.calendar a {
   color: var(--color-accent);
-  font-size: 10px;
-  font-weight: 650;
+  font-size: 11px;
+  font-weight: 560;
   text-decoration: none;
+  white-space: nowrap;
 }
 
-.eventRow a:hover,
-.eventRow a:focus-visible {
+.calendar a:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
-.eventRow time {
-  font-family: var(--font-mono, ui-monospace, monospace);
-}
-
-.eventStatus {
-  color: var(--color-text-secondary);
-  font-size: 10px;
-  font-weight: 700;
-  text-align: right;
-}
-
-.earningsRow {
-  grid-template-columns: 100px minmax(0, 1fr) minmax(130px, 0.8fr);
-}
-
-.earningsValues {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 12px;
-  justify-content: flex-end;
-}
-
-.earningsValues span {
-  white-space: nowrap;
-}
-
-.methodology {
-  gap: 10px;
-  padding-top: 22px;
-}
-
-.methodology p {
-  max-width: 780px;
-}
-
-.methodLink {
-  color: var(--color-accent);
-  font-size: 12px;
-  font-weight: 650;
-  text-decoration: none;
-}
-
-.methodLink:hover,
-.methodLink:focus-visible {
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
-@media (max-width: 800px) {
-  .nextEvent,
-  .eventGrid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 18px;
-  }
-
-  .nextFacts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .eventRow,
-  .earningsRow {
-    grid-template-columns: minmax(88px, 0.7fr) minmax(0, 1fr);
-  }
-
-  .eventStatus,
-  .earningsValues {
-    grid-column: 2;
-    justify-content: flex-start;
-    text-align: left;
-  }
-}
-
-@media (max-width: 460px) {
-  .nextFacts {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.note {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 11px;
 }

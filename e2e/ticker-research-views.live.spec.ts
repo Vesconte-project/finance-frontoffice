@@ -138,15 +138,16 @@ test.describe('ticker research views Phase 2 slice', () => {
   test('Financial Statements exposes shareable canonical Annual and Quarterly observations', async ({ page }, testInfo) => {
     const runtimeWarnings = watchForReactRuntimeWarnings(page)
     await page.setViewportSize({ width: 1440, height: 900 })
-    await page.goto('/stocks/AAPL/financials?statement=balance-sheet&period=annual')
-    await expect(page.getByRole('heading', { name: 'Financial Statements', exact: true })).toBeVisible()
+    await page.goto('/stocks/AAPL/financials?period=annual')
+    // The three statements share one page now, so each is a heading on it
+    // rather than a tab hiding the other two.
+    await expect(page.getByRole('heading', { name: 'Income', exact: true })).toBeVisible()
     const researchNav = page.getByRole('navigation', { name: 'Ticker research' })
     const financialsLink = researchNav.getByRole('link', { name: 'Financials', exact: true })
     await expect(financialsLink).toHaveAttribute('aria-current', 'page')
     await expect(researchNav.locator('[data-active="true"]')).toHaveCount(1)
-    await expect(page.getByRole('link', { name: 'Balance Sheet', exact: true })).toHaveAttribute('aria-current', 'page')
     await expect(page.getByRole('link', { name: 'Annual', exact: true })).toHaveAttribute('aria-current', 'page')
-    await expect(page.getByText(/canonical (line items|statement rows)/i).first()).toBeVisible()
+    await expect(page.getByRole('rowheader', { name: 'Revenue', exact: true })).toBeVisible()
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, 'canonical-aapl-statements-annual')
 
