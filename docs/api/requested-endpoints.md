@@ -19,6 +19,7 @@ Use `api-request-template.md`, assign both the semantic owner and gap layer, and
 | REQ-009 | Peer and sector fundamental reference values, so a reported figure can be read against something other than the company's own past | `components/stocks/StockFundamentalsResearch.tsx` | Deferred until canonical peer membership exists; blocked behind the peer/sector gap already recorded under Relationships below | High | `draft` | `finance-feature-store` |
 | REQ-010 | A complete statement in `GET /tickers/{ticker}/financial-statements`. Apple returns six income line items, three balance-sheet items and one cash-flow item, against roughly forty per statement in a filing | `components/stocks/StockFinancialStatementsResearch.tsx` and `lib/stock-fundamentals-view.ts` | Extend the existing read model's line-item coverage; no new route | High | `draft` | `finance-feature-store` → `finance-backend` |
 | REQ-011 | An explicit signal for a reported period the response is withholding, so the frontend can mark it as held back rather than absent | `components/stocks/StockFinancialStatementsResearch.tsx` | Add withheld-period metadata to `financial-statements`, alongside documented semantics for the existing `count` | Normal | `draft` | `finance-backend` |
+| REQ-012 | Years of multiple history in `GET /tickers/{ticker}/market-metrics`, and observations for the multiples beyond trailing P/E | `components/stocks/StockValuationResearch.tsx` | Extend the market-metric read model's retention and metric coverage; no new route | High | `draft` | `finance-feature-store` → `finance-backend` |
 
 **REQ-001 detail.** `GET /screener/rankings` returns `symbol`, `name`, `sector`, `score`,
 `coverage` and `components` — no price and no series. The existing per-symbol helpers
@@ -333,3 +334,24 @@ balance sheet reports 492 and the cash flow 206. Whatever it counts, it is not
 Wanted: per-period entitlement state on the response — reported, withheld,
 never filed — and documented `count` semantics. The statement view will mark
 withheld periods when the contract can distinguish them.
+
+
+### REQ-012 — A valuation history that is not a valuation history
+
+Verified against Apple on 2026-09-07: `trailing_pe` returned 41 daily
+observations spanning 29 June to 4 September 2026 — about ten weeks. The other
+four multiples the view asks for (`price_to_sales`, `price_to_book`,
+`price_to_free_cash_flow`, `enterprise_value_to_ebitda`) returned nothing.
+
+Ten weeks cannot answer the only question a valuation page exists for. A P/E of
+37.68x is high or low against the range this company has traded in over years,
+and against its peers; the peer half is already recorded as REQ-009, and this
+records the other half. Over a single summer the observed range is 33.54x to
+41.79x, which is a fact about one quarter and reads as a dramatic line only
+because the axis is that narrow.
+
+Wanted: multi-year retention on the observation series, and observations for
+the remaining multiples. Until then the view shows the window it actually has,
+names its dates beside the range so the reader can see how short it is, and
+omits the multiples that return nothing rather than offering a tab that leads
+to an empty frame.

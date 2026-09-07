@@ -1,202 +1,126 @@
-import Link from 'next/link'
 import TemporalLineChart from '@/components/charts/TemporalLineChart'
 import ResearchViewShell, { ResearchAdPlacement } from '@/components/stocks/ResearchViewShell'
 import type { MarketMetricObservation, MarketMetricsPayload } from '@/lib/canonical-research'
-import {
-  currentResearchSnapshot,
-  formatResearchDate,
-  formatResearchMoney,
-  formatResearchMultiple,
-  type CurrentResearchSnapshot,
-} from '@/lib/research-evidence'
+import { formatResearchDate } from '@/lib/research-evidence'
 import type { StockResearchData } from '@/lib/stock-research'
 import styles from './StockValuationResearch.module.css'
 
 export type ValuationMetric = 'pe' | 'ps' | 'pb' | 'pfcf' | 'ev-ebitda'
-export type ValuationPeriod = 'annual' | 'quarterly'
 
-const METRICS: Array<{ key: ValuationMetric; label: string }> = [
-  { key: 'pe', label: 'P/E' },
-  { key: 'ps', label: 'P/S' },
-  { key: 'pb', label: 'P/B' },
-  { key: 'pfcf', label: 'P/FCF' },
-  { key: 'ev-ebitda', label: 'EV/EBITDA' },
+export const VALUATION_METRICS: Array<{ key: ValuationMetric; label: string; caption: string }> = [
+  { key: 'pe', label: 'P/E', caption: 'Price against earnings' },
+  { key: 'ps', label: 'P/S', caption: 'Price against revenue' },
+  { key: 'pb', label: 'P/B', caption: 'Price against book value' },
+  { key: 'pfcf', label: 'P/FCF', caption: 'Price against free cash flow' },
+  { key: 'ev-ebitda', label: 'EV/EBITDA', caption: 'Enterprise value against EBITDA' },
 ]
 
-function valuationHref(
-  ticker: string,
-  metric: ValuationMetric,
-  period: ValuationPeriod,
-): string {
-  const params = new URLSearchParams({ metric, period })
-  return `/stocks/${ticker}/valuation?${params.toString()}`
-}
-
-function formatObservationValue(row: MarketMetricObservation | null): string {
-  if (!row || row.value === null || !Number.isFinite(row.value)) return '—'
-  return formatMultiple(row.value)
-}
+export type ValuationBundle = Record<ValuationMetric, MarketMetricsPayload | null>
 
 function formatMultiple(value: number): string {
   return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value)}x`
 }
 
-function SnapshotContext({
-  snapshot,
-  metric,
-  latest,
-}: {
-  snapshot: CurrentResearchSnapshot
-  metric: ValuationMetric
-  latest: MarketMetricObservation | null
-}) {
-  const metricLabel = METRICS.find((item) => item.key === metric)?.label ?? 'Multiple'
-  const currentValue = latest ? formatObservationValue(latest) : metric === 'pe' ? formatResearchMultiple(snapshot.trailingPe) : '—'
-  const metricAvailable = latest !== null || metric === 'pe' && snapshot.trailingPe !== null
+type ValuationSeries = {
+  key: ValuationMetric
+  label: string
+  caption: string
+  points: Array<{ date: string; value: number; key: string; tooltipMeta: string }>
+  latest: MarketMetricObservation
+  low: number
+  high: number
+}
 
-  return (
-    <aside className={styles.contextColumn} aria-label="Current valuation context">
-      <div>
-        <div className={styles.contextHeader}>
-          <h2>Current value</h2>
-          <span>{metricAvailable ? 'Available' : 'No canonical rows'}</span>
-        </div>
-        <div className={styles.currentValue}>
-          <span>{metricLabel}</span>
-          <strong>{currentValue}</strong>
-          <small>{latest ? `Observed ${formatResearchDate(latest.observationDate)}` : snapshot.reportingPeriod ? `Reported ${formatResearchDate(snapshot.reportingPeriod)}` : 'Observation date unavailable'}</small>
-        </div>
-      </div>
-      <dl className={styles.contextList}>
-        <div><dt>Market cap</dt><dd>{formatResearchMoney(snapshot.marketCap, snapshot.currency)}</dd></div>
-        <div><dt>Currency</dt><dd>{snapshot.currency}</dd></div>
-        <div><dt>Known at</dt><dd>{latest ? formatResearchDate(latest.knownAt) : '—'}</dd></div>
-        <div><dt>Source</dt><dd>{latest?.source ?? '—'}</dd></div>
-      </dl>
-    </aside>
-  )
+function readSeries(
+  metric: { key: ValuationMetric; label: string; caption: string },
+  payload: MarketMetricsPayload | null,
+): ValuationSeries | null {
+  const rows = (payload?.available ? payload.rows : [])
+    .filter((row): row is MarketMetricObservation & { value: number } => row.value !== null && Number.isFinite(row.value))
+  if (rows.length === 0) return null
+
+  const ordered = [...rows].sort((left, right) => left.observationDate.localeCompare(right.observationDate))
+  const values = ordered.map((row) => row.value)
+  return {
+    key: metric.key,
+    label: metric.label,
+    caption: metric.caption,
+    points: ordered.map((row) => ({
+      date: row.observationDate,
+      value: row.value,
+      key: `${row.observationDate}:${row.knownAt}`,
+      tooltipMeta: `Known ${formatResearchDate(row.knownAt)}`,
+    })),
+    latest: ordered[ordered.length - 1],
+    // The lowest and highest points of the line already on screen. Not a
+    // percentile and not a rank against anything outside this window — reading
+    // the axis, which is the only reference this contract can support.
+    low: Math.min(...values),
+    high: Math.max(...values),
+  }
 }
 
 export default function StockValuationResearch({
   data,
-  metric,
-  period,
   observations,
 }: {
   data: StockResearchData
-  metric: ValuationMetric
-  period: ValuationPeriod
-  observations: MarketMetricsPayload | null
+  observations: ValuationBundle
 }) {
-  const snapshot = currentResearchSnapshot(data)
-  const metricLabel = METRICS.find((item) => item.key === metric)?.label ?? 'Multiple'
-  const earnings = data.summary.nextEarnings
-  const rows = observations?.available ? observations.rows : []
-  const latest = rows.find((row) => row.value !== null && Number.isFinite(row.value)) ?? null
-  const chartPoints = rows
-    .filter((row): row is MarketMetricObservation & { value: number } => row.value !== null && Number.isFinite(row.value))
-    .map((row) => ({
-      date: row.observationDate,
-      value: row.value,
-      key: `${row.observationDate}:${row.knownAt}:${row.metric}`,
-      tooltipMeta: `Known ${formatResearchDate(row.knownAt)}`,
-    }))
-    .sort((left, right) => left.date.localeCompare(right.date) || left.key.localeCompare(right.key))
+  const series = VALUATION_METRICS
+    .map((metric) => readSeries(metric, observations[metric.key]))
+    .filter((entry): entry is ValuationSeries => entry !== null)
+
+  const source = series[0]?.latest.source ?? null
+  const knownAt = series.reduce<string | null>(
+    (latest, entry) => !latest || entry.latest.knownAt > latest ? entry.latest.knownAt : latest,
+    null,
+  )
 
   return (
-    <ResearchViewShell data={data} title="Valuation History">
-      <div className={styles.page}>
-        <nav className={styles.controls} aria-label="Valuation controls">
-          <div className={styles.controlGroup} aria-label="Valuation metric">
-            <span className={styles.controlLabel}>Metric</span>
-            {METRICS.map((item) => (
-              <Link
-                key={item.key}
-                href={valuationHref(data.ticker, item.key, period)}
-                aria-current={item.key === metric ? 'page' : undefined}
-              >
-                {item.label}
-              </Link>
+    // No page header, and no metric tabs. Every multiple this contract answers
+    // for is on the page at once: switching between them was a page load to
+    // find out whether the next one had any observations at all, and a metric
+    // with none is simply absent here rather than an empty frame.
+    <ResearchViewShell data={data} title="Valuation History" showHeader={false}>
+      {series.length > 0 ? (
+        <>
+          <div className={styles.grid}>
+            {series.map((entry) => (
+              <section className={styles.multiple} key={entry.key}>
+                <div className={styles.multipleHead}>
+                  <div>
+                    <h2>{entry.label}</h2>
+                    <p>{entry.caption}</p>
+                  </div>
+                  <strong>{formatMultiple(entry.latest.value as number)}</strong>
+                </div>
+                <p className={styles.multipleRange}>
+                  {formatResearchDate(entry.points[0].date)} – {formatResearchDate(entry.latest.observationDate)}
+                  {' · '}
+                  low {formatMultiple(entry.low)} · high {formatMultiple(entry.high)}
+                </p>
+                <TemporalLineChart
+                  className={styles.multipleChart}
+                  points={entry.points}
+                  ariaLabel={`${entry.label} observations for ${data.ticker}`}
+                  valueFormat="multiple"
+                />
+              </section>
             ))}
           </div>
-        </nav>
+          <p className={styles.provenance}>
+            {source ? `${source.replace(/_/g, ' ')} · ` : ''}
+            {knownAt ? `known at ${formatResearchDate(knownAt)}` : ''}
+          </p>
+        </>
+      ) : (
+        <p className={styles.provenance}>
+          {observations.pe?.reason ?? 'No canonical multiples are available for this symbol.'}
+        </p>
+      )}
 
-        <section className={styles.hero} aria-labelledby="valuation-history-chart">
-          <div className={styles.chartColumn}>
-            <div className={styles.chartHeader}>
-              <h2 id="valuation-history-chart">Historical {metricLabel}</h2>
-              <span>Temporal observations</span>
-            </div>
-            <div className={styles.chartFrame} data-empty={chartPoints.length === 0}>
-              <TemporalLineChart
-                className={styles.valuationChart}
-                points={chartPoints}
-                ariaLabel={`${metricLabel} canonical temporal observations`}
-                valueFormat="multiple"
-                emptyState={
-                  <div className={styles.chartPlaceholder}>
-                    <strong>No canonical {metricLabel} history</strong>
-                    <span>{observations?.reason ?? 'Market metric read model unavailable'}</span>
-                  </div>
-                }
-              />
-              <div className={styles.chartFooter}>
-                <span>{chartPoints.length} temporal {chartPoints.length === 1 ? 'observation' : 'observations'}</span>
-                <span>No range or percentile inferred</span>
-              </div>
-            </div>
-          </div>
-          <SnapshotContext snapshot={snapshot} metric={metric} latest={latest} />
-        </section>
-
-        <section className={styles.secondaryGrid} aria-label="Valuation comparisons">
-          <div className={styles.secondaryModule}>
-            <div className={styles.sectionHeader}>
-              <h2>Series coverage</h2>
-              <span>Canonical</span>
-            </div>
-            <dl className={styles.moduleRows}>
-              <div><dt>First observation</dt><dd>{chartPoints.length ? formatResearchDate(chartPoints[0]?.date ?? null) : '—'}</dd></div>
-              <div><dt>Latest observation</dt><dd>{latest ? formatResearchDate(latest.observationDate) : '—'}</dd></div>
-              <div><dt>Methodology</dt><dd>{latest?.methodologyVersion ?? '—'}</dd></div>
-            </dl>
-          </div>
-          <div className={styles.secondaryModule}>
-            <div className={styles.sectionHeader}>
-              <h2>Peer and sector comparison</h2>
-              <span>Not supplied</span>
-            </div>
-            <dl className={styles.moduleRows}>
-              <div><dt>Comparable companies</dt><dd>Not in this contract</dd></div>
-              <div><dt>Sector reference</dt><dd>Not in this contract</dd></div>
-              <div><dt>Method</dt><dd>No frontend inference</dd></div>
-            </dl>
-          </div>
-        </section>
-
-        <section className={styles.earningsStrip} aria-labelledby="valuation-earnings">
-          <div>
-            <h2 id="valuation-earnings">Earnings context</h2>
-            <p>Events can anchor future valuation readings when the historical multiple series is available.</p>
-          </div>
-          <div className={styles.earningsValue}>
-            {earnings?.earningsDate ? `Next earnings · ${formatResearchDate(earnings.earningsDate)}` : 'No earnings date available'}
-          </div>
-        </section>
-
-        <section className={styles.methodology} aria-labelledby="valuation-methodology">
-          <div>
-            <h2 id="valuation-methodology">Methodology</h2>
-            <p>Current values are separated from future historical comparisons.</p>
-          </div>
-          <div>
-            <p>Values are direct temporal market-metric observations. Known-at dates remain distinct from observation dates; ranges, percentiles and peer comparisons are not calculated in the frontend.</p>
-            <Link href={`/stocks/${data.ticker}/methodology`}>Open methodology →</Link>
-          </div>
-        </section>
-
-        <ResearchAdPlacement />
-      </div>
+      <ResearchAdPlacement />
     </ResearchViewShell>
   )
 }

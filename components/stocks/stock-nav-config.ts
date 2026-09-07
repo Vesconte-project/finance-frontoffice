@@ -31,7 +31,7 @@ export const stockResearchPrimaryItems: readonly StockResearchLink[] = [
   { key: 'overview', label: 'Overview', loadingTitle: '', slug: '' },
   { key: 'fundamentals', label: 'Fundamentals', loadingTitle: '', slug: 'fundamentals' },
   { key: 'financials', label: 'Financials', loadingTitle: '', slug: 'financials' },
-  { key: 'valuation', label: 'Valuation', loadingTitle: 'Valuation History', slug: 'valuation' },
+  { key: 'valuation', label: 'Valuation', loadingTitle: '', slug: 'valuation' },
   { key: 'signals', label: 'Signals', loadingTitle: 'Signals & Indicators', slug: 'signals' },
   { key: 'events', label: 'Events', slug: 'events' },
   { key: 'relationships', label: 'Relationships', slug: 'relationships' },
