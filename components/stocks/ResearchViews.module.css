@@ -659,18 +659,30 @@
 /* -------------------------------------------------------------------------
    Financials — the statement itself: the money lines charted over every
    reported period, then the full table in reading order beneath it.
+
+   Series colours are a validated categorical set, not three tints of one
+   accent — the accent stepped down by opacity was three shades of the same
+   teal and could not be told apart. Run through the palette validator against
+   this page's surfaces: light passes the lightness band, the chroma floor and
+   CVD separation with a contrast WARN, relieved as the check requires by the
+   always-visible legend and the full table below; dark passes outright.
    ------------------------------------------------------------------------- */
 
 .statementChart {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   margin: 0;
-  padding: 22px 0 8px;
+  padding: 20px 0 4px;
 }
 
-.statementChart svg {
-  width: 100%;
-  height: auto;
+.statementChartPlot {
+  min-width: 0;
+}
+
+.chartTitle {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 620;
 }
 
 .chartLegend {
@@ -696,31 +708,42 @@
   width: 9px;
   height: 9px;
   border-radius: 2px;
-  background: var(--color-accent);
+  background: var(--statement-series-0);
 }
 
-/* One accent, stepped down. The product does not use a categorical palette,
-   and three hues fighting on a cream page would be a new language for one
-   chart. Depth carries the series instead: the top line is the strongest. */
+.statementChart {
+  --statement-series-0: #1ba69a;
+  --statement-series-1: #0757ff;
+  --statement-series-2: #c47f0d;
+}
+
+/* Selected for the dark surface from the same hues rather than flipped: the
+   ochre and the blue both leave the band when the light steps are reused. */
+:global(html[data-theme='dark']) .statementChart,
+:global([data-app-theme='dark']) .statementChart {
+  --statement-series-1: #4d86ff;
+  --statement-series-2: #bf820e;
+}
+
 .chartLegend li[data-series='1']::before {
-  background: color-mix(in srgb, var(--color-accent) 58%, transparent);
+  background: var(--statement-series-1);
 }
 
 .chartLegend li[data-series='2']::before {
-  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  background: var(--statement-series-2);
 }
 
 /* `fill`, not `background`: these are SVG rects. */
 .chartBar {
-  fill: var(--color-accent);
+  fill: var(--statement-series-0);
 }
 
 .chartBar[data-series='1'] {
-  fill: color-mix(in srgb, var(--color-accent) 58%, transparent);
+  fill: var(--statement-series-1);
 }
 
 .chartBar[data-series='2'] {
-  fill: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  fill: var(--statement-series-2);
 }
 
 .chartGrid {

@@ -42,13 +42,27 @@ const STATEMENT_ORDER: Record<StatementKey, RegExp[]> = {
 }
 
 /**
- * The money lines each statement leads with. Per-share figures and share
- * counts are deliberately absent: they do not share an axis with billions.
+ * The money lines each statement leads with.
  */
 const CHART_SERIES: Record<StatementKey, RegExp[]> = {
   income: [/^(total_)?revenue/, /^operating_income/, /^net_income/],
   'balance-sheet': [/^total_assets/, /^total_liabilities/, /^(total_|stockholders_)?equity/],
   'cash-flow': [/^operating_cash_flow|operating_activities/, /^free_cash_flow/],
+}
+
+/**
+ * Per-share figures, charted separately.
+ *
+ * Not laid over the money on a second y-axis, which is what a padlock-and-
+ * overlay reference does and what the request asked for. Two scales in one
+ * frame make the relationship between the lines an artifact of where each axis
+ * was pinned — move one and the crossing moves with it — so EPS gets its own
+ * frame under the same periods instead. Same x, honest y.
+ */
+const PER_SHARE_SERIES: Record<StatementKey, RegExp[]> = {
+  income: [/^eps|per_share/],
+  'balance-sheet': [/^shares_outstanding/],
+  'cash-flow': [/per_share/],
 }
 
 function statementHref({
@@ -126,17 +140,27 @@ export default function StockFinancialStatementsResearch({
     })
     .map((entry) => entry.row)
 
-  const chartSeries: StatementSeries[] = CHART_SERIES[statement]
-    .flatMap((pattern) => {
-      const match = lineItems.find((item) => pattern.test(item.lineItemId.toLowerCase()) && isMoney(item.lineItemId))
-      if (!match) return []
-      return [{
-        key: match.lineItemId,
-        label: match.displayLabel || match.lineItemId,
-        values: periods.map((periodRow) => cells.get(`${match.lineItemId}:${periodRow.periodEnd}`)?.value ?? null),
-      }]
-    })
+  const seriesFrom = (patterns: RegExp[], money: boolean): StatementSeries[] => patterns.flatMap((pattern) => {
+    const match = lineItems.find(
+      (item) => pattern.test(item.lineItemId.toLowerCase()) && isMoney(item.lineItemId) === money,
+    )
+    if (!match) return []
+    return [{
+      key: match.lineItemId,
+      label: match.displayLabel || match.lineItemId,
+      values: periods.map((periodRow) => cells.get(`${match.lineItemId}:${periodRow.periodEnd}`)?.value ?? null),
+    }]
+  })
+  const chartSeries = seriesFrom(CHART_SERIES[statement], true)
+  const perShareSeries = seriesFrom(PER_SHARE_SERIES[statement], false)
+  const periodLabels = periods.map(formatPeriod)
 
+  // TODO(REQ-011, backend): mark periods the response is withholding once the
+  // contract can say so. Earlier history is intended to become a paid tier, but
+  // a padlock drawn over periods the backend simply does not hold would invent
+  // a paywall over missing data and claim coverage we do not have.
+  // `CanonicalAvailability.count` is not that signal — it reports 500 for a
+  // symbol whose rows number in the tens, which is the limit this page sends.
   const currency = [...new Set(canonicalRows.map((row) => row.currency).filter(Boolean))].join(', ') || data.currency
   const latestKnownAt = canonicalRows.reduce<string | null>(
     (latest, row) => !latest || row.knownAt > latest ? row.knownAt : latest,
@@ -175,11 +199,22 @@ export default function StockFinancialStatementsResearch({
       </div>
 
       <StatementChart
-        periods={periods.map(formatPeriod)}
+        periods={periodLabels}
         series={chartSeries}
         currency={data.currency}
         caption={`${activeStatement.label} · ${period === 'annual' ? 'annual' : 'quarterly'} periods`}
       />
+
+      {perShareSeries.length > 0 ? (
+        <StatementChart
+          periods={periodLabels}
+          series={perShareSeries}
+          currency={data.currency}
+          format="plain"
+          height={150}
+          caption={`${perShareSeries[0].label} · ${period === 'annual' ? 'annual' : 'quarterly'} periods`}
+        />
+      ) : null}
 
       {lineItems.length > 0 ? (
         <section aria-labelledby="statement-detail">

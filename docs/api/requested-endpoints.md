@@ -18,6 +18,7 @@ Use `api-request-template.md`, assign both the semantic owner and gap layer, and
 | REQ-008 | A documented line-item vocabulary for `GET /tickers/{ticker}/financial-statements` | `lib/stock-fundamentals-view.ts` | None; publish the canonical `lineItemId` set per statement type in the contract | Normal | `draft` | `finance-backend` |
 | REQ-009 | Peer and sector fundamental reference values, so a reported figure can be read against something other than the company's own past | `components/stocks/StockFundamentalsResearch.tsx` | Deferred until canonical peer membership exists; blocked behind the peer/sector gap already recorded under Relationships below | High | `draft` | `finance-feature-store` |
 | REQ-010 | A complete statement in `GET /tickers/{ticker}/financial-statements`. Apple returns six income line items, three balance-sheet items and one cash-flow item, against roughly forty per statement in a filing | `components/stocks/StockFinancialStatementsResearch.tsx` and `lib/stock-fundamentals-view.ts` | Extend the existing read model's line-item coverage; no new route | High | `draft` | `finance-feature-store` → `finance-backend` |
+| REQ-011 | An explicit signal for a reported period the response is withholding, so the frontend can mark it as held back rather than absent | `components/stocks/StockFinancialStatementsResearch.tsx` | Add withheld-period metadata to `financial-statements`, alongside documented semantics for the existing `count` | Normal | `draft` | `finance-backend` |
 
 **REQ-001 detail.** `GET /screener/rankings` returns `symbol`, `name`, `sector`, `score`,
 `coverage` and `components` — no price and no series. The existing per-symbol helpers
@@ -308,3 +309,27 @@ whether the free cash flow was earned or released.
 The annual history is also short — three to four periods where a filing set
 carries ten. Until it lengthens, the change columns on the Fundamentals view
 have two or three entries.
+
+The quarterly series is shorter still: the income statement returns three
+quarters, which cannot cover a year, so the quarterly view cannot show a full
+trailing four and no seasonal comparison is possible against the same quarter a
+year earlier. Four is the minimum that makes the quarterly toggle worth
+offering; eight would let a quarter be read against its own prior year.
+
+### REQ-011 — Absent and withheld are not the same thing
+
+The product intends earlier history to become a paid tier. A frontend cannot
+mark a period as locked unless the response says a period exists and is being
+withheld — drawing a padlock over history the backend simply does not hold
+would be inventing a paywall over missing data, and would tell a reader we have
+something we do not.
+
+`CanonicalAvailability.count` is not that signal, and its semantics are
+undocumented: the income statement reports 500 for a symbol whose rows number
+in the tens, which is the value this frontend sends as `limit`, while the
+balance sheet reports 492 and the cash flow 206. Whatever it counts, it is not
+"periods available to you", so nothing is rendered from it.
+
+Wanted: per-period entitlement state on the response — reported, withheld,
+never filed — and documented `count` semantics. The statement view will mark
+withheld periods when the contract can distinguish them.
