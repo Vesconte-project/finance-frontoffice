@@ -234,127 +234,9 @@
   text-transform: uppercase;
 }
 
-.themeNav {
-  display: flex;
-  gap: 18px;
-  overflow-x: auto;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--research-line);
-  scrollbar-width: none;
-}
-
-.themeNav::-webkit-scrollbar {
-  display: none;
-}
-
-.themeNav a {
-  color: var(--color-text-muted);
-  font-size: 11px;
-  font-weight: 700;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.themeNav a:first-child,
-.themeNav a:hover,
-.themeNav a:focus-visible {
-  color: var(--color-accent);
-}
-
-.themes {
-  display: grid;
-  gap: 0;
-}
-
-.theme {
-  display: grid;
-  grid-template-columns: minmax(190px, 0.4fr) minmax(0, 1fr);
-  gap: 44px;
-  min-width: 0;
-  padding: 34px 0;
-  border-bottom: 1px solid var(--research-line);
-  scroll-margin-top: 108px;
-}
-
-.theme[data-priority='true'] .themeTitle::before {
-  content: '';
-  display: inline-block;
-  width: 18px;
-  height: 2px;
-  margin-right: 10px;
-  vertical-align: middle;
-  background: var(--color-accent);
-}
-
-.themeTitle h2 {
-  margin: 0;
-  font-size: 1.15rem;
-}
-
-.themeTitle p {
-  margin: 7px 0 0;
-  color: var(--color-text-muted);
-  font-size: 10px;
-  line-height: 1.45;
-}
-
-.themeEvidence {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(190px, 0.38fr);
-  gap: 32px;
-  min-width: 0;
-}
-
 .metricList {
   margin: 0;
   border-top: 1px solid var(--research-line);
-}
-
-.metricMeta {
-  display: block;
-  margin-top: 3px;
-  color: var(--color-text-muted);
-  font-size: 9px;
-  font-weight: 500;
-}
-
-.trendPlaceholder {
-  position: relative;
-  display: grid;
-  min-height: 160px;
-  align-content: end;
-  overflow: hidden;
-  padding: 14px;
-  border-left: 1px solid var(--research-line);
-  color: var(--color-text-muted);
-}
-
-.trendPlaceholder::before,
-.trendPlaceholder::after {
-  content: '';
-  position: absolute;
-  inset-inline: 14px;
-  border-top: 1px solid var(--research-line);
-}
-
-.trendPlaceholder::before { top: 32%; }
-.trendPlaceholder::after { top: 64%; }
-
-.trendPlaceholder strong,
-.trendPlaceholder span {
-  position: relative;
-  z-index: 1;
-}
-
-.trendPlaceholder strong {
-  color: var(--color-text-secondary);
-  font-size: 11px;
-}
-
-.trendPlaceholder span {
-  margin-top: 3px;
-  font-size: 9px;
-  text-transform: uppercase;
 }
 
 .statementToolbar {
@@ -592,21 +474,6 @@
   .chapterIntro {
     position: static;
   }
-
-  .theme {
-    grid-template-columns: 150px minmax(0, 1fr);
-    gap: 24px;
-  }
-
-  .themeEvidence {
-    grid-template-columns: 1fr;
-  }
-
-  .trendPlaceholder {
-    min-height: 120px;
-    border-top: 1px solid var(--research-line);
-    border-left: 0;
-  }
 }
 
 @media (max-width: 640px) {
@@ -638,8 +505,7 @@
     gap: 12px;
   }
 
-  .profileChapter,
-  .theme {
+  .profileChapter {
     grid-template-columns: 1fr;
     gap: 14px;
     padding: 26px 0;
@@ -694,5 +560,150 @@
   .page *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Fundamentals — the trajectory, not the levels.
+
+   Every figure this page can reach already exists elsewhere: Financials holds
+   the levels period by period, and Overview groups the same latest values by
+   the same regexes. The one thing neither shows is how much each measure moved
+   each year, so that is all this page shows. It is a dense table because that
+   is what a table of changes wants to be, and because four near-identical bars
+   drawn from zero were maximum ink for no information.
+   ------------------------------------------------------------------------- */
+
+.chapters {
+  display: grid;
+  gap: 0;
+}
+
+.chapter {
+  display: grid;
+  gap: 14px;
+  padding: 26px 0 30px;
+  border-bottom: 1px solid var(--research-line);
+  scroll-margin-top: 108px;
+}
+
+.chapter:first-child {
+  padding-top: 6px;
+}
+
+.chapterHead {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 640;
+  letter-spacing: -0.02em;
+}
+
+/* A long reporting history widens this past the column; it scrolls in its own
+   box rather than pushing the page sideways. */
+.changeScroll {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.changeTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.changeTable th,
+.changeTable td {
+  padding: 10px 0 10px 24px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.changeTable th:first-child,
+.changeTable td:first-child {
+  padding-left: 0;
+  text-align: left;
+}
+
+.changeTable thead th {
+  border-bottom: 1px solid var(--research-line);
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.changeTable tbody th {
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 560;
+  white-space: normal;
+}
+
+.changeTable tbody tr {
+  border-bottom: 1px solid var(--research-line);
+}
+
+.changeTable tbody tr:last-child {
+  border-bottom: 0;
+}
+
+.changeTable td {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 620;
+}
+
+/* Direction carries a sign as well as a colour, and the palette stays the
+   product's own — no red, no green, as everywhere else. */
+.changeTable td[data-direction='up'] {
+  color: var(--color-accent);
+}
+
+.changeTable td[data-direction='down'] {
+  color: var(--color-text-primary);
+}
+
+.changeLevel {
+  color: var(--color-text-primary) !important;
+  font-weight: 660;
+  letter-spacing: -0.01em;
+}
+
+/* Funds only: an ETF files no statements, so its chapters carry attributes
+   rather than a trajectory. */
+.tailList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0 40px;
+  margin: 0;
+}
+
+.tailList div {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--research-line);
+}
+
+.tailList dt {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.tailList dd {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 620;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .changeTable th,
+  .changeTable td {
+    padding-left: 16px;
   }
 }

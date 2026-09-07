@@ -188,6 +188,9 @@ test('Phase 2 research views preserve local state and do not simulate statement 
   const shell = readRepoFile('components/stocks/ResearchViewShell.tsx')
   const profile = readRepoFile('components/stocks/StockProfileResearch.tsx')
   const fundamentals = readRepoFile('components/stocks/StockFundamentalsResearch.tsx')
+  const fundamentalsView = readRepoFile('lib/stock-fundamentals-view.ts')
+  const researchLoadingView = readRepoFile('components/stocks/TickerResearchLoading.tsx')
+  const navConfig = readRepoFile('components/stocks/stock-nav-config.ts')
   const financials = readRepoFile('components/stocks/StockFinancialStatementsResearch.tsx')
   const overviewLink = readRepoFile('components/stocks/ResearchOverviewLink.tsx')
   const contract = readRepoFile('docs/features/ticker-research-views.md')
@@ -205,8 +208,23 @@ test('Phase 2 research views preserve local state and do not simulate statement 
   assert.doesNotMatch(shell, /Research breadcrumb|assetContext/)
   assert.match(profile, /Fund Profile/)
   assert.match(profile, /Company Profile/)
-  assert.match(fundamentals, /EQUITY_PRIORITY/)
-  assert.match(fundamentals, /FUND_PRIORITY/)
+  // The deliberate equity/fund ordering moved into the view builder when the
+  // page stopped being a list of themes; the intent it guards is unchanged.
+  assert.match(fundamentalsView, /EQUITY_CHAPTERS/)
+  assert.match(fundamentalsView, /FUND_CHAPTERS/)
+  assert.doesNotMatch(fundamentals, /Math\.random|mock|fake/i)
+  // The trend rail this page used to render was a placeholder that never
+  // filled, on a page whose history the backend does hold.
+  assert.doesNotMatch(fundamentals, /Data pending|trendPlaceholder/)
+  // The levels are Financials' job and the latest values are Overview's; this
+  // view exists for the change between periods and must keep showing it.
+  assert.match(fundamentals, /changes/)
+  // The tab and the ticker chrome already name this page; a heading repeating
+  // the tab beside a coverage badge told the reader nothing.
+  assert.match(fundamentals, /showHeader=\{false\}/)
+  // A view with no page header must not grow one while it loads.
+  assert.match(navConfig, /key: 'fundamentals'[^}]*loadingTitle: ''/)
+  assert.doesNotMatch(researchLoadingView, /=== 'overview'/)
   assert.match(financials, /canonicalRows/)
   assert.match(financials, /lineItemId/)
   assert.match(financials, /statementHref/)

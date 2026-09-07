@@ -67,7 +67,7 @@ export default function DockingSearch() {
   }, [revealReady])
 
   return (
-    <div data-dock-search className="dock-search" data-reveal-ready={revealReady ? 'true' : 'false'} onFocus={onFocus} onBlur={onBlur}>
+    <div data-dock-search data-field-foreground className="dock-search" data-reveal-ready={revealReady ? 'true' : 'false'} onFocus={onFocus} onBlur={onBlur}>
       <div className="dock-search__intro">
         <h1 className="dock-search__title" aria-label={HEADLINE}>
           {HEADLINE.split(' ').map((word, wordIndex) => (

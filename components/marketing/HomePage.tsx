@@ -16,7 +16,12 @@ async function Sections() {
   const boardData = await loadHomeBoardData()
 
   return (
-    <div className="relative z-30 text-content-primary">
+    // `data-field-foreground` marks this as content painted over the fixed
+    // constellation. HeroConstellation softens the field while any marked
+    // element is over the viewport and sharpens it while none is, so the one
+    // stretch of the page where the network is alone is the one where it is
+    // in focus. See FIELD_SOFTEN there.
+    <div data-field-foreground className="relative z-30 text-content-primary">
       <div className="pt-24 md:pt-28 lg:pt-32">
         <HomeBoard data={boardData} />
         <HomeNeighborhood items={boardData.longTerm.status === 'ok' ? boardData.longTerm.items.slice(0, 5) : []} />
