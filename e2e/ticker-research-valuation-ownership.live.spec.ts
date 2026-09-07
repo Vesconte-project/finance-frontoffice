@@ -30,10 +30,12 @@ test.describe('ticker valuation and ownership Phase 2 slice', () => {
     await page.mouse.move(chartBox.x + chartBox.width * 0.72, chartBox.y + chartBox.height * 0.5)
     await expect(page.locator('[data-chart-tooltip]')).toBeVisible()
     await expect(page.getByRole('link', { name: 'Valuation', exact: true })).toHaveAttribute('aria-current', 'page')
-    // A multiple with no observations is absent, not an empty frame with a
-    // heading over it. P/S is the one this contract does not answer for.
+    // A multiple the contract does not answer for is still listed, so the
+    // reader can tell one we do not track from one we track and have nothing
+    // for. P/S is the one with no observations.
+    await expect(page.getByRole('heading', { name: 'P/S', exact: true })).toBeVisible()
+    await expect(page.getByText('Not covered for AAPL yet').first()).toBeVisible()
     await expect(page.locator('[data-chart-state="empty"]')).toHaveCount(0)
-    await expect(page.getByRole('heading', { name: 'P/S', exact: true })).toHaveCount(0)
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, 'phase2-valuation-aapl-trade-desktop')
 

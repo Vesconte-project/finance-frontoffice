@@ -27,8 +27,6 @@ type ValuationSeries = {
   caption: string
   points: Array<{ date: string; value: number; key: string; tooltipMeta: string }>
   latest: MarketMetricObservation
-  low: number
-  high: number
 }
 
 function readSeries(
@@ -40,7 +38,6 @@ function readSeries(
   if (rows.length === 0) return null
 
   const ordered = [...rows].sort((left, right) => left.observationDate.localeCompare(right.observationDate))
-  const values = ordered.map((row) => row.value)
   return {
     key: metric.key,
     label: metric.label,
@@ -52,11 +49,6 @@ function readSeries(
       tooltipMeta: `Known ${formatResearchDate(row.knownAt)}`,
     })),
     latest: ordered[ordered.length - 1],
-    // The lowest and highest points of the line already on screen. Not a
-    // percentile and not a rank against anything outside this window — reading
-    // the axis, which is the only reference this contract can support.
-    low: Math.min(...values),
-    high: Math.max(...values),
   }
 }
 
@@ -67,15 +59,15 @@ export default function StockValuationResearch({
   data: StockResearchData
   observations: ValuationBundle
 }) {
-  const series = VALUATION_METRICS
-    .map((metric) => readSeries(metric, observations[metric.key]))
-    .filter((entry): entry is ValuationSeries => entry !== null)
-
-  const source = series[0]?.latest.source ?? null
-  const knownAt = series.reduce<string | null>(
-    (latest, entry) => !latest || entry.latest.knownAt > latest ? entry.latest.knownAt : latest,
-    null,
-  )
+  // Every multiple this view covers, whether or not the contract answers for
+  // it. Dropping the unanswered ones made four of the five vanish with no
+  // account of where they went; the reader cannot tell a multiple we do not
+  // track from one we track and have nothing for.
+  const multiples = VALUATION_METRICS.map((metric) => ({
+    metric,
+    series: readSeries(metric, observations[metric.key]),
+  }))
+  const covered = multiples.filter((entry) => entry.series !== null)
 
   return (
     // No page header, and no metric tabs. Every multiple this contract answers
@@ -83,42 +75,37 @@ export default function StockValuationResearch({
     // find out whether the next one had any observations at all, and a metric
     // with none is simply absent here rather than an empty frame.
     <ResearchViewShell data={data} title="Valuation History" showHeader={false}>
-      {series.length > 0 ? (
-        <>
-          <div className={styles.grid}>
-            {series.map((entry) => (
-              <section className={styles.multiple} key={entry.key}>
-                <div className={styles.multipleHead}>
-                  <div>
-                    <h2>{entry.label}</h2>
-                    <p>{entry.caption}</p>
-                  </div>
-                  <strong>{formatMultiple(entry.latest.value as number)}</strong>
-                </div>
-                <p className={styles.multipleRange}>
-                  {formatResearchDate(entry.points[0].date)} – {formatResearchDate(entry.latest.observationDate)}
-                  {' · '}
-                  low {formatMultiple(entry.low)} · high {formatMultiple(entry.high)}
-                </p>
-                <TemporalLineChart
-                  className={styles.multipleChart}
-                  points={entry.points}
-                  ariaLabel={`${entry.label} observations for ${data.ticker}`}
-                  valueFormat="multiple"
-                />
-              </section>
-            ))}
-          </div>
-          <p className={styles.provenance}>
-            {source ? `${source.replace(/_/g, ' ')} · ` : ''}
-            {knownAt ? `known at ${formatResearchDate(knownAt)}` : ''}
-          </p>
-        </>
-      ) : (
-        <p className={styles.provenance}>
+      <div className={styles.grid}>
+        {multiples.map(({ metric, series }) => (
+          <section className={styles.multiple} key={metric.key} data-covered={series !== null || undefined}>
+            <div className={styles.multipleHead}>
+              <div>
+                <h2>{metric.label}</h2>
+                <p>{metric.caption}</p>
+              </div>
+              {series ? <strong>{formatMultiple(series.latest.value as number)}</strong> : null}
+            </div>
+            {series ? (
+              <TemporalLineChart
+                className={styles.multipleChart}
+                points={series.points}
+                ariaLabel={`${metric.label} observations for ${data.ticker}`}
+                valueFormat="multiple"
+              />
+            ) : (
+              // Plain English, and no figure of any kind. The reader is told
+              // this is tracked and empty, not handed a dash where a number
+              // goes.
+              <p className={styles.multiplePending}>Not covered for {data.ticker} yet</p>
+            )}
+          </section>
+        ))}
+      </div>
+      {covered.length === 0 ? (
+        <p className={styles.multiplePending}>
           {observations.pe?.reason ?? 'No canonical multiples are available for this symbol.'}
         </p>
-      )}
+      ) : null}
 
       <ResearchAdPlacement />
     </ResearchViewShell>

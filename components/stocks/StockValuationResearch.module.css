@@ -56,23 +56,24 @@
   line-height: 1;
 }
 
-/* The window is named beside the range, because a low and a high mean nothing
-   without the stretch of time they were observed over — and this contract
-   currently answers with weeks. */
-.multipleRange {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
-
 .multipleChart {
   min-height: 148px;
 }
 
-.provenance {
-  margin: 18px 0 0;
+/* A multiple the contract does not answer for is still listed, so the reader
+   can tell one we do not track from one we track and have nothing for. It
+   recedes and carries no figure — not even a dash, which reads as a value. */
+.multiple:not([data-covered]) {
+  align-content: start;
+  gap: 6px;
+}
+
+.multiple:not([data-covered]) h2 {
+  color: var(--color-text-secondary);
+}
+
+.multiplePending {
+  margin: 0;
   color: var(--color-text-muted);
-  font-size: 10px;
-  letter-spacing: 0.02em;
+  font-size: 11px;
 }

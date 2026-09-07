@@ -350,8 +350,14 @@ records the other half. Over a single summer the observed range is 33.54x to
 41.79x, which is a fact about one quarter and reads as a dramatic line only
 because the axis is that narrow.
 
+The frontend is not truncating this. `getTickerMarketMetrics` sends
+`limit: 250` and 41 rows come back, and the helper sends no date range at all.
+Whether the endpoint accepts one — `/events` does — is unverified from this
+repository; if it does, part of this may be a request we are not making rather
+than history the backend does not hold, and that is the first thing to check
+when this is picked up.
+
 Wanted: multi-year retention on the observation series, and observations for
-the remaining multiples. Until then the view shows the window it actually has,
-names its dates beside the range so the reader can see how short it is, and
-omits the multiples that return nothing rather than offering a tab that leads
-to an empty frame.
+the remaining multiples. Until then the view lists all five multiples and says
+plainly which are not covered yet, rather than dropping four of them without
+account or offering a tab that leads to an empty frame.
