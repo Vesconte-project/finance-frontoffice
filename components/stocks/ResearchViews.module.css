@@ -656,11 +656,16 @@
    should not have had, which was that grouped bars claimed the lines were
    siblings.
 
-   That hue is the brand ink, not the teal. On a page about money, a green bar
-   is read as a good one — the colour is spoken for by buy and sell everywhere
-   else in this product, and revenue is neither. Ink carries no direction.
+   The hue is violet, and it is chosen by what it cannot be. Not teal or green:
+   on a page about money that colour is spoken for by buy and sell, so a green
+   revenue bar reads as a good one, and revenue is neither. Not the navy ink
+   either — its light steps mix to grey against this cream and the ramp went
+   muddy. Violet keeps chroma all the way down (the palest step is lilac, not
+   grey), carries no market direction, and is far enough from both the teal
+   accent and the navy text to read as data rather than as chrome.
+
    Steps are 38/58/77/96% of it over the page: lightness falls monotonically,
-   which is what a sequential ramp needs, and each step sits about 1.65:1
+   which is what a sequential ramp needs, and each step sits about 1.5:1
    against the one before it.
    ------------------------------------------------------------------------- */
 
@@ -693,7 +698,13 @@
   display: grid;
   gap: 10px;
   margin: 0;
-  --statement-ink: var(--brand-base, #14345a);
+  --statement-ink: #5b21b6;
+}
+
+/* ChartContainer measures its own box, so it has to fill the height its
+   parent was given. */
+.statementChartPlot > div {
+  height: 100%;
 }
 
 .statementChartPlot {
@@ -739,6 +750,78 @@
   fill: color-mix(in srgb, var(--statement-ink) var(--tint), transparent);
   stroke: var(--page-bg, var(--color-page-bg));
   stroke-width: 2;
+  transition: opacity 0.14s ease;
+}
+
+/* The whole column is the hit target. Transparent rather than absent, so it
+   still receives the pointer. */
+.chartHit {
+  fill: transparent;
+}
+
+.statementChart g[data-dimmed] .chartBar {
+  opacity: 0.34;
+}
+
+.chartTip {
+  position: absolute;
+  top: 6px;
+  z-index: 2;
+  display: grid;
+  gap: 7px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 10px);
+  padding: 9px 11px;
+  background: var(--page-bg, var(--color-page-bg));
+  box-shadow: var(--app-shadow, 0 12px 32px rgba(25, 40, 53, 0.12));
+}
+
+.chartTip strong {
+  color: var(--color-text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.chartTip dl {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+}
+
+.chartTip dl div {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  --tint: calc(38% + var(--depth, 0) * 19%);
+}
+
+.chartTip dl div::before {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--statement-ink) var(--tint), transparent);
+}
+
+.chartTip dt {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chartTip dd {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 11px;
+  font-weight: 660;
+  font-variant-numeric: tabular-nums;
 }
 
 .chartGrid {
