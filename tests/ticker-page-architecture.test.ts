@@ -214,7 +214,9 @@ test('Phase 2 research views preserve local state and do not simulate statement 
   // The trend rail this page used to render was a placeholder that never
   // filled, on a page whose history the backend does hold.
   assert.doesNotMatch(fundamentals, /Data pending|trendPlaceholder/)
-  assert.match(fundamentals, /MeasurePeriods/)
+  // The levels are Financials' job and the latest values are Overview's; this
+  // view exists for the change between periods and must keep showing it.
+  assert.match(fundamentals, /changes/)
   // The tab and the ticker chrome already name this page; a heading repeating
   // the tab beside a coverage badge told the reader nothing.
   assert.match(fundamentals, /showHeader=\{false\}/)

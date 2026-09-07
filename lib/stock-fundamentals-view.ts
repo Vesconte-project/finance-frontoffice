@@ -15,6 +15,11 @@ export type MeasurePoint = {
   value: number
 }
 
+export type MeasureChange = {
+  periodEnd: string
+  changePct: number
+}
+
 export type FundamentalMeasure = {
   key: string
   label: string
@@ -23,25 +28,31 @@ export type FundamentalMeasure = {
   /** Oldest to newest, so the series reads left to right. */
   series: MeasurePoint[]
   latest: MeasurePoint
-  previous: MeasurePoint | null
-  changePct: number | null
+  /**
+   * Period-over-period change. This is the page's whole reason to exist: the
+   * levels behind it are already in Financials, period by period, and already
+   * on Overview as latest values. What neither shows is the trajectory.
+   */
+  changes: MeasureChange[]
 }
 
 export type FundamentalChapter = {
   key: string
   label: string
   measures: FundamentalMeasure[]
-  /** Everything the chapter carries that did not earn a card of its own. */
+  /** The union of the chapter's change periods, oldest first — its columns. */
+  periods: MeasurePoint[]
+  /**
+   * Funds only. An ETF files no statements, so its fundamentals are the
+   * attributes themselves; an equity's tail was a verbatim copy of the
+   * Overview page's own fundamental groups, built from the same rows by the
+   * same regexes, and is dropped rather than repeated.
+   */
   tail: ResearchMetric[]
-  span: string | null
 }
 
 export type FundamentalsView = {
   chapters: FundamentalChapter[]
-  /** Current multiples, shown as a strip that hands off to the Valuation view. */
-  valuationTail: ResearchMetric[]
-  /** Anything the themes carried that no chapter claims. Kept, not dropped. */
-  additionalTail: ResearchMetric[]
   hasStatements: boolean
 }
 
@@ -280,23 +291,26 @@ function buildMeasure(
 ): FundamentalMeasure | null {
   const series = seriesFor(rows)
   if (series.length === 0) return null
-  const latest = series[series.length - 1]
-  const previous = series.length > 1 ? series[series.length - 2] : null
-  // Both numbers are on screen, so this is the comparison the reader would make
-  // between two published figures rather than a statistic of our own.
-  const changePct =
-    previous && previous.value !== 0 && Math.sign(previous.value) === Math.sign(latest.value)
-      ? ((latest.value - previous.value) / Math.abs(previous.value)) * 100
-      : null
+  const changes: MeasureChange[] = []
+  for (let index = 1; index < series.length; index += 1) {
+    const previous = series[index - 1]
+    const current = series[index]
+    // A sign flip has no meaningful percentage — a swing from a loss to a
+    // profit is not "up 340%" — so it is left out rather than made up.
+    if (previous.value === 0 || Math.sign(previous.value) !== Math.sign(current.value)) continue
+    changes.push({
+      periodEnd: current.periodEnd,
+      changePct: ((current.value - previous.value) / Math.abs(previous.value)) * 100,
+    })
+  }
   return {
     key,
     label,
     format,
     currency: rows.find((row) => row.currency)?.currency ?? fallbackCurrency,
     series,
-    latest,
-    previous,
-    changePct,
+    latest: series[series.length - 1],
+    changes,
   }
 }
 
@@ -315,15 +329,21 @@ function dedupeKey(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '')
 }
 
-function spanLabel(measures: FundamentalMeasure[]): string | null {
-  const longest = measures.reduce<FundamentalMeasure | null>(
-    (best, measure) => (!best || measure.series.length > best.series.length ? measure : best),
-    null,
-  )
-  if (!longest || longest.series.length < 2) return null
-  const first = longest.series[0]
-  const last = longest.series[longest.series.length - 1]
-  return `${longest.series.length} periods · ${first.label}–${last.label}`
+/**
+ * The chapter's columns: every period any of its measures reports a change
+ * for. Measures can cover different periods — the cash-flow statement need not
+ * run as far back as the income statement — so a shared column set shows that
+ * difference as a gap rather than silently aligning unlike years.
+ */
+function chapterPeriods(measures: FundamentalMeasure[]): MeasurePoint[] {
+  const periods = new Map<string, MeasurePoint>()
+  for (const measure of measures) {
+    for (const change of measure.changes) {
+      const point = measure.series.find((entry) => entry.periodEnd === change.periodEnd)
+      if (point && !periods.has(point.periodEnd)) periods.set(point.periodEnd, point)
+    }
+  }
+  return [...periods.values()].sort((left, right) => left.periodEnd.localeCompare(right.periodEnd))
 }
 
 export function buildFundamentalsView(
@@ -381,18 +401,17 @@ export function buildFundamentalsView(
     }
 
     const charted = new Set(measures.map((measure) => dedupeKey(measure.label)))
-    const tail = spec.themeKeys
-      .flatMap((themeKey) => themesByKey.get(themeKey)?.metrics ?? [])
-      .filter((metric) => !charted.has(dedupeKey(metric.label)))
+    const tail = data.kind === 'fund'
+      ? spec.themeKeys
+        .flatMap((themeKey) => themesByKey.get(themeKey)?.metrics ?? [])
+        .filter((metric) => !charted.has(dedupeKey(metric.label)))
+      : []
 
-    return { key: spec.key, label: spec.label, measures, tail, span: spanLabel(measures) }
+    return { key: spec.key, label: spec.label, measures, periods: chapterPeriods(measures), tail }
   })
 
-  const claimedThemes = new Set(['valuation', ...specs.flatMap((spec) => spec.themeKeys)])
   return {
     chapters: chapters.filter((chapter) => chapter.measures.length > 0 || chapter.tail.length > 0),
-    valuationTail: themesByKey.get('valuation')?.metrics ?? [],
-    additionalTail: data.themes.filter((theme) => !claimedThemes.has(theme.key)).flatMap((theme) => theme.metrics),
     hasStatements,
   }
 }

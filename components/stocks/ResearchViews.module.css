@@ -564,11 +564,14 @@
 }
 
 /* -------------------------------------------------------------------------
-   Fundamentals — what the business did, one measure at a time, each carrying
-   the periods it was reported over. No page header: the ticker chrome above
-   already names the company and the tab. No filled cards either — this page
-   uses the same hairline frames as the rest of the product, so the data is
-   the only thing with weight on it.
+   Fundamentals — the trajectory, not the levels.
+
+   Every figure this page can reach already exists elsewhere: Financials holds
+   the levels period by period, and Overview groups the same latest values by
+   the same regexes. The one thing neither shows is how much each measure moved
+   each year, so that is all this page shows. It is a dense table because that
+   is what a table of changes wants to be, and because four near-identical bars
+   drawn from zero were maximum ink for no information.
    ------------------------------------------------------------------------- */
 
 .chapters {
@@ -578,14 +581,14 @@
 
 .chapter {
   display: grid;
-  gap: 22px;
-  padding: 30px 0 34px;
+  gap: 14px;
+  padding: 26px 0 30px;
   border-bottom: 1px solid var(--research-line);
   scroll-margin-top: 108px;
 }
 
 .chapter:first-child {
-  padding-top: 8px;
+  padding-top: 6px;
 }
 
 .chapterHead {
@@ -595,128 +598,80 @@
   letter-spacing: -0.02em;
 }
 
-.measureGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 28px 44px;
+/* A long reporting history widens this past the column; it scrolls in its own
+   box rather than pushing the page sideways. */
+.changeScroll {
   min-width: 0;
+  overflow-x: auto;
 }
 
-.measure {
-  display: grid;
-  align-content: start;
-  gap: 14px;
-  min-width: 0;
+.changeTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
 }
 
-.measureHead {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 12px;
-  align-items: baseline;
+.changeTable th,
+.changeTable td {
+  padding: 10px 0 10px 24px;
+  text-align: right;
+  white-space: nowrap;
 }
 
-.measureHead h3 {
-  flex: 1 0 100%;
-  margin: 0;
+.changeTable th:first-child,
+.changeTable td:first-child {
+  padding-left: 0;
+  text-align: left;
+}
+
+.changeTable thead th {
+  border-bottom: 1px solid var(--research-line);
   color: var(--color-text-muted);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
-.measureValue {
-  margin: 0;
-  font-size: clamp(1.5rem, 2.4vw, 1.9rem);
-  font-weight: 660;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.035em;
-  line-height: 1.05;
+.changeTable tbody th {
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 560;
+  white-space: normal;
 }
 
-.measureChange {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
+.changeTable tbody tr {
+  border-bottom: 1px solid var(--research-line);
+}
+
+.changeTable tbody tr:last-child {
+  border-bottom: 0;
+}
+
+.changeTable td {
+  color: var(--color-text-muted);
+  font-size: 12px;
   font-weight: 620;
 }
 
-.measureChange[data-direction='up'] {
+/* Direction carries a sign as well as a colour, and the palette stays the
+   product's own — no red, no green, as everywhere else. */
+.changeTable td[data-direction='up'] {
   color: var(--color-accent);
 }
 
-.measureChange span {
-  color: var(--color-text-muted);
-  font-weight: 500;
+.changeTable td[data-direction='down'] {
+  color: var(--color-text-primary);
 }
 
-/* One column per reported period. Scrolls in its own box rather than shrinking
-   the labels away when a ticker carries more history than Apple does. */
-.periods {
-  display: flex;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  overflow-x: auto;
-  list-style: none;
-  border-top: 1px solid var(--research-line);
-}
-
-.periods li {
-  display: grid;
-  flex: 1 1 0;
-  gap: 6px;
-  min-width: 68px;
-  padding-top: 12px;
-}
-
-.periodTrack {
-  display: flex;
-  height: 54px;
-  align-items: flex-end;
-}
-
-.periodTrack i {
-  display: block;
-  width: 100%;
-  min-height: 2px;
-  border-radius: 1px;
-  background: color-mix(in srgb, var(--color-text-primary) 16%, transparent);
-}
-
-/* A reported outflow, drawn by magnitude so it has a column at all. Hollow so
-   it cannot be read as the same kind of quantity as the bars beside it. */
-.periodTrack i[data-negative] {
-  background: repeating-linear-gradient(
-    -45deg,
-    color-mix(in srgb, var(--color-text-primary) 22%, transparent) 0 2px,
-    transparent 2px 5px
-  );
-}
-
-.periods li[data-latest] .periodTrack i {
-  background: var(--color-accent);
-}
-
-.periodValue {
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 620;
+.changeLevel {
+  color: var(--color-text-primary) !important;
+  font-weight: 660;
   letter-spacing: -0.01em;
 }
 
-.periodLabel {
-  color: var(--color-text-muted);
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
-}
-
-/* The long tail. Kept in full — the point was never to show less, it was to
-   stop giving fourteen measures the same weight as the ones that lead.
-   `auto-fill`, not `auto-fit`: a lone leftover metric should sit in one column
-   rather than stretch across the page. */
+/* Funds only: an ETF files no statements, so its chapters carry attributes
+   rather than a trajectory. */
 .tailList {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -746,42 +701,9 @@
   text-align: right;
 }
 
-.handoff {
-  display: grid;
-  grid-template-columns: minmax(180px, 0.28fr) minmax(0, 1fr);
-  gap: 20px 44px;
-  align-items: start;
-  padding: 28px 0;
-  border-bottom: 1px solid var(--research-line);
-}
-
-.handoff h2 {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 640;
-  letter-spacing: -0.02em;
-}
-
-.handoff p {
-  margin: 7px 0 0;
-  color: var(--color-text-muted);
-  font-size: 11px;
-  line-height: 1.45;
-}
-
-.handoff > div:last-child {
-  display: grid;
-  gap: 18px;
-  justify-items: start;
-  min-width: 0;
-}
-
 @media (max-width: 640px) {
-  .measureGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .handoff {
-    grid-template-columns: 1fr;
+  .changeTable th,
+  .changeTable td {
+    padding-left: 16px;
   }
 }
