@@ -2,6 +2,7 @@ import Link from 'next/link'
 import ResearchViewShell, { ResearchAdPlacement } from '@/components/stocks/ResearchViewShell'
 import StatementChart, { type StatementSeries } from '@/components/stocks/StatementChart'
 import { formatCompactMoney } from '@/lib/currency'
+import { tickerIdentityColor } from '@/lib/ticker-identity-color'
 import type { FinancialStatementLineItem, FinancialStatementsPayload } from '@/lib/canonical-research'
 import type { StockResearchData } from '@/lib/stock-research'
 import styles from './ResearchViews.module.css'
@@ -91,12 +92,14 @@ function Statement({
   payload,
   currency,
   period,
+  accentColor,
 }: {
   statement: StatementKey
   label: string
   payload: FinancialStatementsPayload | null
   currency: string
   period: StatementPeriod
+  accentColor: string
 }) {
   const rows = payload?.available ? payload.rows : []
   if (rows.length === 0) return null
@@ -138,6 +141,7 @@ function Statement({
           periods={periods.map(formatPeriod)}
           series={nesting}
           currency={currency}
+          accentColor={accentColor}
           caption={`${label} · ${period === 'annual' ? 'annual' : 'quarterly'} periods`}
         />
         <div className={styles.statementTableWrap}>
@@ -213,6 +217,7 @@ export default function StockFinancialStatementsResearch({
             payload={statements[item.key]}
             currency={data.currency}
             period={period}
+            accentColor={tickerIdentityColor(data.ticker)}
           />
         ))
       ) : (

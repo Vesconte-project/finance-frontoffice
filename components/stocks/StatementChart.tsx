@@ -36,18 +36,35 @@ function niceCeiling(value: number): number {
  *
  * Nothing is computed: every bar is a reported figure, and the steps between
  * them are visible without naming a difference we did not receive.
+ *
+ * The hue is the ticker's own identity colour — the one on the node beside the
+ * company name — so the page's data carries the company's mark rather than a
+ * decorative colour of the chart's own. The innermost step is that colour
+ * exactly; the outer ones are it mixed toward the page. Every entry in the
+ * identity palette holds a monotonic ramp against this surface, which is what a
+ * sequential scale needs.
  */
+// Distributed across the series actually present, so the innermost step is
+// always the identity colour itself — a two-line statement should not stop at
+// a washed-out middle tint.
+function tint(depth: number, count: number): string {
+  const span = Math.max(1, count - 1)
+  return `${40 + (depth / span) * 60}%`
+}
+
 export default function StatementChart({
   periods,
   series,
   currency,
   caption,
+  accentColor,
   height = 210,
 }: {
   periods: string[]
   series: StatementSeries[]
   currency: string
   caption: string
+  accentColor: string
   height?: number
 }) {
   const [hovered, setHovered] = useState<number | null>(null)
@@ -55,11 +72,11 @@ export default function StatementChart({
   if (periods.length === 0 || series.length === 0 || values.length === 0) return null
 
   return (
-    <figure className={styles.statementChart}>
+    <figure className={styles.statementChart} style={{ ['--statement-ink' as string]: accentColor }}>
       <figcaption>
         <ul className={styles.chartLegend}>
           {series.map((entry, index) => (
-            <li key={entry.key} style={{ ['--depth' as string]: String(index) }}>{entry.label}</li>
+            <li key={entry.key} style={{ ['--tint' as string]: tint(index, series.length) }}>{entry.label}</li>
           ))}
         </ul>
       </figcaption>
@@ -91,6 +108,19 @@ export default function StatementChart({
                 Math.max(padding.left + hovered * slot + slot / 2, tipWidth / 2),
                 Math.max(tipWidth / 2, width - tipWidth / 2),
               )
+            // Sits just above the tallest bar of the column it describes rather
+            // than pinned to the top of the plot, where it floated away from
+            // the thing it was about. Measured from the bottom, so it needs no
+            // knowledge of its own height; the clamp keeps it inside the box
+            // using an estimate only for the ceiling.
+            const hoveredPeak = hovered === null
+              ? 0
+              : Math.max(...series.map((entry) => entry.values[hovered] ?? 0), 0)
+            const tipHeight = 34 + series.length * 19
+            const tipBottom = Math.min(
+              height - y(hoveredPeak) + 10,
+              Math.max(6, height - tipHeight - 4),
+            )
 
             return (
               <>
@@ -131,7 +161,7 @@ export default function StatementChart({
                           <rect
                             key={entry.key}
                             className={styles.chartBar}
-                            style={{ ['--depth' as string]: String(depth) }}
+                            style={{ ['--tint' as string]: tint(depth, series.length) }}
                             x={right - barWidth}
                             width={Math.max(2, barWidth)}
                             y={Math.min(valueY, zeroY)}
@@ -167,7 +197,7 @@ export default function StatementChart({
                 <div
                   className={styles.chartTip}
                   role="presentation"
-                  style={{ left: tipLeft, width: tipWidth }}
+                  style={{ left: tipLeft, width: tipWidth, bottom: tipBottom }}
                   onMouseEnter={() => setHovered(hovered)}
                 >
                   <strong>{periods[hovered]}</strong>
@@ -176,7 +206,7 @@ export default function StatementChart({
                       const value = entry.values[hovered]
                       if (value === null) return null
                       return (
-                        <div key={entry.key} style={{ ['--depth' as string]: String(depth) }}>
+                        <div key={entry.key} style={{ ['--tint' as string]: tint(depth, series.length) }}>
                           <dt>{entry.label}</dt>
                           <dd>{formatCompactMoney(value, currency)}</dd>
                         </div>

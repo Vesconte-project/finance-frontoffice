@@ -656,17 +656,16 @@
    should not have had, which was that grouped bars claimed the lines were
    siblings.
 
-   The hue is violet, and it is chosen by what it cannot be. Not teal or green:
-   on a page about money that colour is spoken for by buy and sell, so a green
-   revenue bar reads as a good one, and revenue is neither. Not the navy ink
-   either — its light steps mix to grey against this cream and the ramp went
-   muddy. Violet keeps chroma all the way down (the palest step is lilac, not
-   grey), carries no market direction, and is far enough from both the teal
-   accent and the navy text to read as data rather than as chrome.
+   The hue is the ticker's own identity colour, the one on the node beside the
+   company name, so the page's data carries the company's mark. It also settles
+   the constraint that ruled out the alternatives: that palette is blues through
+   magentas, so it can never be the green that buy and sell have spoken for on a
+   page about money.
 
-   Steps are 38/58/77/96% of it over the page: lightness falls monotonically,
-   which is what a sequential ramp needs, and each step sits about 1.5:1
-   against the one before it.
+   The innermost step is that colour exactly and the outer ones are it mixed
+   toward the page, distributed across however many series are present. Checked
+   across all seven palette entries: every one holds a monotonic ramp on this
+   surface, which is what a sequential scale needs.
    ------------------------------------------------------------------------- */
 
 .statement {
@@ -698,7 +697,6 @@
   display: grid;
   gap: 10px;
   margin: 0;
-  --statement-ink: #5b21b6;
 }
 
 /* ChartContainer measures its own box, so it has to fill the height its
@@ -726,13 +724,6 @@
   display: flex;
   gap: 7px;
   align-items: center;
-}
-
-/* Depth 0 is the outermost quantity and the palest; each step inward darkens,
-   so the ramp reads as containment rather than as four separate things. */
-.chartLegend li::before,
-.chartBar {
-  --tint: calc(38% + var(--depth, 0) * 19%);
 }
 
 .chartLegend li::before {
@@ -797,7 +788,6 @@
   grid-template-columns: 9px minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
-  --tint: calc(38% + var(--depth, 0) * 19%);
 }
 
 .chartTip dl div::before {
