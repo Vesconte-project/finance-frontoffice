@@ -37,6 +37,14 @@ function niceCeiling(value: number): number {
  * Nothing is computed: every bar is a reported figure, and the steps between
  * them are visible without naming a difference we did not receive.
  *
+ * The readout is the legend, not a card over the plot. A floating card was
+ * half the width and half the height of this chart's own box, so there was no
+ * position for it that did not cover the bars it described, and clamping it
+ * inside meant guessing its height before it existed. The legend already lists
+ * every line with its swatch and already has the room; hovering a column fills
+ * in that column's figures, and it shows the latest period until then, so
+ * nothing moves when the pointer arrives.
+ *
  * The hue is the ticker's own identity colour — the one on the node beside the
  * company name — so the page's data carries the company's mark rather than a
  * decorative colour of the chart's own. The innermost step is that colour
@@ -71,14 +79,25 @@ export default function StatementChart({
   const values = series.flatMap((entry) => entry.values).filter((value): value is number => value !== null)
   if (periods.length === 0 || series.length === 0 || values.length === 0) return null
 
+  // The latest period until the pointer says otherwise, so the readout is never
+  // blank and nothing reflows when the pointer arrives or leaves.
+  const readAt = hovered ?? periods.length - 1
+
   return (
     <figure className={styles.statementChart} style={{ ['--statement-ink' as string]: accentColor }}>
       <figcaption>
-        <ul className={styles.chartLegend}>
-          {series.map((entry, index) => (
-            <li key={entry.key} style={{ ['--tint' as string]: tint(index, series.length) }}>{entry.label}</li>
-          ))}
-        </ul>
+        <p className={styles.chartReadoutPeriod}>{periods[readAt]}</p>
+        <dl className={styles.chartLegend}>
+          {series.map((entry, index) => {
+            const value = entry.values[readAt]
+            return (
+              <div key={entry.key} style={{ ['--tint' as string]: tint(index, series.length) }}>
+                <dt>{entry.label}</dt>
+                <dd>{value === null ? '' : formatCompactMoney(value, currency)}</dd>
+              </div>
+            )
+          })}
+        </dl>
       </figcaption>
       <div className={styles.statementChartPlot} style={{ height }}>
         <ChartContainer>
@@ -101,29 +120,7 @@ export default function StatementChart({
             const span = widest + depths * shift
             const ticks = bottom < 0 ? [top, 0, bottom] : [top, top / 2, 0]
 
-            const tipWidth = 168
-            const tipLeft = hovered === null
-              ? 0
-              : Math.min(
-                Math.max(padding.left + hovered * slot + slot / 2, tipWidth / 2),
-                Math.max(tipWidth / 2, width - tipWidth / 2),
-              )
-            // Sits just above the tallest bar of the column it describes rather
-            // than pinned to the top of the plot, where it floated away from
-            // the thing it was about. Measured from the bottom, so it needs no
-            // knowledge of its own height; the clamp keeps it inside the box
-            // using an estimate only for the ceiling.
-            const hoveredPeak = hovered === null
-              ? 0
-              : Math.max(...series.map((entry) => entry.values[hovered] ?? 0), 0)
-            const tipHeight = 34 + series.length * 19
-            const tipBottom = Math.min(
-              height - y(hoveredPeak) + 10,
-              Math.max(6, height - tipHeight - 4),
-            )
-
             return (
-              <>
               <svg
                 width={width}
                 height={height}
@@ -193,29 +190,6 @@ export default function StatementChart({
                   )
                 })}
               </svg>
-              {hovered !== null ? (
-                <div
-                  className={styles.chartTip}
-                  role="presentation"
-                  style={{ left: tipLeft, width: tipWidth, bottom: tipBottom }}
-                  onMouseEnter={() => setHovered(hovered)}
-                >
-                  <strong>{periods[hovered]}</strong>
-                  <dl>
-                    {series.map((entry, depth) => {
-                      const value = entry.values[hovered]
-                      if (value === null) return null
-                      return (
-                        <div key={entry.key} style={{ ['--tint' as string]: tint(depth, series.length) }}>
-                          <dt>{entry.label}</dt>
-                          <dd>{formatCompactMoney(value, currency)}</dd>
-                        </div>
-                      )
-                    })}
-                  </dl>
-                </div>
-              ) : null}
-              </>
             )
           }}
         </ChartContainer>

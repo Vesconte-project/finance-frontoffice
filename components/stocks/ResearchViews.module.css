@@ -709,29 +709,57 @@
   min-width: 0;
 }
 
+/* The legend is the readout. A card floating over the plot was half the width
+   and half the height of this chart's box, so no position for it avoided the
+   bars it described, and clamping it inside meant guessing its height before it
+   existed. The legend already lists every line with its swatch and already has
+   the room. */
 .chartLegend {
   display: grid;
   gap: 5px;
   margin: 0;
-  padding: 0;
-  list-style: none;
-  color: var(--color-text-secondary);
-  font-size: 11px;
-  font-weight: 560;
 }
 
-.chartLegend li {
-  display: flex;
-  gap: 7px;
-  align-items: center;
+.chartLegend div {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: baseline;
 }
 
-.chartLegend li::before {
+.chartLegend div::before {
   content: '';
   width: 9px;
   height: 9px;
+  align-self: center;
   border-radius: 2px;
   background: color-mix(in srgb, var(--statement-ink) var(--tint), transparent);
+}
+
+.chartLegend dt {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 560;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chartLegend dd {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 11px;
+  font-weight: 660;
+  font-variant-numeric: tabular-nums;
+}
+
+.chartReadoutPeriod {
+  margin: 0 0 8px;
+  color: var(--color-text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 /* `fill`, not `background`: these are SVG rects. A ring in the page's own
@@ -752,66 +780,6 @@
 
 .statementChart g[data-dimmed] .chartBar {
   opacity: 0.34;
-}
-
-.chartTip {
-  position: absolute;
-  top: 6px;
-  z-index: 2;
-  display: grid;
-  gap: 7px;
-  transform: translateX(-50%);
-  pointer-events: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md, 10px);
-  padding: 9px 11px;
-  background: var(--page-bg, var(--color-page-bg));
-  box-shadow: var(--app-shadow, 0 12px 32px rgba(25, 40, 53, 0.12));
-}
-
-.chartTip strong {
-  color: var(--color-text-muted);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.chartTip dl {
-  display: grid;
-  gap: 5px;
-  margin: 0;
-}
-
-.chartTip dl div {
-  display: grid;
-  grid-template-columns: 9px minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: center;
-}
-
-.chartTip dl div::before {
-  content: '';
-  width: 9px;
-  height: 9px;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--statement-ink) var(--tint), transparent);
-}
-
-.chartTip dt {
-  color: var(--color-text-secondary);
-  font-size: 11px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.chartTip dd {
-  margin: 0;
-  color: var(--color-text-primary);
-  font-size: 11px;
-  font-weight: 660;
-  font-variant-numeric: tabular-nums;
 }
 
 .chartGrid {
