@@ -227,6 +227,16 @@ test('Phase 2 research views preserve local state and do not simulate statement 
   assert.doesNotMatch(researchLoadingView, /=== 'overview'/)
   assert.match(financials, /canonicalRows/)
   assert.match(financials, /lineItemId/)
+  // A statement read alphabetically is not a statement: the rows arrived with
+  // the top line last and a per-share figure in the middle of the money.
+  assert.match(financials, /STATEMENT_ORDER/)
+  assert.match(financials, /StatementChart/)
+  assert.match(financials, /showHeader=\{false\}/)
+  // The canonical key is a join key for this codebase, not a reader's row label.
+  assert.doesNotMatch(financials, /<small>\{lineItem\.lineItemId\}/)
+  // Every reported period, not a slice applied after asking for five hundred.
+  assert.doesNotMatch(financials, /slice\(0, 5\)/)
+  assert.match(navConfig, /key: 'financials'[^}]*loadingTitle: ''/)
   assert.match(financials, /statementHref/)
   assert.match(financials, /aria-label="Reporting frequency"/)
   assert.doesNotMatch(financials, /Math\.random|mock|fake/i)

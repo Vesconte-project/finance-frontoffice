@@ -17,6 +17,7 @@ Use `api-request-template.md`, assign both the semantic owner and gap layer, and
 | REQ-007 | Reported margins and balance-sheet ratios as canonical metrics, so the Fundamentals view can answer profitability and solvency without the frontend dividing one line item by another | `lib/stock-fundamentals-view.ts`, rendered by `components/stocks/StockFundamentalsResearch.tsx` | Extend `GET /tickers/{ticker}/market-metrics` with `gross_margin`, `operating_margin`, `net_margin`, `return_on_equity`, `current_ratio`, `debt_to_equity`, carrying the same period semantics as the existing multiples | High | `draft` | `finance-feature-store` → `finance-backend` |
 | REQ-008 | A documented line-item vocabulary for `GET /tickers/{ticker}/financial-statements` | `lib/stock-fundamentals-view.ts` | None; publish the canonical `lineItemId` set per statement type in the contract | Normal | `draft` | `finance-backend` |
 | REQ-009 | Peer and sector fundamental reference values, so a reported figure can be read against something other than the company's own past | `components/stocks/StockFundamentalsResearch.tsx` | Deferred until canonical peer membership exists; blocked behind the peer/sector gap already recorded under Relationships below | High | `draft` | `finance-feature-store` |
+| REQ-010 | A complete statement in `GET /tickers/{ticker}/financial-statements`. Apple returns six income line items, three balance-sheet items and one cash-flow item, against roughly forty per statement in a filing | `components/stocks/StockFinancialStatementsResearch.tsx` and `lib/stock-fundamentals-view.ts` | Extend the existing read model's line-item coverage; no new route | High | `draft` | `finance-feature-store` → `finance-backend` |
 
 **REQ-001 detail.** `GET /screener/rankings` returns `symbol`, `name`, `sector`, `score`,
 `coverage` and `components` — no price and no series. The existing per-symbol helpers
@@ -281,3 +282,29 @@ history. That is why every measure on the Fundamentals view carries its full ser
 rather than a single current value: the series is standing in for the comparison we
 cannot make. Peer and sector membership is already recorded as missing under
 Relationships; this records the fundamentals-side consumer of it.
+
+
+### REQ-010 — The statements are outlines, not statements
+
+Verified against Apple on 2026-09-07, reading the `lineItemId` values the
+Financials view was printing at the time:
+
+- Income statement: `revenue`, `gross_profit`, `operating_income`, `ebitda`,
+  `net_income`, `eps` — six rows, three annual periods.
+- Balance sheet: `total_assets`, `total_liabilities`, `shares_outstanding` —
+  three rows, four annual periods.
+- Cash flow: `free_cash_flow` — one row.
+
+What is absent shapes two views. There is no cost of revenue, no operating
+expense and no tax line, so the income statement cannot be read as a
+statement — only as six results of one. There is no cash, no debt and no
+equity, so `Financial health` on the Fundamentals view answers with total
+assets and total liabilities, which describe size rather than solvency; the
+margins and ratios recorded under REQ-007 would need these same rows to be
+computed anywhere at all. And with one cash-flow row there is no operating
+cash flow to set free cash flow against, which is the comparison that says
+whether the free cash flow was earned or released.
+
+The annual history is also short — three to four periods where a filing set
+carries ten. Until it lengthens, the change columns on the Fundamentals view
+have two or three entries.

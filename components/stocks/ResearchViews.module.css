@@ -119,15 +119,13 @@
   top: 108px;
 }
 
-.chapterIntro h2,
-.sectionHeading h2 {
+.chapterIntro h2 {
   margin: 0;
   font-size: 1.2rem;
   letter-spacing: -0.025em;
 }
 
-.chapterIntro p,
-.sectionHeading p {
+.chapterIntro p {
   margin: 8px 0 0;
   color: var(--color-text-muted);
   font-size: 12px;
@@ -278,80 +276,21 @@
   color: var(--color-text-primary);
 }
 
-.statementCanvas {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.65fr);
-  gap: 36px;
-  align-items: stretch;
-  padding: 28px 0;
-}
 
-.trajectory {
-  position: relative;
-  display: grid;
-  min-height: 270px;
-  align-content: end;
-  overflow: hidden;
-  padding: 20px;
-  border: 1px solid var(--research-line);
-  border-radius: var(--radius-lg);
-  background:
-    linear-gradient(180deg, rgba(7, 87, 255, 0.05), transparent 70%),
-    var(--bg-surface);
-}
 
-.trajectory::before {
-  content: '';
-  position: absolute;
-  inset: 18px;
-  background: repeating-linear-gradient(to bottom, transparent 0 51px, var(--research-line) 52px);
-}
 
-.trajectory strong,
-.trajectory span {
-  position: relative;
-}
 
-.trajectory strong {
-  font-size: 13px;
-}
 
-.trajectory span {
-  margin-top: 5px;
-  color: var(--color-text-muted);
-  font-size: 10px;
-}
-
-.statementContext {
-  display: grid;
-  align-content: start;
-  border-top: 1px solid var(--research-line);
-}
-
-.contextRow {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 13px 0;
-  border-bottom: 1px solid var(--research-line);
-  color: var(--color-text-muted);
-  font-size: 11px;
-}
-
-.contextRow strong {
-  color: var(--color-text-primary);
-  text-align: right;
-}
 
 .statementTableWrap {
   min-width: 0;
+  overflow-x: auto;
   border-top: 1px solid var(--research-line);
 }
 
 .statementTable {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
 }
 
 .statementTable caption {
@@ -370,11 +309,20 @@
   text-align: right;
 }
 
+.statementTable th,
+.statementTable td {
+  white-space: nowrap;
+}
+
 .statementTable th:first-child,
 .statementTable td:first-child {
-  width: 42%;
+  position: sticky;
+  left: 0;
   padding-left: 0;
+  padding-right: 28px;
+  background: var(--page-bg, var(--color-page-bg));
   color: var(--color-text-primary);
+  font-weight: 560;
   text-align: left;
 }
 
@@ -395,6 +343,7 @@
 
 .statementTable td {
   font-variant-numeric: tabular-nums;
+  font-weight: 560;
 }
 
 .pendingCell {
@@ -461,8 +410,7 @@
 }
 
 @media (max-width: 900px) {
-  .profileGrid,
-  .statementCanvas {
+  .profileGrid {
     grid-template-columns: 1fr;
   }
 
@@ -706,4 +654,98 @@
   .changeTable td {
     padding-left: 16px;
   }
+}
+
+/* -------------------------------------------------------------------------
+   Financials — the statement itself: the money lines charted over every
+   reported period, then the full table in reading order beneath it.
+   ------------------------------------------------------------------------- */
+
+.statementChart {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 22px 0 8px;
+}
+
+.statementChart svg {
+  width: 100%;
+  height: auto;
+}
+
+.chartLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 560;
+}
+
+.chartLegend li {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.chartLegend li::before {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--color-accent);
+}
+
+/* One accent, stepped down. The product does not use a categorical palette,
+   and three hues fighting on a cream page would be a new language for one
+   chart. Depth carries the series instead: the top line is the strongest. */
+.chartLegend li[data-series='1']::before {
+  background: color-mix(in srgb, var(--color-accent) 58%, transparent);
+}
+
+.chartLegend li[data-series='2']::before {
+  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+/* `fill`, not `background`: these are SVG rects. */
+.chartBar {
+  fill: var(--color-accent);
+}
+
+.chartBar[data-series='1'] {
+  fill: color-mix(in srgb, var(--color-accent) 58%, transparent);
+}
+
+.chartBar[data-series='2'] {
+  fill: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+.chartGrid {
+  stroke: var(--research-line);
+  stroke-width: 1;
+}
+
+.chartGrid[data-zero] {
+  stroke: color-mix(in srgb, var(--color-text-primary) 28%, transparent);
+}
+
+.chartTick,
+.chartPeriod {
+  fill: var(--color-text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.chartPeriod {
+  font-weight: 560;
+}
+
+.statementProvenance {
+  margin: 14px 0 0;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  letter-spacing: 0.02em;
 }
