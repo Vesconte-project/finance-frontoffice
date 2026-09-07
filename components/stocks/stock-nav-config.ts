@@ -15,6 +15,13 @@ export type StockResearchNavKey =
 export type StockResearchLink = {
   key: string
   label: string
+  /**
+   * Heading the loading skeleton shows for this view.
+   *
+   * An empty string means the view renders no page header, so its skeleton
+   * must not render one either — otherwise a heading appears while loading and
+   * vanishes when the content lands. Falls back to `label` when unset.
+   */
   loadingTitle?: string
   slug: string
   query?: string
@@ -22,7 +29,7 @@ export type StockResearchLink = {
 
 export const stockResearchPrimaryItems: readonly StockResearchLink[] = [
   { key: 'overview', label: 'Overview', loadingTitle: '', slug: '' },
-  { key: 'fundamentals', label: 'Fundamentals', slug: 'fundamentals' },
+  { key: 'fundamentals', label: 'Fundamentals', loadingTitle: '', slug: 'fundamentals' },
   { key: 'financials', label: 'Financials', loadingTitle: 'Financial Statements', slug: 'financials' },
   { key: 'valuation', label: 'Valuation', loadingTitle: 'Valuation History', slug: 'valuation' },
   { key: 'signals', label: 'Signals', loadingTitle: 'Signals & Indicators', slug: 'signals' },
