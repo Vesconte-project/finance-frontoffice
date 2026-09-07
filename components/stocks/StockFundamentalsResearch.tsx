@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import MeasureSparkline from '@/components/stocks/MeasureSparkline'
+import MeasurePeriods from '@/components/stocks/MeasurePeriods'
 import ResearchViewShell, { ResearchAdPlacement } from '@/components/stocks/ResearchViewShell'
 import { formatCompactMoney } from '@/lib/currency'
 import type { FundamentalMeasure, FundamentalsView } from '@/lib/stock-fundamentals-view'
@@ -8,7 +8,6 @@ import styles from './ResearchViews.module.css'
 
 function formatMeasure(measure: FundamentalMeasure, value: number): string {
   if (measure.format === 'currency') return formatCompactMoney(value, measure.currency)
-  if (measure.format === 'perShare') return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value)
   if (measure.format === 'shares') {
     return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 }).format(value)
   }
@@ -20,25 +19,25 @@ function formatChange(change: number): string {
   return `${change >= 0 ? '+' : '−'}${rounded}%`
 }
 
-function MeasureCard({ measure }: { measure: FundamentalMeasure }) {
+function Measure({ measure }: { measure: FundamentalMeasure }) {
   return (
     <article className={styles.measure}>
-      <h3>{measure.label}</h3>
-      <p className={styles.measureValue}>{formatMeasure(measure, measure.latest.value)}</p>
-      <p className={styles.measureChange}>
+      <div className={styles.measureHead}>
+        <h3>{measure.label}</h3>
+        <p className={styles.measureValue}>{formatMeasure(measure, measure.latest.value)}</p>
         {measure.changePct !== null && measure.previous ? (
-          // The direction is stated in words as well as sign, because colour
-          // and a glyph alone do not survive a monochrome or low-vision read.
-          <span data-direction={measure.changePct >= 0 ? 'up' : 'down'}>
-            {formatChange(measure.changePct)} vs {measure.previous.label}
-          </span>
-        ) : (
-          <span data-direction="flat">{measure.latest.label}</span>
-        )}
-      </p>
-      <MeasureSparkline
-        values={measure.series.map((point) => point.value)}
-        ariaLabel={`${measure.label} from ${measure.series[0].label} to ${measure.latest.label}`}
+          <p className={styles.measureChange} data-direction={measure.changePct >= 0 ? 'up' : 'down'}>
+            {formatChange(measure.changePct)} <span>vs {measure.previous.label}</span>
+          </p>
+        ) : null}
+      </div>
+      <MeasurePeriods
+        format={measure.format}
+        points={measure.series.map((point) => ({
+          label: point.label,
+          value: point.value,
+          display: formatMeasure(measure, point.value),
+        }))}
       />
     </article>
   )
@@ -66,38 +65,19 @@ export default function StockFundamentalsResearch({
   view: FundamentalsView
 }) {
   const { chapters, valuationTail, additionalTail } = view
-  const leads = chapters.flatMap((chapter) => {
-    const measure = chapter.measures[0]
-    return measure ? [{ chapter, measure }] : []
-  })
 
   return (
-    <ResearchViewShell data={data} title="Fundamentals">
-      {leads.length > 0 ? (
-        <nav className={styles.questionRow} aria-label="What this page answers">
-          {leads.map(({ chapter, measure }) => (
-            <a key={chapter.key} href={`#${chapter.key}`}>
-              <span className={styles.questionAsk}>{chapter.question}</span>
-              <strong>{formatMeasure(measure, measure.latest.value)}</strong>
-              <span className={styles.questionMeta}>
-                {measure.label}
-                {measure.changePct !== null ? ` · ${formatChange(measure.changePct)}` : ''}
-              </span>
-            </a>
-          ))}
-        </nav>
-      ) : null}
-
+    // No page header. The ticker chrome above already carries the company, the
+    // price and the active tab, so an <h1> repeating the tab and a coverage
+    // badge beside it were two lines that told the reader nothing.
+    <ResearchViewShell data={data} title="Fundamentals" showHeader={false}>
       <div className={styles.chapters}>
         {chapters.map((chapter) => (
           <section className={styles.chapter} id={chapter.key} key={chapter.key}>
-            <div className={styles.chapterHead}>
-              <h2>{chapter.label}</h2>
-              {chapter.span ? <p>{chapter.span}</p> : null}
-            </div>
+            <h2 className={styles.chapterHead}>{chapter.label}</h2>
             {chapter.measures.length > 0 ? (
               <div className={styles.measureGrid}>
-                {chapter.measures.map((measure) => <MeasureCard key={measure.key} measure={measure} />)}
+                {chapter.measures.map((measure) => <Measure key={measure.key} measure={measure} />)}
               </div>
             ) : null}
             <TailList metrics={chapter.tail} />
@@ -111,16 +91,16 @@ export default function StockFundamentalsResearch({
             <h2>Valuation</h2>
             <p>What the market pays for all of this, charted against its own history.</p>
           </div>
-          <TailList metrics={valuationTail} />
-          <Link className="action-link inline-flex" href={`/stocks/${data.ticker}/valuation`}>Open Valuation history →</Link>
+          <div>
+            <TailList metrics={valuationTail} />
+            <Link className="action-link inline-flex" href={`/stocks/${data.ticker}/valuation`}>Open Valuation history →</Link>
+          </div>
         </section>
       ) : null}
 
       {additionalTail.length > 0 ? (
         <section className={styles.chapter}>
-          <div className={styles.chapterHead}>
-            <h2>{data.kind === 'fund' ? 'Fund details' : 'Additional evidence'}</h2>
-          </div>
+          <h2 className={styles.chapterHead}>{data.kind === 'fund' ? 'Fund details' : 'Additional evidence'}</h2>
           <TailList metrics={additionalTail} />
         </section>
       ) : null}
@@ -130,7 +110,9 @@ export default function StockFundamentalsResearch({
           <h2>Financial statements</h2>
           <p>Every reported line item, period by period.</p>
         </div>
-        <Link className="action-link inline-flex" href={`/stocks/${data.ticker}/financials`}>Open Financial Statements →</Link>
+        <div>
+          <Link className="action-link inline-flex" href={`/stocks/${data.ticker}/financials`}>Open Financial Statements →</Link>
+        </div>
       </section>
 
       <ResearchAdPlacement />

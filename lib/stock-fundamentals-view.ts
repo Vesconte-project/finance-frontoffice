@@ -30,7 +30,6 @@ export type FundamentalMeasure = {
 export type FundamentalChapter = {
   key: string
   label: string
-  question: string
   measures: FundamentalMeasure[]
   /** Everything the chapter carries that did not earn a card of its own. */
   tail: ResearchMetric[]
@@ -54,149 +53,191 @@ type MeasureSpec = {
   format: MeasureFormat
   statement: FinancialStatementType
   /**
-   * Matched against `lineItemId`, anchored so a miss produces no card rather
-   * than the wrong one. The canonical line-item vocabulary is not documented —
-   * see REQ-007 — so each spec lists the spellings this contract is known to
-   * use, and an unmatched chapter falls back to its statement's own order.
+   * Exact `lineItemId` spellings, tried first.
+   *
+   * The canonical vocabulary is undocumented (REQ-008), and anchoring on
+   * guesses alone is how `Financial health` ended up leading with shares
+   * outstanding: none of the balance-sheet spellings matched, so the chapter
+   * fell through to its statement's row order.
    */
-  match: RegExp
+  prefer: RegExp
+  /**
+   * Tolerant fallback, matched against `lineItemId` *and* `displayLabel`
+   * together. The human label is far more predictable than the key — "Total
+   * Debt" survives whatever the id happens to be called.
+   */
+  accept?: RegExp
+  reject?: RegExp
 }
 
 type ChapterSpec = {
   key: string
   label: string
-  question: string
   /** Feeds the fallback, and the tail is drawn from the themes named here. */
   statement: FinancialStatementType
   themeKeys: string[]
   measures: MeasureSpec[]
+  /**
+   * Guards the last-resort fallback. Without it the fallback takes whatever
+   * the statement listed first, which is how a share count became the headline
+   * answer for whether a company can carry itself.
+   */
+  fallbackHint?: RegExp
 }
 
 const EQUITY_CHAPTERS: ChapterSpec[] = [
   {
     key: 'growth',
     label: 'Growth',
-    question: 'Is it growing?',
     statement: 'income_statement',
     themeKeys: ['growth'],
+    fallbackHint: /revenue|sales|income|earnings|cash flow/i,
     measures: [
       {
         key: 'revenue',
         label: 'Revenue',
         format: 'currency',
         statement: 'income_statement',
-        match: /^(total_revenue|revenue|revenues|net_sales|total_net_sales|net_revenue|operating_revenue)$/,
+        prefer: /^(total_revenue|revenue|revenues|net_sales|total_net_sales|net_revenue|operating_revenue)$/,
+        accept: /revenue|net sales/i,
+        reject: /cost|expense|growth|per share|segment|deferred/i,
       },
       {
         key: 'net-income',
         label: 'Net income',
         format: 'currency',
         statement: 'income_statement',
-        match: /^(net_income|net_income_common_stockholders|net_income_continuous_operations|profit_loss)$/,
+        prefer: /^(net_income|net_income_common_stockholders|net_income_continuous_operations|profit_loss)$/,
+        accept: /net income/i,
+        reject: /per share|margin|discontinued|minority|noncontrolling|extraordinary/i,
       },
       {
         key: 'diluted-eps',
         label: 'Diluted EPS',
         format: 'perShare',
         statement: 'income_statement',
-        match: /^(diluted_eps|eps_diluted|diluted_earnings_per_share|earnings_per_share_diluted)$/,
+        prefer: /^(diluted_eps|eps_diluted|diluted_earnings_per_share|earnings_per_share_diluted)$/,
+        accept: /diluted.*(eps|per share)|(eps|per share).*diluted/i,
+        reject: /estimate|surprise|shares|average/i,
       },
       {
         key: 'free-cash-flow',
         label: 'Free cash flow',
         format: 'currency',
         statement: 'cash_flow',
-        match: /^(free_cash_flow)$/,
+        prefer: /^(free_cash_flow)$/,
+        accept: /free cash flow|free_cash_flow/i,
+        reject: /per share|yield|margin/i,
       },
     ],
   },
   {
     key: 'profitability',
     label: 'Profitability',
-    question: 'Does it earn on what it sells?',
     statement: 'income_statement',
     themeKeys: ['profitability'],
+    fallbackHint: /profit|income|ebitda|ebit|margin/i,
     measures: [
       {
         key: 'gross-profit',
         label: 'Gross profit',
         format: 'currency',
         statement: 'income_statement',
-        match: /^(gross_profit|gross_income)$/,
+        prefer: /^(gross_profit|gross_income)$/,
+        accept: /gross (profit|income)/i,
+        reject: /margin|per share/i,
       },
       {
         key: 'operating-income',
         label: 'Operating income',
         format: 'currency',
         statement: 'income_statement',
-        match: /^(operating_income|operating_income_loss|total_operating_income_as_reported)$/,
+        prefer: /^(operating_income|operating_income_loss|total_operating_income_as_reported)$/,
+        accept: /operating (income|profit)/i,
+        reject: /margin|per share|non.?operating/i,
       },
       {
         key: 'ebitda',
         label: 'EBITDA',
         format: 'currency',
         statement: 'income_statement',
-        match: /^(ebitda|normalized_ebitda)$/,
+        prefer: /^(ebitda|normalized_ebitda)$/,
+        accept: /ebitda/i,
+        reject: /margin|per share|multiple|enterprise/i,
       },
     ],
   },
   {
     key: 'financial-health',
     label: 'Financial health',
-    question: 'Can it carry itself?',
     statement: 'balance_sheet',
     themeKeys: ['financial-health'],
+    // Deliberately narrow: a share count, a per-share figure or an issuance
+    // line is not an answer to whether the balance sheet carries the company.
+    fallbackHint: /cash|debt|equity|asset|liabilit|capital/i,
     measures: [
       {
         key: 'cash',
         label: 'Cash and equivalents',
         format: 'currency',
         statement: 'balance_sheet',
-        match: /^(cash_and_cash_equivalents|cash_cash_equivalents_and_short_term_investments|cash_and_equivalents)$/,
+        prefer: /^(cash_and_cash_equivalents|cash_cash_equivalents_and_short_term_investments|cash_and_equivalents)$/,
+        accept: /cash/i,
+        reject: /flow|paid|dividend|financing|investing|operating|issuance|repurchase|change|per share/i,
       },
       {
         key: 'total-debt',
         label: 'Total debt',
         format: 'currency',
         statement: 'balance_sheet',
-        match: /^(total_debt|total_debt_and_capital_lease_obligation)$/,
+        prefer: /^(total_debt|total_debt_and_capital_lease_obligation)$/,
+        accept: /debt/i,
+        reject: /^net_debt$|issuance|repayment|net debt|per share/i,
       },
       {
         key: 'equity',
         label: 'Shareholder equity',
         format: 'currency',
         statement: 'balance_sheet',
-        match: /^(stockholders_equity|total_stockholders_equity|common_stock_equity|total_equity_gross_minority_interest)$/,
+        prefer: /^(stockholders_equity|total_stockholders_equity|common_stock_equity|total_equity_gross_minority_interest)$/,
+        accept: /(stockholder|shareholder|common stock).*equity|total equity/i,
+        reject: /method|investment|per share|minority/i,
       },
       {
         key: 'operating-cash-flow',
         label: 'Operating cash flow',
         format: 'currency',
         statement: 'cash_flow',
-        match: /^(operating_cash_flow|cash_flow_from_continuing_operating_activities|total_cash_from_operating_activities)$/,
+        prefer: /^(operating_cash_flow|cash_flow_from_continuing_operating_activities|total_cash_from_operating_activities)$/,
+        accept: /operating (activities|cash flow)|cash from operations/i,
+        reject: /investing|financing|per share|free/i,
       },
     ],
   },
   {
     key: 'shareholder-return',
     label: 'Shareholder return',
-    question: 'Does it pay its holders?',
     statement: 'cash_flow',
     themeKeys: ['shareholder-return'],
+    fallbackHint: /dividend|repurchase|buyback|stock/i,
     measures: [
       {
         key: 'dividends-paid',
         label: 'Dividends paid',
         format: 'currency',
         statement: 'cash_flow',
-        match: /^(cash_dividends_paid|common_stock_dividend_paid|dividends_paid)$/,
+        prefer: /^(cash_dividends_paid|common_stock_dividend_paid|dividends_paid)$/,
+        accept: /dividend.*paid|paid.*dividend/i,
+        reject: /preferred|per share|received/i,
       },
       {
         key: 'buybacks',
         label: 'Share repurchases',
         format: 'currency',
         statement: 'cash_flow',
-        match: /^(repurchase_of_capital_stock|common_stock_payments|repurchase_of_common_stock)$/,
+        prefer: /^(repurchase_of_capital_stock|common_stock_payments|repurchase_of_common_stock)$/,
+        accept: /repurchase|buyback/i,
+        reject: /preferred|per share|issuance/i,
       },
     ],
   },
@@ -205,10 +246,10 @@ const EQUITY_CHAPTERS: ChapterSpec[] = [
 // A fund files no statements, so its chapters are the themes it already has,
 // carried into the same layout without series.
 const FUND_CHAPTERS: ChapterSpec[] = [
-  { key: 'portfolio', label: 'Portfolio', question: 'What does it hold?', statement: 'income_statement', themeKeys: ['portfolio'], measures: [] },
-  { key: 'exposure', label: 'Exposure', question: 'Where is it exposed?', statement: 'income_statement', themeKeys: ['exposure'], measures: [] },
-  { key: 'distributions', label: 'Distributions', question: 'Does it pay its holders?', statement: 'income_statement', themeKeys: ['distributions'], measures: [] },
-  { key: 'risk', label: 'Risk', question: 'What does it cost, and how does it move?', statement: 'income_statement', themeKeys: ['risk'], measures: [] },
+  { key: 'portfolio', label: 'Portfolio', statement: 'income_statement', themeKeys: ['portfolio'], measures: [] },
+  { key: 'exposure', label: 'Exposure', statement: 'income_statement', themeKeys: ['exposure'], measures: [] },
+  { key: 'distributions', label: 'Distributions', statement: 'income_statement', themeKeys: ['distributions'], measures: [] },
+  { key: 'risk', label: 'Risk', statement: 'income_statement', themeKeys: ['risk'], measures: [] },
 ]
 
 function periodLabel(row: FinancialStatementLineItem): string {
@@ -304,10 +345,17 @@ export function buildFundamentalsView(
     for (const measureSpec of spec.measures) {
       const group = grouped[measureSpec.statement]
       if (!group) continue
-      const candidates = [...group.entries()].filter(([id]) => measureSpec.match.test(id.toLowerCase()))
+      const entries = [...group.entries()]
+      const exact = entries.filter(([id]) => measureSpec.prefer.test(id.toLowerCase()))
+      const candidates = exact.length > 0 ? exact : entries.filter(([id, rows]) => {
+        if (!measureSpec.accept) return false
+        const subject = `${id} ${rows[0].displayLabel ?? ''}`
+        return measureSpec.accept.test(subject) && !(measureSpec.reject?.test(subject) ?? false)
+      })
       if (candidates.length === 0) continue
       // Several spellings can match; the most complete series is the one worth
-      // charting, and the shortest id breaks a tie towards the headline item.
+      // charting, and the shortest id breaks a tie towards the headline item
+      // rather than one of its qualified variants.
       const [id, rows] = candidates.sort(
         (left, right) => right[1].length - left[1].length || left[0].length - right[0].length,
       )[0]
@@ -324,6 +372,7 @@ export function buildFundamentalsView(
       const group = grouped[spec.statement]
       for (const [id, rows] of group ?? []) {
         if (claimedIds.has(id) || measures.length >= 3) continue
+        if (spec.fallbackHint && !spec.fallbackHint.test(`${id} ${rows[0].displayLabel ?? ''}`)) continue
         const measure = buildMeasure(id, rows[0].displayLabel || id, 'currency', rows, data.currency)
         if (!measure || measure.series.length < 3) continue
         claimedIds.add(id)
@@ -336,7 +385,7 @@ export function buildFundamentalsView(
       .flatMap((themeKey) => themesByKey.get(themeKey)?.metrics ?? [])
       .filter((metric) => !charted.has(dedupeKey(metric.label)))
 
-    return { key: spec.key, label: spec.label, question: spec.question, measures, tail, span: spanLabel(measures) }
+    return { key: spec.key, label: spec.label, measures, tail, span: spanLabel(measures) }
   })
 
   const claimedThemes = new Set(['valuation', ...specs.flatMap((spec) => spec.themeKeys)])
