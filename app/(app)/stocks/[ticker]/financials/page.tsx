@@ -1,28 +1,17 @@
 import StockFinancialStatementsResearch, {
-  type StatementKey,
+  type StatementBundle,
   type StatementPeriod,
 } from '@/components/stocks/StockFinancialStatementsResearch'
 import ResearchUnavailable from '@/components/stocks/ResearchUnavailable'
-import { getTickerFinancialStatements, type FinancialStatementType } from '@/lib/canonical-research'
+import { getTickerFinancialStatements } from '@/lib/canonical-research'
 import { getStockResearchData } from '@/lib/stock-research'
 
 function singleParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value
 }
 
-function parseStatement(value: string | undefined): StatementKey {
-  if (value === 'income' || value === 'balance-sheet' || value === 'cash-flow') return value
-  return 'income'
-}
-
 function parsePeriod(value: string | undefined): StatementPeriod {
   return value === 'quarterly' ? 'quarterly' : 'annual'
-}
-
-const STATEMENT_TYPES: Record<StatementKey, FinancialStatementType> = {
-  income: 'income_statement',
-  'balance-sheet': 'balance_sheet',
-  'cash-flow': 'cash_flow',
 }
 
 export default async function FinancialsPage({
@@ -30,24 +19,24 @@ export default async function FinancialsPage({
   searchParams,
 }: {
   params: Promise<{ ticker: string }>
-  searchParams: Promise<{
-    statement?: string | string[]
-    period?: string | string[]
-  }>
+  searchParams: Promise<{ period?: string | string[] }>
 }) {
   const { ticker: rawTicker } = await params
   const ticker = rawTicker.toUpperCase()
-  const query = await searchParams
-  const statement = parseStatement(singleParam(query.statement))
-  const period = parsePeriod(singleParam(query.period))
-  const [data, statements] = await Promise.all([
+  const period = parsePeriod(singleParam((await searchParams).period))
+  // All three statements, on one page. The old `?statement=` tab is gone; the
+  // parameter is simply ignored if an old link still carries it.
+  const [data, income, balance, cashFlow] = await Promise.all([
     getStockResearchData(ticker).catch(() => null),
-    getTickerFinancialStatements(ticker, {
-      statementType: STATEMENT_TYPES[statement],
-      periodType: period,
-      limit: 500,
-    }).catch(() => null),
+    getTickerFinancialStatements(ticker, { statementType: 'income_statement', periodType: period, limit: 500 }).catch(() => null),
+    getTickerFinancialStatements(ticker, { statementType: 'balance_sheet', periodType: period, limit: 500 }).catch(() => null),
+    getTickerFinancialStatements(ticker, { statementType: 'cash_flow', periodType: period, limit: 500 }).catch(() => null),
   ])
   if (!data) return <ResearchUnavailable ticker={ticker} />
-  return <StockFinancialStatementsResearch data={data} statement={statement} period={period} statements={statements} />
+  const statements: StatementBundle = {
+    income,
+    'balance-sheet': balance,
+    'cash-flow': cashFlow,
+  }
+  return <StockFinancialStatementsResearch data={data} period={period} statements={statements} />
 }

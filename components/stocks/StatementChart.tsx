@@ -19,56 +19,50 @@ function niceCeiling(value: number): number {
 }
 
 /**
- * The money lines of a statement, over the periods it was reported for.
+ * A statement drawn as what it is: nested quantities, not competing ones.
  *
- * Measured rather than scaled. The first version was a fixed viewBox at
- * `width: 100%; height: auto`, which on a wide window scaled the whole drawing
- * up uniformly until it stood 600px tall and ran off the screen. It now takes
- * its width from ChartContainer — the primitive the other charts already use —
- * and keeps its own height.
+ * Revenue, gross profit, operating income and net income are not three series
+ * side by side — each is contained in the one before it. Drawing them as a
+ * grouped bar chart said they were comparable categories, which is why it
+ * needed three unrelated hues and why those hues never belonged on the page.
+ * Here each period is one column, narrowing and darkening as the money is
+ * spent, so the shape of the column is the answer to the only question anyone
+ * opens an income statement with: how much of what you sold did you keep.
+ *
+ * Because the series nest, the ramp is one hue light to dark — sequential,
+ * which is what a nested magnitude wants. Nothing is computed: every bar is a
+ * reported figure, and the steps between them are visible without naming a
+ * difference we did not receive.
  */
 export default function StatementChart({
   periods,
   series,
   currency,
   caption,
-  format = 'currency',
-  height = 240,
+  height = 210,
 }: {
   periods: string[]
   series: StatementSeries[]
   currency: string
   caption: string
-  format?: 'currency' | 'plain'
   height?: number
 }) {
   const values = series.flatMap((entry) => entry.values).filter((value): value is number => value !== null)
   if (periods.length === 0 || series.length === 0 || values.length === 0) return null
 
-  const axisValue = (value: number) => (
-    format === 'currency'
-      ? formatCompactMoney(value, currency)
-      : new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value)
-  )
-
   return (
     <figure className={styles.statementChart}>
-      {/* Identity is never colour alone: two or more series get a legend, one
-          series gets named outright, and the table below carries every figure
-          in text. */}
       <figcaption>
-        {series.length > 1 ? (
-          <ul className={styles.chartLegend}>
-            {series.map((entry, index) => <li key={entry.key} data-series={index}>{entry.label}</li>)}
-          </ul>
-        ) : (
-          <span className={styles.chartTitle}>{series[0].label}</span>
-        )}
+        <ul className={styles.chartLegend}>
+          {series.map((entry, index) => (
+            <li key={entry.key} style={{ ['--depth' as string]: String(index) }}>{entry.label}</li>
+          ))}
+        </ul>
       </figcaption>
       <div className={styles.statementChartPlot} style={{ height }}>
         <ChartContainer>
           {({ width }) => {
-            const padding = { top: 12, right: 4, bottom: 30, left: 68 }
+            const padding = { top: 10, right: 2, bottom: 26, left: 58 }
             const plotWidth = Math.max(1, width - padding.left - padding.right)
             const plotHeight = Math.max(1, height - padding.top - padding.bottom)
 
@@ -78,11 +72,8 @@ export default function StatementChart({
             const y = (value: number) => padding.top + ((top - value) / range) * plotHeight
             const zeroY = y(0)
 
-            const groupWidth = plotWidth / periods.length
-            // A 2px surface gap between adjacent bars, and never so wide that
-            // three periods read as three walls.
-            const barWidth = Math.min(34, (groupWidth * 0.66) / series.length)
-            const groupInset = (groupWidth - barWidth * series.length) / 2
+            const slot = plotWidth / periods.length
+            const widest = Math.min(64, slot * 0.62)
             const ticks = bottom < 0 ? [top, 0, bottom] : [top, top / 2, 0]
 
             return (
@@ -97,38 +88,42 @@ export default function StatementChart({
                       y2={y(tick)}
                       data-zero={tick === 0 || undefined}
                     />
-                    <text className={styles.chartTick} x={padding.left - 10} y={y(tick) + 4} textAnchor="end">
-                      {tick === 0 ? '0' : axisValue(tick)}
+                    <text className={styles.chartTick} x={padding.left - 9} y={y(tick) + 4} textAnchor="end">
+                      {tick === 0 ? '0' : formatCompactMoney(tick, currency)}
                     </text>
                   </g>
                 ))}
                 {periods.map((period, periodIndex) => {
-                  const groupX = padding.left + periodIndex * groupWidth
+                  const centre = padding.left + periodIndex * slot + slot / 2
                   return (
                     <g key={period}>
-                      {series.map((entry, seriesIndex) => {
+                      {/* Widest first, so a narrower step that happens to run
+                          taller — an unusual year where more survived than the
+                          line above it — still shows rather than being hidden. */}
+                      {series.map((entry, depth) => {
                         const value = entry.values[periodIndex]
                         if (value === null) return null
+                        const barWidth = widest * (1 - depth * (0.72 / Math.max(1, series.length)))
                         const valueY = y(value)
                         return (
                           <rect
                             key={entry.key}
                             className={styles.chartBar}
-                            data-series={seriesIndex}
-                            x={groupX + groupInset + seriesIndex * barWidth + 1}
-                            width={Math.max(1, barWidth - 2)}
+                            style={{ ['--depth' as string]: String(depth) }}
+                            x={centre - barWidth / 2}
+                            width={Math.max(2, barWidth)}
                             y={Math.min(valueY, zeroY)}
                             height={Math.max(1, Math.abs(zeroY - valueY))}
                             rx="2"
                           >
-                            <title>{`${entry.label} · ${period} · ${axisValue(value)}`}</title>
+                            <title>{`${entry.label} · ${period} · ${formatCompactMoney(value, currency)}`}</title>
                           </rect>
                         )
                       })}
                       <text
                         className={styles.chartPeriod}
-                        x={groupX + groupWidth / 2}
-                        y={height - padding.bottom + 20}
+                        x={centre}
+                        y={height - padding.bottom + 18}
                         textAnchor="middle"
                       >
                         {period}

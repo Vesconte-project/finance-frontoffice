@@ -225,7 +225,7 @@ test('Phase 2 research views preserve local state and do not simulate statement 
   // A view with no page header must not grow one while it loads.
   assert.match(navConfig, /key: 'fundamentals'[^}]*loadingTitle: ''/)
   assert.doesNotMatch(researchLoadingView, /=== 'overview'/)
-  assert.match(financials, /canonicalRows/)
+  assert.match(financials, /payload\.rows/)
   assert.match(financials, /lineItemId/)
   // A statement read alphabetically is not a statement: the rows arrived with
   // the top line last and a per-share figure in the middle of the money.
@@ -237,8 +237,12 @@ test('Phase 2 research views preserve local state and do not simulate statement 
   // Every reported period, not a slice applied after asking for five hundred.
   assert.doesNotMatch(financials, /slice\(0, 5\)/)
   assert.match(navConfig, /key: 'financials'[^}]*loadingTitle: ''/)
-  assert.match(financials, /statementHref/)
   assert.match(financials, /aria-label="Reporting frequency"/)
+  // All three statements on one page: this contract returns six income line
+  // items, three balance-sheet items and one cash-flow item, and three tabs
+  // over that left each one nearly empty.
+  assert.match(financials, /StatementBundle/)
+  assert.match(financials, /CHART_NESTING/)
   assert.doesNotMatch(financials, /Math\.random|mock|fake/i)
   assert.match(overviewLink, /href=\{`\/stocks\/\$\{ticker\}`\}/)
   assert.doesNotMatch(overviewLink, /searchParams|lens/)
