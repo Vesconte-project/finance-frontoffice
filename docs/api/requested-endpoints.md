@@ -20,6 +20,7 @@ Use `api-request-template.md`, assign both the semantic owner and gap layer, and
 | REQ-010 | A complete statement in `GET /tickers/{ticker}/financial-statements`. Apple returns six income line items, three balance-sheet items and one cash-flow item, against roughly forty per statement in a filing | `components/stocks/StockFinancialStatementsResearch.tsx` and `lib/stock-fundamentals-view.ts` | Extend the existing read model's line-item coverage; no new route | High | `draft` | `finance-feature-store` → `finance-backend` |
 | REQ-011 | An explicit signal for a reported period the response is withholding, so the frontend can mark it as held back rather than absent | `components/stocks/StockFinancialStatementsResearch.tsx` | Add withheld-period metadata to `financial-statements`, alongside documented semantics for the existing `count` | Normal | `draft` | `finance-backend` |
 | REQ-012 | Years of multiple history in `GET /tickers/{ticker}/market-metrics`, and observations for the multiples beyond trailing P/E | `components/stocks/StockValuationResearch.tsx` | Extend the market-metric read model's retention and metric coverage; no new route | High | `draft` | `finance-feature-store` → `finance-backend` |
+| REQ-013 | Documented semantics for `latestOnly` on `GET /tickers/{ticker}/events`, which returns one row per `knownAt` even when set | `app/(app)/stocks/[ticker]/events/page.tsx` | Clarify or fix the flag so the calendar can be requested collapsed rather than collapsed in the frontend | Normal | `draft` | `finance-backend` |
 
 **REQ-001 detail.** `GET /screener/rankings` returns `symbol`, `name`, `sector`, `score`,
 `coverage` and `components` — no price and no series. The existing per-symbol helpers
@@ -361,3 +362,22 @@ Wanted: multi-year retention on the observation series, and observations for
 the remaining multiples. Until then the view lists all five multiples and says
 plainly which are not covered yet, rather than dropping four of them without
 account or offering a tab that leads to an empty frame.
+
+
+### REQ-013 — `latestOnly` does not appear to mean latest
+
+The events calendar is requested with `latestOnly: true` and still returns one
+row per `knownAt`: Apple's next earnings date came back twenty-five times,
+identical except for the day each observation was recorded, and the page was
+rendering each as its own event.
+
+The frontend now collapses them by event identity and keeps the newest
+observation, which is correct behaviour to have regardless. But it is doing
+work the flag reads as though it should already do, and the count the response
+reports is a count of observations rather than of events — the coverage panel
+was reporting "25 canonical events" for one earnings date.
+
+Wanted: documented semantics for `latestOnly`, and a count that counts events.
+Bitemporal history is worth keeping in the contract — a date that moved is real
+news, and the view surfaces exactly that — but it should be opt-in rather than
+the default shape of a calendar.

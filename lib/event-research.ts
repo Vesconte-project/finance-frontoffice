@@ -29,7 +29,14 @@ export function normalizeEarningsHistory(rows: EarningsHistoryRow[]): EarningsHi
   const normalized = rows.flatMap((row) => {
     if (!row.earningsDate || Number.isNaN(Date.parse(row.earningsDate))) return []
     const key = `${row.earningsDate.slice(0, 10)}|${row.fiscalPeriod ?? ''}`
-    if (seen.has(key)) duplicateKeys.add(key)
+    // A repeated date and period means we cannot tell which row is
+    // authoritative for that quarter, so that quarter is dropped. It used to
+    // discard the entire history instead: one conflicting quarter and eleven
+    // clean ones disappeared together, which is why nobody ever saw this.
+    if (seen.has(key)) {
+      duplicateKeys.add(key)
+      return []
+    }
     seen.add(key)
     return [{
       earningsDate: row.earningsDate,
@@ -46,7 +53,7 @@ export function normalizeEarningsHistory(rows: EarningsHistoryRow[]): EarningsHi
   normalized.sort((left, right) => Date.parse(right.earningsDate) - Date.parse(left.earningsDate))
 
   return {
-    rows: duplicateKeys.size > 0 ? [] : normalized,
+    rows: normalized.filter((row) => !duplicateKeys.has(`${row.earningsDate.slice(0, 10)}|${row.fiscalPeriod ?? ''}`)),
     duplicateKeys: [...duplicateKeys],
     rawRows: rows.length,
   }
