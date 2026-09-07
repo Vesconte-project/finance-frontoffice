@@ -187,9 +187,9 @@ export default function StockFinancialStatementsResearch({
     // one nearly empty while the reader clicked between them.
     <ResearchViewShell data={data} title="Financial Statements" showHeader={false}>
       <div className={styles.statementToolbar}>
-        <nav className={styles.statementTabs} aria-label="Statement">
-          {available.map((item) => <a key={item.key} href={`#${item.key}`}>{item.label}</a>)}
-        </nav>
+        {/* The statement links are gone with the tabs they used to switch. All
+            three are on this page, in order, and a jump list over three
+            headings is furniture. */}
         <nav className={styles.periodTabs} aria-label="Reporting frequency">
           {(['annual', 'quarterly'] as const).map((item) => (
             <Link

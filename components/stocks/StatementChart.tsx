@@ -74,6 +74,10 @@ export default function StatementChart({
 
             const slot = plotWidth / periods.length
             const widest = Math.min(64, slot * 0.62)
+            // Each step inward loses a real share of the width. Narrower steps
+            // than this and the inner quantities merged into the one behind
+            // them, which the ring alone did not separate.
+            const step = series.length > 1 ? 0.62 / (series.length - 1) : 0
             const ticks = bottom < 0 ? [top, 0, bottom] : [top, top / 2, 0]
 
             return (
@@ -103,7 +107,7 @@ export default function StatementChart({
                       {series.map((entry, depth) => {
                         const value = entry.values[periodIndex]
                         if (value === null) return null
-                        const barWidth = widest * (1 - depth * (0.72 / Math.max(1, series.length)))
+                        const barWidth = widest * (1 - depth * step)
                         const valueY = y(value)
                         return (
                           <rect
@@ -115,9 +119,7 @@ export default function StatementChart({
                             y={Math.min(valueY, zeroY)}
                             height={Math.max(1, Math.abs(zeroY - valueY))}
                             rx="2"
-                          >
-                            <title>{`${entry.label} · ${period} · ${formatCompactMoney(value, currency)}`}</title>
-                          </rect>
+                          />
                         )
                       })}
                       <text

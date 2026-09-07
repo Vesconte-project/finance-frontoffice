@@ -247,14 +247,12 @@
   border-bottom: 1px solid var(--research-line);
 }
 
-.statementTabs,
 .periodTabs {
   display: flex;
   gap: 4px;
   align-items: center;
 }
 
-.statementTabs a,
 .periodTabs a {
   display: inline-flex;
   min-height: 38px;
@@ -269,7 +267,6 @@
   text-decoration: none;
 }
 
-.statementTabs a[aria-current='page'],
 .periodTabs a[aria-current='page'] {
   border-color: var(--color-border);
   background: var(--bg-surface-raised);
@@ -463,13 +460,6 @@
     align-items: stretch;
   }
 
-  .statementTabs {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    width: 100%;
-  }
-
-  .statementTabs a,
   .periodTabs a {
     min-height: 44px;
     padding-inline: 9px;
@@ -665,6 +655,13 @@
    three unrelated hues this carried before were solving a problem the chart
    should not have had, which was that grouped bars claimed the lines were
    siblings.
+
+   That hue is the brand ink, not the teal. On a page about money, a green bar
+   is read as a good one — the colour is spoken for by buy and sell everywhere
+   else in this product, and revenue is neither. Ink carries no direction.
+   Steps are 38/58/77/96% of it over the page: lightness falls monotonically,
+   which is what a sequential ramp needs, and each step sits about 1.65:1
+   against the one before it.
    ------------------------------------------------------------------------- */
 
 .statement {
@@ -696,7 +693,7 @@
   display: grid;
   gap: 10px;
   margin: 0;
-  --statement-ink: var(--color-accent);
+  --statement-ink: var(--brand-base, #14345a);
 }
 
 .statementChartPlot {
@@ -724,7 +721,7 @@
    so the ramp reads as containment rather than as four separate things. */
 .chartLegend li::before,
 .chartBar {
-  --tint: calc(30% + var(--depth, 0) * 22%);
+  --tint: calc(38% + var(--depth, 0) * 19%);
 }
 
 .chartLegend li::before {
@@ -735,9 +732,13 @@
   background: color-mix(in srgb, var(--statement-ink) var(--tint), transparent);
 }
 
-/* `fill`, not `background`: these are SVG rects. */
+/* `fill`, not `background`: these are SVG rects. A ring in the page's own
+   colour separates each nested step from the one behind it — overlapping marks
+   of one hue need the gap, or the inner quantities merge into the outer. */
 .chartBar {
   fill: color-mix(in srgb, var(--statement-ink) var(--tint), transparent);
+  stroke: var(--page-bg, var(--color-page-bg));
+  stroke-width: 2;
 }
 
 .chartGrid {
