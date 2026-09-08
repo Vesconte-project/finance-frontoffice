@@ -1,5 +1,17 @@
 # Repository Working Agreement
 
+## Company OS precedence
+
+Before acting, read `franciscoabadesantos/company-os/AGENTS.md`. Company-level operating rules there govern this repository. If this repository conflicts with Company OS, stop and report the conflict rather than guessing or silently choosing the local rule.
+
+Truth boundaries:
+- Notion = Narrative / specs / rationale.
+- Airtable V1 = governance, Snapshots, and authoritative AcceptanceEvents.
+- Linear = work coordination only.
+- GitHub = implementation, code, PRs, CI, and immutable technical evidence.
+
+GitHub state, a merge, CI, deployment, or Linear status never creates or proves Acceptance.
+
 ## Route the work first
 
 Main is the Product Lead and may work alone. Classify a task before editing:
@@ -13,7 +25,7 @@ Specialists are conditional, not gates or a mandatory team. Use the smallest set
 
 - Stack: Next.js 16.2 App Router, React 19, strict TypeScript, Tailwind CSS 4, Clerk, and server-side access to `finance-backend`.
 - Runtime UI truth is `app/globals.css` and rendered components. `design/` is reference only. Preserve the homepage structure, copy, motion, and identity unless homepage work is explicit.
-- GitHub is durable implementation and decision truth. Vercel Preview is the frontend human-review surface; deployment ownership is routed by `docs/agents/system-topology.md`.
+- GitHub is durable implementation and technical evidence, not governance or Acceptance authority. Vercel Preview is the frontend human-review surface; deployment ownership is routed by `docs/agents/system-topology.md`.
 - Before visual work, study `docs/design/visual-references.md`. Tokens alone are not a brief.
 
 ## Before editing
