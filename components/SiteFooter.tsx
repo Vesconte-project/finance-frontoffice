@@ -1,7 +1,14 @@
 import Link from 'next/link'
 import { Caveat } from 'next/font/google'
 import { ArrowUpRight } from 'lucide-react'
-import { BRAND_NAME, CONTACT_EMAIL, FOOTER_SECONDARY_LINKS, MARKETING_NAV_ITEMS } from '@/components/marketing/site-config'
+import {
+  BRAND_NAME,
+  BRAND_SHORT_MARK,
+  BRAND_WORDMARK,
+  CONTACT_EMAIL,
+  FOOTER_SECONDARY_LINKS,
+  MARKETING_NAV_ITEMS,
+} from '@/components/marketing/site-config'
 import FooterBrandReveal from '@/components/FooterBrandReveal'
 
 const caveat = Caveat({
@@ -11,10 +18,13 @@ const caveat = Caveat({
 
 export default function SiteFooter() {
   const year = new Date().getFullYear()
-  const askHref = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('A question about Longbrunch')}`
+  const askHref = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('A question about Vesconte')}`
 
   return (
-    <footer className="site-footer relative isolate z-[60] mt-auto border-t border-border bg-[var(--page-bg)] text-content-secondary">
+    <footer
+      data-analytics-surface="site_footer"
+      className="site-footer relative isolate z-[60] mt-auto border-t border-border bg-[var(--page-bg)] text-content-secondary"
+    >
       <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-10 px-5 py-12 md:px-10">
         <div className="flex flex-col gap-6 border-b border-border pb-10 md:flex-row md:items-end md:justify-between">
           <div>
@@ -28,6 +38,9 @@ export default function SiteFooter() {
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link
               href="/sign-up"
+              data-analytics-id="footer_sign_up"
+              data-analytics-event="auth_start"
+              data-analytics-intent="sign_up"
               className="inline-flex h-12 items-center justify-center rounded-full bg-content-primary px-6 text-sm font-semibold text-[var(--page-bg)] transition hover:scale-[1.02]"
             >
               Create an account
@@ -45,9 +58,9 @@ export default function SiteFooter() {
         <div className="flex flex-col gap-7 md:flex-row md:items-start md:justify-between">
           <div>
             <Link href="/" className="marketing-logo-type flex items-center gap-3 text-lg font-semibold text-content-primary">
-              <span>lb</span>
+              <span>{BRAND_SHORT_MARK}</span>
               <span className="text-brand-spark">/</span>
-              <span>longbrunch</span>
+              <span>{BRAND_WORDMARK}</span>
             </Link>
             <p className="mt-3 max-w-sm text-sm leading-6 text-content-secondary">
               Market signals, research, watchlists, and alerts in one workspace.

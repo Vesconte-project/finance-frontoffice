@@ -36,7 +36,7 @@ export default function StickySectionNav({
   if (sections.length === 0) return null
 
   return (
-    <aside className="sticky top-24 hidden w-44 shrink-0 self-start xl:block">
+    <aside data-analytics-surface="section_nav" className="sticky top-24 hidden w-44 shrink-0 self-start xl:block">
       <div className="px-2 text-label-sm uppercase tracking-[0.16em] text-content-muted">
         On this page
       </div>

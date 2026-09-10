@@ -13,7 +13,7 @@ import {
 } from '@/lib/network'
 
 export const metadata: Metadata = {
-  title: 'Market Universe - Longbrunch',
+  title: 'Market Universe - Vesconte',
   description: 'Move through the market as a progressive universe of observed relationships.',
 }
 

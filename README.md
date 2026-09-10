@@ -209,13 +209,35 @@ The app sends ticker + latest signal + recent headlines to `POST /api/ai-analyst
 
 If `PERPLEXITY_API_KEY` is not set, the AI Analyst UI is hidden automatically.
 
-## Analytics Events (User Testing)
+## Usage Telemetry and Analytics Events
+
+Page, feature, and button usage is logged as structured JSON to **Vercel Runtime
+Logs**, where each field is filterable and drainable. Full reference, including
+how to add an event and how to query the logs, is in
+[`docs/observability/usage-telemetry.md`](docs/observability/usage-telemetry.md).
+
+The short version:
+
+- Every button, link, tab, and form submit is captured automatically by a
+  delegated listener installed in `instrumentation-client.ts`. New controls need
+  no per-component work.
+- Page views and web vitals come from `components/analytics/AnalyticsProvider.tsx`,
+  mounted once in the root layout.
+- Events batch in the browser and post to `/api/analytics/event`, which writes one
+  JSON line per event and then forwards to `finance-backend` best-effort.
+- Filter the Vercel logs on `vesconte.telemetry` for usage, `vesconte.server` for
+  server events, then narrow by `event`, `category`, `route`, or any `p_*` payload
+  field.
+- Set `NEXT_PUBLIC_ANALYTICS_DEBUG=1`, or append `?analytics_debug=1` to a URL, to
+  mirror every event to the browser console.
+
+### Backend persistence
 
 To persist product-loop analytics used by `/api/analytics/event`, run:
 
 1. `supabase/sql/analytics_events.sql`
 
-The site now forwards analytics events to `finance-backend`, which writes the underlying rows and stores:
+The site forwards analytics events to `finance-backend`, which writes the underlying rows and stores:
 
 - `event_name`
 - `payload`

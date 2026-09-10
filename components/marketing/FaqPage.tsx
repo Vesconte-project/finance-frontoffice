@@ -13,11 +13,11 @@ const mono = JetBrains_Mono({ subsets: ['latin'], weight: ['400', '500', '600'],
 const faqGroups: readonly FaqGroup[] = [
   {
     label: 'Product',
-    description: 'How to read and use Longbrunch.',
+    description: 'How to read and use Vesconte.',
     items: [
       {
-        question: 'What is Longbrunch?',
-        answer: 'Longbrunch brings market signals, company research, and relationships between assets into one place to explore and compare.',
+        question: 'What is Vesconte?',
+        answer: 'Vesconte brings market signals, company research, and relationships between assets into one place to explore and compare.',
       },
       {
         question: 'What does a signal mean?',
@@ -28,7 +28,7 @@ const faqGroups: readonly FaqGroup[] = [
         answer: 'Use them as research context: compare the signal with its history, price data, and company information before making your own decision.',
       },
       {
-        question: 'Is Longbrunch designed for day trading?',
+        question: 'Is Vesconte designed for day trading?',
         answer: 'No. The product presents daily signals, history, and market context for research and monitoring rather than intraday execution.',
       },
     ],
@@ -47,7 +47,7 @@ const faqGroups: readonly FaqGroup[] = [
       },
       {
         question: 'Why is some information missing for a ticker?',
-        answer: 'Coverage varies by asset, source availability, and processing state. Longbrunch marks unavailable fields instead of filling them with an estimate.',
+        answer: 'Coverage varies by asset, source availability, and processing state. Vesconte marks unavailable fields instead of filling them with an estimate.',
       },
       {
         question: 'Where does the market data come from?',
@@ -132,7 +132,7 @@ const faqThemeStyle = {
 } as CSSProperties
 
 export default function FaqPage() {
-  const contactHref = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('Question about Longbrunch')}`
+  const contactHref = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('Question about Vesconte')}`
 
   return (
     <main

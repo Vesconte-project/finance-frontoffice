@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { CircleAlert, Download, Loader2 } from 'lucide-react'
 import { buttonClass } from '@/components/ui/Button'
+import { trackEvent } from '@/lib/analytics'
 
 const EXPORT_LABEL = 'Download signal history CSV'
 const EXPORT_ERROR = 'Couldn’t export signal history. Try again.'
@@ -59,6 +60,12 @@ export default function TickerExportButton({ ticker }: { ticker: string }) {
       if (response.status === 401) {
         setAnnouncement('Sign in or choose Pro to export signal history.')
         setRecovery({ kind: 'sign-in', upgradeUrl: '/pricing' })
+        trackEvent('upgrade_prompt_shown', {
+          control: 'ticker_export',
+          surface: 'ticker_chrome',
+          reason: 'signed_out',
+          ticker: ticker.toUpperCase(),
+        })
         return
       }
       if (response.status === 403) {
@@ -68,6 +75,12 @@ export default function TickerExportButton({ ticker }: { ticker: string }) {
           : '/pricing'
         setAnnouncement('A Pro plan is required to export signal history.')
         setRecovery({ kind: 'upgrade', upgradeUrl })
+        trackEvent('upgrade_prompt_shown', {
+          control: 'ticker_export',
+          surface: 'ticker_chrome',
+          reason: 'plan_required',
+          ticker: ticker.toUpperCase(),
+        })
         return
       }
       if (!response.ok || !response.headers.get('content-type')?.includes('text/csv')) {
@@ -86,9 +99,21 @@ export default function TickerExportButton({ ticker }: { ticker: string }) {
       anchor.remove()
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0)
       setAnnouncement('Signal history CSV downloaded.')
+      trackEvent('export_download', {
+        control: 'ticker_export',
+        dataset: 'signal_history',
+        format: 'csv',
+        ticker: ticker.toUpperCase(),
+        bytes: csv.size,
+      })
     } catch {
       setAnnouncement('')
       setError(EXPORT_ERROR)
+      trackEvent('error_shown', {
+        control: 'ticker_export',
+        surface: 'ticker_chrome',
+        ticker: ticker.toUpperCase(),
+      })
     } finally {
       setPending(false)
     }
@@ -107,6 +132,8 @@ export default function TickerExportButton({ ticker }: { ticker: string }) {
       <button
         ref={buttonRef}
         type="button"
+        data-analytics-id="ticker_export"
+        data-analytics-ticker={ticker.toUpperCase()}
         onClick={exportSignals}
         disabled={pending}
         aria-label={EXPORT_LABEL}

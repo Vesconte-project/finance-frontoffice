@@ -51,7 +51,7 @@ async function loadRelationships(ticker: string, window: RelationshipWindow) {
 export async function generateMetadata({ params }: { params: Promise<{ ticker: string }> }): Promise<Metadata> {
   const { ticker } = await params
   return {
-    title: `${ticker.toUpperCase()} Relationships - Longbrunch`,
+    title: `${ticker.toUpperCase()} Relationships - Vesconte`,
     description: `Observed relationship evidence and co-movement context for ${ticker.toUpperCase()}.`,
   }
 }

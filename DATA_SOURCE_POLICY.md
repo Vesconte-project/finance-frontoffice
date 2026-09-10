@@ -43,7 +43,7 @@ Classify missing support before proposing an endpoint:
 - eligibility/activation → `finance-model-registry`
 - HTTP exposure → `finance-backend`
 - deployment/runtime composition → `finance-infra`
-- frontend consumption/state → `spy-signal-site`
+- frontend consumption/state → `finance-frontoffice`
 
 The HTTP owner is not automatically the semantic owner. Record the owned gap and upstream evidence. Without an explicit approved decision, do not fill it through frontend derivation, third-party lookup, endpoint fan-out, approximate substitution, or a graceful state presented as complete data.
 

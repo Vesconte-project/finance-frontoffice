@@ -14,6 +14,12 @@ type FilterChipProps = {
   leading?: ReactNode
   /** Optional node rendered after the label (e.g. counts). */
   trailing?: ReactNode
+  /**
+   * Names this filter in telemetry. Set it and the chip reports as a
+   * `filter_apply` with a stable id, rather than as a generic click whose
+   * identity is whatever the label currently says.
+   */
+  analyticsId?: string
 }
 
 /**
@@ -30,7 +36,17 @@ export default function FilterChip({
   title,
   leading,
   trailing,
+  analyticsId,
 }: FilterChipProps) {
+  const analyticsAttrs = analyticsId
+    ? {
+        'data-analytics-id': analyticsId,
+        'data-analytics-event': 'filter_apply',
+        'data-analytics-value': label,
+        'data-analytics-active': String(active),
+      }
+    : {}
+
   const sharedClass = cn(
     'state-interactive inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-[var(--radius-pill)] border px-3 text-label-sm shadow-[inset_0_1px_0_var(--glass-highlight),var(--glass-shadow)] backdrop-blur-[30px] saturate-[1.8] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-page-bg',
     active
@@ -49,7 +65,7 @@ export default function FilterChip({
 
   if (href) {
     return (
-      <Link href={href} className={sharedClass} title={title}>
+      <Link href={href} className={sharedClass} title={title} {...analyticsAttrs}>
         {content}
       </Link>
     )
@@ -62,6 +78,7 @@ export default function FilterChip({
       className={sharedClass}
       title={title}
       aria-pressed={active || undefined}
+      {...analyticsAttrs}
     >
       {content}
     </button>

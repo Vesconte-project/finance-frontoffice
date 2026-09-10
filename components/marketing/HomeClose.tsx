@@ -30,6 +30,9 @@ export default function HomeClose() {
 
       <Link
         href="/sign-up"
+        data-analytics-id="home_close_sign_up"
+        data-analytics-event="auth_start"
+        data-analytics-intent="sign_up"
         className="mt-10 inline-flex h-14 items-center justify-center gap-3 rounded-full bg-[var(--brand-spark)] px-8 font-semibold text-[color:var(--brand-spark-on)] shadow-[0_18px_50px_-12px_var(--brand-spark)] transition hover:bg-[var(--accent-text)]"
       >
         Create account <ArrowRight className="size-5" aria-hidden="true" />

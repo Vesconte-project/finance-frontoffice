@@ -520,7 +520,7 @@ export default function StockOverviewClient({
           <h2 id="timing-heading" className={styles.chapterTitle}>Technicals</h2>
           <p className={styles.chapterDescription}>Summary, oscillators, and moving averages for the selected timeframe.</p>
         </div>
-        <SegmentedControl options={SIGNAL_TIMEFRAMES} value={signalTimeframe} onChange={setSignalTimeframe} ariaLabel="Technical signals timeframe" />
+        <SegmentedControl options={SIGNAL_TIMEFRAMES} value={signalTimeframe} onChange={setSignalTimeframe} ariaLabel="Technical signals timeframe" analyticsId="ticker_signals_timeframe" />
       </div>
       <div className={styles.timingEditorialGrid}>
         <div className={styles.technicalRead}>
@@ -634,6 +634,7 @@ export default function StockOverviewClient({
                     value={heroTimeframe}
                     onChange={selectHeroTimeframe}
                     ariaLabel="Chart timeframe"
+                    analyticsId="ticker_hero_timeframe"
                   />
                 </div>
               </div>

@@ -45,7 +45,7 @@ export default function StockResearchNav({ ticker }: { ticker: string }) {
 
   return (
     <div className={styles.root} data-stock-research-nav="">
-      <nav aria-label="Ticker research" className={styles.nav}>
+      <nav data-analytics-surface="ticker_research_nav" aria-label="Ticker research" className={styles.nav}>
         <div ref={scrollerRef} className={styles.scroller}>
           {stockResearchPrimaryItems.map((item) => {
             const selected = activeKey === item.key

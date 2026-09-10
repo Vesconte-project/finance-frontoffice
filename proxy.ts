@@ -23,5 +23,10 @@ export const config = {
     '/stocks(.*)',
     '/api/watchlist(.*)',
     '/api/export-signals(.*)',
+    // Telemetry ingress is deliberately NOT matched. clerkMiddleware throws
+    // when no publishable key is configured, which would turn every usage
+    // event into a 500 and make analytics an availability risk for the thing
+    // it is measuring. The route reads the viewer opportunistically and logs
+    // an anonymous event when auth context is absent, which it always is here.
   ],
 }

@@ -62,7 +62,6 @@ test('FAQ accordion keeps one answer open and removes legacy copy', async ({ pag
     'Signal workspace',
     'S&P 500 exposure',
     '09 answers',
-    'FAQ / Longbrunch',
     'Answers, without the noise.',
     'A clear guide to signals, data, features, and access.',
     'The guide',
@@ -70,7 +69,7 @@ test('FAQ accordion keeps one answer open and removes legacy copy', async ({ pag
     expect(bodyText).not.toContain(legacyText)
   }
 
-  const firstQuestion = page.getByRole('button', { name: 'What is Longbrunch?' })
+  const firstQuestion = page.getByRole('button', { name: 'What is Vesconte?' })
   const secondQuestion = page.getByRole('button', { name: 'What does a signal mean?' })
   await expect(firstQuestion).toHaveAttribute('aria-expanded', 'true')
   await expect(secondQuestion).toHaveAttribute('aria-expanded', 'false')
@@ -93,7 +92,7 @@ test('FAQ removes accordion transitions for reduced motion', async ({ page }) =>
   await page.goto('/faq', { waitUntil: 'load' })
 
   const panel = page.locator('[role="region"]').first()
-  const icon = page.getByRole('button', { name: 'What is Longbrunch?' }).locator('svg')
+  const icon = page.getByRole('button', { name: 'What is Vesconte?' }).locator('svg')
 
   await expect(panel).toHaveCSS('transition-duration', '0s')
   await expect(icon).toBeVisible()

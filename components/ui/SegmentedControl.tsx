@@ -9,6 +9,8 @@ type SegmentedControlProps<T extends string> = {
   onChange: (value: T) => void
   ariaLabel?: string
   className?: string
+  /** Names this control in telemetry so segment changes are attributable. */
+  analyticsId?: string
 }
 
 /**
@@ -21,6 +23,7 @@ export default function SegmentedControl<T extends string>({
   onChange,
   ariaLabel,
   className,
+  analyticsId,
 }: SegmentedControlProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [thumb, setThumb] = useState<{ left: number; width: number } | null>(null)
@@ -69,6 +72,9 @@ export default function SegmentedControl<T extends string>({
             role="tab"
             aria-selected={active}
             data-active={active ? 'true' : 'false'}
+            data-analytics-id={analyticsId ? `${analyticsId}:${option}` : undefined}
+            data-analytics-control={analyticsId}
+            data-analytics-value={option}
             onClick={() => onChange(option)}
             className={cn(
               'relative z-10 cursor-pointer rounded-full px-2.5 py-1 text-[12px] leading-none transition-[color,transform] duration-150 active:scale-90',

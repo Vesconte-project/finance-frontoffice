@@ -34,7 +34,7 @@ There is not yet a repository-wide modal or drawer exemplar with a complete focu
 
 ## Expanding selector study — 2026-07-21
 
-The reusable expanding selector transforms mechanics from the references below into a Longbrunch-specific analytical control. It carries no ticker, investment-horizon, URL, or routing semantics. No reference code, assets, branding, or layout was copied.
+The reusable expanding selector transforms mechanics from the references below into a Vesconte-specific analytical control. It carries no ticker, investment-horizon, URL, or routing semantics. No reference code, assets, branding, or layout was copied.
 
 | Reference | Source inspected | Principle retained | Rejected or replaced |
 | --- | --- | --- | --- |
@@ -46,7 +46,7 @@ The reusable expanding selector transforms mechanics from the references below i
 | [Skewed Adjacent Hover Tabs](https://recent.design/i/nnkaerr-skewed-adjacent-hover-tabs) | Public demo description and rendered reference | Adjacent choices react with small opacity and scale changes | Skew and decorative hover choreography |
 | [Mixing Horizontal and Vertical Scroll](https://www.awwwards.com/inspiration/mixing-horizontal-and-vertical-scroll) and [Horizontal and Vertical Scroll](https://www.awwwards.com/inspiration/horizontal-and-vertical-scroll) | Rendered inspiration pages and linked project context | Clipped continuation cues for local horizontal movement inside a stable vertical page | Page-level scroll hijacking and narrative scroll effects |
 
-Longbrunch transformation: a stationary center window sits over a native snap viewport; real radio inputs remain the semantic source of truth; drag previews a controlled choice and the parent owns the committed state. Reduced motion removes smooth travel and scale transitions because none of the inspected implementations supplied a complete reduced-motion path.
+Vesconte transformation: a stationary center window sits over a native snap viewport; real radio inputs remain the semantic source of truth; drag previews a controlled choice and the parent owns the committed state. Reduced motion removes smooth travel and scale transitions because none of the inspected implementations supplied a complete reduced-motion path.
 
 ## Ticker selected-node direction — 2026-08-03
 
@@ -55,7 +55,7 @@ Longbrunch transformation: a stationary center window sits over a native snap vi
 | User-provided ticker-page composition sketch | A selected colored node establishes identity before company name and price; a sparse relationship field connects the product page to the homepage topology | Exact spacing, typography, navigation geometry, chart styling, decorative density, and any implied third-party brand language |
 | `components/marketing/HeroConstellation.tsx` | Focused-node projection, slow spatial drift, depth-based de-emphasis, separate blurred-background and sharp-connection passes, deterministic static reduced-motion state, and clear foreground/background separation | Homepage pinning, ScrollTrigger, Lenis ownership, node focus dialog, fabricated ticker values, and page-level scroll narrative |
 
-Longbrunch transformation: the ticker hero uses a non-interactive, hero-local 3D Canvas field built from the relationship data already loaded for the page. The Canvas measures the semantic-color DOM node beside company identity and uses its exact center as the origin of every relevant edge. Relationship strength and confidence control sharp edge and endpoint prominence; unrelated points remain grey in a separately scaled and blurred depth layer. GSAP animates only the initial 550ms focus interpolation—there is no ticker-page ScrollTrigger, pinning, or Lenis instance. The field pauses offscreen and when the document is hidden, reduces density and relation count on mobile, and renders its final state without a loop under reduced motion. No external assets or code were copied.
+Vesconte transformation: the ticker hero uses a non-interactive, hero-local 3D Canvas field built from the relationship data already loaded for the page. The Canvas measures the semantic-color DOM node beside company identity and uses its exact center as the origin of every relevant edge. Relationship strength and confidence control sharp edge and endpoint prominence; unrelated points remain grey in a separately scaled and blurred depth layer. GSAP animates only the initial 550ms focus interpolation—there is no ticker-page ScrollTrigger, pinning, or Lenis instance. The field pauses offscreen and when the document is hidden, reduces density and relation count on mobile, and renders its final state without a loop under reduced motion. No external assets or code were copied.
 
 ## Shared scroll runtime — 2026-08-03
 
@@ -79,4 +79,4 @@ The dedicated Relationships view extends the approved ticker selected-node langu
 | Licensing/privacy notes |  |
 | Decision owner |  |
 
-Do not add an external reference merely to justify a predetermined visual. State what was learned, what was rejected, and how the result remains specific to Longbrunch.
+Do not add an external reference merely to justify a predetermined visual. State what was learned, what was rejected, and how the result remains specific to Vesconte.

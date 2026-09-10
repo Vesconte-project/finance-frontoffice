@@ -33,7 +33,13 @@ export default function HeaderAccountControl({
 
   if (!isSignedIn) {
     return (
-      <Link href="/sign-up" className={joinClassName}>
+      <Link
+        href="/sign-up"
+        data-analytics-id="header_join"
+        data-analytics-event="auth_start"
+        data-analytics-intent="sign_up"
+        className={joinClassName}
+      >
         Join
       </Link>
     )

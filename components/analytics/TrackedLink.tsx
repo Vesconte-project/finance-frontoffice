@@ -20,6 +20,7 @@ export default function TrackedLink({
   return (
     <Link
       {...props}
+      data-analytics-ignore=""
       onClick={(event) => {
         trackEvent(eventName, eventPayload ?? {})
         onClick?.(event)

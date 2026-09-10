@@ -50,9 +50,10 @@ export default async function PicksReadingPage({ reading }: { reading: PickReadi
       <div className="container-lg section-gap">
         {header}
         <EmptyState
+          analyticsId={`picks_unavailable:${reading}`}
           title="This ranking is temporarily unavailable"
-          description="Longbrunch could not load the current scorecard snapshot. Nothing is wrong with your account — the request upstream did not complete."
-          action={<RetryButton>Retry</RetryButton>}
+          description="Vesconte could not load the current scorecard snapshot. Nothing is wrong with your account — the request upstream did not complete."
+          action={<RetryButton analyticsId="picks_unavailable_retry">Retry</RetryButton>}
         />
       </div>
     )

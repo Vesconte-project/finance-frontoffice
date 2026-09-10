@@ -142,11 +142,11 @@ Put these in named constants so they're trivial to adjust. They are starting poi
   hide labels except the very largest; reveal more as you zoom in. Always draw labels on hover.
 
 ## Execution boundaries (who does what)
-- **You (site code agent):** implement entirely in `spy-signal-site` (add the dep, rebuild the two
+- **You (site code agent):** implement entirely in `finance-frontoffice` (add the dep, rebuild the two
   components, wire into the existing page/controls). No DB/server/live-service access. Validate with
   `tsc`, `npm run build`, and a browser check on `/markets/network` and a `/stocks/<ticker>`.
 - **Owner:** deploys the site (Vercel).
-- **Planner (Claude):** can verify the `/network` API via `backend.longbrunch.com` if needed, but
+- **Planner (Claude):** can verify the `/network` API via the configured `BACKEND_BASE_URL` if needed, but
   this round is front-end only.
 
 ## Out of scope (this round)

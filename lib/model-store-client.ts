@@ -3,7 +3,7 @@
 import { buildModelRecord, type ModelDraftInput, type ModelRecord } from '@/lib/model-builder'
 import { buildSampleModelInput, SAMPLE_MODEL_ID } from '@/lib/model-samples'
 
-const STORAGE_KEY = 'spy_signal_models_v1'
+const STORAGE_KEY = 'vesconte_models_v1'
 
 function parseModels(raw: string | null): ModelRecord[] {
   if (!raw) return []

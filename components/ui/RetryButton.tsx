@@ -5,9 +5,10 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import { Loader2, RotateCw } from 'lucide-react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Button from '@/components/ui/Button'
+import { trackEvent } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 
-const RETRY_FEEDBACK_KEY = 'longbrunch:retry-feedback'
+const RETRY_FEEDBACK_KEY = 'vesconte:retry-feedback'
 const RETRY_FEEDBACK_WINDOW_MS = 15000
 
 type ButtonProps = ComponentProps<typeof Button>
@@ -19,6 +20,8 @@ type RetryButtonProps = {
   settledMessage?: string
   pendingLabel?: string
   children?: ReactNode
+  /** Names the retry in telemetry, so repeat retries on one surface are countable. */
+  analyticsId?: string
 } & Omit<ButtonProps, 'children' | 'onClick'>
 
 type StoredRetryFeedback = {
@@ -74,6 +77,7 @@ export default function RetryButton({
   size = 'md',
   className,
   children = 'Retry',
+  analyticsId,
   ...props
 }: RetryButtonProps) {
   const router = useRouter()
@@ -97,6 +101,11 @@ export default function RetryButton({
 
   function handleClick() {
     const timestamp = Date.now()
+    trackEvent('retry_click', {
+      control: analyticsId ?? 'retry',
+      path: pathname,
+      retry_key: currentRetryKey,
+    })
     setShowSettledMessage(false)
     window.sessionStorage.setItem(
       RETRY_FEEDBACK_KEY,
@@ -127,6 +136,7 @@ export default function RetryButton({
         variant={variant}
         size={size}
         className={cn('min-w-[10.5rem] gap-2', className)}
+        data-analytics-ignore=""
         aria-live="polite"
         aria-busy={isPending}
         disabled={isPending}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from '@clerk/nextjs'
+import AnalyticsProvider from '@/components/analytics/AnalyticsProvider'
 import OptionalSessionReplay from '@/components/analytics/OptionalSessionReplay'
 import SiteChromeMotion from '@/components/marketing/SiteChromeMotion'
 import { ScrollRuntimeProvider } from '@/components/motion/ScrollRuntime'
@@ -21,8 +22,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Longbrunch | Market research, signals, and context",
-  description: "Explore market signals, company data, scorecards, relationships, watchlists, and AI research in Longbrunch.",
+  title: "Vesconte | Market research, signals, and context",
+  description: "Explore market signals, company data, scorecards, relationships, watchlists, and AI research in Vesconte.",
 };
 
 export default function RootLayout({
@@ -39,6 +40,7 @@ export default function RootLayout({
         <ClerkProvider appearance={clerkAppearance}>
           <ScrollRuntimeProvider defaultProfile="standard">
             <SiteChromeMotion />
+            <AnalyticsProvider />
             <OptionalSessionReplay />
             {children}
             <ConditionalFooter>

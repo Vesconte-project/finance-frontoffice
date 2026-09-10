@@ -9,7 +9,7 @@ fi
 label="$1"
 shift
 slug="$(printf '%s' "$label" | tr -cs '[:alnum:]' '-' | tr '[:upper:]' '[:lower:]')"
-log="$(mktemp "${TMPDIR:-/tmp}/spy-signal-${slug%-}.XXXXXX.log")"
+log="$(mktemp "${TMPDIR:-/tmp}/vesconte-${slug%-}.XXXXXX.log")"
 
 printf 'Running %s; full log: %s\n' "$label" "$log"
 if "$@" >"$log" 2>&1; then

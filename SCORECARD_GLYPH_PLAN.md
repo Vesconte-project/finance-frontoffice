@@ -83,7 +83,7 @@ conditions — a different context. **Out of scope**; leave them as-is unless tr
   browser at a `/stocks/<ticker>` (large) and screener/search (mini). Build against the contract /
   a fixture if the endpoint isn't live yet.
 - **Owner:** deploys.
-- **Planner (Claude):** verifies the backend scorecard via `backend.longbrunch.com`.
+- **Planner (Claude):** verifies the backend scorecard via the configured `BACKEND_BASE_URL`.
 
 ## Out of scope (V1)
 - Model-page glyphs.

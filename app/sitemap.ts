@@ -11,7 +11,7 @@ type TickerSignal = {
 const SITEMAP_SOURCE_TIMEOUT_MS = 4000
 
 function normalizeBaseUrl(value: string | undefined): string {
-  const fallback = 'https://spy-signal-site.vercel.app'
+  const fallback = 'https://vesconte.vercel.app'
   if (!value) return fallback
 
   const trimmed = value.trim()
