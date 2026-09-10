@@ -19,8 +19,8 @@ export default function StockMethodologyResearch({ data }: { data: StockResearch
           </nav>
         </aside>
         <article className={styles.editorial}>
-          <p className={styles.kicker}>How to read Longbrunch</p>
-          <p className={styles.intro}>Longbrunch presents market, company and fund evidence in separate layers. The page does not turn these layers into a trading instruction.</p>
+          <p className={styles.kicker}>How to read Vesconte</p>
+          <p className={styles.intro}>Vesconte presents market, company and fund evidence in separate layers. The page does not turn these layers into a trading instruction.</p>
 
           <section id="evidence" className={styles.methodSection}>
             <div className={styles.sectionLabel}>01</div><div>

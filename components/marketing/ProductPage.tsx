@@ -80,7 +80,7 @@ export default function ProductPage() {
               Research the market with more context.
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-content-secondary">
-              Longbrunch connects ticker search, market signals, company data, comparisons, saved names, and AI research in one practical flow.
+              Vesconte connects ticker search, market signals, company data, comparisons, saved names, and AI research in one practical flow.
             </p>
             <div className="mt-9 flex flex-col gap-4 sm:flex-row sm:items-center">
               <Link
@@ -268,7 +268,7 @@ export default function ProductPage() {
             Read the output with its limits attached.
           </h2>
           <p className="mt-5 max-w-xl text-base leading-7 text-content-secondary">
-            Longbrunch gives you model output and research context. It does not turn a direction, score, or generated answer into a guaranteed outcome or an instruction to trade.
+            Vesconte gives you model output and research context. It does not turn a direction, score, or generated answer into a guaranteed outcome or an instruction to trade.
           </p>
         </div>
 

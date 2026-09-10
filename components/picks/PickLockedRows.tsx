@@ -58,10 +58,10 @@ export default function PickLockedRows({
       </ul>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <Link href="/sign-up" className={buttonClass({ variant: 'primary' })}>
+        <Link href="/sign-up" data-analytics-id="picks_locked_sign_up" data-analytics-event="auth_start" data-analytics-intent="sign_up" className={buttonClass({ variant: 'primary' })}>
           Create a free account
         </Link>
-        <Link href="/sign-in" className={buttonClass({ variant: 'ghost', size: 'sm' })}>
+        <Link href="/sign-in" data-analytics-id="picks_locked_sign_in" data-analytics-event="auth_start" data-analytics-intent="sign_in" className={buttonClass({ variant: 'ghost', size: 'sm' })}>
           I already have one
         </Link>
       </div>

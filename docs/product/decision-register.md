@@ -4,7 +4,7 @@ This register contains approved durable decisions only. GitHub is the durable re
 
 ## Product decisions
 
-- **Naming:** Spy Signal and Longbrunch are transitional aliases. Do not migrate between them or create new brand-coupled identifiers. The legacy cutover is unresolved.
+- **Naming:** The product is named **Vesconte**, after the cartographer Pietro Vesconte. The legacy cutover is resolved and closed. `Longbrunch` and `Spy Signal` are retired: they are not aliases and must not appear in copy, metadata, identifiers, storage keys, hostnames, or documentation. Rationale and usage rules live in `docs/brand/naming.md`. Service and ownership identifiers stay decoupled from the brand and use the repository name `finance-frontoffice`; do not create new brand-coupled identifiers.
 - **Prioritization user:** a self-directed individual investor monitoring a focused set of assets.
 - **Recurring decision:** “Which asset I already care about deserves my attention now, and what evidence changed?”
 - **Value ladder:** Anonymous establishes trust; Free establishes the habit; Pro scales a validated habit. Basic is excluded for now.
@@ -22,6 +22,7 @@ This register contains approved durable decisions only. GitHub is the durable re
 - The founder is the accountable Product and Visual Approver.
 - Technical, product, visual, release, and outcome acceptance are distinct records. CI, tests, screenshots, or a Preview establish evidence but never substitute for human acceptance.
 - Operational observability and product analytics are distinct. No product-analytics vendor or final event/measurement definition has been selected. Numeric outcome thresholds and analytics definitions remain unresolved.
+- **Usage telemetry:** frontend page, feature, and button usage is emitted as structured JSON to Vercel Runtime Logs, the platform's own operational surface. This is observability plumbing and a provisional event vocabulary in `lib/analytics-events.ts`; it selects no product-analytics vendor and it does not settle measurement definitions or outcome thresholds, which stay unresolved. See `docs/observability/usage-telemetry.md`.
 
 ## Durable ownership split
 

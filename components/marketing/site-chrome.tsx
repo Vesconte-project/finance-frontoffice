@@ -5,7 +5,7 @@ import { ArrowRight } from 'lucide-react'
 import HeaderSearch from '@/components/HeaderSearch'
 import HeaderBar from '@/components/marketing/HeaderBar'
 import { cn } from '@/lib/utils'
-import { BRAND_DESCRIPTION, BRAND_NAME } from '@/components/marketing/site-config'
+import { BRAND_DESCRIPTION, BRAND_NAME, BRAND_SHORT_MARK } from '@/components/marketing/site-config'
 
 const caveat = Caveat({
   subsets: ['latin'],
@@ -48,7 +48,7 @@ type PageShellProps = {
 export function BrandWordmark({ className }: { className?: string }) {
   return (
     <span className={cn('marketing-logo-type flex items-center gap-3 text-xl tracking-normal md:text-2xl', className)}>
-      <span>lb</span>
+      <span>{BRAND_SHORT_MARK}</span>
       <span className="text-[#ff8b2b]">/</span>
     </span>
   )
@@ -300,12 +300,16 @@ export function MarketingPageOutro() {
         <div className="flex flex-col gap-3 sm:flex-row">
           <Link
             href="/sign-up"
+            data-analytics-id="page_hero_sign_up"
+            data-analytics-event="auth_start"
+            data-analytics-intent="sign_up"
             className="inline-flex h-12 items-center justify-center rounded-full bg-slate-950 px-6 text-sm font-semibold text-white transition hover:scale-[1.02] dark:bg-white dark:text-[#03050b]"
           >
             Start membership
           </Link>
           <Link
             href="/screener"
+            data-analytics-id="page_hero_view_signal"
             className="inline-flex h-12 items-center justify-center rounded-full border border-slate-950/10 bg-white/45 px-6 text-sm font-semibold text-slate-950 transition hover:bg-white/68 dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:hover:bg-white/[0.1]"
           >
             View current signal

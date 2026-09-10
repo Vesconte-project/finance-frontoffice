@@ -3,8 +3,8 @@ import TrackEventOnMount from '@/components/analytics/TrackEventOnMount'
 import AboutPage from '@/components/marketing/AboutPage'
 
 export const metadata: Metadata = {
-  title: 'About | Longbrunch',
-  description: 'Learn about Longbrunch and the product principles behind the weekly signal.',
+  title: 'About | Vesconte',
+  description: 'Learn about Vesconte and the product principles behind the weekly signal.',
 }
 
 export default function About() {

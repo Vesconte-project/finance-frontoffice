@@ -13,7 +13,7 @@ Use this compact router only when a contract, semantic, deployment, or consumpti
 | `finance-model-registry` | Eligibility, approval, activation state, model/version identity | Training evidence or serving transport | Registry state and promotion policy | Eligibility or activation truth is required |
 | `finance-backend` | HTTP operations, auth, response/error contract | Upstream semantic ownership or frontend state | `docs/api-contract.json`, then `docs/openapi.json` | A verified semantic needs HTTP exposure or HTTP behavior must be checked |
 | `finance-infra` | Self-host deployment/runtime composition and operational runbooks | Product semantics, frontend review, analytics meaning | Deployment manifests and operating runbooks | Runtime composition or deployed self-host truth is required |
-| `spy-signal-site` | Frontend consumption, local routes, user-visible state, GitHub/Vercel Preview evidence | Upstream data/semantic invention or self-host deployment | Runtime code/tests, `DATA_SOURCE_POLICY.md`, frontend gap records | A contract is consumed or represented in frontend state |
+| `finance-frontoffice` | Frontend consumption, local routes, user-visible state, GitHub/Vercel Preview evidence | Upstream data/semantic invention or self-host deployment | Runtime code/tests, `DATA_SOURCE_POLICY.md`, frontend gap records | A contract is consumed or represented in frontend state |
 
 Cloudflare is the network/access boundary rather than a semantic owner. GitHub is durable implementation/decision truth. GitHub-connected Vercel Preview is the review surface for frontend candidates, not self-host deployment truth.
 

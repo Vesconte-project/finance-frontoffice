@@ -17,6 +17,7 @@ import {
   type TickerIndexPayload,
   type TickerSearchResult,
 } from '@/lib/ticker-search'
+import { trackEvent } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 
 type TickerSearchComboboxProps = {
@@ -418,6 +419,26 @@ export default function TickerSearchCombobox({
     }))
   }, [normalizedSearch, tickerIndex])
 
+  // A settled query, not a keystroke. The index is already in memory, so this
+  // is the only network call the autocomplete makes while suggesting, and it
+  // carries telemetry only — never a lookup, enrichment, or per-symbol fetch.
+  useEffect(() => {
+    const query = normalizedSearch
+    if (query.length < 2) return
+
+    const timer = setTimeout(() => {
+      trackEvent('search_query', {
+        query: query.slice(0, 32),
+        query_length: query.length,
+        result_count: resultSuggestions.length,
+        has_results: resultSuggestions.length > 0,
+        variant,
+      })
+    }, 900)
+
+    return () => clearTimeout(timer)
+  }, [normalizedSearch, resultSuggestions.length, variant])
+
   const recentSuggestions = useMemo<DisplayItem[]>(() => {
     return recentTickers.flatMap((symbol) => {
       const match = tickerIndexBySymbol.get(symbol)
@@ -533,9 +554,16 @@ export default function TickerSearchCombobox({
     }
   }
 
-  function navigateToTicker(tickerRaw: string) {
+  function navigateToTicker(tickerRaw: string, source = 'suggestion') {
     const symbol = tickerRaw.trim().toUpperCase()
     if (!symbol) return
+    trackEvent('search_result_select', {
+      ticker: symbol,
+      source,
+      variant,
+      query_length: search.trim().length,
+      result_count: resultSuggestions.length,
+    })
     pushRecentTicker(symbol)
     setSearch(symbol)
     setIsOpen(false)
@@ -546,7 +574,7 @@ export default function TickerSearchCombobox({
   function submitSearch() {
     const firstResult = resultSuggestions[0]
     if (firstResult) {
-      navigateToTicker(firstResult.symbol)
+      navigateToTicker(firstResult.symbol, 'submit')
       return
     }
   }

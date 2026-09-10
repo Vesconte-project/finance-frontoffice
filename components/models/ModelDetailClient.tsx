@@ -1013,7 +1013,7 @@ export default function ModelDetailClient({
           </div>
         ) : null}
         <DismissibleLocalHint
-          storageKey="spy_signal_onboarding_loop_hint_dismissed_v1"
+          storageKey="vesconte_onboarding_loop_hint_dismissed_v1"
           text="Start here: Explore a model → tweak it → compare results"
         />
 

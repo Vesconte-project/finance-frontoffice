@@ -332,7 +332,7 @@ export async function generateMetadata({
   const name = quote?.name || ticker
 
   return {
-    title: `${ticker} Markets Signal, Research & Overview - Longbrunch`,
+    title: `${ticker} Markets Signal, Research & Overview - Vesconte`,
     description: `Explore price history, available signals, scorecard context, fundamentals, and asset relationships for ${name} (${ticker}).`,
   }
 }

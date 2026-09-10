@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Card from '@/components/ui/Card'
 import RetryButton from '@/components/ui/RetryButton'
 import { buttonClass } from '@/components/ui/Button'
+import { trackState } from '@/lib/analytics'
 
 type RouteErrorFallbackProps = {
   error: Error & { digest?: string }
@@ -25,6 +26,11 @@ export default function RouteErrorFallback({
 }: RouteErrorFallbackProps) {
   useEffect(() => {
     console.error(error)
+    trackState('error_shown', {
+      surface: 'route_error',
+      message: error.message,
+      digest: error.digest ?? null,
+    })
   }, [error])
 
   return (
@@ -35,6 +41,7 @@ export default function RouteErrorFallback({
           <p className="text-body mt-2 max-w-[60ch]">{description}</p>
           <div className="mt-5 flex flex-col items-center gap-3 sm:flex-row">
             <RetryButton
+              analyticsId="route_error_retry"
               onRetry={unstable_retry}
               retryKey={`error:${error.digest ?? error.message}`}
               pendingMessage="Retrying this section and requesting fresh server data..."
@@ -42,7 +49,11 @@ export default function RouteErrorFallback({
             >
               Try Again
             </RetryButton>
-            <Link href={homeHref} className={buttonClass({ variant: 'ghost' })}>
+            <Link
+              href={homeHref}
+              data-analytics-id="route_error_home"
+              className={buttonClass({ variant: 'ghost' })}
+            >
               {homeLabel}
             </Link>
           </div>

@@ -43,7 +43,7 @@ assignees: ""
 
 | Meaning | Type / unit | Nullability | Coverage | Freshness | Privacy | Semantic owner | HTTP operation |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Ranked companies allowed by viewer tier | Integer count | Non-null | Existing available ranking, capped at5/25/25 | Existing snapshot | Session stays server-side | Product owner / spy-signal-site | Existing ranking transport; unchanged |
+| Ranked companies allowed by viewer tier | Integer count | Non-null | Existing available ranking, capped at5/25/25 | Existing snapshot | Session stays server-side | Product owner / finance-frontoffice | Existing ranking transport; unchanged |
 
 - **Backend contract link and version / lookup result:** No backend contract change. Existing resolveVisiblePicks → cutToTier owns the cut; PICK_FULL_LIST remains25.
 - **Explicit owned gap (owner and layer), if any:** None for BA; frontend entitlement policy is approved in packet10.
@@ -56,7 +56,7 @@ assignees: ""
 - **Invariants:** free/pro=PICK_FULL_LIST; anonymous<free; no over-serving; omitted rows never reach the browser; no changes to ranking order.
 - **Ownership and dependencies:** Product owner approved policy; Codex records/implements; existing server-only gate remains authoritative.
 - **Acceptance tests:** Renamed five-row test; lockedCount20 of25; serialized payload excludes sixth name; existing anonymous<free invariant untouched; browser/HTML checks where available.
-- **Implementation packet:** /home/franciscosantos/longbrunch-plans/frontend-ticker-and-header/packet-10.md, section BA.
+- **Implementation packet:** /home/franciscosantos/vesconte-plans/frontend-ticker-and-header/packet-10.md, section BA.
 
 ## Candidate validation
 

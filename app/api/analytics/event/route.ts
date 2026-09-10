@@ -1,110 +1,104 @@
+/**
+ * Telemetry ingress.
+ *
+ * Two jobs, in this order of importance:
+ *   1. Emit one structured JSON line per event so page, feature, and button
+ *      usage is queryable in Vercel Runtime Logs and in any Log Drain. This is
+ *      the durable record and it runs first, so a backend outage never costs a
+ *      usage log.
+ *   2. Best-effort forward to `finance-backend` for product analytics, exactly
+ *      as before. Failures are swallowed and reported as 204.
+ *
+ * Accepts a single envelope (legacy shape) or `{ events: [...] }` (batched by
+ * the browser tracker). Both are answered the same way.
+ */
+
 import { NextResponse } from 'next/server'
 import { backendBaseUrl, backendHeaders } from '@/lib/backend'
-
-type AnalyticsEventBody = {
-  event_name?: string
-  payload?: Record<string, unknown>
-  occurred_at?: string
-  timestamp?: string
-  pathname?: string
-  referrer?: string | null
-  session_id?: string
-  anonymous_id?: string
-}
-
-type AnalyticsInsertRow = {
-  id?: number
-  event_name: string
-  payload: Record<string, unknown>
-  occurred_at: string
-  pathname: string
-  referrer: string | null
-  session_id: string
-  anonymous_id: string
-  user_agent: string | null
-}
-
-function sanitizeString(value: unknown, fallback: string): string {
-  if (typeof value !== 'string') return fallback
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : fallback
-}
-
-function safeIsoTimestamp(value: unknown): string {
-  if (typeof value !== 'string') return new Date().toISOString()
-  const parsed = new Date(value)
-  if (!Number.isFinite(parsed.getTime())) return new Date().toISOString()
-  return parsed.toISOString()
-}
+import { getViewerUserId } from '@/lib/auth'
+import { readEvents, toInsertRow, type AnalyticsInsertRow } from '@/lib/analytics-ingest'
+import { logServerEvent, logTelemetryEvent } from '@/lib/observability/vercel-log'
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error && error.message) return error.message
   return String(error)
 }
 
+async function forwardToBackend(rows: AnalyticsInsertRow[]): Promise<void> {
+  const base = backendBaseUrl()
+  if (!base) return
+
+  await Promise.all(
+    rows.map(async (row) => {
+      try {
+        const upstream = await fetch(`${base}/site/analytics/events`, {
+          method: 'POST',
+          headers: backendHeaders({ includeContentType: true }),
+          body: JSON.stringify(row),
+          cache: 'no-store',
+        })
+
+        // 404/405 means the backend has not shipped the endpoint yet. That is a
+        // documented fail-open state, not an error worth alerting on.
+        if (upstream.ok || upstream.status === 404 || upstream.status === 405) return
+
+        logServerEvent(
+          'analytics_upstream_rejected',
+          { event: row.event_name, path: row.pathname, status: upstream.status },
+          'warn'
+        )
+      } catch (error) {
+        logServerEvent(
+          'analytics_upstream_failed',
+          { event: row.event_name, path: row.pathname, error: errorMessage(error) },
+          'error'
+        )
+      }
+    })
+  )
+}
+
 export async function POST(request: Request) {
-  let body: AnalyticsEventBody = {}
+  let body: unknown
   try {
-    body = (await request.json()) as AnalyticsEventBody
+    body = await request.json()
   } catch {
     return NextResponse.json({ ok: false, error: 'invalid_json' }, { status: 400 })
   }
 
-  const eventName = sanitizeString(body.event_name, 'unknown_event')
-  const payload = body.payload && typeof body.payload === 'object' ? body.payload : {}
-  const occurredAt = safeIsoTimestamp(body.occurred_at ?? body.timestamp)
-  const pathname = sanitizeString(body.pathname, '/')
-  const referrer = typeof body.referrer === 'string' ? body.referrer : null
-  const sessionId = sanitizeString(body.session_id, 'unknown_session')
-  const anonymousId = sanitizeString(body.anonymous_id, 'unknown_anon')
+  const events = readEvents(body)
+  if (events.length === 0) {
+    return NextResponse.json({ ok: false, error: 'no_events' }, { status: 400 })
+  }
+
   const userAgent = request.headers.get('user-agent')
-  const insertPayload: AnalyticsInsertRow = {
-    event_name: eventName,
-    payload,
-    occurred_at: occurredAt,
-    pathname,
-    referrer,
-    session_id: sessionId,
-    anonymous_id: anonymousId,
-    user_agent: userAgent,
+  // Opportunistic: the telemetry route is not matched by Clerk middleware, so
+  // this resolves to null today and starts attributing automatically if that
+  // ever changes. It never throws.
+  const viewerId = await getViewerUserId()
+  const rows = events.map((event) => toInsertRow(event, userAgent))
+
+  // The Vercel log is written first and unconditionally.
+  for (const row of rows) {
+    logTelemetryEvent({
+      eventName: row.event_name,
+      payload: row.payload,
+      occurredAt: row.occurred_at,
+      pathname: row.pathname,
+      referrer: row.referrer,
+      sessionId: row.session_id,
+      anonymousId: row.anonymous_id,
+      userAgent: row.user_agent,
+      viewerId,
+      level: row.event_name === 'client_error' ? 'warn' : 'info',
+    })
   }
 
   try {
-    const base = backendBaseUrl()
-    if (!base) {
-      return new NextResponse(null, { status: 204 })
-    }
-    const upstream = await fetch(`${base}/site/analytics/events`, {
-      method: 'POST',
-      headers: backendHeaders({ includeContentType: true }),
-      body: JSON.stringify(insertPayload),
-      cache: 'no-store',
-    })
-
-    if (upstream.status === 404 || upstream.status === 405) {
-      return new NextResponse(null, { status: 204 })
-    }
-
-    if (!upstream.ok) {
-      console.warn('[analytics] upstream rejected event', {
-        event_name: eventName,
-        pathname,
-        status: upstream.status,
-      })
-      return new NextResponse(null, { status: 204 })
-    }
-
-    const text = await upstream.text()
-    const contentType = upstream.headers.get('content-type') || 'application/json'
-    return new NextResponse(text, { status: upstream.status, headers: { 'content-type': contentType } })
+    await forwardToBackend(rows)
   } catch (error) {
-    const detail = errorMessage(error)
-    console.error('[analytics] insert failed', {
-      event_name: eventName,
-      pathname,
-      session_id: sessionId,
-      error: detail,
-    })
-    return new NextResponse(null, { status: 204 })
+    logServerEvent('analytics_forward_failed', { error: errorMessage(error) }, 'error')
   }
+
+  return new NextResponse(null, { status: 204 })
 }

@@ -601,6 +601,7 @@ export default function MarketUniverse({ initialAtlas }: { initialAtlas: Relatio
               value={String(atlas.window) as '126' | '252'}
               onChange={(value) => void selectAtlas(Number(value), atlas.view)}
               ariaLabel="Evidence window"
+              analyticsId="market_universe_window"
             />
           </div>
         </div>

@@ -148,7 +148,7 @@ export async function sendSignalFlipAlertEmail({
         </thead>
         <tbody>${rowsHtml}</tbody>
       </table>
-      <p style="margin-top:16px;">Review details in Today: <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard">Longbrunch Today</a></p>
+      <p style="margin-top:16px;">Review details in Today: <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard">Vesconte Today</a></p>
     </div>
   `
 

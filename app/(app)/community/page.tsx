@@ -121,10 +121,17 @@ export default async function CommunityPage() {
           }
         />
         <EmptyState
+          analyticsId="community_pulse"
           title="Community pulse is still building"
           description="There is no anonymous crowd data to show yet. When watchlist activity grows, this page should surface the most watched names and emerging consensus shifts."
           action={
-            <Link href="/sign-up" className={buttonClass({ variant: 'primary' })}>
+            <Link
+              href="/sign-up"
+              data-analytics-id="community_sign_up"
+              data-analytics-event="auth_start"
+              data-analytics-intent="sign_up"
+              className={buttonClass({ variant: 'primary' })}
+            >
               Start a watchlist
             </Link>
           }

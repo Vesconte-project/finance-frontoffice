@@ -220,11 +220,13 @@ export default function StockChartPanel({
 
           <div className="flex flex-wrap items-center gap-2">
             <FilterChip
+              analyticsId="chart_toggle_regimes"
               label={showRegimes ? 'Regimes On' : 'Regimes Off'}
               active={showRegimes}
               onClick={() => setShowRegimes((value) => !value)}
             />
             <FilterChip
+              analyticsId="chart_toggle_markers"
               label={showSignalMarkers ? 'Markers On' : 'Markers Off'}
               active={showSignalMarkers}
               onClick={() => setShowSignalMarkers((value) => !value)}
@@ -256,6 +258,7 @@ export default function StockChartPanel({
             value={timeframe}
             onChange={setTimeframe}
             ariaLabel="Chart timeframe"
+            analyticsId="ticker_chart_timeframe"
           />
         </div>
       </div>

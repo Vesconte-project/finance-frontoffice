@@ -1,10 +1,17 @@
-export const BRAND_NAME = 'Longbrunch'
+export const BRAND_NAME = 'Vesconte'
+
+// Lowercase wordmark, used where the type is set as a logotype rather than prose.
+export const BRAND_WORDMARK = 'vesconte'
+
+// Condensed mark for narrow chrome. The initials of Pietro Vesconte, the
+// cartographer the product is named after. See docs/brand/naming.md.
+export const BRAND_SHORT_MARK = 'pv'
 
 export const BRAND_DESCRIPTION =
   'Market signals, company research, watchlists, and AI context in one workspace.'
 
 // Where "ask us anything" messages are sent. Change this to your real inbox.
-export const CONTACT_EMAIL = 'hello@longbrunch.com'
+export const CONTACT_EMAIL = 'hello@vesconte.com'
 
 export const MARKETING_NAV_ITEMS = [
   { label: 'Product', href: '/product' },

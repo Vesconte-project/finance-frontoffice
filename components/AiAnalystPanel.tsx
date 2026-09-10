@@ -6,6 +6,8 @@ import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import FilterChip from '@/components/ui/FilterChip'
 import { buttonClass } from '@/components/ui/Button'
+import TrackEventOnMount from '@/components/analytics/TrackEventOnMount'
+import { trackEvent, trackFeature } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 
 type SignalDirection = 'bullish' | 'neutral' | 'bearish'
@@ -97,6 +99,10 @@ function LockedState({
 
   return (
     <Card className={compact ? 'space-y-4' : 'space-y-6'}>
+      <TrackEventOnMount
+        eventName="upgrade_prompt_shown"
+        payload={{ control: 'ai_analyst_locked', surface: 'ai_analyst_panel', ticker: ticker.toUpperCase() }}
+      />
       <div className="flex items-center justify-between">
         <div>
           <div className="text-filter-label">AI Analyst</div>
@@ -114,6 +120,8 @@ function LockedState({
       </p>
       <a
         href={href}
+        data-analytics-id="ai_analyst_upgrade"
+        data-analytics-ticker={ticker.toUpperCase()}
         target={openUpgradeInNewTab ? '_blank' : undefined}
         rel={openUpgradeInNewTab ? 'noopener noreferrer' : undefined}
         className={cn(buttonClass({ variant: 'secondary' }), compact ? 'h-8 px-3 text-[12px]' : undefined)}
@@ -127,6 +135,10 @@ function LockedState({
 function UnavailableState({ compact = false }: { compact?: boolean }) {
   return (
     <Card className={compact ? 'space-y-4' : 'space-y-6'}>
+      <TrackEventOnMount
+        eventName="unavailable_shown"
+        payload={{ control: 'ai_analyst_provider', surface: 'ai_analyst_panel' }}
+      />
       <div className="text-filter-label">AI Analyst</div>
       <h3 className="text-heading-sm text-content-primary">Provider not enabled</h3>
       <p className="text-body-md text-content-secondary">
@@ -182,6 +194,15 @@ export default function AiAnalystPanel({
     setError(null)
     setAnalysis('')
     setCitations([])
+
+    const startedAt = Date.now()
+    trackFeature('ai_analyst_run', {
+      ticker: ticker.toUpperCase(),
+      prompt: selectedPrompt.label,
+      question_length: question.length,
+      custom: question !== selectedPrompt.prompt,
+      compact,
+    })
 
     try {
       const response = await fetch('/api/ai-analyst', {
@@ -261,8 +282,22 @@ export default function AiAnalystPanel({
       if (accumulated.trim().length === 0) {
         throw new Error('No analysis content was returned.')
       }
+
+      trackFeature('ai_analyst_complete', {
+        ticker: ticker.toUpperCase(),
+        prompt: selectedPrompt.label,
+        duration_ms: Date.now() - startedAt,
+        answer_length: accumulated.length,
+        citation_count: gatheredCitations.length,
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate AI analysis.')
+      trackEvent('error_shown', {
+        control: 'ai_analyst',
+        surface: 'ai_analyst_panel',
+        ticker: ticker.toUpperCase(),
+        message: err instanceof Error ? err.message : 'unknown',
+      })
     } finally {
       setPending(false)
     }
@@ -286,6 +321,7 @@ export default function AiAnalystPanel({
         {PROMPT_PRESETS.map((preset) => (
           <FilterChip
             key={preset.id}
+            analyticsId={`ai_analyst_prompt:${preset.id}`}
             label={preset.label}
             active={preset.id === selectedPromptId}
             onClick={() => setSelectedPromptId(preset.id)}
@@ -309,6 +345,7 @@ export default function AiAnalystPanel({
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
+            data-analytics-id="ai_analyst_run_custom"
             disabled={pending || customQuestion.trim().length === 0}
             onClick={() => runAnalysis(customQuestion.trim())}
             className={cn(buttonClass({ variant: 'primary' }), compact ? 'h-8 px-3 text-[12px]' : undefined)}
@@ -317,6 +354,7 @@ export default function AiAnalystPanel({
           </button>
           <button
             type="button"
+            data-analytics-id="ai_analyst_run_preset"
             onClick={() => runAnalysis(selectedPrompt.prompt)}
             disabled={pending}
             className={cn(buttonClass({ variant: 'secondary' }), compact ? 'h-8 px-3 text-[12px]' : undefined)}

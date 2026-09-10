@@ -46,7 +46,7 @@ export default function AboutPage() {
           <span className="text-[#0757ff]">weekly read on SPY.</span>
         </>
       }
-      description="Longbrunch exists for one kind of person: someone who wants a clear weekly read on SPY and a calm room to think it through — not another feed to keep up with."
+      description="Vesconte exists for one kind of person: someone who wants a clear weekly read on SPY and a calm room to think it through — not another feed to keep up with."
       primaryCta={{ label: 'Explore the product', href: '/product' }}
       secondaryCta={{ label: 'Read the methodology', href: '/product#methodology' }}
       heroAside={
@@ -74,7 +74,7 @@ export default function AboutPage() {
         <SectionHeading
           eyebrow="Principles"
           title="The product exists to simplify the decision layer."
-          body="Longbrunch is intentionally narrow. It is not trying to be a social feed, a charting suite, or an alert explosion."
+          body="Vesconte is intentionally narrow. It is not trying to be a social feed, a charting suite, or an alert explosion."
         />
         <div className="mt-10 grid gap-5 md:grid-cols-2">
           {principles.map((item) => {

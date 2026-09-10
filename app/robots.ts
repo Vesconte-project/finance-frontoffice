@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next'
 
 function resolveBaseOrigin(rawUrl: string | undefined): string {
-  const fallback = 'https://spy-signal-site.vercel.app'
+  const fallback = 'https://vesconte.vercel.app'
   if (!rawUrl) return fallback
 
   const trimmed = rawUrl.trim()

@@ -641,6 +641,7 @@ export default function RelationshipOrbit({
                 value={String(window) as '126' | '252'}
                 onChange={selectWindow}
                 ariaLabel="Evidence window"
+                analyticsId="relationship_window"
               />
             ) : (
               <strong>{window}</strong>

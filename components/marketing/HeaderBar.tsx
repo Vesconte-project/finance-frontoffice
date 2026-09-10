@@ -9,7 +9,7 @@ import HeaderAccountControl from '@/components/HeaderAccountControl'
 import TileArt, { type TileArtKey } from '@/components/marketing/TileArt'
 import HeaderSearch from '@/components/HeaderSearch'
 import { cn } from '@/lib/utils'
-import { BRAND_NAME } from '@/components/marketing/site-config'
+import { BRAND_NAME, BRAND_SHORT_MARK } from '@/components/marketing/site-config'
 
 type Tile = {
   label: string
@@ -209,11 +209,12 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
         <Link
           href="/"
           aria-label={BRAND_NAME}
+          data-analytics-id="header_brand_home"
           className="site-header__brand marketing-logo-type shrink-0 pl-1 font-bold tracking-[-0.01em] text-content-primary transition-opacity hover:opacity-80 md:justify-self-start"
         >
           <span className="site-header__brand-full">{BRAND_NAME}</span>
           <span className="site-header__brand-short" aria-hidden="true">
-            lb
+            {BRAND_SHORT_MARK}
           </span>
         </Link>
 
@@ -237,7 +238,7 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
             'site-header__cluster md:justify-self-end'
           )}
         >
-          <nav className="flex items-center">
+          <nav data-analytics-surface="site_header" className="flex items-center">
             {MENUS.map((m) => (
               <button
                 key={m.key}
