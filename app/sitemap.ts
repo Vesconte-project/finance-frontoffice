@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next'
 import { fetchBackendJson } from '@/lib/backend'
+import { siteBaseUrl } from '@/lib/site-url'
 
 export const revalidate = 3600
 
@@ -9,23 +10,6 @@ type TickerSignal = {
 }
 
 const SITEMAP_SOURCE_TIMEOUT_MS = 4000
-
-function normalizeBaseUrl(value: string | undefined): string {
-  const fallback = 'https://vesconte.vercel.app'
-  if (!value) return fallback
-
-  const trimmed = value.trim()
-  if (!trimmed) return fallback
-
-  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
-
-  try {
-    const parsed = new URL(withScheme)
-    return `${parsed.origin}${parsed.pathname.replace(/\/$/, '')}`
-  } catch {
-    return fallback
-  }
-}
 
 function readString(value: unknown): string | null {
   if (typeof value !== 'string') return null
@@ -95,7 +79,7 @@ function tickerEntries(baseUrl: string, row: TickerSignal): MetadataRoute.Sitema
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL)
+  const baseUrl = siteBaseUrl()
   const now = new Date()
   const rows = await readTickerSignals()
 
