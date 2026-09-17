@@ -1,112 +1,14 @@
 import type { CSSProperties } from 'react'
-import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
 import { Inter, JetBrains_Mono, Sora } from 'next/font/google'
-import FaqAccordion, { type FaqGroup } from '@/components/marketing/FaqAccordion'
+import FaqAccordion from '@/components/marketing/FaqAccordion'
+import { FAQ_GROUPS } from '@/lib/faq-content'
 import { CONTACT_EMAIL } from '@/components/marketing/site-config'
 import { SiteHeader, sharedHeaderSpacerClass } from '@/components/marketing/site-chrome'
 
 const sora = Sora({ subsets: ['latin'], weight: ['400', '600', '700', '800'], display: 'swap' })
 const inter = Inter({ subsets: ['latin'], display: 'swap' })
 const mono = JetBrains_Mono({ subsets: ['latin'], weight: ['400', '500', '600'], display: 'swap' })
-
-const faqGroups: readonly FaqGroup[] = [
-  {
-    label: 'Product',
-    description: 'How to read and use Vesconte.',
-    items: [
-      {
-        question: 'What is Vesconte?',
-        answer: 'Vesconte brings market signals, company research, and relationships between assets into one place to explore and compare.',
-      },
-      {
-        question: 'What does a signal mean?',
-        answer: 'A signal shows a current direction — bullish, bearish, or neutral — with conviction, a prediction horizon, and the latest signal date.',
-      },
-      {
-        question: 'How should I use the signals?',
-        answer: 'Use them as research context: compare the signal with its history, price data, and company information before making your own decision.',
-      },
-      {
-        question: 'Is Vesconte designed for day trading?',
-        answer: 'No. The product presents daily signals, history, and market context for research and monitoring rather than intraday execution.',
-      },
-    ],
-  },
-  {
-    label: 'Market data',
-    description: 'Coverage, freshness, and missing data.',
-    items: [
-      {
-        question: 'Which stocks and markets can I search?',
-        answer: 'Search uses the current supported ticker index by symbol, company name, and exchange. Coverage can vary by asset and dataset.',
-      },
-      {
-        question: 'How often is the data updated?',
-        answer: 'Quotes, historical prices, fundamentals, earnings, and signals follow different update paths. Each area shows its latest available date when provided; signal history is daily.',
-      },
-      {
-        question: 'Why is some information missing for a ticker?',
-        answer: 'Coverage varies by asset, source availability, and processing state. Vesconte marks unavailable fields instead of filling them with an estimate.',
-      },
-      {
-        question: 'Where does the market data come from?',
-        answer: 'The application reads market, company, and signal data through its finance-backend integrations. The source and timestamp can differ by dataset.',
-      },
-    ],
-  },
-  {
-    label: 'Features',
-    description: 'The main ways to explore the product.',
-    items: [
-      {
-        question: 'What can I find on a ticker page?',
-        answer: 'Depending on coverage, a ticker page includes price and market stats, signal summary and history, performance, financials, holdings or dividends, relationships, and AI research.',
-      },
-      {
-        question: 'What is the screener for?',
-        answer: 'Use the screener to filter and sort companies by direction, conviction, signal age, or ticker, then open a ticker page for more context.',
-      },
-      {
-        question: 'Can I save stocks to a watchlist?',
-        answer: 'Yes. Sign in on a ticker page to save it. Saved tickers and their latest stance, conviction, and signal changes appear in your dashboard.',
-      },
-      {
-        question: 'What is the AI analysis?',
-        answer: 'AI Analyst uses a ticker’s signal context and available news to produce a research response. Treat it as generated context to check against the underlying data.',
-      },
-    ],
-  },
-  {
-    label: 'Account & plans',
-    description: 'Access, billing, and limits.',
-    items: [
-      {
-        question: 'Do I need an account?',
-        answer: 'Public pages can be explored without an account. To save tickers and use account-only features,',
-        link: { href: '/sign-up', label: 'create an account', suffix: '.' },
-      },
-      {
-        question: 'What do I get with a paid plan?',
-        answer: 'Paid access is still being prepared. Check',
-        link: { href: '/pricing', label: 'pricing', suffix: 'for the current plan details.' },
-      },
-      {
-        question: 'Can I export data?',
-        answer: 'Signed-in Pro users can download signal history as a CSV from a ticker’s Signal History page when rows are available.',
-      },
-      {
-        question: 'How do I manage or cancel my plan?',
-        answer: 'There is no self-serve billing portal in the current UI. For a plan change or cancellation,',
-        link: { href: `mailto:${CONTACT_EMAIL}`, label: 'email the team', suffix: '.' },
-      },
-      {
-        question: 'Is this financial advice?',
-        answer: 'No. Signals and AI analysis are research context, not personal advice or automatic instructions to buy or sell.',
-      },
-    ],
-  },
-] as const
 
 const faqThemeStyle = {
   ['--page-bg' as never]: '#f3efe6',
@@ -150,16 +52,22 @@ export default function FaqPage() {
         />
         <div className="relative mx-auto max-w-[1180px] px-6 py-10 sm:px-10 sm:py-14 lg:px-14 lg:py-16">
           <div className="max-w-2xl">
-            <h2
+            {/*
+              The page-level h1. It was an h2 while the route composed SiteHeader
+              directly instead of MarketingPageShell, which left /faq starting at
+              h2 and descending to h3 with no document title. The heading order is
+              now h1 page -> h2 group -> h3 question.
+            */}
+            <h1
               id="faq-questions-heading"
               style={{ fontFamily: 'var(--font-display)' }}
               className="text-4xl font-extrabold leading-tight tracking-[-0.05em] text-brand-spark sm:text-5xl"
             >
               Find your answers.
-            </h2>
+            </h1>
           </div>
 
-          <FaqAccordion groups={faqGroups} />
+          <FaqAccordion groups={FAQ_GROUPS} />
         </div>
       </section>
 
@@ -176,13 +84,14 @@ export default function FaqPage() {
               Ask us directly.
             </p>
           </div>
-          <Link
+          {/* A plain anchor: next/link is for in-app navigation, not a mailto. */}
+          <a
             href={contactHref}
             className="group inline-flex w-fit items-center gap-2 text-sm font-semibold text-content-primary transition-colors duration-200 hover:text-brand-spark focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-spark"
           >
             Email the team
             <ArrowUpRight className="size-4 transition-transform duration-200 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden="true" />
-          </Link>
+          </a>
         </div>
       </section>
     </main>

@@ -3204,7 +3204,7 @@ html.chrome-scrolled .dock-search {
 
 /* FAQ accordion: the scoped override wins over arbitrary Tailwind durations. */
 @media (prefers-reduced-motion: reduce) {
-  .marketing-faq .faq-accordion :is(button, [role='region'], [role='region'] p, button > span:last-child) {
+  .marketing-faq .faq-accordion :is(button, .faq-accordion__panel, .faq-accordion__panel p, button > span:last-child) {
     transition-duration: 0ms !important;
     transition-delay: 0ms !important;
   }

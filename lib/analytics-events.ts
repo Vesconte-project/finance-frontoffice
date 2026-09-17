@@ -44,6 +44,9 @@ export const ANALYTICS_EVENT_NAMES = [
   'view_homepage',
   'view_pricing',
   'view_about',
+  // Newer, and named to match the set above so the marketing page-view series
+  // stay comparable. /faq carried no usage signal at all before this.
+  'view_faq',
   'click_sample_model',
   'view_stock',
   'click_stock_from_screener',
@@ -77,6 +80,7 @@ const CATEGORY_BY_EVENT: Partial<Record<AnalyticsEventName, AnalyticsCategory>> 
   view_homepage: 'page',
   view_pricing: 'page',
   view_about: 'page',
+  view_faq: 'page',
   view_stock: 'page',
   view_model: 'page',
 
