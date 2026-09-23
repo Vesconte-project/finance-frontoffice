@@ -165,3 +165,14 @@ export async function getTickerDisclosures(
     { context: `ticker.disclosures.${ticker}` },
   )
 }
+
+/**
+ * Raw `/tickers/{ticker}/readings` payload. Validation happens in
+ * `lib/ticker-readings.ts`; callers must only request this for a signed-in reader.
+ */
+export async function getTickerReadingsPayload(tickerRaw: string): Promise<unknown> {
+  const ticker = normalizedTicker(tickerRaw)
+  return fetchBackendJson<unknown>(`/tickers/${encodeURIComponent(ticker)}/readings`, {
+    context: `ticker.readings.${ticker}`,
+  })
+}

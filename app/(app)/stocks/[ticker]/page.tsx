@@ -11,6 +11,8 @@ import {
   type BackendRequestLogContext,
 } from '@/lib/backend-request-log'
 import { BackendDataError } from '@/lib/backend'
+import { getViewerAccess } from '@/lib/billing'
+import { getTickerReadingsPayload } from '@/lib/canonical-research'
 import { currencyForTicker, formatCompactMoney, formatMoney } from '@/lib/currency'
 import {
   getOhlcData,
@@ -40,6 +42,12 @@ import {
 import { scorecardFromTickerSummary } from '@/lib/ticker-page-scorecard'
 import { canonicalTickerStats } from '@/lib/ticker-page-stats'
 import { stockAssetKind } from '@/lib/stock-asset-kind'
+import {
+  parseTickerReadings,
+  readingVerdicts,
+  signedOutReadingVerdict,
+  type ReadingVerdict,
+} from '@/lib/ticker-readings'
 
 export const dynamic = 'force-dynamic'
 
@@ -271,6 +279,42 @@ async function loadOptionalStockDataset<T>(
   }
 }
 
+/**
+ * Reading standings for the verdicts list (Spec "Ticker reading standings V1").
+ *
+ * The tier is resolved per request. A signed-out reader never triggers the
+ * `/readings` request and receives only the sign-up row. For a signed-in reader
+ * any failure or malformed payload returns no rows at all: no placeholder.
+ */
+async function loadReadingVerdicts(
+  context: BackendRequestLogContext,
+  ticker: string
+): Promise<ReadingVerdict[]> {
+  const viewer = await getViewerAccess()
+  if (!viewer.isSignedIn) return [signedOutReadingVerdict(ticker)]
+
+  const endpoint = `/tickers/${ticker}/readings`
+  const startedAt = Date.now()
+  try {
+    const parsed = parseTickerReadings(await getTickerReadingsPayload(ticker))
+    if (!parsed) {
+      logStockPageEvent('error', 'optional dataset malformed', context, { endpoint, durationMs: Date.now() - startedAt })
+      return []
+    }
+    return readingVerdicts(parsed)
+  } catch (error) {
+    const details = backendErrorDetails(error)
+    logStockPageEvent('error', 'optional dataset unavailable', context, {
+      endpoint,
+      durationMs: Date.now() - startedAt,
+      error: details.message,
+      aborted: details.aborted,
+      timeout: details.timeout,
+    })
+    return []
+  }
+}
+
 function coverageExpectsPrices(coverage: SymbolCoverageRow): boolean {
   return coverage.hasPrices === true || (typeof coverage.priceRows === 'number' && coverage.priceRows > 0)
 }
@@ -392,6 +436,9 @@ export default async function TickerPage({
   }
 
   const scorecard = scorecardFromTickerSummary(tickerSummary)
+  const readingVerdictsPromise = runWithBackendRequestLogContext(requestLogContext, () =>
+    loadReadingVerdicts(requestLogContext, ticker)
+  )
   const [ohlcResult, recentSignals, latestScreenerRows, fundamentals] = await runWithBackendRequestLogContext(
     requestLogContext,
     () =>
@@ -601,6 +648,7 @@ export default async function TickerPage({
           episode_status: signal.live_episode_status,
         }))}
         scorecard={scorecard}
+        readingVerdicts={await readingVerdictsPromise}
       />
     </div>
   )
