@@ -65,8 +65,8 @@ Specialists are conditional, not gates or a mandatory team. Use the smallest set
 1. Check `git status --short --branch`, task-local instructions, the rendered code, direct dependencies, contracts, states, tests, and nearest pattern.
 2. Use `rg --files` and targeted `rg`; ignore generated output. Preserve unrelated changes and avoid opportunistic cleanup.
 3. Before changing Next.js code, read the relevant guide in `node_modules/next/dist/docs/`.
-4. For backend-dependent work, discover contracts progressively: backend `docs/api-contract.json`, then backend `docs/openapi.json`, owning-repository semantic evidence, local route/helper/types/tests, then frontend `docs/api/` consumption notes and gap records. Frontend documentation is not primary backend contract truth.
-5. If support is missing, classify the owning layer using `DATA_SOURCE_POLICY.md` and record an owned gap. Never invent product intent, semantics, endpoints, fields, authentication, or response shapes; do not derive, fan out, substitute, or use a third party without explicit approval. Cross into another repository only when the classified gap or authoritative evidence requires it.
+4. For backend-dependent work, discover contracts progressively: backend `docs/api-contract.json`, then backend `docs/openapi.json`, owning-repository semantic evidence, local route/helper/types/tests, then frontend `docs/api/` consumption notes. Frontend documentation is not primary backend contract truth.
+5. If support is missing, classify the owning layer using `DATA_SOURCE_POLICY.md` and record an owned gap as a Linear `[Gap] REQ-0NN` issue listed in the Notion index "Frontoffice — Deferred Backend Contract Gaps"; gap records do not live in this repository. Never invent product intent, semantics, endpoints, fields, authentication, or response shapes; do not derive, fan out, substitute, or use a third party without explicit approval. Cross into another repository only when the classified gap or authoritative evidence requires it.
 
 ## Canonical commands
 

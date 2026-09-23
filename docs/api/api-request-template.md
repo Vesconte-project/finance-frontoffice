@@ -1,5 +1,7 @@
 # API Request: <ID and name>
 
+Use this as the body of a Linear issue titled `[Gap] REQ-0NN — <need>`, labelled with the semantic owner, and add it to the Notion index "Frontoffice — Deferred Backend Contract Gaps". Gap records are not kept in this repository.
+
 - **Need / user outcome:**
 - **Frontend consumer:** route, component, or server helper
 - **Why existing contracts are insufficient:**

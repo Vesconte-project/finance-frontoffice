@@ -7,8 +7,8 @@
    contract", "Not in this contract" and "No frontend inference"; an "Earnings
    context" paragraph describing a feature that does not exist; a methodology
    note written to engineers about what the frontend does not calculate. Those
-   gaps are recorded in docs/api/requested-endpoints.md, which is where a gap
-   belongs — not in a heading on the reader's page.
+   gaps are recorded as Linear [Gap] issues (REQ-009, REQ-012), which is where
+   a gap belongs — not in a heading on the reader's page.
    ------------------------------------------------------------------------- */
 
 .grid {

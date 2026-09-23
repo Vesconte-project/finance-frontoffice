@@ -80,7 +80,7 @@ User chose "one relevance-graded map" over "keep zoom-to-reveal but fix it." Imp
 ## Data contracts
 
 - **APIs used:** `GET /api/network/atlas`, `GET /api/network/atlas/communities/:id`, `GET /api/network/atlas/neighborhoods/:ticker` (→ `lib/network.ts` → finance-backend `/network/*`). Search reuses `/api/tickers/index` (load once, filter locally).
-- **APIs/fields missing:** per-node community **membership weights** (for the inspector "hybrid membership" section). Not exposed by finance-backend. To be requested in `docs/api/requested-endpoints.md`; the section hides until the field lands.
+- **APIs/fields missing:** none recorded. Per-node community membership weights, once listed here as missing, are exposed as `AtlasNodeResponse.memberships[]` (`{ communityId, weight }`) and normalized in `lib/network-atlas.ts` (verified 2026-09-23).
 - **Fields already sent but dropped by the frontend:** `AtlasNodeResponse.primaryListingSymbol`, `listingCount`, `siblingSymbols`, `identityConfidence`, plus top-level `provenance`. Surface in Stage 4.
 - **Fallbacks:** loading veil + skeleton (`UniverseWait`); non-materialized views → 503 message; market view → `deriveFallbackAtlas`; scene error boundary → `StaticUniverse` accessible fallback. All preserved.
 
