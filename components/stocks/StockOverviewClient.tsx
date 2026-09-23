@@ -6,6 +6,7 @@ import SegmentedControl from '@/components/ui/SegmentedControl'
 import TemporalLineChart from '@/components/charts/TemporalLineChart'
 import type { OhlcPoint, PricePoint } from '@/lib/finance'
 import type { Scorecard } from '@/lib/scorecard-types'
+import type { ReadingVerdict } from '@/lib/ticker-readings'
 import {
   buildTechnicalSummary,
   type TechnicalAction,
@@ -97,6 +98,8 @@ type StockOverviewClientProps = {
   relatedAssets: Promise<OverviewRelatedAsset[]>
   regimeSignals: OverviewRegimePoint[]
   scorecard: Scorecard
+  /** Built on the server per viewer tier; empty when unavailable. */
+  readingVerdicts: ReadingVerdict[]
 }
 
 const HERO_TIMEFRAMES: ChartTimeframe[] = ['1D', '5D', '1M', '3M', 'YTD', '1Y', '5Y', '10Y', 'ALL']
@@ -400,6 +403,7 @@ export default function StockOverviewClient({
   volatility30d,
   relatedAssets: relatedAssetsPromise,
   scorecard,
+  readingVerdicts,
 }: StockOverviewClientProps) {
   const [heroTimeframe, setHeroTimeframe] = useState<ChartTimeframe>('1M')
   const [fullHistoricalData, setFullHistoricalData] = useState<PricePoint[] | null>(null)
@@ -652,12 +656,37 @@ export default function StockOverviewClient({
                 </div>
               </div>
             </Link>
-            {/* REQ-003: show no investor reading until its endpoint exists and its contract is verified. */}
             <dl className={styles.snapshotVerdicts} aria-label="Current research snapshot">
               {researchVerdicts.map((verdict) => (
                 <div key={verdict.label} className={styles.snapshotVerdict}>
                   <dt>{verdict.label}</dt>
                   <dd>{verdict.value}</dd>
+                  {verdict.detail ? <p>{verdict.detail}</p> : null}
+                </div>
+              ))}
+              {/* Reading standings (Spec "Ticker reading standings V1"): built on the server per tier. */}
+              {readingVerdicts.map((verdict) => (
+                <div key={verdict.key} className={styles.snapshotVerdict} data-overview-reading={verdict.key}>
+                  <dt>{verdict.label}</dt>
+                  <dd>
+                    {verdict.href ? (
+                      <Link
+                        href={verdict.href}
+                        className={styles.snapshotVerdictLink}
+                        {...(verdict.analyticsId
+                          ? {
+                              'data-analytics-id': verdict.analyticsId,
+                              'data-analytics-event': 'auth_start',
+                              'data-analytics-intent': 'sign_up',
+                            }
+                          : {})}
+                      >
+                        {verdict.value}
+                      </Link>
+                    ) : (
+                      verdict.value
+                    )}
+                  </dd>
                   {verdict.detail ? <p>{verdict.detail}</p> : null}
                 </div>
               ))}
