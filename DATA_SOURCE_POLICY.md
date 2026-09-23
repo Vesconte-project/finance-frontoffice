@@ -30,7 +30,7 @@ Stock pages should use backend summary/profile/scorecard/history routes exposed 
 
 ## Backend Contract Discovery and Gap Ownership
 
-Before changing backend-dependent behavior, check accessible `finance-backend/docs/api-contract.json`, then `finance-backend/docs/openapi.json`, then the owning repository's semantic evidence. Only after that inspect this repository's local routes, helpers, types, tests, and `docs/api/` consumption/gap notes. Frontend documentation is not primary backend contract truth.
+Before changing backend-dependent behavior, check accessible `finance-backend/docs/api-contract.json`, then `finance-backend/docs/openapi.json`, then the owning repository's semantic evidence. Only after that inspect this repository's local routes, helpers, types, tests, and `docs/api/` consumption notes. Owned gaps are recorded as Linear `[Gap] REQ-0NN` issues, indexed in the Notion page "Frontoffice — Deferred Backend Contract Gaps" (https://app.notion.com/p/3e48c18836c881659b88d3a18c3be269), not in this repository. Frontend documentation is not primary backend contract truth.
 
 Classify missing support before proposing an endpoint:
 
