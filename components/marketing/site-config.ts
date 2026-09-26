@@ -11,7 +11,7 @@ export const BRAND_DESCRIPTION =
   'Market signals, company research, watchlists, and AI context in one workspace.'
 
 // Where "ask us anything" messages are sent. Change this to your real inbox.
-export const CONTACT_EMAIL = 'hello@vesconte.com'
+export const CONTACT_EMAIL = 'support@vesconte.com'
 
 export const MARKETING_NAV_ITEMS = [
   { label: 'Product', href: '/product' },
