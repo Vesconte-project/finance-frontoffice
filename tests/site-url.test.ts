@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { siteBaseUrl, siteOrigin } from '../lib/site-url'
 
@@ -25,10 +26,10 @@ function withEnv(env: Record<string, string | undefined>, run: () => void): void
 
 test('explicit configuration wins', () => {
   withEnv(
-    { NEXT_PUBLIC_APP_URL: 'https://vesconte.com', VERCEL_PROJECT_PRODUCTION_URL: 'finance-frontend.vercel.app' },
+    { NEXT_PUBLIC_APP_URL: 'https://www.vesconte.com', VERCEL_PROJECT_PRODUCTION_URL: 'finance-frontend.vercel.app' },
     () => {
-      assert.equal(siteOrigin(), 'https://vesconte.com')
-      assert.equal(siteBaseUrl(), 'https://vesconte.com')
+      assert.equal(siteOrigin(), 'https://www.vesconte.com')
+      assert.equal(siteBaseUrl(), 'https://www.vesconte.com')
     }
   )
 })
@@ -65,14 +66,32 @@ test('blank and unusable values fall through to the next source', () => {
 })
 
 test('a base path is kept for absolute URLs but never in the origin', () => {
-  withEnv({ NEXT_PUBLIC_APP_URL: 'https://vesconte.com/app/' }, () => {
-    assert.equal(siteBaseUrl(), 'https://vesconte.com/app')
-    assert.equal(siteOrigin(), 'https://vesconte.com')
+  withEnv({ NEXT_PUBLIC_APP_URL: 'https://www.vesconte.com/app/' }, () => {
+    assert.equal(siteBaseUrl(), 'https://www.vesconte.com/app')
+    assert.equal(siteOrigin(), 'https://www.vesconte.com')
   })
 })
 
 test('a trailing slash never doubles up in a built URL', () => {
-  withEnv({ NEXT_PUBLIC_APP_URL: 'https://vesconte.com/' }, () => {
-    assert.equal(`${siteBaseUrl()}/sitemap.xml`, 'https://vesconte.com/sitemap.xml')
+  withEnv({ NEXT_PUBLIC_APP_URL: 'https://www.vesconte.com/' }, () => {
+    assert.equal(`${siteBaseUrl()}/sitemap.xml`, 'https://www.vesconte.com/sitemap.xml')
   })
+})
+
+test('homepage canonical metadata resolves against the configured public origin', () => {
+  const layout = readFileSync('app/layout.tsx', 'utf8')
+  const homepage = readFileSync('app/(marketing)/page.tsx', 'utf8')
+
+  assert.match(layout, /metadataBase:\s*new URL\(siteOrigin\(\)\)/)
+  assert.match(homepage, /alternates:\s*\{ canonical: '\/' \}/)
+  assert.match(homepage, /openGraph:\s*\{ url: '\/' \}/)
+})
+
+test('security contact is published at the standard well-known path', () => {
+  const security = readFileSync('public/.well-known/security.txt', 'utf8')
+
+  assert.match(security, /^Contact: mailto:security@vesconte\.com$/m)
+  assert.match(security, /^Canonical: https:\/\/www\.vesconte\.com\/\.well-known\/security\.txt$/m)
+  assert.match(security, /^Expires: 2027-09-19T00:00:00Z$/m)
+  assert.match(security, /^Preferred-Languages: en, pt$/m)
 })
