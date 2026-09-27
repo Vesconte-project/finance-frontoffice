@@ -1,6 +1,6 @@
-import { exchangeDisplayName } from '@/lib/exchange-names'
+import { exchangeDisplayName } from './exchange-names'
 
-export type AssetMetadataKind = 'ETF' | 'Equity'
+export type AssetMetadataKind = 'ETF' | 'Country fund' | 'Equity'
 
 export function assetMetadata(
   assetKind: AssetMetadataKind,
@@ -10,7 +10,7 @@ export function assetMetadata(
   const exchange = exchangeDisplayName(exchangeCode)
   const currency = currencyCode.trim().toUpperCase()
 
-  return [assetKind === 'ETF' ? 'ETF' : 'Stock', exchange, currency]
+  return [assetKind === 'Equity' ? 'Stock' : assetKind, exchange, currency]
     .filter((value): value is string => Boolean(value))
     .join(' · ')
 }

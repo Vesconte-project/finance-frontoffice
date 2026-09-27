@@ -84,7 +84,8 @@ type OverviewRegimePoint = {
 type StockOverviewClientProps = {
   ticker: string
   currency: string
-  assetBadgeLabel: string
+  /** From the registry's instrument type (Spec "Instrument type as the single source V1"). */
+  isFund: boolean
   latestSignal: OverviewSignal | null
   historicalData: PricePoint[]
   historicalChartState: HistoricalChartState
@@ -390,7 +391,7 @@ function RelatedAssetsContent({
 export default function StockOverviewClient({
   ticker,
   currency,
-  assetBadgeLabel,
+  isFund,
   latestSignal,
   historicalData,
   historicalChartState,
@@ -439,7 +440,7 @@ export default function StockOverviewClient({
     { key: 'moving-averages', label: 'Moving averages', gauge: technicalSummary.gauges.movingAverages },
   ] as const
   const marketCapReference = keyStats.find((stat) => stat.label === 'Market Cap')
-  const orderedFundamentalGroups = assetBadgeLabel === 'ETF'
+  const orderedFundamentalGroups = isFund
     ? [...fundamentalGroups].sort((left, right) => Number(right.key === 'fund') - Number(left.key === 'fund'))
     : fundamentalGroups
   const visibleFundamentalGroups = orderedFundamentalGroups.slice(0, 6)
@@ -570,7 +571,7 @@ export default function StockOverviewClient({
       <div className={styles.chapterHeader}>
         <div>
           <h2 id="fundamentals-heading" className={styles.chapterTitle}>Fundamentals</h2>
-          <p className={styles.chapterDescription}>A compact read of the latest {assetBadgeLabel === 'ETF' ? 'fund composition and exposures' : 'company financial evidence'}.</p>
+          <p className={styles.chapterDescription}>A compact read of the latest {isFund ? 'fund composition and exposures' : 'company financial evidence'}.</p>
         </div>
         <Link href={`/stocks/${ticker}/fundamentals`} className={styles.inlineArrow}>Full fundamentals →</Link>
       </div>
@@ -582,10 +583,10 @@ export default function StockOverviewClient({
               {group.rows.slice(0, 3).map((row, index) => <div key={row.label} className={index === 0 ? styles.primaryFundamental : undefined}><span>{row.label}</span><strong>{row.value}</strong></div>)}
             </section>
           ))}
-          {assetBadgeLabel === 'ETF' && holdings.length > 0 ? (
+          {isFund && holdings.length > 0 ? (
             <section><h3>Holdings</h3><div><span>Covered holdings</span><strong>{holdings.length}</strong></div></section>
           ) : null}
-          {assetBadgeLabel === 'ETF' && sectorWeights.length > 0 ? (
+          {isFund && sectorWeights.length > 0 ? (
             <section><h3>Exposures</h3><div><span>Covered sectors</span><strong>{sectorWeights.length}</strong></div></section>
           ) : null}
         </div>
@@ -646,16 +647,28 @@ export default function StockOverviewClient({
           </div>
 
           <aside className={styles.snapshotEditorial} aria-label="Research score and verdicts" data-overview-grade="">
-            <Link href={`/stocks/${ticker}/methodology`} className={styles.snapshotGradeLink} aria-label="Open score breakdown">
+            {isFund ? (
+              // A fund is not scored on company measures: no score, no disc, and no
+              // company dimensions presented as a fund's grade.
               <div className={styles.snapshotScorecard}>
-                <ScorecardDisc scorecard={scorecard} size={184} compact className={styles.overviewScorecardDisc} />
                 <div className={styles.snapshotSummary}>
                   <span>Research score</span>
-                  <strong>{scorecardMessage ?? scorecard.overall.label}</strong>
-                  <p>{availableScorecardAxes} of {scorecard.axes.length} dimensions observed</p>
+                  <strong>Not scored</strong>
+                  <p>Funds are not scored as companies. Their composition and exposures are below.</p>
                 </div>
               </div>
-            </Link>
+            ) : (
+              <Link href={`/stocks/${ticker}/methodology`} className={styles.snapshotGradeLink} aria-label="Open score breakdown">
+                <div className={styles.snapshotScorecard}>
+                  <ScorecardDisc scorecard={scorecard} size={184} compact className={styles.overviewScorecardDisc} />
+                  <div className={styles.snapshotSummary}>
+                    <span>Research score</span>
+                    <strong>{scorecardMessage ?? scorecard.overall.label}</strong>
+                    <p>{availableScorecardAxes} of {scorecard.axes.length} dimensions observed</p>
+                  </div>
+                </div>
+              </Link>
+            )}
             <dl className={styles.snapshotVerdicts} aria-label="Current research snapshot">
               {researchVerdicts.map((verdict) => (
                 <div key={verdict.label} className={styles.snapshotVerdict}>

@@ -48,6 +48,8 @@ export type ReadingVerdict = {
 
 const ABSENCE_COPY: Record<string, string> = {
   pays_no_dividend: 'Pays no dividend',
+  // Spec "Instrument type as the single source V1" §4.4.
+  is_fund: 'Fund · not scored as a company',
   ineligible_asset_type: 'Not ranked · not a company',
   // Spec "Reading eligibility V1" §4.4: no score and no position, and the detail
   // line says what was measured and what is missing.

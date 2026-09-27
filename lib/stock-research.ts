@@ -11,7 +11,7 @@ import {
   type LatestFundamentalsRow,
   type TickerPageSummary,
 } from '@/lib/ticker-data'
-import { stockAssetKind, type StockAssetKind } from '@/lib/stock-asset-kind'
+import { resolveStockAsset, type StockAssetKind } from '@/lib/stock-asset-kind'
 
 export type ResearchAssetKind = StockAssetKind
 
@@ -202,7 +202,12 @@ export async function getStockResearchData(tickerRaw: string): Promise<StockRese
     getTickerFundamentals(ticker),
   ])
   const name = summary.quote?.name?.trim() || ticker
-  const kind = stockAssetKind({ ticker, name, latestFundamentals: summary.latestFundamentals })
+  const kind = resolveStockAsset({
+    assetType: summary.asset?.assetType,
+    ticker,
+    name,
+    latestFundamentals: summary.latestFundamentals,
+  }).kind
   const currency = summary.fundamentalsSummary?.currency || currencyForTicker(ticker)
   const { profileFacts, identifiers } = splitProfileRows(fundamentals.profile)
   const hasProfileEvidence = Boolean(

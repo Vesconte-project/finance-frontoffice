@@ -3,7 +3,7 @@ import 'server-only'
 import { getViewerUserId } from '@/lib/auth'
 import { currencyForTicker } from '@/lib/currency'
 import { getTickerRelationships, rankTickerRelationshipCandidates } from '@/lib/relationships'
-import { stockAssetKind } from '@/lib/stock-asset-kind'
+import { resolveStockAsset, type StockAssetBadge } from '@/lib/stock-asset-kind'
 import { getTickerPageSummary } from '@/lib/ticker-data'
 import { tickerIdentityColor } from '@/lib/ticker-identity-color'
 import { isTickerInWatchlist } from '@/lib/watchlist'
@@ -11,7 +11,7 @@ import { isTickerInWatchlist } from '@/lib/watchlist'
 export type StockTickerChromeData = {
   ticker: string
   displayName: string
-  assetBadgeLabel: 'ETF' | 'Equity'
+  assetBadgeLabel: StockAssetBadge
   currency: string
   exchange: string | null
   price: number | null
@@ -44,9 +44,14 @@ export async function getStockTickerChromeData(tickerRaw: string): Promise<Stock
 
   const quote = summary?.quote
   const displayName = quote?.name?.trim() || ticker
-  const kind = summary
-    ? stockAssetKind({ ticker, name: displayName, latestFundamentals: summary.latestFundamentals })
-    : 'equity'
+  const badge: StockAssetBadge = summary
+    ? resolveStockAsset({
+        assetType: summary.asset?.assetType,
+        ticker,
+        name: displayName,
+        latestFundamentals: summary.latestFundamentals,
+      }).badge
+    : 'Equity'
   const fieldNodes = relationships
     ? rankTickerRelationshipCandidates(relationships, ticker).map(({ symbol, strength, confidence }) => ({
         symbol,
@@ -58,7 +63,7 @@ export async function getStockTickerChromeData(tickerRaw: string): Promise<Stock
   return {
     ticker,
     displayName,
-    assetBadgeLabel: kind === 'fund' ? 'ETF' : 'Equity',
+    assetBadgeLabel: badge,
     currency: summary?.asset?.currency ?? summary?.fundamentalsSummary?.currency ?? currencyForTicker(ticker),
     exchange: summary?.asset?.exchange ?? null,
     price: quote?.price ?? summary?.marketStats?.lastPrice ?? null,
