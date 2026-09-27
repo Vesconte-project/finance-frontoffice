@@ -111,6 +111,8 @@ export type EarningsHistoryRow = {
 export type TickerPageSummary = {
   ticker: string
   asset?: {
+    /** `ticker_registry.instrument_type`: equity, adr, etf, country_fund, index_proxy or unknown. */
+    assetType?: string | null
     currency: string | null
     exchange: string | null
     exchangeMic: string | null

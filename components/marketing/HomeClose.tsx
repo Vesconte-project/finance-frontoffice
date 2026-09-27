@@ -1,5 +1,6 @@
-import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
+import AccountEntryLink from '@/components/AccountEntryLink'
+import Link from 'next/link'
 
 export default function HomeClose() {
   return (
@@ -28,15 +29,13 @@ export default function HomeClose() {
         Filter the full ranking by sector, follow what changes, and get the weekly signal before Monday.
       </p>
 
-      <Link
-        href="/sign-up"
-        data-analytics-id="home_close_sign_up"
-        data-analytics-event="auth_start"
-        data-analytics-intent="sign_up"
+      <AccountEntryLink
+        signedOutLabel="Create account"
+        signedInLabel="Open workspace"
+        analyticsId="home_close_sign_up"
+        trailingIcon={<ArrowRight className="size-5" aria-hidden="true" />}
         className="mt-10 inline-flex h-14 items-center justify-center gap-3 rounded-full bg-[var(--brand-spark)] px-8 font-semibold text-[color:var(--brand-spark-on)] shadow-[0_18px_50px_-12px_var(--brand-spark)] transition hover:bg-[var(--accent-text)]"
-      >
-        Create account <ArrowRight className="size-5" aria-hidden="true" />
-      </Link>
+      />
       <div>
         <Link
           href="/pricing"

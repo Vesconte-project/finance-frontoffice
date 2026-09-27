@@ -41,7 +41,7 @@ import {
 } from '@/lib/ticker-data'
 import { scorecardFromTickerSummary } from '@/lib/ticker-page-scorecard'
 import { canonicalTickerStats } from '@/lib/ticker-page-stats'
-import { stockAssetKind } from '@/lib/stock-asset-kind'
+import { resolveStockAsset } from '@/lib/stock-asset-kind'
 import {
   parseTickerReadings,
   readingVerdicts,
@@ -527,11 +527,15 @@ export default async function TickerPage({
   const latestFundamentals = tickerSummary.latestFundamentals
   const quote = tickerSummary.quote
   const displayName = marketQuote?.name ?? quote?.name ?? ticker
-  const isEtf = stockAssetKind({
+  // Spec "Instrument type as the single source V1": the registry decides; the old
+  // name-and-list guess applies only when the registry type is unknown.
+  const resolvedAsset = resolveStockAsset({
+    assetType: tickerSummary.asset?.assetType,
     ticker,
     name: displayName,
     latestFundamentals,
-  }) === 'fund'
+  })
+  const isEtf = resolvedAsset.kind === 'fund'
 
   const latestHistorySignal = recentSignals[0] ?? null
   const latestScreenerSignal = latestScreenerRows[0] ?? null
@@ -623,7 +627,7 @@ export default async function TickerPage({
       <StockOverviewClient
         ticker={ticker}
         currency={currency}
-        assetBadgeLabel={isEtf ? 'ETF' : 'Equity'}
+        isFund={isEtf}
         latestSignal={latestSignal}
         historicalData={historicalData}
         historicalChartState={historicalChartState}

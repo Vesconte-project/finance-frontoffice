@@ -8,6 +8,7 @@ import { ScrollRuntimeProvider } from '@/components/motion/ScrollRuntime'
 import ConditionalFooter from '@/components/ConditionalFooter'
 import SiteFooter from '@/components/SiteFooter'
 import { clerkAppearance } from '@/lib/clerk-appearance'
+import { siteOrigin } from '@/lib/site-url'
 import 'lenis/dist/lenis.css'
 import "./globals.css";
 
@@ -22,6 +23,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteOrigin()),
   title: "Vesconte | Market research, signals, and context",
   description: "Explore market signals, company data, scorecards, relationships, watchlists, and AI research in Vesconte.",
 };

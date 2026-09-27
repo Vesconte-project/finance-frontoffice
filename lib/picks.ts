@@ -4,6 +4,7 @@ import { unstable_cache } from 'next/cache'
 import { fetchBackendJson } from './backend'
 import { PICK_FULL_LIST } from './picks-access-rules'
 import type { PickReadingKey } from './picks-content'
+import { parseEligibilityRule, type EligibilityRule } from './reading-eligibility'
 
 /**
  * Top-N rankings for one scorecard reading.
@@ -13,10 +14,11 @@ import type { PickReadingKey } from './picks-content'
  * a single symbol, so building a top 25 from it would mean 686 requests.
  *
  * Two filters are applied upstream by default and are NOT exposed here as options.
- * Measured on the 2026-08-07 universe, turning them off put a score built from a
- * quarter of the model at the top of the long-term list, and a bond ETF fourth on the
- * income list. The backend reports them in `filters` so a reader seeing 25 of 686 can
- * be told what happened to the rest.
+ * Without them a score built from a quarter of the model once topped the long-term
+ * list, and a bond ETF sat fourth on the income list. Since Spec "Reading eligibility
+ * V1", the first is the feature store's rule (a reading needs its required part and
+ * one other) rather than a coverage percentage. The backend reports both in `filters`
+ * so a reader seeing 25 of 686 can be told what happened to the rest.
  *
  * Read `readings` as ordering, not as marks out of 100: the curves behind the scores
  * are hand-drawn and uncalibrated. See `finance-feature-store/docs/scorecard.md`.
@@ -46,6 +48,8 @@ export type PickItem = {
 
 export type PickFilters = {
   minCoverage: number
+  /** The rule a reading was admitted by, from the feature store via the backend. Null before it ships. */
+  eligibility: EligibilityRule | null
   includeNonCompanies: boolean
   nonCompanyRule: string | null
 }
@@ -122,9 +126,10 @@ function normalizeItem(raw: unknown): PickItem | null {
 
 function normalizeFilters(raw: unknown): PickFilters {
   const record = asRecord(raw)
-  if (!record) return { minCoverage: 0, includeNonCompanies: false, nonCompanyRule: null }
+  if (!record) return { minCoverage: 0, eligibility: null, includeNonCompanies: false, nonCompanyRule: null }
   return {
     minCoverage: readFiniteNumber(record, 'minCoverage') ?? 0,
+    eligibility: parseEligibilityRule(record.eligibility),
     includeNonCompanies: record.includeNonCompanies === true,
     nonCompanyRule: readString(record, 'nonCompanyRule'),
   }

@@ -281,6 +281,9 @@ export default function TickerRelationshipField({
     let relationshipCount = 0
     let anchor: ProjectedPoint = { x: 30, y: 44 }
     let frame = 0
+    let lastDraw = 0
+    let scrollIdleTimer = 0
+    let scrolling = false
     let visible = true
     let pageVisible = document.visibilityState === 'visible'
     let disposed = false
@@ -483,16 +486,34 @@ export default function TickerRelationshipField({
       window.cancelAnimationFrame(frame)
       frame = 0
       root.dataset.motion = reduceMotion ? 'static' : 'ambient'
-      if (!visible || !pageVisible) return
+      if (!visible || !pageVisible || scrolling) return
       if (reduceMotion) {
         draw(0)
         return
       }
       const render = (time: number) => {
-        draw(time)
+        // The field drifts slowly; 30 fps leaves frames free for page scroll.
+        if (time - lastDraw >= 1000 / 30) {
+          draw(time)
+          lastDraw = time
+        }
         frame = window.requestAnimationFrame(render)
       }
       frame = window.requestAnimationFrame(render)
+    }
+
+    const onScroll = () => {
+      if (!scrolling) {
+        scrolling = true
+        window.cancelAnimationFrame(frame)
+        frame = 0
+      }
+      window.clearTimeout(scrollIdleTimer)
+      scrollIdleTimer = window.setTimeout(() => {
+        scrolling = false
+        lastDraw = 0
+        queue()
+      }, 160)
     }
 
     const resize = () => {
@@ -542,6 +563,7 @@ export default function TickerRelationshipField({
     intersectionObserver.observe(root)
     motionQuery.addEventListener('change', onMotionChange)
     document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('scroll', onScroll, { passive: true })
     resize()
 
     if (!reduceMotion) {
@@ -560,10 +582,12 @@ export default function TickerRelationshipField({
       disposed = true
       focusTween?.kill()
       window.cancelAnimationFrame(frame)
+      window.clearTimeout(scrollIdleTimer)
       resizeObserver.disconnect()
       intersectionObserver.disconnect()
       motionQuery.removeEventListener('change', onMotionChange)
       document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('scroll', onScroll)
     }
   }, [relationshipKey, relationships, ticker])
 
