@@ -10,6 +10,7 @@ import {
   MARKETING_NAV_ITEMS,
 } from '@/components/marketing/site-config'
 import FooterBrandReveal from '@/components/FooterBrandReveal'
+import AccountEntryLink from '@/components/AccountEntryLink'
 
 const caveat = Caveat({
   subsets: ['latin'],
@@ -36,15 +37,12 @@ export default function SiteFooter() {
             </h2>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Link
-              href="/sign-up"
-              data-analytics-id="footer_sign_up"
-              data-analytics-event="auth_start"
-              data-analytics-intent="sign_up"
+            <AccountEntryLink
+              signedOutLabel="Create an account"
+              signedInLabel="Open workspace"
+              analyticsId="footer_sign_up"
               className="inline-flex h-12 items-center justify-center rounded-full bg-content-primary px-6 text-sm font-semibold text-[var(--page-bg)] transition hover:scale-[1.02]"
-            >
-              Create an account
-            </Link>
+            />
             <a
               href={askHref}
               className="group inline-flex h-12 items-center justify-center gap-2 rounded-full border border-border bg-surface-elevated px-6 text-sm font-semibold text-content-primary transition hover:border-brand-spark hover:text-brand-spark"

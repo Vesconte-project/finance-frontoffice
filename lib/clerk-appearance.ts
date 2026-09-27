@@ -62,3 +62,15 @@ export const authAppearance = {
     },
   },
 } satisfies NextClerkProviderProps['appearance']
+
+// Clerk Production has Google enabled without OAuth credentials. Until that
+// connection is switched off in the Clerk Dashboard, keep the broken option
+// out of the hosted sign-in and sign-up forms. Development retains Google.
+export const authAppearanceWithoutSocial = {
+  ...authAppearance,
+  elements: {
+    ...authAppearance.elements,
+    socialButtonsRoot: { display: 'none' },
+    dividerRow: { display: 'none' },
+  },
+} satisfies NextClerkProviderProps['appearance']

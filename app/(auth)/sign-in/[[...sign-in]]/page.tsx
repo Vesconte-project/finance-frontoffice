@@ -1,6 +1,6 @@
 import { SignIn } from '@clerk/nextjs'
-import { authAppearance } from '@/lib/clerk-appearance'
+import { authAppearance, authAppearanceWithoutSocial } from '@/lib/clerk-appearance'
 
 export default function SignInPage() {
-  return <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" forceRedirectUrl="/dashboard" appearance={authAppearance} />
+  return <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" forceRedirectUrl="/dashboard" appearance={process.env.VERCEL_ENV === 'production' ? authAppearanceWithoutSocial : authAppearance} />
 }
