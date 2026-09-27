@@ -474,16 +474,6 @@
     flex: 1;
   }
 
-  .statementTable th:nth-child(n + 3),
-  .statementTable td:nth-child(n + 3) {
-    display: none;
-  }
-
-  .statementTable th:first-child,
-  .statementTable td:first-child {
-    width: 62%;
-  }
-
   .snapshotStrip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
   .adPlacement {
@@ -847,6 +837,195 @@
   border-bottom: 0;
 }
 
+/* History by plan: a fixed window of periods, a scrubber below the chart, and
+   at the oldest allowed period a locked zone drawn from no data at all. */
+.statementChartColumn {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.statementChartArea {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  min-width: 0;
+}
+
+/* Horizontal swipes move the window; vertical ones still scroll the page. */
+.statementChartArea[data-scrollable] {
+  touch-action: pan-y;
+}
+
+.statementChartSlot {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.statementLockedZone {
+  position: relative;
+  display: grid;
+  flex: 0 0 clamp(112px, 36%, 140px);
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  isolation: isolate;
+}
+
+.statementLockedBars {
+  position: absolute;
+  z-index: -1;
+  inset: 18px 14px 26px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.statementLockedBars span {
+  flex: 1;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--color-text-muted) 22%, transparent);
+}
+
+.statementLockedGlass {
+  display: grid;
+  gap: 6px;
+  align-content: center;
+  padding: 14px 12px;
+  background: var(--glass-bg);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  backdrop-filter: blur(10px) saturate(1.2);
+}
+
+.statementLockedIcon {
+  width: 14px;
+  height: 14px;
+  color: var(--color-text-muted);
+}
+
+.statementLockedHeading {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 660;
+  letter-spacing: -0.01em;
+}
+
+.statementLockedBody {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.statementLockedLink {
+  justify-self: start;
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 620;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.statementLockedLink:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* The table's locked column: generic shapes only, hidden from assistive tech —
+   the zone beside the chart carries the words. */
+.statementTable .statementLockedCell {
+  width: 56px;
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.statementTable .statementLockedCell svg {
+  width: 11px;
+  height: 11px;
+}
+
+.statementTable .statementLockedCell span {
+  display: inline-block;
+  width: 36px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-text-muted) 20%, transparent);
+  filter: blur(1.5px);
+}
+
+/* The scrubber: one thin line, one glass thumb. The track's padding is the hit
+   area; the line itself is drawn by ::before. */
+.historyTrack {
+  position: relative;
+  height: 24px;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.historyTrack::before,
+.historyTrackMuted {
+  content: '';
+  position: absolute;
+  top: 50%;
+  height: 2px;
+  border-radius: var(--radius-pill);
+  transform: translateY(-50%);
+}
+
+.historyTrack::before {
+  left: 0;
+  right: 0;
+  background: var(--color-border);
+}
+
+/* Withheld history: there, and counted, but not reachable. */
+.historyTrackMuted {
+  left: 0;
+  width: var(--muted-share);
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-border) 0 3px,
+    transparent 3px 6px
+  );
+}
+
+.historyThumb {
+  position: absolute;
+  top: 50%;
+  left: var(--thumb-left);
+  width: var(--thumb-width);
+  min-width: 22px;
+  height: 12px;
+  border: 1px solid var(--glass-thumb-border);
+  border-radius: var(--radius-pill);
+  background: var(--glass-thumb-bg);
+  box-shadow: inset 0 1px 0 var(--glass-highlight), 0 2px 8px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(8px);
+  cursor: grab;
+  transform: translateY(-50%);
+  transition:
+    left var(--motion-normal) var(--motion-ease-standard),
+    width var(--motion-normal) var(--motion-ease-standard);
+}
+
+.historyThumb[data-dragging] {
+  cursor: grabbing;
+  transition: none;
+}
+
+.historyThumb:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .historyThumb {
+    transition: none;
+  }
+}
+
 .statementProvenance {
   margin: 4px 0 0;
   color: var(--color-text-muted);
@@ -858,5 +1037,20 @@
   .statementBody {
     grid-template-columns: 1fr;
     gap: 20px;
+  }
+}
+
+/* The window already limits the columns to three or four; the line item names
+   wrap rather than push them off screen. */
+@media (max-width: 640px) {
+  .statementTable th,
+  .statementTable td {
+    padding-left: 14px;
+  }
+
+  .statementTable th:first-child,
+  .statementTable td:first-child {
+    width: 38%;
+    white-space: normal;
   }
 }

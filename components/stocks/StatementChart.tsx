@@ -81,7 +81,8 @@ export default function StatementChart({
 
   // The latest period until the pointer says otherwise, so the readout is never
   // blank and nothing reflows when the pointer arrives or leaves.
-  const readAt = hovered ?? periods.length - 1
+  // A hovered column can fall outside a window that has since moved.
+  const readAt = hovered !== null && hovered < periods.length ? hovered : periods.length - 1
 
   return (
     <figure className={styles.statementChart} style={{ ['--statement-ink' as string]: accentColor }}>

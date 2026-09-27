@@ -1,9 +1,11 @@
 import Link from 'next/link'
 import ResearchViewShell, { ResearchAdPlacement } from '@/components/stocks/ResearchViewShell'
-import StatementChart, { type StatementSeries } from '@/components/stocks/StatementChart'
+import { type StatementSeries } from '@/components/stocks/StatementChart'
+import StatementHistoryWindow from '@/components/stocks/StatementHistoryWindow'
 import { formatCompactMoney } from '@/lib/currency'
 import { tickerIdentityColor } from '@/lib/ticker-identity-color'
 import type { FinancialStatementLineItem, FinancialStatementsPayload } from '@/lib/canonical-research'
+import { lockedHistoryCopy, type HistoryTier, type LockedHistoryCopy } from '@/lib/statement-history'
 import type { StockResearchData } from '@/lib/stock-research'
 import styles from './ResearchViews.module.css'
 
@@ -93,6 +95,8 @@ function Statement({
   currency,
   period,
   accentColor,
+  withheld,
+  locked,
 }: {
   statement: StatementKey
   label: string
@@ -100,6 +104,8 @@ function Statement({
   currency: string
   period: StatementPeriod
   accentColor: string
+  withheld: number
+  locked: LockedHistoryCopy | null
 }) {
   const rows = payload?.available ? payload.rows : []
   if (rows.length === 0) return null
@@ -111,7 +117,8 @@ function Statement({
   }
 
   // Oldest to newest, the way a statement is published and the way the chart
-  // beside it reads. Every reported period, with no cap.
+  // beside it reads. Every period the reader's plan allows — the page cut the
+  // rest before this was reached — shown a window at a time.
   const periods = [...new Map(rows.map((row) => [row.periodEnd, row])).values()]
     .sort((left, right) => left.periodEnd.localeCompare(right.periodEnd))
 
@@ -136,35 +143,21 @@ function Statement({
   return (
     <section className={styles.statement} id={statement}>
       <h2 className={styles.statementHeading}>{label}</h2>
-      <div className={styles.statementBody}>
-        <StatementChart
-          periods={periods.map(formatPeriod)}
-          series={nesting}
-          currency={currency}
-          accentColor={accentColor}
-          caption={`${label} · ${period === 'annual' ? 'annual' : 'quarterly'} periods`}
-        />
-        <div className={styles.statementTableWrap}>
-          <table className={styles.statementTable}>
-            <thead>
-              <tr>
-                <th scope="col">Line item</th>
-                {periods.map((row) => <th scope="col" key={row.periodEnd}>{formatPeriod(row)}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {lineItems.map((lineItem) => (
-                <tr key={lineItem.lineItemId}>
-                  <th scope="row">{lineItem.displayLabel || lineItem.lineItemId}</th>
-                  {periods.map((row) => (
-                    <td key={row.periodEnd}>{formatStatementValue(cells.get(`${lineItem.lineItemId}:${row.periodEnd}`), currency)}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <StatementHistoryWindow
+        periodLabels={periods.map(formatPeriod)}
+        series={nesting}
+        rows={lineItems.map((lineItem) => ({
+          key: lineItem.lineItemId,
+          label: lineItem.displayLabel || lineItem.lineItemId,
+          cells: periods.map((row) => formatStatementValue(cells.get(`${lineItem.lineItemId}:${row.periodEnd}`), currency)),
+        }))}
+        currency={currency}
+        accentColor={accentColor}
+        caption={`${label} · ${period === 'annual' ? 'annual' : 'quarterly'} periods`}
+        period={period}
+        withheld={withheld}
+        locked={locked}
+      />
     </section>
   )
 }
@@ -173,10 +166,16 @@ export default function StockFinancialStatementsResearch({
   data,
   period,
   statements,
+  tier,
+  withheldBy,
 }: {
   data: StockResearchData
   period: StatementPeriod
+  /** Already cut to the reader's plan by the page. */
   statements: StatementBundle
+  tier: HistoryTier
+  /** How many earlier periods each statement's plan does not open — counts, nothing else. */
+  withheldBy: Record<StatementKey, number>
 }) {
   const available = STATEMENTS.filter((item) => statements[item.key]?.available)
   const knownAt = Object.values(statements)
@@ -211,13 +210,17 @@ export default function StockFinancialStatementsResearch({
       {available.length > 0 ? (
         available.map((item) => (
           <Statement
-            key={item.key}
+            // Keyed by period too, so switching Annual / Quarterly resets the
+            // window to the most recent periods (§4.2).
+            key={`${item.key}:${period}`}
             statement={item.key}
             label={item.label}
             payload={statements[item.key]}
             currency={data.currency}
             period={period}
             accentColor={tickerIdentityColor(data.ticker)}
+            withheld={withheldBy[item.key]}
+            locked={lockedHistoryCopy(tier, period, withheldBy[item.key])}
           />
         ))
       ) : (
@@ -226,13 +229,10 @@ export default function StockFinancialStatementsResearch({
         </p>
       )}
 
-      {/* TODO(REQ-011, backend): mark periods the response is withholding once
-          the contract can say so. Earlier history is intended to become a paid
-          tier, but a padlock drawn over periods the backend simply does not
-          hold would invent a paywall over missing data and claim coverage we do
-          not have. `CanonicalAvailability.count` is not that signal — it reports
-          500 for a symbol whose rows number in the tens, which is the limit this
-          page sends. */}
+      {/* Periods beyond the reader's plan are cut on the page and shown only
+          as a count, in each statement's locked zone. A count is never drawn
+          past what the backend actually returned, so a lock never sits over
+          history we do not hold. */}
       {available.length > 0 ? (
         <p className={styles.statementProvenance}>
           {data.currency} · as reported{knownAt ? ` · known at ${knownAt}` : ''}
