@@ -47,6 +47,7 @@ export default function SiteChromeMotion() {
 
     let headerHeight = 0
     let shouldMeasureHeader = true
+    let collisionElement: HTMLElement | null = null
     let lastY = window.scrollY
     let ticking = false
     const onScroll = () => {
@@ -62,7 +63,9 @@ export default function SiteChromeMotion() {
           headerHeight = header?.getBoundingClientRect().height ?? 0
           shouldMeasureHeader = false
         }
-        const collisionElement = document.querySelector<HTMLElement>('[data-chrome-collision]')
+        // The ticker navigation can arrive after Suspense resolves. Cache it
+        // once found instead of querying the whole document on every scroll.
+        collisionElement ??= document.querySelector<HTMLElement>('[data-chrome-collision]')
         const collisionRect = collisionElement?.getBoundingClientRect()
         const hasCollision = Boolean(
           collisionRect && collisionRect.top < headerHeight && collisionRect.bottom > 0
