@@ -11,6 +11,7 @@
  */
 
 import { PICK_READING_CONTENT, PICK_READING_KEYS, PICK_READING_TO_SLUG, type PickReadingKey } from './picks-content'
+import { parseReadingParts, readingPartsDetail, type ReadingPart } from './reading-eligibility'
 
 export type ReadingStanding = {
   position: number
@@ -19,7 +20,15 @@ export type ReadingStanding = {
 
 export type ReadingItem =
   | { reading: PickReadingKey; status: 'ranked'; standing: ReadingStanding; absenceReason: null }
-  | { reading: PickReadingKey; status: 'absent'; standing: null; absenceReason: string }
+  | {
+      reading: PickReadingKey
+      status: 'absent'
+      standing: null
+      absenceReason: string
+      /** Only with `insufficient_coverage` (Spec "Reading eligibility V1" §4.3); null when not sent. */
+      measuredParts: ReadingPart[] | null
+      missingParts: ReadingPart[] | null
+    }
 
 export type TickerReadings = {
   ticker: string
@@ -40,7 +49,9 @@ export type ReadingVerdict = {
 const ABSENCE_COPY: Record<string, string> = {
   pays_no_dividend: 'Pays no dividend',
   ineligible_asset_type: 'Not ranked · not a company',
-  insufficient_coverage: 'Not ranked · too little data',
+  // Spec "Reading eligibility V1" §4.4: no score and no position, and the detail
+  // line says what was measured and what is missing.
+  insufficient_coverage: 'Insufficient data',
   reading_not_materialized: 'Not available yet',
   not_tracked: 'Not tracked',
 }
@@ -83,7 +94,14 @@ export function parseTickerReadings(raw: unknown): TickerReadings | null {
   const byKey = new Map<PickReadingKey, ReadingItem>()
   for (const entry of payload.readings) {
     if (!entry || typeof entry !== 'object') return null
-    const item = entry as { reading?: unknown; status?: unknown; standing?: unknown; absenceReason?: unknown }
+    const item = entry as {
+      reading?: unknown
+      status?: unknown
+      standing?: unknown
+      absenceReason?: unknown
+      measuredParts?: unknown
+      missingParts?: unknown
+    }
     const reading = item.reading
     if (typeof reading !== 'string' || !(PICK_READING_KEYS as readonly string[]).includes(reading)) return null
     const key = reading as PickReadingKey
@@ -106,7 +124,14 @@ export function parseTickerReadings(raw: unknown): TickerReadings | null {
       })
     } else {
       if (item.status !== 'absent') return null
-      byKey.set(key, { reading: key, status: 'absent', standing: null, absenceReason: item.absenceReason as string })
+      byKey.set(key, {
+        reading: key,
+        status: 'absent',
+        standing: null,
+        absenceReason: item.absenceReason as string,
+        measuredParts: parseReadingParts(item.measuredParts),
+        missingParts: parseReadingParts(item.missingParts),
+      })
     }
   }
 
@@ -127,7 +152,9 @@ export function readingVerdicts(readings: TickerReadings): ReadingVerdict[] {
         analyticsId: null,
       }
     }
-    return { key: item.reading, label, value: absenceCopy(item.absenceReason), detail: null, href: null, analyticsId: null }
+    const detail =
+      item.absenceReason === 'insufficient_coverage' ? readingPartsDetail(item.measuredParts, item.missingParts) : null
+    return { key: item.reading, label, value: absenceCopy(item.absenceReason), detail, href: null, analyticsId: null }
   })
 }
 
