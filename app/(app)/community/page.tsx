@@ -6,6 +6,7 @@ import MetricGrid from '@/components/page/MetricGrid'
 import SignalBlock from '@/components/ui/SignalBlock'
 import RetryButton from '@/components/ui/RetryButton'
 import { buttonClass } from '@/components/ui/Button'
+import AccountEntryLink from '@/components/AccountEntryLink'
 import {
   TableBase,
   TableBody,
@@ -125,15 +126,13 @@ export default async function CommunityPage() {
           title="Community pulse is still building"
           description="There is no anonymous crowd data to show yet. When watchlist activity grows, this page should surface the most watched names and emerging consensus shifts."
           action={
-            <Link
-              href="/sign-up"
-              data-analytics-id="community_sign_up"
-              data-analytics-event="auth_start"
-              data-analytics-intent="sign_up"
+            <AccountEntryLink
+              signedOutLabel="Start a watchlist"
+              signedInLabel="Open watchlist"
+              signedInHref="/dashboard/watchlist"
+              analyticsId="community_sign_up"
               className={buttonClass({ variant: 'primary' })}
-            >
-              Start a watchlist
-            </Link>
+            />
           }
         />
       </div>

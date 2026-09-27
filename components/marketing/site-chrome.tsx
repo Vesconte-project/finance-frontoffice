@@ -4,6 +4,7 @@ import { Caveat } from 'next/font/google'
 import { ArrowRight } from 'lucide-react'
 import HeaderSearch from '@/components/HeaderSearch'
 import HeaderBar from '@/components/marketing/HeaderBar'
+import AccountEntryLink from '@/components/AccountEntryLink'
 import { cn } from '@/lib/utils'
 import { BRAND_DESCRIPTION, BRAND_NAME, BRAND_SHORT_MARK } from '@/components/marketing/site-config'
 
@@ -298,15 +299,12 @@ export function MarketingPageOutro() {
           </p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Link
-            href="/sign-up"
-            data-analytics-id="page_hero_sign_up"
-            data-analytics-event="auth_start"
-            data-analytics-intent="sign_up"
+          <AccountEntryLink
+            signedOutLabel="Start membership"
+            signedInLabel="Open workspace"
+            analyticsId="page_hero_sign_up"
             className="inline-flex h-12 items-center justify-center rounded-full bg-slate-950 px-6 text-sm font-semibold text-white transition hover:scale-[1.02] dark:bg-white dark:text-[#03050b]"
-          >
-            Start membership
-          </Link>
+          />
           <Link
             href="/screener"
             data-analytics-id="page_hero_view_signal"
