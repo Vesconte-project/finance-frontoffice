@@ -47,7 +47,8 @@ test('the percentage is never below one and a universe of one is the top', () =>
 test('every absence reason has its exact Spec string (§6.1)', () => {
   assert.equal(absenceCopy('pays_no_dividend'), 'Pays no dividend')
   assert.equal(absenceCopy('ineligible_asset_type'), 'Not ranked · not a company')
-  assert.equal(absenceCopy('insufficient_coverage'), 'Not ranked · too little data')
+  // Superseded by Spec "Reading eligibility V1" §4.4.
+  assert.equal(absenceCopy('insufficient_coverage'), 'Insufficient data')
   assert.equal(absenceCopy('reading_not_materialized'), 'Not available yet')
   assert.equal(absenceCopy('not_tracked'), 'Not tracked')
   assert.equal(absenceCopy('something_new_upstream'), 'Not ranked')
@@ -125,4 +126,65 @@ test('the page requests /readings only after confirming a signed-in viewer', () 
   // Nothing viewer-specific is built in the client: the component only renders rows.
   const overview = readRepoFile('components/stocks/StockOverviewClient.tsx')
   assert.doesNotMatch(overview, /getTickerReadingsPayload|parseTickerReadings|formatStandingPercent/)
+})
+
+// Spec "Reading eligibility V1", accepted Snapshot
+// snap-sha256-ce95a67c388122e9de7237616d310b4689eb9add1e2c168ba0adc45e689b9401, §4.4.
+
+function insufficient(reading: string, measuredParts?: unknown, missingParts?: unknown) {
+  return { ...absent(reading, 'insufficient_coverage'), measuredParts, missingParts }
+}
+
+test('insufficient data says what was measured and what is missing', () => {
+  const parsed = parseTickerReadings(
+    payload([
+      insufficient(
+        'longTerm',
+        [
+          { key: 'value', label: 'Price versus peers', required: false },
+          { key: 'potential', label: 'Growth', required: false },
+        ],
+        [{ key: 'health', label: 'Financial health', required: true }]
+      ),
+      absent('income', 'pays_no_dividend'),
+      ranked('shortTerm', 10, 684),
+    ])
+  )
+  assert.ok(parsed)
+  const [longTerm, income] = readingVerdicts(parsed)
+  assert.equal(longTerm.value, 'Insufficient data')
+  assert.equal(longTerm.detail, 'Measured: Price versus peers, Growth · Missing: Financial health (required)')
+  assert.equal(longTerm.href, null)
+  assert.equal(income.detail, null)
+})
+
+test('insufficient data without parts from an older backend shows the value alone', () => {
+  const parsed = parseTickerReadings(payload([insufficient('longTerm'), absent('income', 'pays_no_dividend'), ranked('shortTerm', 1, 2)]))
+  assert.ok(parsed)
+  const [longTerm] = readingVerdicts(parsed)
+  assert.equal(longTerm.value, 'Insufficient data')
+  assert.equal(longTerm.detail, null)
+})
+
+test('malformed parts drop the detail line, not the rows', () => {
+  const parsed = parseTickerReadings(
+    payload([insufficient('longTerm', [{ key: 'value' }], 'nope'), absent('income', 'pays_no_dividend'), ranked('shortTerm', 1, 2)])
+  )
+  assert.ok(parsed)
+  assert.equal(readingVerdicts(parsed)[0].detail, null)
+})
+
+test('nothing measured still names what is missing', () => {
+  const parsed = parseTickerReadings(
+    payload([
+      insufficient('longTerm', [], [
+        { key: 'health', label: 'Financial health', required: true },
+        { key: 'potential', label: 'Growth', required: false },
+      ]),
+      absent('income', 'pays_no_dividend'),
+      ranked('shortTerm', 1, 2),
+    ])
+  )
+  assert.ok(parsed)
+  assert.equal(readingVerdicts(parsed)[0].detail, 'Missing: Financial health (required), Growth')
 })

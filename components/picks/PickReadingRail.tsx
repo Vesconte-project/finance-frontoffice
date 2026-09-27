@@ -3,6 +3,7 @@ import Card from '@/components/ui/Card'
 import { PICK_READING_CONTENT, PICK_READING_TO_SLUG, PICK_READING_KEYS } from '@/lib/picks-content'
 import type { PickReadingKey } from '@/lib/picks-content'
 import type { PickFilters } from '@/lib/picks'
+import { eligibilitySentence } from '@/lib/reading-eligibility'
 import { cn } from '@/lib/utils'
 
 /**
@@ -65,9 +66,17 @@ export default function PickReadingRail({
           <div>
             <dt className="text-label-sm font-semibold text-content-primary">Thin coverage</dt>
             <dd className="text-caption mt-0.5 text-content-muted">
-              A reading assembled from less than{' '}
-              <span className="numeric-tabular">{Math.round(filters.minCoverage * 100)}%</span> of its parts is
-              not ranked. Without it the top result can be a score built from a quarter of the model.
+              {filters.eligibility ? (
+                `${eligibilitySentence(filters.eligibility)} Without that, the top result can be a score built from a quarter of the model.`
+              ) : filters.minCoverage > 0 ? (
+                <>
+                  A reading assembled from less than{' '}
+                  <span className="numeric-tabular">{Math.round(filters.minCoverage * 100)}%</span> of its parts is
+                  not ranked. Without it the top result can be a score built from a quarter of the model.
+                </>
+              ) : (
+                'A reading assembled from too little of its data is not ranked. Without that, the top result can be a score built from a quarter of the model.'
+              )}
             </dd>
           </div>
           <div>
