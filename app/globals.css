@@ -1,5 +1,228 @@
 @import "tailwindcss";
 
+/* Authentication uses the same light, cartographic world as the homepage.
+   Clerk owns the form state; this shell owns the surrounding brand surface. */
+.auth-page {
+  color-scheme: light;
+  min-height: 100svh;
+  background: #f3efe6;
+  color: #142943;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+.auth-page__shell {
+  display: flex;
+  min-height: 100svh;
+  max-width: 1500px;
+  flex-direction: column;
+  margin-inline: auto;
+  padding: clamp(18px, 2.5vw, 38px);
+}
+
+.auth-page__nav {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: clamp(20px, 3vw, 38px);
+}
+
+.auth-page__brand {
+  color: #142943;
+  font-family: var(--font-auth-display), sans-serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.auth-page__brand span {
+  margin-left: 2px;
+  color: #0b8178;
+}
+
+.auth-page__home-link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  color: #53657b;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.auth-page__home-link:hover {
+  color: #0b8178;
+}
+
+.auth-page :is(a, button, input):focus-visible {
+  outline: 2px solid #0b8178;
+  outline-offset: 3px;
+}
+
+.auth-page__content {
+  display: grid;
+  min-height: 610px;
+  flex: 1;
+  grid-template-columns: minmax(0, 1.03fr) minmax(0, 0.97fr);
+  gap: clamp(24px, 5vw, 90px);
+}
+
+.auth-page__story {
+  position: relative;
+  display: flex;
+  min-height: 610px;
+  overflow: hidden;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(34px, 5vw, 76px);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 74% 67%, rgba(25, 201, 182, 0.22), transparent 38%),
+    linear-gradient(150deg, #1b3b60 0%, #10263f 55%, #0b1b30 100%);
+  color: #f1f7f7;
+}
+
+.auth-page__story-copy,
+.auth-page__story-signoff {
+  position: relative;
+  z-index: 1;
+}
+
+.auth-page__story-copy {
+  margin-top: clamp(40px, 8vh, 100px);
+}
+
+.auth-page__story h1 {
+  max-width: 12ch;
+  font-family: var(--font-auth-display), sans-serif;
+  font-size: clamp(2.45rem, 4.1vw, 4.5rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+.auth-page__story-copy > p {
+  max-width: 38ch;
+  margin-top: 26px;
+  color: #c8d9df;
+  font-size: clamp(0.95rem, 1.25vw, 1.1rem);
+  line-height: 1.65;
+}
+
+.auth-page__network {
+  position: absolute;
+  right: -12%;
+  bottom: -13%;
+  width: 118%;
+  height: 82%;
+  color: #86c8c6;
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+.auth-page__story-signoff {
+  margin-top: 30px;
+  color: #b5d4d8;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.auth-page__form {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  padding-block: 30px;
+}
+
+.auth-page__form-inner {
+  width: min(100%, 420px);
+}
+
+@media (max-width: 850px) {
+  .auth-page__content {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .auth-page__story {
+    min-height: 250px;
+    padding: 34px;
+  }
+
+  .auth-page__story-copy {
+    margin-top: 0;
+  }
+
+  .auth-page__story h1 {
+    max-width: 19ch;
+    font-size: clamp(1.9rem, 4vw, 2.6rem);
+  }
+
+  .auth-page__story-copy > p {
+    max-width: 55ch;
+    margin-top: 14px;
+  }
+
+  .auth-page__network {
+    right: -8%;
+    bottom: -60%;
+    width: 65%;
+    height: 150%;
+  }
+
+  .auth-page__form {
+    padding: 12px 8px 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-page__shell {
+    padding: 16px;
+  }
+
+  .auth-page__nav {
+    margin-bottom: 16px;
+  }
+
+  .auth-page__story {
+    min-height: 180px;
+    padding: 26px;
+    border-radius: 18px;
+  }
+
+  .auth-page__story h1 {
+    max-width: 21ch;
+    font-size: clamp(1.55rem, 6vw, 2rem);
+  }
+
+  .auth-page__story-copy > p {
+    display: none;
+  }
+
+  .auth-page__story-signoff {
+    margin-top: 28px;
+  }
+
+  .auth-page__form {
+    padding-inline: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-page__home-link {
+    transition: none;
+  }
+}
+
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
