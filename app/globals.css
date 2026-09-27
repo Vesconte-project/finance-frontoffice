@@ -898,8 +898,16 @@ html.atlas-immersive .site-header,
 html.atlas-immersive .site-header__inner {
   pointer-events: none;
 }
-html.atlas-immersive .site-header__row,
 html.atlas-immersive .site-header__inner > .mt-3 {
+  pointer-events: auto;
+}
+/* The condensed row can temporarily be wider while scroll state settles. Its
+   empty grid cells must never cover the atlas controls beside the pill. */
+html.atlas-immersive .site-header__row {
+  pointer-events: none;
+}
+html.atlas-immersive .site-header__bar :is(a, button, [data-header-search], [data-pill-search]),
+html.atlas-immersive .site-header__dropdowns {
   pointer-events: auto;
 }
 html.atlas-immersive.has-header-menu .site-header {
@@ -1623,6 +1631,7 @@ html.atlas-immersive .atlas-view {
    morphs. The single glass surface lives on .site-header__row (below), present
    in BOTH states, so condensing is one continuous surface (no grey band). */
 .site-header {
+  --site-header-rest-bar-height: 68px;
   transition: transform var(--chrome-dur) var(--chrome-ease);
   will-change: transform;
 }
@@ -1699,6 +1708,7 @@ html.chrome-collision .site-header:focus-within {
 /* Horizontal bar (brand / search / nav / Join) — always the top row. */
 .site-header__bar {
   gap: 16px;
+  min-height: var(--site-header-rest-bar-height);
   padding: 10px 12px;
   transition:
     gap var(--chrome-dur) var(--chrome-ease),
@@ -1818,6 +1828,9 @@ html.chrome-scrolled .site-header__row {
 html.chrome-scrolled .site-header__bar {
   gap: 12px;
   padding: 3px 5px 3px 14px;
+}
+html.chrome-scrolled .site-header__row:not([data-menu-open]) .site-header__bar {
+  min-height: 0;
 }
 
 /* MENU OPEN: grow into a wide, tall panel (beats the scrolled/home widths). */

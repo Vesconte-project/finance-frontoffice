@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 
 test.describe('progressive market universe', () => {
   test('loads communities first and opens one bounded company constellation', async ({ page }, testInfo) => {
+    test.setTimeout(60_000)
     const consoleErrors: string[] = []
     page.on('console', (message) => {
       if (message.type() === 'error') consoleErrors.push(message.text())

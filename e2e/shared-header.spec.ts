@@ -1,5 +1,22 @@
 import { expect, test } from '@playwright/test'
 
+test('home and internal pages align the header brand at rest', async ({ page }) => {
+  await page.goto('/')
+  await expect.poll(() => page.evaluate(() => document.documentElement.classList.contains('hero-reveal-ready'))).toBe(true)
+  await page.waitForTimeout(1500)
+  const homeY = await page.locator('.site-header__brand').evaluate((brand) => {
+    const rect = brand.getBoundingClientRect()
+    return rect.top + rect.height / 2
+  })
+
+  await page.goto('/faq')
+  const internalY = await page.locator('.site-header__brand').evaluate((brand) => {
+    const rect = brand.getBoundingClientRect()
+    return rect.top + rect.height / 2
+  })
+  expect(Math.abs(homeY - internalY)).toBeLessThanOrEqual(1)
+})
+
 for (const route of ['/', '/stocks/NFLX/financials', '/markets/network']) {
   test(`shared header menu on ${route}`, async ({ page }) => {
     test.skip(route.startsWith('/stocks/') && !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
