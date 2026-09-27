@@ -898,9 +898,20 @@ html.atlas-immersive .site-header,
 html.atlas-immersive .site-header__inner {
   pointer-events: none;
 }
-html.atlas-immersive .site-header__row,
 html.atlas-immersive .site-header__inner > .mt-3 {
   pointer-events: auto;
+}
+/* The condensed row can temporarily be wider while scroll state settles. Its
+   empty grid cells must never cover the atlas controls beside the pill. */
+html.atlas-immersive .site-header__row {
+  pointer-events: none;
+}
+html.atlas-immersive .site-header__bar :is(a, button, [data-header-search], [data-pill-search]),
+html.atlas-immersive .site-header__dropdowns {
+  pointer-events: auto;
+}
+html.atlas-immersive.has-header-menu .site-header {
+  z-index: 110;
 }
 
 /* Atlas chrome (Browse atlas / View / Window) shares the pill's top row: same
@@ -1620,6 +1631,7 @@ html.atlas-immersive .atlas-view {
    morphs. The single glass surface lives on .site-header__row (below), present
    in BOTH states, so condensing is one continuous surface (no grey band). */
 .site-header {
+  --site-header-rest-bar-height: 68px;
   transition: transform var(--chrome-dur) var(--chrome-ease);
   will-change: transform;
 }
@@ -1696,6 +1708,7 @@ html.chrome-collision .site-header:focus-within {
 /* Horizontal bar (brand / search / nav / Join) — always the top row. */
 .site-header__bar {
   gap: 16px;
+  min-height: var(--site-header-rest-bar-height);
   padding: 10px 12px;
   transition:
     gap var(--chrome-dur) var(--chrome-ease),
@@ -1816,6 +1829,9 @@ html.chrome-scrolled .site-header__bar {
   gap: 12px;
   padding: 3px 5px 3px 14px;
 }
+html.chrome-scrolled .site-header__row:not([data-menu-open]) .site-header__bar {
+  min-height: 0;
+}
 
 /* MENU OPEN: grow into a wide, tall panel (beats the scrolled/home widths). */
 .site-header__row[data-menu-open],
@@ -1903,6 +1919,22 @@ html.chrome-scrolled .site-header__row:not([data-menu-open]) [data-header-search
   grid-template-columns: 1.15fr repeat(var(--menu-tiles, 3), minmax(0, 1fr));
   gap: 8px;
   padding: 2px 12px 12px;
+}
+@media (min-width: 768px) and (max-width: 1024px) {
+  .site-header__dropgrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .site-header__row[data-menu-open] .site-header__dropdowns {
+    max-height: 700px;
+  }
+  .site-header__dropgrid .site-header__tile {
+    min-height: 170px;
+  }
+}
+@media (max-width: 767px) {
+  .site-header__dropdowns {
+    display: none;
+  }
 }
 
 .site-header__tile {
@@ -2189,14 +2221,11 @@ html.chrome-scrolled .site-header__row:not([data-menu-open]) [data-header-search
   top: 0;
   left: 0;
   width: 100%;
-  /* Full viewport, flat. A masked fall-off was tried and read worse: Chrome
-     applies backdrop-filter over the whole box and only then masks it, so the
-     blur kept ending on a hard line even where the tint had faded out. */
+  /* Tint the viewport without filtering every pixel of the ticker canvas or
+     correlation atlas while the menu animates over them. */
   height: 100vh;
   z-index: 0;
   background: var(--menu-backdrop, rgba(4, 6, 12, 0.42));
-  -webkit-backdrop-filter: blur(2px);
-  backdrop-filter: blur(2px);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.35s var(--chrome-ease);
@@ -2807,12 +2836,6 @@ main.marketing-home {
   --surface-hover: rgba(20, 41, 67, 0.06);
   --card: var(--surface-card);
   --card-foreground: var(--content-primary);
-  --menu-backdrop: rgba(20, 41, 67, 0.12);
-  --menu-tile-bg: rgba(255, 255, 255, 0.68);
-  --menu-tile-border: rgba(20, 41, 67, 0.13);
-  --menu-tile-scrim: linear-gradient(to top, rgba(20, 41, 67, 0.16), rgba(255, 255, 255, 0.02) 55%, transparent 78%);
-  --menu-tile-label: #142943;
-  --menu-media-opacity: 0.86;
   background-color: var(--page-bg);
 }
 
@@ -2883,60 +2906,6 @@ main.marketing-home[data-theme="dark"] .dock-search :is(input) {
 .marketing-home .site-header__brand {
   color: var(--content-primary);
   text-shadow: 0 1px 0 color-mix(in srgb, var(--page-bg) 70%, transparent);
-}
-
-/* The panel thins toward its bottom edge so the row's own glass takes over and
-   the two read as one surface — a flat fill ends on a hard line and the panel
-   detaches into a slab hovering over the page. */
-.marketing-home .site-header__dropdowns {
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--page-bg) 90%, transparent) 0%,
-    color-mix(in srgb, var(--page-bg) 86%, transparent) 58%,
-    color-mix(in srgb, var(--page-bg) 60%, transparent) 100%
-  );
-  border-top: 1px solid color-mix(in srgb, var(--content-primary) 8%, transparent);
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
-}
-.marketing-home .site-header__dropgrid {
-  gap: 10px;
-  padding: 12px;
-}
-.marketing-home .site-header__tile {
-  min-height: 190px;
-  border-radius: 16px;
-}
-.marketing-home .site-header__tile--text {
-  background-color: var(--menu-tile-bg);
-}
-.marketing-home .site-header__tile-media {
-  transition: transform 0.35s var(--chrome-ease), opacity 0.25s ease;
-}
-.marketing-home:not([data-theme="dark"]) .site-header__tile-media {
-  background: var(--tile-grad-light, var(--tile-grad));
-}
-html[data-theme="light"] .marketing-home .site-header__tile-media {
-  background: var(--tile-grad-light, var(--tile-grad));
-}
-html[data-theme="dark"] .marketing-home .site-header__tile-media,
-.marketing-home[data-theme="dark"] .site-header__tile-media {
-  background: var(--tile-grad);
-}
-/* Artwork ink follows the same light/dark split as the tile gradient it sits on:
-   saturated and dark over the pale light tiles, light and airy over the deep
-   dark ones. The --ink-*-dark pair is the default, mirroring --tile-grad. */
-.marketing-home:not([data-theme="dark"]) .site-header__tile,
-html[data-theme="light"] .marketing-home .site-header__tile {
-  --tile-ink-a: var(--ink-a-light, var(--ink-a-dark));
-  --tile-ink-b: var(--ink-b-light, var(--ink-b-dark));
-}
-.marketing-home .site-header__tile-label {
-  font-size: clamp(21px, 2.1vw, 28px);
-}
-.marketing-home .site-header__backdrop {
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
 }
 
 .ticker-search__panel {
@@ -3105,25 +3074,6 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel butto
 @keyframes ticker-row-query-in {
   from { opacity: 0; transform: translateY(-4px) scale(0.99); }
   to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@media (max-width: 1024px) {
-  .marketing-home .site-header__dropgrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  /* Two columns: the four-tile menu wraps to three rows, not two. */
-  .marketing-home .site-header__row[data-menu-open] .site-header__dropdowns {
-    max-height: 700px;
-  }
-  .marketing-home .site-header__tile {
-    min-height: 170px;
-  }
-}
-
-@media (max-width: 767px) {
-  .marketing-home .site-header__dropdowns {
-    display: none;
-  }
 }
 
 .dock-search {
