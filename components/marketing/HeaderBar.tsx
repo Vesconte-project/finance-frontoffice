@@ -6,22 +6,13 @@ import { useRouter } from 'next/navigation'
 import { useAuth, useClerk, useUser } from '@clerk/nextjs'
 import { ArrowRight, ChevronDown } from 'lucide-react'
 import HeaderAccountControl from '@/components/HeaderAccountControl'
-import TileArt, { type TileArtKey } from '@/components/marketing/TileArt'
 import HeaderSearch from '@/components/HeaderSearch'
 import { cn } from '@/lib/utils'
-import { BRAND_NAME, BRAND_SHORT_MARK } from '@/components/marketing/site-config'
+import { BRAND_NAME } from '@/components/marketing/site-config'
 
 type Tile = {
   label: string
   href: string
-  grad: string
-  lightGrad: string
-  art?: TileArtKey
-  /* Two stops the inline artwork's gradient reads, per theme. */
-  inkA?: string
-  inkB?: string
-  inkALight?: string
-  inkBLight?: string
 }
 type Menu = {
   key: string
@@ -34,8 +25,6 @@ type Menu = {
   kind?: 'account'
 }
 
-// Placeholder content — the media tiles use gradient placeholders instead of
-// photography for now. Swap copy/links/images when ready.
 const MENUS: Menu[] = [
   {
     key: 'today',
@@ -46,39 +35,9 @@ const MENUS: Menu[] = [
     // weightings of one score — short term barely touches the axes the other two
     // live on.
     tiles: [
-      {
-        label: 'Long term',
-        href: '/picks/long-term',
-        grad: 'linear-gradient(150deg,#3a4d8f,#0b1730)',
-        lightGrad: 'linear-gradient(145deg,#d6e3f6,#f1f5fc 74%)',
-        art: 'long-term',
-        inkA: '#5d88ca',
-        inkB: '#a8c8f2',
-        inkALight: '#16345f',
-        inkBLight: '#3568b4',
-      },
-      {
-        label: 'Income',
-        href: '/picks/income',
-        grad: 'linear-gradient(150deg,#0f9e8e,#0a3a44)',
-        lightGrad: 'linear-gradient(145deg,#c8ece2,#eefaf5 74%)',
-        art: 'income',
-        inkA: '#2ba192',
-        inkB: '#7fdecb',
-        inkALight: '#07524f',
-        inkBLight: '#0b9c8b',
-      },
-      {
-        label: 'Short term',
-        href: '/picks/short-term',
-        grad: 'linear-gradient(145deg,#8a5a37,#301a0b)',
-        lightGrad: 'linear-gradient(145deg,#f7e0c9,#fdf3e8 74%)',
-        art: 'short-term',
-        inkA: '#cd7c3d',
-        inkB: '#f5bd85',
-        inkALight: '#8a3d18',
-        inkBLight: '#cf7526',
-      },
+      { label: 'Long term', href: '/picks/long-term' },
+      { label: 'Income', href: '/picks/income' },
+      { label: 'Short term', href: '/picks/short-term' },
     ],
   },
   {
@@ -87,29 +46,19 @@ const MENUS: Menu[] = [
     href: '/markets/network',
     blurb: 'How names move together — the network, the pairs that track each other, and where a sector ends.',
     tiles: [
-      { label: 'Network', href: '/markets/network', grad: 'linear-gradient(150deg,#0f9e8e,#0a3a44)', lightGrad: 'linear-gradient(145deg,#d9eee9,#f4efe5 72%)' },
-      { label: 'Pairs', href: '/markets', grad: 'linear-gradient(145deg,#8a5a37,#301a0b)', lightGrad: 'linear-gradient(145deg,#eee4d9,#f4efe5 72%)' },
-      { label: 'Sectors', href: '/markets', grad: 'linear-gradient(150deg,#3a4d8f,#0b1730)', lightGrad: 'linear-gradient(145deg,#dfe8ee,#f4efe5 72%)' },
-      {
-        label: 'Signals',
-        href: '/screener',
-        grad: 'linear-gradient(150deg,#5b3d8c,#160c30)',
-        lightGrad: 'linear-gradient(145deg,#e3dbf3,#f6f2fb 74%)',
-        art: 'signals',
-        inkA: '#8d6ec9',
-        inkB: '#c4b0ec',
-        inkALight: '#3d2470',
-        inkBLight: '#6b45b8',
-      },
+      { label: 'Network', href: '/markets/network' },
+      { label: 'Pairs', href: '/markets' },
+      { label: 'Sectors', href: '/markets' },
+      { label: 'Signals', href: '/screener' },
     ],
   },
 ]
 
 const ACCOUNT_TILES: Tile[] = [
-  { label: 'Watchlist', href: '/dashboard/watchlist', grad: 'linear-gradient(150deg,#0f9e8e,#0a3a44)', lightGrad: 'linear-gradient(145deg,#d9eee9,#f4efe5 72%)' },
-  { label: 'Alerts', href: '/dashboard/alerts', grad: 'linear-gradient(145deg,#8a5a37,#301a0b)', lightGrad: 'linear-gradient(145deg,#eee4d9,#f4efe5 72%)' },
-  { label: 'Model Lab', href: '/models', grad: 'linear-gradient(150deg,#5b3d8c,#160c30)', lightGrad: 'linear-gradient(145deg,#e3dbf3,#f6f2fb 74%)' },
-  { label: 'Community', href: '/community', grad: 'linear-gradient(150deg,#3a4d8f,#0b1730)', lightGrad: 'linear-gradient(145deg,#dfe8ee,#f4efe5 72%)' },
+  { label: 'Watchlist', href: '/dashboard/watchlist' },
+  { label: 'Alerts', href: '/dashboard/alerts' },
+  { label: 'Model Lab', href: '/models' },
+  { label: 'Community', href: '/community' },
 ]
 
 export default function HeaderBar({ isHome }: { isHome: boolean }) {
@@ -210,12 +159,9 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
           href="/"
           aria-label={BRAND_NAME}
           data-analytics-id="header_brand_home"
-          className="site-header__brand marketing-logo-type shrink-0 pl-1 font-bold tracking-[-0.01em] text-content-primary transition-opacity hover:opacity-80 md:justify-self-start"
+          className="site-header__brand marketing-logo-type shrink-0 pl-1 text-content-primary transition-opacity hover:opacity-80 md:justify-self-start"
         >
           <span className="site-header__brand-full">{BRAND_NAME}</span>
-          <span className="site-header__brand-short" aria-hidden="true">
-            {BRAND_SHORT_MARK}
-          </span>
         </Link>
 
         {isHome ? (
@@ -331,22 +277,8 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
                 href={t.href}
                 onClick={() => setOpen(null)}
                 className="site-header__tile"
-                data-art={t.art ?? undefined}
-                style={{
-                  ['--tile-grad' as string]: t.grad,
-                  ['--tile-grad-light' as string]: t.lightGrad,
-                  ...(t.inkA ? { ['--ink-a-dark' as string]: t.inkA } : null),
-                  ...(t.inkB ? { ['--ink-b-dark' as string]: t.inkB } : null),
-                  ...(t.inkALight ? { ['--ink-a-light' as string]: t.inkALight } : null),
-                  ...(t.inkBLight ? { ['--ink-b-light' as string]: t.inkBLight } : null),
-                }}
               >
                 <span className="site-header__tile-media" aria-hidden="true" />
-                {t.art ? (
-                  <span className="site-header__tile-art" aria-hidden="true">
-                    <TileArt art={t.art} />
-                  </span>
-                ) : null}
                 <span className="site-header__tile-label">{t.label}</span>
               </Link>
             ))}

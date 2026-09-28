@@ -1,6 +1,6 @@
 'use client'
 
-import { useId, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import ChartContainer from '@/components/charts/ChartContainer'
 import { formatMoney } from '@/lib/currency'
 import { cn } from '@/lib/utils'
@@ -110,7 +110,6 @@ export default function TemporalLineChart({
   showRangeChange?: boolean
 }) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
-  const gradientId = `temporal-crosshair-${useId().replaceAll(':', '')}`
 
   return (
     <ChartContainer className={cn(styles.chart, points.length === 0 && styles.emptyChart, className)} loadingText="Loading chart...">
@@ -158,19 +157,10 @@ export default function TemporalLineChart({
 
               <path key={`area-${chartKey}`} className={styles.area} d={areaPath} />
               <path key={`line-${chartKey}`} className={styles.line} d={linePath} pathLength={1} />
-
-              <defs>
-                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stopColor="var(--color-accent)" stopOpacity="0" />
-                  <stop offset="0.2" stopColor="var(--color-accent)" stopOpacity="0.55" />
-                  <stop offset="1" stopColor="var(--color-accent)" stopOpacity="0.06" />
-                </linearGradient>
-              </defs>
-
-              {hoverPoint ? (
+{hoverPoint ? (
                 <>
                   <g className={styles.crosshair} style={{ transform: `translateX(${hoverPoint.x}px)` }}>
-                    <line x1={0} y1={padding.top} x2={0} y2={padding.top + innerHeight} stroke={`url(#${gradientId})`} strokeWidth="1.4" />
+                    <line x1={0} y1={padding.top} x2={0} y2={padding.top + innerHeight} stroke="var(--text)" strokeWidth="1.4" />
                   </g>
                   <g className={styles.hoverDot} style={{ transform: `translate(${hoverPoint.x}px, ${hoverPoint.y}px)` }}>
                     <circle r="9" fill="var(--color-accent)" opacity="0.16" />

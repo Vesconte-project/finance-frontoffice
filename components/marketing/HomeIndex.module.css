@@ -1,8 +1,4 @@
-/*
- * Matches HomeBoard's language deliberately: hairline frame, no surface of its
- * own, mono for the right-hand column. The network runs behind this section
- * like every other one, so nothing here paints a background.
- */
+/* The network remains visible around the solid reading panel. */
 
 .section {
   --field-secondary: color-mix(in srgb, var(--content-primary) 30%, var(--content-secondary));
@@ -20,6 +16,8 @@
 .panel {
   overflow: hidden;
   border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--surface);
 }
 
 .panelHeader {
@@ -35,8 +33,8 @@
   color: var(--content-primary);
   font-family: var(--font-display), sans-serif;
   font-size: clamp(1.6rem, 2.6vw, 2.25rem);
-  font-weight: 700;
-  letter-spacing: -0.045em;
+  font-weight: 500;
+  letter-spacing: normal;
   line-height: 1;
 }
 
@@ -63,7 +61,7 @@
 }
 
 .row:hover {
-  background: color-mix(in srgb, var(--brand-spark) 7%, transparent);
+  background: var(--bg);
 }
 
 .label {

@@ -274,7 +274,7 @@ export default function SignalDistributionBubbleCluster({
       ) : null}
 
       <div
-        className={`relative w-full overflow-hidden rounded-2xl border border-border bg-surface-elevated ${bubbleConfig.hClass}`}
+        className={`relative w-full overflow-hidden rounded-md border border-border bg-surface-elevated ${bubbleConfig.hClass}`}
       >
         <svg
           viewBox={`0 0 ${bubbleConfig.viewW} ${bubbleConfig.viewH}`}
@@ -319,7 +319,7 @@ export default function SignalDistributionBubbleCluster({
                   y={bubble.cy - (showRoleInside ? 15 : canShowCount ? 10 : 4)}
                   textAnchor="middle"
                   fontSize={12}
-                  fontWeight={600}
+                  fontWeight={500}
                   fill={bubblePalette.text}
                   style={{
                     paintOrder: 'stroke',
@@ -334,7 +334,7 @@ export default function SignalDistributionBubbleCluster({
                   y={bubble.cy + (showRoleInside ? 3 : canShowCount ? 11 : 6)}
                   textAnchor="middle"
                   fontSize={showRoleInside ? 16 : canShowCount ? 18 : 16}
-                  fontWeight={700}
+                  fontWeight={500}
                   fill={bubblePalette.text}
                   style={{
                     paintOrder: 'stroke',
@@ -350,7 +350,7 @@ export default function SignalDistributionBubbleCluster({
                     y={bubble.cy + 20}
                     textAnchor="middle"
                     fontSize={10}
-                    fontWeight={600}
+                    fontWeight={500}
                     fill={withAlpha(bubblePalette.text, 0.84)}
                     style={{
                       paintOrder: 'stroke',

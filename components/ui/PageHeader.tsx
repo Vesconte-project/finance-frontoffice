@@ -21,7 +21,7 @@ export default function PageHeader({
       <div className="max-w-3xl">
         {meta ? <div className="text-caption uppercase tracking-[0.18em] text-content-muted">{meta}</div> : null}
         <h1 className="text-page-title text-content-primary">{title}</h1>
-        <HandScript className="mt-2 block text-[2rem] leading-none text-[#7d8cff]">
+        <HandScript className="mt-2 block text-[2rem] leading-none text-[var(--text)]">
           Signal before the open.
         </HandScript>
         {subtitle ? <p className="text-body mt-2">{subtitle}</p> : null}

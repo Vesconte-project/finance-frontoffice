@@ -77,7 +77,7 @@ test('ticker navigation exposes a stable horizontal Research hierarchy', () => {
   assert.match(relationshipField, /rotateFieldPoint/)
   assert.match(relationshipField, /ambient-field/)
   assert.match(relationshipField, /motifFrequency/)
-  assert.match(relationshipField, /createLinearGradient\(anchor\.x, anchor\.y/)
+  assert.doesNotMatch(relationshipField, /createLinearGradient/)
   assert.match(relationshipField, /continuationPoints/)
   assert.match(relationshipField, /context\.fillStyle = palette\.node/)
   assert.doesNotMatch(relationshipField, /context\.fillStyle = palette\.accent/)

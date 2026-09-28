@@ -1,44 +1,37 @@
-# Existing Design System
+# Vesconte visual identity
 
-This document describes the runtime UI as it exists. `app/globals.css` and rendered components are authoritative; `design/*.html`, `design/brand-tokens.css`, and planning documents are references only.
+`app/globals.css` is the runtime source of truth for color and font roles. Components and CSS modules own spacing, geometry, responsive behavior, and data presentation. Files under `design/` are historical explorations.
 
-## Foundations
+## Color roles
 
-- **Typography:** root app uses Geist and Geist Mono. The homepage sets Sora for display, Inter for body, and JetBrains Mono for technical labels; selected headers also use Caveat. Existing utilities cover display, heading, body, label, and tabular data styles. Font consolidation is not yet decided.
-- **Color:** semantic tokens cover page/surface/content/border, navy/electric brand bases, restrained teal `--brand-spark`, and bullish green, bearish red, neutral slate, and warning amber. Light is default; dark follows system preference or `[data-theme="dark"]`. The homepage and stock experience explicitly use dark themes.
-- **Spacing:** runtime scale is 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, and 96 px. Prefer this scale before arbitrary values.
-- **Shape and depth:** tokens include radii 6-24 px plus pill, restrained shadow levels, and glass/surface helpers. Some runtime surfaces use 24-28 px radii and blur; preserve them when extending an existing view, but do not spread glass treatment by default.
-- **Motion:** shared durations are 120, 180, 280, and 420 ms with standard and soft easings. See `motion-guidelines.md`.
+| Role | Light | Dark | Use |
+| --- | --- | --- | --- |
+| `--bg` | `#F3EFE7` | `#0F1620` | Page and footer background |
+| `--surface` | `#FAF7F1` | `#172130` | Solid panels, cards, menus, inputs |
+| `--line` | `#D9D2C4` | `#2A3444` | Borders and dividers |
+| `--text` | `#15202E` | `#ECE6DA` | Primary text and wordmark |
+| `--text-muted` | `#3B4657` | `#A9B0BB` | Secondary text; the lightest permitted text role |
+| `--accent` | `#A87A2A` | `#C99A48` | Focus, selection, active indicator, selected universe node |
+| `--up` | `#3E7A55` | `#6FAF86` | Positive data and chart marks |
+| `--down` | `#A34A3C` | `#D07565` | Negative data and chart marks |
+| `--btn-primary-bg` / `--btn-primary-fg` | Ink / paper | Paper / ink | Primary actions |
 
-## Layout and responsive behavior
+The light theme is declared on `:root`; the dark theme follows the system preference unless the existing `html[data-theme]` or `.dark` / `.light` override applies. Legacy variables in `globals.css` are compatibility aliases to these roles. New components should consume the semantic roles directly and should not introduce literal colors. `--up-ink` is derived from `--up` and `--text` so small positive data labels reach normal-text contrast on the light background.
 
-- Tailwind is mobile-first. Current usage concentrates on `sm`, `md`, `lg`, and `xl`; custom behavior also occurs around 480, 768, 820, and 1024 px.
-- Containers are approximately 720, 1120, and 1280 px with 16 px mobile and 24 px `md` gutters. Header content can extend to 1500 px.
-- Marketing pages favor immersive, full-width narrative bands. App pages use denser shells, tables, charts, metrics, and compact controls. Do not convert operational screens into marketing compositions.
-- Preserve natural document flow on small screens. Collapse or scroll dense controls intentionally, keep touch targets usable, and test the 820-1024 transition where sticky and desktop/mobile modes change.
+## Type and logo
 
-## Components and density
+`app/layout.tsx` loads Source Serif 4, IBM Plex Sans, and IBM Plex Mono through `next/font`, each at 400 and 500. Page titles, the company name at the top of a company page, and the wordmark use Source Serif 4. Interface copy and controls use Plex Sans. Tickers, prices, scores, and dates use Plex Mono. Numbers use tabular figures.
 
-Reuse `components/ui` primitives for buttons, cards, badges, tables, tabs, segmented controls, inputs, skeletons, empty states, and retry/error states. Reuse `components/shells` and shared navigation before creating page chrome.
+The only logo is “Vesconte” in Source Serif 4 small caps, with approximately `0.06em` letter spacing and `--text`. There is no separate symbol. Do not add the old initials or footer slash mark.
 
-The visual language is information-led: compact labels, tabular figures, clear signal color, strong hierarchy, and limited accent moments. Cards should represent real grouped objects or tools, not every section. Avoid cards nested inside cards.
+## Components
 
-## Accessibility
+Panels are solid `--surface` with a 1 px `--line` border. Buttons and cards use about 6 px radius; search uses about 8 px. Primary actions use the primary button roles. Secondary actions have a `--text` outline and transparent background. Search uses `--surface`, a `--text` outline, and `--accent` focus. Icons use approximately 1.5 px strokes. Avoid translucent panels, gradients, glow, blur, soft shadows, and pill shaped controls.
 
-- Use semantic landmarks and native controls; preserve logical heading order and accessible names.
-- All actions must work by keyboard with visible `:focus-visible`; focus must not be hidden by sticky chrome.
-- Never rely on signal color alone. Pair it with text, icons, shape, or position and verify contrast in light and dark modes.
-- Support zoom, long labels, dynamic data, touch, and reduced motion. Canvas or chart content needs a meaningful textual/DOM alternative where the data matters.
+Keep green and red in data displays. Ocre marks where the reader is: focus, selection, active navigation, and the selected network node. It should not cover large areas. Canvas and Three.js components resolve computed CSS tokens at the rendering boundary; they must not carry a second palette.
 
-## Preserve and avoid
+## Accessibility and implementation
 
-Preserve the homepage's dark constellation, docking search, sticky ticker story, restrained teal accent, and current brand voice unless a brief explicitly changes it.
+Normal text must reach 4.5:1 contrast in both themes. `--text` and `--text-muted` do so on both `--bg` and `--surface`. The light ocre is reserved for non-text indicators or large labels because it does not reach 4.5:1 as small text on paper. Preserve visible keyboard focus and reduced-motion behavior. `e2e/visual-identity.spec.ts` captures the homepage, company page, and footer in both themes and checks the core text and button contrast pairs.
 
-Avoid generic AI output: repeated equal cards, interchangeable SaaS heroes, gratuitous glassmorphism, glow everywhere, decorative gradients or blobs, excessive pills, one-note blue/purple palettes, oversized headings in dense product views, stock imagery without product meaning, and animation that does not clarify state or navigation.
-
-## Known unresolved areas
-
-- Dark token declarations and legacy `--nl-*` tokens overlap; no consolidation decision is approved.
-- Reduced motion coverage is partial, particularly around the homepage hero/canvas.
-- Framer Motion, R3F/Drei, and 3D force-graph packages are installed but no current runtime use was confirmed.
-- Formal contrast, type-scale, and component-state audits remain pending. Treat these as review work, not permission for an unscoped redesign.
+Reuse `components/ui` primitives and existing navigation before adding new component styles. Add a new semantic role in `app/globals.css` only when the existing roles cannot express a real product meaning; keep geometry in the owning CSS module. Keep page structure and copy decisions separate from identity changes.

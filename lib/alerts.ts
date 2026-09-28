@@ -135,7 +135,7 @@ export async function sendSignalFlipAlertEmail({
 
   const greeting = firstName ? `Hi ${firstName},` : 'Hi,'
   const html = `
-    <div style="font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#111827;line-height:1.5;">
+    <div style="font-family:Arial,system-ui,sans-serif;color:#111827;line-height:1.5;">
       <p>${greeting}</p>
       <p>One or more of your watched assets had a model signal flip.</p>
       <table style="border-collapse:collapse;width:100%;max-width:640px;">

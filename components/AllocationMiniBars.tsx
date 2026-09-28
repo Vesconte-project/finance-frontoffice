@@ -73,7 +73,7 @@ export default function AllocationMiniBars({
   tone = 'primary',
 }: AllocationMiniBarsProps) {
   return (
-    <div className="rounded-2xl border border-border bg-surface-card p-3 shadow-sm">
+    <div className="rounded-md border border-border bg-surface-card p-3">
       <div className="mb-2 text-[12px] font-semibold text-content-secondary">{title}</div>
       <ChartContainer className="h-[210px] w-full min-w-0">
         {({ width, height, palette }) => {
@@ -103,7 +103,7 @@ export default function AllocationMiniBars({
                 tick={{ fontSize: 12, fill: palette.text }}
                 interval={0}
               />
-              <Tooltip content={<AllocationTooltip palette={palette} />} cursor={{ fill: 'rgba(37,99,235,0.08)' }} />
+              <Tooltip content={<AllocationTooltip palette={palette} />} cursor={{ fill: 'var(--surface)' }} />
               <Bar dataKey="value" fill={barColor} radius={[6, 6, 6, 6]} />
             </BarChart>
           )

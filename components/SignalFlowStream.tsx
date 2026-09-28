@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import ChartContainer, {
   type ChartPalette,
   ChartTooltipCard,
@@ -205,7 +205,6 @@ export default function SignalFlowStream({
 }: {
   signals: FlowSignalPoint[]
 }) {
-  const gradientId = useId().replace(/:/g, '')
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
   const [hasEntered, setHasEntered] = useState(false)
 
@@ -292,15 +291,6 @@ export default function SignalFlowStream({
           const currentSegmentFillOpacity = palette.isDark ? 0.22 : 0.34
           const currentSegmentStrokeOpacity = palette.isDark ? 0.52 : 0.7
 
-          const gradientStops = positionedSegments.flatMap((segment, index) => {
-            const startOffset = `${((segment.startX - padding.left) / innerWidth) * 100}%`
-            const endOffset = `${((segment.endX - padding.left) / innerWidth) * 100}%`
-            const color = signalColor(segment.direction, palette)
-            const next = positionedSegments[index + 1]
-            const abrupt = next ? [{ offset: endOffset, color: signalColor(next.direction, palette) }] : []
-            return [{ offset: startOffset, color }, { offset: endOffset, color }, ...abrupt]
-          })
-
           const timeTickIndexes = [0, Math.floor((points.length - 1) / 2), points.length - 1].filter(
             (value, idx, arr) => arr.indexOf(value) === idx
           )
@@ -321,15 +311,7 @@ export default function SignalFlowStream({
               role="img"
               aria-label="Signal flow timeline"
             >
-              <defs>
-                <linearGradient id={`stream-gradient-${gradientId}`} x1="0" y1="0" x2="1" y2="0">
-                  {gradientStops.map((stop, index) => (
-                    <stop key={`${stop.offset}-${index}`} offset={stop.offset} stopColor={stop.color} />
-                  ))}
-                </linearGradient>
-              </defs>
-
-              <rect x={0} y={0} width={width} height={height} fill="transparent" />
+<rect x={0} y={0} width={width} height={height} fill="transparent" />
 
               {positionedSegments.map((segment, index) => (
                 <rect
@@ -391,7 +373,7 @@ export default function SignalFlowStream({
                     y={padding.top + innerHeight / 2 + 4}
                     textAnchor="middle"
                     fontSize={11}
-                    fontWeight={600}
+                    fontWeight={500}
                     fill={withAlpha(signalColor(segment.direction, palette), palette.isDark ? 0.82 : 0.95)}
                     style={{
                       paintOrder: 'stroke',
@@ -415,7 +397,7 @@ export default function SignalFlowStream({
                 <path
                   d={path}
                   fill="none"
-                  stroke={`url(#stream-gradient-${gradientId})`}
+                  stroke="var(--text)"
                   strokeWidth={16}
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -424,7 +406,7 @@ export default function SignalFlowStream({
                 <path
                   d={path}
                   fill="none"
-                  stroke={`url(#stream-gradient-${gradientId})`}
+                  stroke="var(--text)"
                   strokeWidth={8}
                   strokeLinecap="round"
                   strokeLinejoin="round"

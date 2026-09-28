@@ -38,7 +38,7 @@ function toneFillClass(direction: SignalDirection): string {
 
 function fillStrengthClass(conviction: number | null): string {
   const band = convictionBand(convictionPercent(conviction))
-  if (band === 'high') return 'opacity-100 shadow-[var(--shadow-glow-accent)]'
+  if (band === 'high') return 'opacity-100'
   if (band === 'developing') return 'opacity-90'
   if (band === 'weak') return 'opacity-80'
   return 'opacity-65'
@@ -66,12 +66,12 @@ export default function SignalBlock({
       {showLabel ? <div className="text-filter-label">{label}</div> : null}
       <div
         className={cn(
-          'state-interactive rounded-[var(--radius-md)] border border-border/85 bg-surface-card px-3 py-2 shadow-[var(--shadow-xs)] hover:-translate-y-[1px] hover:shadow-[var(--shadow-glow-accent)]',
+          'state-interactive rounded-[var(--radius-md)] border border-border/85 bg-surface-card px-3 py-2 hover:-translate-y-[1px]',
           compact ? 'px-2.5 py-2' : null
         )}
       >
         <div className="flex items-center justify-between gap-2">
-          <span className={cn('inline-flex rounded-full border px-2 py-0.5 text-label-sm', tonePillClass(direction))}>
+          <span className={cn('inline-flex rounded-md border px-2 py-0.5 text-label-sm', tonePillClass(direction))}>
             {directionLabel(direction)}
           </span>
           <span className="text-data-sm numeric-tabular text-content-primary">{formatConviction(conviction)}</span>

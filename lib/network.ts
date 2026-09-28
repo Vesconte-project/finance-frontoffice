@@ -117,11 +117,11 @@ type BackendNetworkGraph = Omit<Partial<NetworkGraph>, 'nodes' | 'edges'> & {
 }
 
 const LAYER_PRESENTATION: Record<string, Pick<NetworkEdge, 'relationshipLabel' | 'relationshipDescription' | 'relationshipColor' | 'relationshipDash' | 'relationshipDirectional'>> = {
-  raw_price: { relationshipLabel: 'Raw price', relationshipDescription: 'Daily-return co-movement.', relationshipColor: '#36B3FF', relationshipDash: null, relationshipDirectional: false },
-  residual_price: { relationshipLabel: 'Residual price', relationshipDescription: 'Idiosyncratic relationship after market and FX factors.', relationshipColor: '#1FC8A7', relationshipDash: null, relationshipDirectional: false },
-  lead_lag: { relationshipLabel: 'Lead / lag', relationshipDescription: 'Directional lead/lag relationship.', relationshipColor: '#F2B84B', relationshipDash: null, relationshipDirectional: true },
-  theme_etf: { relationshipLabel: 'Theme ETF', relationshipDescription: 'ETF or theme co-membership.', relationshipColor: '#A78BFA', relationshipDash: [4, 3], relationshipDirectional: false },
-  probable_spurious: { relationshipLabel: 'Probable spurious', relationshipDescription: 'Strong raw relationship with weak residual support.', relationshipColor: '#FF867B', relationshipDash: [5, 3], relationshipDirectional: false },
+  raw_price: { relationshipLabel: 'Raw price', relationshipDescription: 'Daily-return co-movement.', relationshipColor: 'var(--text-muted)', relationshipDash: null, relationshipDirectional: false },
+  residual_price: { relationshipLabel: 'Residual price', relationshipDescription: 'Idiosyncratic relationship after market and FX factors.', relationshipColor: 'var(--text-muted)', relationshipDash: null, relationshipDirectional: false },
+  lead_lag: { relationshipLabel: 'Lead / lag', relationshipDescription: 'Directional lead/lag relationship.', relationshipColor: 'var(--text-muted)', relationshipDash: null, relationshipDirectional: true },
+  theme_etf: { relationshipLabel: 'Theme ETF', relationshipDescription: 'ETF or theme co-membership.', relationshipColor: 'var(--text-muted)', relationshipDash: [4, 3], relationshipDirectional: false },
+  probable_spurious: { relationshipLabel: 'Probable spurious', relationshipDescription: 'Strong raw relationship with weak residual support.', relationshipColor: 'var(--text-muted)', relationshipDash: [5, 3], relationshipDirectional: false },
 }
 
 function normalizedSymbol(value: unknown): string {

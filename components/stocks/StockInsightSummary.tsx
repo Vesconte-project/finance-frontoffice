@@ -102,7 +102,7 @@ export default function StockInsightSummary({
         : 'text-content-primary'
 
   return (
-    <div className="rounded-[var(--radius-xl)] border border-border/45 bg-surface-card p-5 shadow-[var(--shadow-lg)] md:p-6">
+    <div className="rounded-[var(--radius-xl)] border border-border/45 bg-surface-card p-5 md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="text-filter-label">Decision Dashboard</div>

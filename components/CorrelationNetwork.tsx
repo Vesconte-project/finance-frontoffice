@@ -28,7 +28,7 @@ export default function CorrelationNetwork({
 
   return (
     <div className="space-y-3">
-      <div className="relative overflow-hidden rounded-[8px] border border-[rgba(255,255,255,0.08)] bg-[var(--bg-surface)] p-4">
+      <div className="relative overflow-hidden rounded-[8px] border border-[var(--line)] bg-[var(--surface)] p-4">
         <ChartContainer className="h-[340px]" loadingText="Loading correlation network...">
           {({ width, height }) => (
             <NetworkGraphCanvas

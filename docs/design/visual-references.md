@@ -9,18 +9,18 @@ External work is inspiration for principles, never a source to copy branding, la
 | `app/globals.css` and rendered components | Runtime source of truth | Tokens, utilities, responsive and interaction patterns |
 | `design/direction-board.html` | Internal exploration | Directional comparison only |
 | `design/hero-constellation-scroll.html` | Internal exploration | Related to the implemented homepage hero |
-| `design/brand-navy-teal-system.html` | Internal exploration | Closest internal study of the current brand palette |
+| `design/brand-navy-teal-system.html` | Historical exploration | Superseded palette; do not use as a runtime color source |
 | Other `design/*.html` and `design/brand-tokens.css` | Historical/internal studies | Not canonical; verify against runtime before reuse |
 
 ## Runtime implementation exemplars
 
-Study the rendered pattern, its responsive states, and its direct styling before extending it. These are implementation references, not components to copy wholesale.
+Study the rendered pattern, its responsive states, and its direct styling before extending it. These are implementation references, not components to copy wholesale. The identity in `docs/design/design-system.md` and `app/globals.css` takes precedence over dated descriptions below.
 
 | Pattern | Study | What to preserve |
 | --- | --- | --- |
-| Marketing navigation and glass disclosure | `components/marketing/HeaderBar.tsx`, `components/marketing/SiteChromeMotion.tsx`, and the `.site-header*` rules in `app/globals.css` | One continuous surface, content hierarchy, CSS-owned morphing, open/close states, outside/Escape handling, and the desktop/mobile search transition |
+| Marketing navigation and disclosure | `components/marketing/HeaderBar.tsx`, `components/marketing/SiteChromeMotion.tsx`, and the `.site-header*` rules in `app/globals.css` | Solid semantic surfaces, content hierarchy, CSS-owned morphing, open/close states, outside/Escape handling, and the desktop/mobile search transition |
 | App navigation composition | `components/Nav.tsx`, `components/BrandHomeMenu.tsx`, and `components/marketing/site-chrome.tsx` | Active-state hierarchy, portal positioning, compact information density, and responsive search placement; treat it as a visual/compositional reference and re-check focus semantics for any new disclosure |
-| Editorial typography and premium surfaces | `MarketingPageShell`, `SectionHeading`, and `GlassPanel` in `components/marketing/site-chrome.tsx` | Display/body contrast, constrained line length, asymmetric accent moments, layered highlights, and restrained use of glass rather than token-by-token imitation |
+| Editorial typography and surfaces | `MarketingPageShell`, `SectionHeading`, and `GlassPanel` in `components/marketing/site-chrome.tsx` | Source Serif 4 headings, IBM Plex Sans body copy, constrained line length, solid surfaces, and restrained accent for active states |
 | Dense financial cards | `components/ScreenerSignalCard.tsx` with `components/ui/Card.tsx` and `components/ui/SignalBlock.tsx` | Label/value hierarchy, tabular numerals, signal redundancy, progressive density, and mobile readability |
 | Responsive narrative motion | `components/marketing/HomeTickerStory.tsx` | Separate mobile/desktop geometry, transform/opacity animation, stable scroll reversal, and a meaningful reduced-motion final state |
 | Complex hero motion | `components/marketing/HeroConstellation.tsx`, `components/motion/ScrollRuntime.tsx`, and `docs/design/motion-guidelines.md` | Singleton Lenis ownership, explicit page profiles, scoped GSAP scenes, cleanup, nonblank static content, and reduced-motion behavior |

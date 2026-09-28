@@ -21,8 +21,18 @@ import {
   type SceneCommunity,
   type SceneNode,
 } from '@/lib/market-universe-layout'
-import { marketRegionColor, normalizeMarketRegion } from '@/lib/network-regions'
+import { marketRegionColor } from '@/lib/network-regions'
 import styles from './MarketUniverse.module.css'
+
+function sceneColor(token: '--bg' | '--surface' | '--text' | '--text-muted' | '--accent'): string {
+  if (typeof document === 'undefined') return 'black'
+  return getComputedStyle(document.documentElement).getPropertyValue(token).trim()
+}
+
+function resolveSceneColor(color: string): string {
+  const token = color.match(/^var\((--[a-z-]+)\)$/)?.[1]
+  return token ? sceneColor(token as Parameters<typeof sceneColor>[0]) : color
+}
 
 function clamp(value: number, minimum = 0, maximum = 1): number {
   return Math.max(minimum, Math.min(maximum, value))
@@ -203,53 +213,6 @@ function CameraRig({
   )
 }
 
-// Soft radial-gradient territory glow behind each field. This is what fills the
-// space between the dots and makes the economy read as continuous, overlapping
-// regions rather than scattered clusters. One camera-facing sprite per field.
-let sharedFieldGlowTexture: THREE.Texture | null = null
-function fieldGlowTexture(): THREE.Texture {
-  if (sharedFieldGlowTexture) return sharedFieldGlowTexture
-  const size = 128
-  const canvas = document.createElement('canvas')
-  canvas.width = size
-  canvas.height = size
-  const context = canvas.getContext('2d')!
-  const gradient = context.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
-  gradient.addColorStop(0, 'rgba(255,255,255,1)')
-  gradient.addColorStop(0.4, 'rgba(255,255,255,0.5)')
-  gradient.addColorStop(1, 'rgba(255,255,255,0)')
-  context.fillStyle = gradient
-  context.fillRect(0, 0, size, size)
-  sharedFieldGlowTexture = new THREE.CanvasTexture(canvas)
-  return sharedFieldGlowTexture
-}
-
-function FieldGlow({ community, hovered, selected }: {
-  community: SceneCommunity
-  hovered: boolean
-  selected: boolean
-}) {
-  const texture = useMemo(() => fieldGlowTexture(), [])
-  // Most communities carry no dominant region yet, which would render an
-  // invisible slate glow; fall back to a soft warm tint so every field still
-  // reads as a territory.
-  const region = normalizeMarketRegion(community.dominantRegion)
-  const color = region === 'unknown' ? '#b9c2b0' : marketRegionColor(community.dominantRegion)
-  const scale = community.sceneRadius * (selected ? 6.4 : 5.6)
-  const opacity = selected ? 0.36 : hovered ? 0.32 : 0.28
-  return (
-    <sprite scale={[scale, scale, 1]} renderOrder={-2}>
-      <spriteMaterial
-        map={texture}
-        color={color}
-        transparent
-        opacity={opacity}
-        depthWrite={false}
-      />
-    </sprite>
-  )
-}
-
 // A field's boundary ring — a thin circle drawn around the field's balls to show
 // where a field is. The points trace a closed circle in the correlation (x/y)
 // plane; the map is viewed near face-on, so it reads as a ring encircling the
@@ -273,7 +236,7 @@ function FieldCloud({ community, level, reducedMotion, hovered }: {
 }) {
   const ref = useRef<THREE.Points>(null)
   const radius = community.sceneRadius
-  const color = marketRegionColor(community.dominantRegion)
+  const color = resolveSceneColor(marketRegionColor(community.dominantRegion))
   const positions = useMemo(() => {
     const count = level === 'economy'
       ? Math.round(clamp(radius * 34, 72, 146))
@@ -342,7 +305,7 @@ function AmbientDust({ reducedMotion }: { reducedMotion: boolean }) {
   return (
     <points ref={pointsRef} frustumCulled>
       <bufferGeometry><bufferAttribute attach="attributes-position" args={[positions, 3]} /></bufferGeometry>
-      <pointsMaterial color="#6d8194" size={0.025} transparent opacity={0.1} depthWrite={false} />
+      <pointsMaterial color={sceneColor('--text')} size={0.025} transparent opacity={0.1} depthWrite={false} />
     </points>
   )
 }
@@ -371,7 +334,7 @@ function CommunityField({
   const { camera } = useThree()
   const ringRef = useRef<Line2>(null)
   const hitboxRef = useRef<THREE.Mesh>(null)
-  const color = marketRegionColor(community.dominantRegion)
+  const color = resolveSceneColor(marketRegionColor(community.dominantRegion))
   const ringPoints = useMemo(() => fieldRingPoints(community.coreRadius), [community.coreRadius])
   // The field boundary ring belongs to the "from afar" reading of the map: it
   // marks where each field sits while the whole economy is in view, then
@@ -401,7 +364,7 @@ function CommunityField({
   })
   return (
     <group position={vector(community.position)}>
-      {interactive ? <FieldGlow community={community} hovered={hovered} selected={selected} /> : null}
+
       <FieldCloud community={community} level={level} reducedMotion={reducedMotion} hovered={hovered || selected} />
       {interactive ? (
         <Line
@@ -563,17 +526,17 @@ function FieldNameLabels({
 // per-instance color and scale. Per-instance opacity is not available on a
 // shared material, so contextual nodes are faded by blending their color toward
 // the paper background rather than by transparency.
-const PAPER_COLOR = new THREE.Color('#f3efe6')
+function paperColor(): THREE.Color { return new THREE.Color(sceneColor('--bg')) }
 
 function nodeBodyColor(node: SceneNode, active: boolean, contextual: boolean): THREE.Color {
-  const base = new THREE.Color(marketRegionColor(node.region))
-  if (active) return base.lerp(new THREE.Color('#ffffff'), 0.14)
+  const base = new THREE.Color(resolveSceneColor(marketRegionColor(node.region)))
+  if (active) return base.lerp(new THREE.Color(sceneColor('--text')), 0.14)
   // Grade prominence by relevance so systemic leaders read from a distance and
   // the long tail recedes toward the paper ground instead of forming a uniform
   // mass. Boundary/context nodes fade the most.
   const reach = clamp(node.centrality || node.importance)
   const fade = contextual ? 0.5 : 0.08 + (1 - reach) * 0.34
-  return base.lerp(PAPER_COLOR, fade)
+  return base.lerp(paperColor(), fade)
 }
 
 function NodeInstances({
@@ -614,7 +577,7 @@ function NodeInstances({
               key={`halo:${node.communityId}:${node.symbol}:${index}`}
               position={vector(node.position)}
               scale={node.sceneRadius * sizeBoost * (1.34 + reach * 0.72 + volatility * 0.2)}
-              color={marketRegionColor(node.region)}
+              color={resolveSceneColor(marketRegionColor(node.region))}
             />
           )
         })}
@@ -644,14 +607,14 @@ function NodeInstances({
       {bridges.map((node, index) => (
         <mesh key={`bridge:${node.symbol}:${index}`} position={vector(node.position)} rotation={[Math.PI / 2, 0, 0]}>
           <torusGeometry args={[node.sceneRadius * 1.6, 0.012 + node.bridgeScore * 0.01, 8, 36]} />
-          <meshBasicMaterial color="#168f86" transparent opacity={0.2 + node.bridgeScore * 0.26} depthWrite={false} />
+          <meshBasicMaterial color={sceneColor('--text')} transparent opacity={0.2 + node.bridgeScore * 0.26} depthWrite={false} />
         </mesh>
       ))}
 
       {active ? (
         <mesh position={vector(active.position)} renderOrder={2}>
           <sphereGeometry args={[active.sceneRadius * 3.4, 20, 20]} />
-          <meshBasicMaterial color={marketRegionColor(active.region)} transparent opacity={0.14} depthWrite={false} />
+          <meshBasicMaterial color={resolveSceneColor(marketRegionColor(active.region))} transparent opacity={0.14} depthWrite={false} />
         </mesh>
       ) : null}
 
@@ -904,7 +867,7 @@ function RelationshipLine({
 }) {
   const strength = clamp(Math.abs(edge.strength))
   const confidence = edge.confidence === null ? null : clamp(edge.confidence)
-  const color = edge.strength < 0 ? '#b56883' : active ? '#168f86' : '#718995'
+  const color = active ? sceneColor('--accent') : sceneColor('--text')
   const opacity = confidence === null
     ? active ? 0.34 : 0.045
     : active
@@ -948,11 +911,11 @@ function RelationshipLine({
 // in the vertex color (faint edges blend toward the paper background), since a
 // shared line material has no per-segment opacity.
 function overviewEdgeColor(edge: AtlasEdge): THREE.Color {
-  const base = new THREE.Color(edge.strength < 0 ? '#b56883' : '#5f7a86')
+  const base = new THREE.Color(sceneColor('--text'))
   const strength = clamp(Math.abs(edge.strength))
   const confidence = edge.confidence === null ? strength : clamp(edge.confidence)
   const prominence = clamp(confidence * 0.6 + strength * 0.4)
-  return base.lerp(PAPER_COLOR, 0.7 - Math.pow(prominence, 1.2) * 0.64)
+  return base.lerp(paperColor(), 0.7 - Math.pow(prominence, 1.2) * 0.64)
 }
 
 function OverviewEdges({ edges, positions }: { edges: AtlasEdge[]; positions: Map<string, AtlasPosition> }) {
@@ -1070,11 +1033,11 @@ function Universe(props: MarketUniverseSceneProps) {
 
   return (
     <>
-      <color attach="background" args={['#f3efe6']} />
-      <fog attach="fog" args={['#f3efe6', 22, 72]} />
+      <color attach="background" args={[sceneColor('--bg')]} />
+      <fog attach="fog" args={[sceneColor('--bg'), 22, 72]} />
       <ambientLight intensity={1.75} />
-      <directionalLight position={[4, 8, 10]} intensity={1.35} color="#ffffff" />
-      <pointLight position={[-8, -2, 5]} intensity={9} distance={36} color="#63b8b0" />
+      <directionalLight position={[4, 8, 10]} intensity={1.35} color={sceneColor('--text')} />
+
       <AmbientDust reducedMotion={reducedMotion} />
       <CameraRig frame={focus} reducedMotion={reducedMotion} mobile={mobile} />
 

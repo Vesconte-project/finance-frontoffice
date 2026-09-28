@@ -6,8 +6,9 @@ export const clerkAppearance = {
     colorBorder: 'var(--glass-border)',
     colorForeground: 'var(--color-text-primary)',
     colorMutedForeground: 'var(--color-text-secondary)',
-    colorPrimary: 'var(--brand-spark)',
-    borderRadius: 'var(--radius-2xl)',
+    colorPrimary: 'var(--btn-primary-bg)',
+    colorPrimaryForeground: 'var(--btn-primary-fg)',
+    borderRadius: '6px',
   },
   elements: {
     card: {
@@ -25,23 +26,20 @@ export const clerkAppearance = {
   },
 } satisfies NextClerkProviderProps['appearance']
 
-// The hosted auth routes use the homepage's light palette even when the viewer's
-// system preference is dark. Keep this scoped to SignIn/SignUp so account menus
-// elsewhere continue to follow their own surrounding surface.
 export const authAppearance = {
   options: { elevation: 'flush' },
   variables: {
-    colorBackground: '#f3efe6',
-    colorForeground: '#142943',
-    colorMutedForeground: '#53657b',
-    colorPrimary: '#0b8178',
-    colorPrimaryForeground: '#ffffff',
-    colorNeutral: '#142943',
-    colorInput: '#ffffff',
-    colorInputForeground: '#142943',
-    colorBorder: '#cbd6d4',
-    borderRadius: '14px',
-    fontFamily: 'var(--font-geist-sans), sans-serif',
+    colorBackground: 'var(--bg)',
+    colorForeground: 'var(--text)',
+    colorMutedForeground: 'var(--text-muted)',
+    colorPrimary: 'var(--btn-primary-bg)',
+    colorPrimaryForeground: 'var(--btn-primary-fg)',
+    colorNeutral: 'var(--text)',
+    colorInput: 'var(--surface)',
+    colorInputForeground: 'var(--text)',
+    colorBorder: 'var(--line)',
+    borderRadius: '6px',
+    fontFamily: 'var(--font-body), sans-serif',
   },
   elements: {
     rootBox: { width: '100%', maxWidth: 'none' },
@@ -52,13 +50,13 @@ export const authAppearance = {
       backgroundColor: 'transparent',
       border: 'none',
       boxShadow: 'none',
-      color: '#142943',
+      color: 'var(--text)',
     },
     footer: { backgroundColor: 'transparent' },
     headerTitle: {
-      fontFamily: 'var(--font-auth-display), sans-serif',
+      fontFamily: 'var(--font-display), serif',
       fontSize: '1.75rem',
-      letterSpacing: '-0.025em',
+      letterSpacing: 'normal',
     },
   },
 } satisfies NextClerkProviderProps['appearance']

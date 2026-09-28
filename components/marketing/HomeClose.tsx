@@ -11,11 +11,11 @@ export default function HomeClose() {
     >
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,var(--brand-spark),transparent)] opacity-60"
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-transparent opacity-60"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[440px] w-[860px] max-w-[92vw] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--brand-spark)_14%,transparent),transparent)] blur-2xl"
+        className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[440px] w-[860px] max-w-[92vw] -translate-x-1/2 rounded-md bg-transparent"
       />
 
       <h2
@@ -34,7 +34,7 @@ export default function HomeClose() {
         signedInLabel="Open workspace"
         analyticsId="home_close_sign_up"
         trailingIcon={<ArrowRight className="size-5" aria-hidden="true" />}
-        className="mt-10 inline-flex h-14 items-center justify-center gap-3 rounded-full bg-[var(--brand-spark)] px-8 font-semibold text-[color:var(--brand-spark-on)] shadow-[0_18px_50px_-12px_var(--brand-spark)] transition hover:bg-[var(--accent-text)]"
+        className="mt-10 inline-flex h-14 items-center justify-center gap-3 rounded-md bg-[var(--btn-primary-bg)] px-8 font-medium text-[var(--btn-primary-fg)] transition"
       />
       <div>
         <Link

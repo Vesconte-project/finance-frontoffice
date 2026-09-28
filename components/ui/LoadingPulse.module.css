@@ -20,7 +20,7 @@
   border-radius: 50%;
   background: color-mix(in srgb, var(--brand-spark) 74%, var(--color-text-muted));
   opacity: 0.14;
-  filter: blur(0.55px);
+  filter: none;
   transform: scale(0.66);
   animation: loading-point-phase 1.25s var(--motion-ease-soft) infinite;
   animation-delay: calc(var(--loading-point-index) * 90ms);
@@ -47,12 +47,12 @@
 @keyframes loading-point-phase {
   0%, 62%, 100% {
     opacity: 0.14;
-    filter: blur(0.55px);
+    filter: none;
     transform: scale(0.66);
   }
   26% {
     opacity: 0.92;
-    filter: blur(0);
+    filter: none;
     transform: scale(1);
   }
 }

@@ -175,8 +175,8 @@ function metricBarClass(label: string): string {
   if (label === 'Trend') return 'bg-sky-500'
   if (label === 'Momentum') return 'bg-indigo-500'
   if (label === 'Risk') return 'bg-rose-500'
-  if (label === 'Yield') return 'bg-amber-500'
-  return 'bg-emerald-500'
+  if (label === 'Yield') return 'bg-[var(--text-muted)]'
+  return 'bg-[var(--up)]'
 }
 
 function wait(ms: number): Promise<void> {
@@ -629,7 +629,7 @@ export default function ModelBuilderClient({
                   {conditions.map((condition, index) => (
                     <div
                       key={condition.id}
-                      className="rounded-[var(--radius-xl)] border border-border bg-[linear-gradient(160deg,var(--surface-card),var(--surface-elevated))] p-3"
+                      className="rounded-[var(--radius-xl)] border border-border bg-transparent p-3"
                     >
                       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                         <div className="text-caption text-content-muted">

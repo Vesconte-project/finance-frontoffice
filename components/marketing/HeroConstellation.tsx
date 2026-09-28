@@ -2,14 +2,10 @@
 
 import { useEffect, useRef } from 'react'
 import gsap from 'gsap'
-import { Sora, JetBrains_Mono, Inter } from 'next/font/google'
 import { useScrollRuntime } from '@/components/motion/ScrollRuntime'
 import { scrollMotionTokens } from '@/components/motion/scroll-tokens'
 import { PICK_READING_CONTENT, PICK_READING_KEYS } from '@/lib/picks-content'
 
-const sora = Sora({ subsets: ['latin'], weight: ['400', '600', '700', '800'], display: 'swap' })
-const inter = Inter({ subsets: ['latin'], display: 'swap' })
-const mono = JetBrains_Mono({ subsets: ['latin'], weight: ['400', '500', '600'], display: 'swap' })
 
 type HcNode = {
   bx: number; by: number; bz: number; r: number; label: string | null; signal: boolean
@@ -22,56 +18,43 @@ type HcPulse = { a: number; b: number; t: number; sp: number }
 
 const CSS = `
 .hc-root{
-  --font-display:"Sora",system-ui,sans-serif;--font-body:"Inter",system-ui,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,monospace;
-  --bg:#f3efe6;--text:#142943;--text-2:#5b6978;--text-3:#87929b;
-  --spark:#0b8178;--spark-2:#1ba69a;
-  --glass:rgba(255,255,255,.66);--glass-border:rgba(20,41,67,.16);--hairline:rgba(20,41,67,.12);
-  --focus-bg:rgba(243,239,230,.94);--focus-text:var(--text);--focus-muted:var(--text-2);--focus-border:var(--hairline);--focus-shadow:0 28px 80px rgba(20,41,67,.18);
+  --text-2:var(--text-muted);--text-3:var(--text-muted);
+  --spark:var(--accent);--spark-2:var(--accent);
+  --glass:var(--surface);--glass-border:var(--line);--hairline:var(--line);
+  --focus-bg:var(--surface);--focus-text:var(--text);--focus-muted:var(--text-muted);--focus-border:var(--line);--focus-shadow:none;
   position:relative;background:var(--bg);color:var(--text);font-family:var(--font-body);
-}
-.hc-root[data-theme="dark"],[data-theme="dark"] .hc-root{
-  --bg:#04060c;--text:#eaf0ff;--text-2:#9fb0d0;--text-3:#61708f;
-  --spark:#19c9b6;--spark-2:#3fe0cd;
-  --glass:rgba(255,255,255,.05);--glass-border:rgba(255,255,255,.14);--hairline:rgba(255,255,255,.10);
-  --focus-bg:rgba(4,6,12,.94);--focus-text:var(--text);--focus-muted:var(--text-2);--focus-border:var(--hairline);--focus-shadow:0 40px 100px -30px #000;
 }
 .hc-root *{box-sizing:border-box}
 .hc-root #hc-bg{position:fixed;inset:0;z-index:0;display:block;background:var(--bg)}
 .hc-root .hc-veil{position:fixed;inset:0;z-index:1;pointer-events:none}
 .hc-root .hc-veil::before,.hc-root .hc-veil::after{content:"";position:absolute;inset:0}
 .hc-root .hc-veil::after{background:var(--bg);opacity:calc(var(--hc-field-progress,0) * .65)}
-.hc-root .hc-veil::before{opacity:calc(1 - var(--hc-field-progress,0));background:
-  linear-gradient(90deg,rgba(243,239,230,.76),rgba(243,239,230,.34) 34%,rgba(243,239,230,.08) 60%,transparent 80%),
-  radial-gradient(120% 90% at 50% 50%,transparent 55%,rgba(243,239,230,.24))}
-.hc-root[data-theme="dark"] .hc-veil::before,[data-theme="dark"] .hc-root .hc-veil::before{background:
-  linear-gradient(90deg,rgba(4,6,12,.93),rgba(4,6,12,.58) 34%,rgba(4,6,12,.16) 60%,transparent 80%),
-  radial-gradient(120% 90% at 50% 50%,transparent 55%,rgba(4,6,12,.55))}
-.hc-root .hc-progress{position:fixed;left:0;top:0;height:2px;width:0;background:linear-gradient(90deg,var(--spark),var(--spark-2));z-index:60;box-shadow:0 0 12px var(--spark)}
+.hc-root .hc-veil::before{background:none}
+.hc-root .hc-progress{position:fixed;left:0;top:0;height:2px;width:0;background:var(--accent);z-index:60}
 .hc-root #hc-stage{position:relative;height:100vh;z-index:10;pointer-events:none}
 .hc-root .hc-beat{position:absolute;inset:0;display:flex;align-items:center;padding:0 clamp(24px,6vw,90px);will-change:opacity,transform}
 .hc-root .hc-in{max-width:1080px;width:100%;margin:0 auto}
 .hc-root .hc-in a,.hc-root .hc-in button{pointer-events:auto}
-.hc-root .hc-card{display:flex;align-items:center;gap:16px;width:fit-content;margin-top:26px;padding:14px 18px;border-radius:18px;background:var(--glass);border:1px solid var(--glass-border);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 24px 60px -24px #000;backdrop-filter:blur(16px) saturate(1.5);-webkit-backdrop-filter:blur(16px) saturate(1.5)}
-.hc-root .hc-card .v{font-family:var(--font-display);font-weight:700;font-size:20px}
+.hc-root .hc-card{display:flex;align-items:center;gap:16px;width:fit-content;margin-top:26px;padding:14px 18px;border-radius:6px;background:var(--surface);border:1px solid var(--line)}
+.hc-root .hc-card .v{font-family:var(--font-mono);font-weight:500;font-size:20px}
 .hc-root .hc-fieldcaption,.hc-root .hc-fieldreadings{position:fixed;bottom:16px;z-index:40;font-family:var(--font-mono);font-size:11px;color:var(--text-2);pointer-events:none}
 .hc-root .hc-fieldcaption{left:24px}
 .hc-root .hc-fieldreadings{right:24px;text-align:right}
 .hc-root #hc-focusLayer{position:fixed;inset:0;z-index:70;opacity:0;pointer-events:none}
-.hc-root #hc-focusDim{position:absolute;inset:0;background:rgba(20,41,67,.16)}
-.hc-root #hc-focusCard{position:absolute;left:54%;top:50%;width:min(360px,46vw);padding:22px;border-radius:20px;background:var(--focus-bg);color:var(--focus-text);border:1px solid var(--focus-border);box-shadow:var(--focus-shadow);backdrop-filter:blur(18px) saturate(1.15);-webkit-backdrop-filter:blur(18px) saturate(1.15)}
+.hc-root #hc-focusDim{position:absolute;inset:0;background:color-mix(in srgb,var(--bg) 70%,transparent)}
+.hc-root #hc-focusCard{position:absolute;left:54%;top:50%;width:min(360px,46vw);padding:22px;border-radius:6px;background:var(--surface);color:var(--text);border:1px solid var(--line)}
 .hc-root #hc-focusBack{background:none;border:none;color:var(--focus-muted);font-family:var(--font-mono);font-size:12px;cursor:pointer;padding:0;margin-bottom:14px}
 .hc-root #hc-focusBack:hover{color:var(--text)}
 .hc-root #hc-focusBack:focus-visible,.hc-root .hc-fc-open:focus-visible,.hc-root .hc-fc-connections a:focus-visible{outline:2px solid var(--spark-2);outline-offset:4px}
-.hc-root .hc-fc-ticker{font-family:var(--font-display);font-weight:800;font-size:36px;letter-spacing:-.03em;line-height:1;color:var(--spark)}
+.hc-root .hc-fc-ticker{font-family:var(--font-mono);font-weight:500;font-size:36px;line-height:1;color:var(--accent)}
 .hc-root .hc-fc-name{color:var(--focus-muted);font-size:13px;margin-top:3px}
 .hc-root .hc-fc-connections{margin-top:18px}
 .hc-root .hc-fc-connections>div{font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--focus-muted)}
 .hc-root .hc-fc-connections ul{display:flex;flex-wrap:wrap;gap:8px 14px;margin:8px 0 0;padding:0;list-style:none}
 .hc-root .hc-fc-connections a{font-family:var(--font-mono);font-size:12px;color:var(--focus-text);text-decoration:none}
 .hc-root .hc-fc-connections a:hover{text-decoration:underline;text-decoration-color:var(--spark);text-underline-offset:3px}
-.hc-root .hc-fc-open{display:inline-block;margin-top:18px;font-weight:600;font-size:14px;color:var(--spark);text-decoration:none}
+.hc-root .hc-fc-open{display:inline-block;margin-top:18px;font-weight:500;font-size:14px;color:var(--text);text-decoration:none}
 .hc-root .hc-fc-open:hover{text-decoration:underline;text-underline-offset:4px}
-html[data-theme="dark"] .hc-root #hc-focusDim,.hc-root[data-theme="dark"] #hc-focusDim{background:rgba(0,4,10,.52)}
 @media(max-width:767px){.hc-root .hc-fieldcaption{display:none}}
 @media(max-width:720px){.hc-root #hc-focusCard{left:12px;right:12px;top:auto;bottom:16px;width:auto;padding:20px}.hc-root .hc-fc-ticker{font-size:30px}}
 .hc-root[data-reduced-motion="true"] #hc-focusCard{transition:none}
@@ -91,7 +74,12 @@ export default function HeroConstellation() {
     const c = $('hc-bg') as HTMLCanvasElement
     const x = c.getContext('2d')!
     const stageEl = $('hc-stage')
-    const darkMode = Boolean(root.closest('[data-theme="dark"]') || document.documentElement.matches('[data-theme="dark"]'))
+    const theme = getComputedStyle(document.documentElement)
+    const themeColor = (name: string) => theme.getPropertyValue(name).trim()
+    const themeRgb = (name: string): [number, number, number] => {
+      const hex = themeColor(name).replace('#', '')
+      return [0, 2, 4].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16)) as [number, number, number]
+    }
     root.dataset.reducedMotion = String(reducedMotion)
 
     let W = 0, H = 0, DPR = 1, cx = 0, cy = 0, R = 0, cam = 0
@@ -122,7 +110,6 @@ export default function HeroConstellation() {
     // Applies under reduced motion too: it is a static treatment, not motion.
     // Not free, but not a new cost either: the same CSS filter already runs at
     // 4px through the intro and 6.5px whenever the search is focused.
-    const FIELD_SOFTEN = 1
     // ...and only while something is painted over it. The softening exists to
     // keep the field from competing with the copy on top of it, so with nothing
     // on top there is nothing to yield to and the network comes into focus.
@@ -174,12 +161,12 @@ export default function HeroConstellation() {
     }
 
     const TICKERS = ['SPY','NVDA','AAPL','MSFT','QQQ','AMZN','META','TSLA','GOOGL','JPM','XOM','AVGO','AMD','LLY','V','COST','NFLX','HD','BRK.B','GLD']
-    const COLORS: [number, number, number][] = darkMode ? [[25,201,182],[63,224,205],[139,123,255],[110,168,255]] : [[43,73,96],[78,103,119],[110,110,128],[86,106,123]]
-    const G: [number, number, number] = darkMode ? [52,211,153] : [11,129,120]
-    const spark = darkMode ? '#3fe0cd' : '#0b8178'
-    const sparkRgb = darkMode ? '25,201,182' : '11,129,120'
-    const lineRgb = darkMode ? '25,201,182' : '30,57,79'
-    const labelColor = darkMode ? 'rgba(234,240,255,0.82)' : 'rgba(20,41,67,0.62)'
+    const COLORS: [number, number, number][] = [themeRgb('--text')]
+    const G: [number, number, number] = themeRgb('--accent')
+    const spark = themeColor('--accent')
+    const sparkRgb = G.join(',')
+    const lineRgb = themeRgb('--text').join(',')
+    const labelColor = themeColor('--text-muted')
     const smooth = (a: number, b: number, t: number) => { t = Math.min(1, Math.max(0, (t - a) / (b - a))); return t * t * (3 - 2 * t) }
     const fib = (i: number, n: number) => { const y = 1 - (i / Math.max(1, n - 1)) * 2; const r = Math.sqrt(Math.max(0, 1 - y * y)); const th = i * 2.399963; return [Math.cos(th) * r, y, Math.sin(th) * r] }
 
@@ -217,31 +204,30 @@ export default function HeroConstellation() {
     function drawScene(g: CanvasRenderingContext2D, sig: number, mode: string) {
       const nodeReveal = smooth(0, 0.45, reveal)
       const edgeReveal = smooth(0.35, 1, reveal)
-      if (mode !== 'conn') { const gg = g.createRadialGradient(cx, cy, 0, cx, cy, R); gg.addColorStop(0, 'rgba(' + sparkRgb + ',' + ((darkMode ? 0.08 : 0.018) + (darkMode ? 0.06 : 0.012) * p) * (1 - focus.t) + ')'); gg.addColorStop(1, 'rgba(' + sparkRgb + ',0)'); g.fillStyle = gg; g.fillRect(0, 0, W, H) }
       for (let k = 0; k < pairs.length; k += 2) {
         const ia = pairs[k], ib = pairs[k + 1], conn = (ia === focus.i || ib === focus.i)
         if (mode === 'conn' && !conn) continue; if (mode === 'bg' && conn) continue
         const a = nodes[ia], b = nodes[ib], da = Math.min(a.da, b.da), hv = Math.max(a.hover, b.hover)
         const clar = conn ? 1 : Math.min(a.clar, b.clar), ld = 1 - focus.t * (1 - (0.06 + 0.94 * clar))
         const aA = conn ? (0.32 + 0.5 * focus.t) : ((0.03 + 0.11 * da + 0.05 * p + 0.25 * hv) * ld)
-        g.strokeStyle = (conn ? (darkMode ? 'rgba(150,245,228,' : 'rgba(19,128,119,') : 'rgba(' + lineRgb + ',') + (aA * edgeReveal) + ')'; g.lineWidth = 1 + hv * 0.5 + (conn ? focus.t * 2 : 0)
+        g.strokeStyle = 'rgba(' + (conn ? sparkRgb : lineRgb) + ',' + (aA * edgeReveal) + ')'; g.lineWidth = 1 + hv * 0.5 + (conn ? focus.t * 2 : 0)
         g.beginPath(); g.moveTo(a.sx, a.sy); g.lineTo(b.sx, b.sy); g.stroke()
       }
       if (mode !== 'conn' && focus.i < 0) {
         if (!reducedMotion && Math.random() < 0.03 && pairs.length) { const k = ((Math.random() * pairs.length / 2) | 0) * 2; pulses.push({ a: pairs[k], b: pairs[k + 1], t: 0, sp: .006 + Math.random() * .006 }) }
-        for (let i = pulses.length - 1; i >= 0; i--) { const P = pulses[i]; P.t += P.sp; if (P.t >= 1) { pulses.splice(i, 1); continue } const a = nodes[P.a], b = nodes[P.b]; const px = a.sx + (b.sx - a.sx) * P.t, py = a.sy + (b.sy - a.sy) * P.t; g.beginPath(); g.arc(px, py, 2, 0, 6.28); g.fillStyle = spark; g.shadowColor = spark; g.shadowBlur = darkMode ? 12 : 4; g.fill(); g.shadowBlur = 0 }
+        for (let i = pulses.length - 1; i >= 0; i--) { const P = pulses[i]; P.t += P.sp; if (P.t >= 1) { pulses.splice(i, 1); continue } const a = nodes[P.a], b = nodes[P.b]; const px = a.sx + (b.sx - a.sx) * P.t, py = a.sy + (b.sy - a.sy) * P.t; g.beginPath(); g.arc(px, py, 2, 0, 6.28); g.fillStyle = spark; g.fill() }
       }
       if (mode !== 'conn') {
         for (let idx = 0; idx < nodes.length; idx++) { const n = nodes[idx]
           if (idx === focus.i) continue
-          n.ph += reducedMotion ? 0 : (focus.i < 0 ? 0.006 : 0.002); const glow = reducedMotion ? 1 : 0.6 + Math.sin(n.ph) * 0.4
-          let col: string; if (n.signal) col = 'rgb(52,211,153)'; else { const bias = sig * (n.label ? 0.55 : 0.25); col = 'rgb(' + Math.round(n.rgb[0] + (G[0] - n.rgb[0]) * bias) + ',' + Math.round(n.rgb[1] + (G[1] - n.rgb[1]) * bias) + ',' + Math.round(n.rgb[2] + (G[2] - n.rgb[2]) * bias) + ')' }
+          n.ph += reducedMotion ? 0 : (focus.i < 0 ? 0.006 : 0.002)
+          let col: string; if (n.signal) col = spark; else { col = 'rgb(' + n.rgb.join(',') + ')' }
           const r = Math.min(24, Math.max(0.5, ((n.signal ? (n.r + sig * 6) : n.r) + n.hover * 5) * n.sc))
           const dim = 1 - focus.t * (1 - (0.10 + 0.90 * n.clar))
           g.globalAlpha = Math.min(1, (n.da + n.hover * 0.6) * dim * nodeReveal)
-          g.beginPath(); g.arc(n.sx, n.sy, r, 0, 6.28); g.fillStyle = col; g.shadowColor = col; g.shadowBlur = (darkMode ? (n.label ? 12 : 5) + n.hover * 16 : (n.label ? 2 : 0) + n.hover * 5) * glow; g.fill(); g.shadowBlur = 0
+          g.beginPath(); g.arc(n.sx, n.sy, r, 0, 6.28); g.fillStyle = col; g.fill()
           const lab = n.label
-          if (lab && (n.da > 0.4 || n.hover > 0.25)) { g.globalAlpha = Math.min(1, (n.da * 0.8 + n.hover) * dim * nodeReveal); g.font = '600 10px JetBrains Mono, monospace'; g.fillStyle = labelColor; g.fillText(lab, n.sx + r + 4, n.sy + 3) }
+          if (lab && (n.da > 0.4 || n.hover > 0.25)) { g.globalAlpha = 1; g.font = '500 11px IBM Plex Mono, monospace'; g.fillStyle = labelColor; g.fillText(lab, n.sx + r + 4, n.sy + 3) }
           g.globalAlpha = 1
         }
       }
@@ -249,14 +235,13 @@ export default function HeroConstellation() {
     function orb(g: CanvasRenderingContext2D, aX: number, aY: number) {
       const fn = nodes[focus.i], tone = focus.tone || spark, rr = 6 + focus.t * 15
       g.globalAlpha = Math.min(1, focus.t) * 0.28; g.beginPath(); g.arc(aX, aY, rr * 3, 0, 6.28); g.fillStyle = tone; g.fill()
-      g.globalAlpha = Math.min(1, focus.t * 1.8); g.beginPath(); g.arc(aX, aY, rr * 1.1, 0, 6.28); g.fillStyle = tone; g.shadowColor = tone; g.shadowBlur = 50; g.fill(); g.shadowBlur = 0
-      g.globalAlpha = Math.min(1, focus.t * 2); g.beginPath(); g.arc(aX, aY, rr * 0.66, 0, 6.28); g.fillStyle = darkMode ? '#ffffff' : '#fffdf7'; g.shadowColor = g.fillStyle; g.shadowBlur = darkMode ? 26 : 8; g.fill(); g.shadowBlur = 0
-      const lab = fn.label; if (lab) { g.globalAlpha = Math.min(1, focus.t); g.font = '700 14px JetBrains Mono, monospace'; g.fillStyle = darkMode ? '#eef3ff' : '#142943'; g.fillText(lab, aX + rr + 14, aY + 5) }
+      g.globalAlpha = Math.min(1, focus.t * 1.8); g.beginPath(); g.arc(aX, aY, rr * 1.1, 0, 6.28); g.fillStyle = tone; g.fill()
+      g.globalAlpha = Math.min(1, focus.t * 2); g.beginPath(); g.arc(aX, aY, rr * 0.66, 0, 6.28); g.fillStyle = themeColor('--surface'); g.fill()
+      const lab = fn.label; if (lab) { g.globalAlpha = Math.min(1, focus.t); g.font = '500 14px IBM Plex Mono, monospace'; g.fillStyle = themeColor('--text'); g.fillText(lab, aX + rr + 14, aY + 5) }
       g.globalAlpha = 1
     }
     const applyCanvasFilter = () => {
-      const canvasBlur = FIELD_SOFTEN * soften + searchMode * 6.5 + introBlur * 4
-      c.style.filter = canvasBlur > 0.002 ? 'blur(' + canvasBlur.toFixed(2) + 'px)' : 'none'
+      c.style.filter = 'none'
     }
     function render() {
       rafId = 0
@@ -307,18 +292,14 @@ export default function HeroConstellation() {
         drawScene(octx, sig, 'bg')
         octx.restore()
         x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, c.width, c.height)
-        x.filter = 'blur(' + (focus.t * 6 * DPR) + 'px)'; x.drawImage(oc, 0, 0); x.filter = 'none'
+        x.drawImage(oc, 0, 0)
         x.setTransform(DPR, 0, 0, DPR, 0, 0)
         for (let k = 0; k < pairs.length; k += 2) {
           const ia = pairs[k], ib = pairs[k + 1]
           if (ia !== focus.i && ib !== focus.i) continue
           const o = (ia === focus.i) ? nodes[ib] : nodes[ia]
           const ox = aX + (o.sx - fn.sx) * fs, oy = aY + (o.sy - fn.sy) * fs
-          const gr = x.createLinearGradient(aX, aY, ox, oy)
-          gr.addColorStop(0, (darkMode ? 'rgba(190,252,240,' : 'rgba(19,128,119,') + (0.68 * focus.t) + ')')
-          gr.addColorStop(0.45, (darkMode ? 'rgba(150,245,228,' : 'rgba(19,128,119,') + (0.2 * focus.t) + ')')
-          gr.addColorStop(1, darkMode ? 'rgba(150,245,228,0)' : 'rgba(19,128,119,0)')
-          x.strokeStyle = gr; x.lineWidth = 1.4
+          x.strokeStyle = 'rgba(' + sparkRgb + ',' + (0.68 * focus.t) + ')'; x.lineWidth = 1.4
           x.beginPath(); x.moveTo(aX, aY); x.lineTo(ox, oy); x.stroke()
         }
         orb(x, aX, aY)
@@ -604,7 +585,7 @@ export default function HeroConstellation() {
   }, [reducedMotion, runtime])
 
   return (
-    <div className="hc-root" ref={rootRef} style={{ ['--font-display' as never]: sora.style.fontFamily, ['--font-body' as never]: inter.style.fontFamily, ['--font-mono' as never]: mono.style.fontFamily }}>
+    <div className="hc-root" ref={rootRef}>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
       <canvas id="hc-bg" aria-hidden="true" />
       <div className="hc-veil" />

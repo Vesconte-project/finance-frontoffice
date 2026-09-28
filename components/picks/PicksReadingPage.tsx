@@ -68,7 +68,7 @@ export default async function PicksReadingPage({ reading }: { reading: PickReadi
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         {header}
         {asOfLabel ? (
-          <div className="text-caption shrink-0 rounded-full border border-border bg-surface-elevated px-3 py-1.5 text-content-muted">
+          <div className="text-caption shrink-0 rounded-md border border-border bg-surface-elevated px-3 py-1.5 text-content-muted">
             Snapshot · {asOfLabel}
           </div>
         ) : null}

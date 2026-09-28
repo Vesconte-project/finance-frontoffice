@@ -8,8 +8,8 @@
 .zone {
   background: var(--bg-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  border-radius: 6px;
+  box-shadow: none;
 }
 
 @keyframes fadeUp {
@@ -44,12 +44,12 @@
 .regimeBadge {
   display: inline-flex;
   align-items: center;
-  border-radius: var(--radius-pill);
+  border-radius: 6px;
   white-space: nowrap;
 }
 
 .deltaPositive {
-  color: var(--color-positive);
+  color: var(--up-ink);
 }
 
 .deltaNegative {
@@ -67,21 +67,21 @@
 }
 
 .regimeBullish {
-  color: var(--color-positive);
+  color: var(--up-ink);
   background: var(--color-positive-bg);
-  border-color: rgba(22, 163, 74, 0.18);
+  border-color: color-mix(in srgb, var(--up) 18%, transparent);
 }
 
 .regimeBearish {
   color: var(--color-negative);
   background: var(--color-negative-bg);
-  border-color: rgba(220, 38, 38, 0.18);
+  border-color: color-mix(in srgb, var(--down) 18%, transparent);
 }
 
 .regimeNeutral {
-  color: #fbbf24;
-  background: rgba(245, 158, 11, 0.14);
-  border-color: rgba(245, 158, 11, 0.2);
+  color: var(--text-muted);
+  background: var(--surface);
+  border-color: color-mix(in srgb, var(--line) 20%, transparent);
 }
 
 .heroBody {
@@ -154,7 +154,7 @@
   margin: 0;
   color: var(--color-text-primary);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 
@@ -196,7 +196,7 @@
   width: 100%;
   padding: 14px;
   border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   background: var(--bg-surface);
 }
 
@@ -232,7 +232,7 @@
   display: block;
   height: 6px;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: 6px;
   background: var(--color-border-light);
 }
 
@@ -240,13 +240,13 @@
   display: block;
   width: var(--axis-fill);
   height: 100%;
-  border-radius: 999px;
+  border-radius: 6px;
   background: var(--axis-color);
 }
 
 .popoverAxisValue {
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   text-align: right;
   color: var(--color-text-primary);
@@ -262,7 +262,7 @@
 .scorecardGrade {
   font-size: 16px;
   line-height: 1.2;
-  font-weight: 650;
+  font-weight: 500;
   color: var(--color-text-primary);
 }
 
@@ -275,11 +275,11 @@
 .scorecardPartialBadge {
   align-self: flex-start;
   padding: 2px 6px;
-  border-radius: 999px;
-  background: rgba(217, 154, 11, 0.12);
+  border-radius: 6px;
+  background: var(--surface);
   color: var(--color-text-muted);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.2;
 }
 
@@ -313,7 +313,7 @@
 .scorecardAxisValue {
   font-size: 13px;
   line-height: 1.2;
-  font-weight: 650;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   color: var(--color-text-primary);
 }
@@ -332,7 +332,7 @@
   padding: 10px 28px 0 0;
   color: var(--color-text-secondary);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .scorecardDisclosure > summary::-webkit-details-marker {
@@ -374,12 +374,12 @@
   margin: 0 auto;
   padding: 14px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   background: var(--bg-surface-raised);
   color: var(--color-text-secondary);
   font-size: 13px;
   line-height: 1.35;
-  font-weight: 600;
+  font-weight: 500;
   text-align: center;
 }
 
@@ -396,7 +396,7 @@
   min-width: 0;
   padding: 10px 12px;
   border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-sm);
+  border-radius: 6px;
   background: var(--bg-surface);
   transition: border-color 140ms ease;
 }
@@ -420,7 +420,7 @@
   min-width: 0;
   font-size: 14px;
   line-height: 1.2;
-  font-weight: 600;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   color: var(--color-text-primary);
   white-space: nowrap;
@@ -461,24 +461,24 @@
 .gaugeScore {
   font-size: 27px;
   line-height: 1;
-  font-weight: 700;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   color: var(--color-text-primary);
 }
 
 .gaugePanelBuy {
   --gauge-tone: var(--color-positive);
-  --gauge-glow: rgba(22, 163, 74, 0.26);
+  --gauge-glow: color-mix(in srgb, var(--bg) 26%, transparent);
 }
 
 .gaugePanelSell {
   --gauge-tone: var(--color-negative);
-  --gauge-glow: rgba(220, 38, 38, 0.24);
+  --gauge-glow: color-mix(in srgb, var(--bg) 24%, transparent);
 }
 
 .gaugePanelNeutral {
   --gauge-tone: var(--color-neutral);
-  --gauge-glow: rgba(107, 114, 128, 0.2);
+  --gauge-glow: color-mix(in srgb, var(--bg) 20%, transparent);
 }
 
 .gaugeDial {
@@ -507,7 +507,7 @@
 }
 
 .gaugeArcNeutral {
-  stroke: #f59e0b;
+  stroke: var(--line);
   opacity: 0.9;
 }
 
@@ -523,18 +523,18 @@
 }
 
 .gaugeNeedle path {
-  fill: #e8edf7;
-  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.35));
+  fill: var(--surface);
+  filter: none;
 }
 
 .gaugeHub {
   fill: var(--gauge-tone);
-  stroke: rgba(255, 255, 255, 0.4);
+  stroke: color-mix(in srgb, var(--line) 40%, transparent);
   stroke-width: 1.4;
 }
 
 .gaugeHubCore {
-  fill: #ffffff;
+  fill: var(--surface);
 }
 
 .gaugeInfo {
@@ -555,7 +555,7 @@
 .gaugeVerdict {
   font-size: 17px;
   line-height: 1.2;
-  font-weight: 650;
+  font-weight: 500;
 }
 
 .gaugeCounts {
@@ -574,7 +574,7 @@
 
 .gaugeCountValue {
   color: var(--color-text-primary);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .gaugeCountDotSell,
@@ -582,7 +582,7 @@
 .gaugeCountDotBuy {
   width: 6px;
   height: 6px;
-  border-radius: 999px;
+  border-radius: 6px;
 }
 
 .gaugeCountDotSell {
@@ -590,7 +590,7 @@
 }
 
 .gaugeCountDotNeutral {
-  background: #f59e0b;
+  background: var(--text-muted);
 }
 
 .gaugeCountDotBuy {
@@ -598,7 +598,7 @@
 }
 
 .positiveText {
-  color: var(--color-positive);
+  color: var(--up-ink);
 }
 
 .negativeText {
@@ -611,7 +611,7 @@
 
 .signalTableCard {
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   overflow: hidden;
   background: var(--bg-surface);
 }
@@ -631,7 +631,7 @@
 
 .signalTableTitle {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--color-text-primary);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -672,7 +672,7 @@
 
 .signalTableAction {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .zone3Grid {
@@ -730,7 +730,7 @@
 .cardTitle {
   font-size: 14px;
   line-height: 1.2;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-primary);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -748,20 +748,20 @@
 }
 
 .scorecardState_waiting {
-  border-color: rgba(245, 158, 11, 0.32);
-  background: rgba(245, 158, 11, 0.08);
-  color: #fbbf24;
+  border-color: color-mix(in srgb, var(--line) 32%, transparent);
+  background: var(--surface);
+  color: var(--text);
 }
 
 .scorecardState_blocked {
-  border-color: rgba(220, 38, 38, 0.26);
-  background: rgba(220, 38, 38, 0.08);
-  color: #fca5a5;
+  border-color: color-mix(in srgb, var(--line) 26%, transparent);
+  background: var(--surface);
+  color: var(--text);
 }
 
 .scorecardState_neutral {
-  border-color: rgba(100, 116, 139, 0.32);
-  background: rgba(100, 116, 139, 0.08);
+  border-color: color-mix(in srgb, var(--line) 32%, transparent);
+  background: var(--surface);
   color: var(--color-text-muted);
 }
 
@@ -770,7 +770,7 @@
   overflow: auto;
   margin-top: 12px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   background: var(--bg-surface);
 }
 
@@ -858,7 +858,7 @@
 }
 
 .chipTicker {
-  font-weight: 600;
+  font-weight: 500;
   color: var(--color-text-primary);
 }
 
@@ -898,7 +898,7 @@
   color: var(--color-text-primary);
   font-size: 18px;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.03em;
+  letter-spacing: normal;
 }
 
 .relationshipMagnitude > span {
@@ -928,8 +928,8 @@
   margin: 0;
   color: var(--color-text-primary);
   font-size: clamp(24px, 2.1vw, 32px);
-  font-weight: 650;
-  letter-spacing: -0.04em;
+  font-weight: 500;
+  letter-spacing: normal;
   line-height: 1.05;
 }
 
@@ -948,7 +948,7 @@
   margin-top: 10px;
   color: var(--color-accent);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 500;
   text-decoration: none;
   transition: transform 160ms ease, color 160ms ease;
 }
@@ -960,7 +960,7 @@
 .inlineArrow:focus-visible,
 .businessPreviewRail a:focus-visible,
 .researchRail a:focus-visible {
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
   outline: 2px solid var(--color-accent);
   outline-offset: 3px;
 }
@@ -968,10 +968,9 @@
 .snapshotPanel {
   overflow: hidden;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: 6px;
   background:
-    linear-gradient(145deg, rgba(7, 87, 255, 0.08), transparent 38%),
-    var(--bg-surface);
+    var(--surface);
 }
 
 .snapshotHeader {
@@ -1041,7 +1040,7 @@
 .snapshotRow .previewValue {
   color: var(--color-text-muted);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 500;
   text-transform: uppercase;
 }
 
@@ -1062,9 +1061,9 @@
 .researchRail {
   min-width: 0;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
+  border-radius: 8px;
   background: var(--bg-surface);
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
 }
 
 .timingCanvas,
@@ -1097,7 +1096,7 @@
 .modelSignalHeader > strong {
   color: var(--color-text-primary);
   font-size: 20px;
-  letter-spacing: -0.025em;
+  letter-spacing: normal;
 }
 
 .modelSignalGrid {
@@ -1107,7 +1106,7 @@
   overflow: hidden;
   margin-top: 16px;
   border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   background: var(--color-border-light);
 }
 
@@ -1129,7 +1128,7 @@
   margin: 5px 0 0;
   color: var(--color-text-primary);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1187,7 +1186,7 @@
   min-width: 0;
   padding: 13px;
   border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   background: var(--bg-surface-raised);
   color: var(--color-text-primary);
   text-decoration: none;
@@ -1218,10 +1217,9 @@
   margin-top: 16px;
   padding: 16px;
   border: 1px dashed var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   background:
-    linear-gradient(135deg, rgba(7, 87, 255, 0.035), transparent 55%),
-    var(--bg-surface-raised);
+    var(--bg);
 }
 
 .intentionalPlaceholder strong {
@@ -1240,7 +1238,7 @@
 .placeholderStatus {
   color: var(--color-accent);
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -1253,10 +1251,10 @@
   min-height: 44px;
   padding: 10px 16px;
   border: 1px dashed var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   color: var(--color-text-muted);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1287,7 +1285,7 @@
   place-items: center;
   min-height: 360px;
   overflow: hidden;
-  background: radial-gradient(circle at 38% 50%, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent 46%);
+  background: var(--bg);
 }
 
 .relationshipTopology svg {
@@ -1331,7 +1329,7 @@
 .topologyCenterLabel {
   fill: var(--color-text-primary);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
   text-anchor: middle;
 }
 
@@ -1410,7 +1408,7 @@
 .emptyState {
   padding: 14px;
   border: 1px dashed var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   background: var(--bg-surface-raised);
   font-size: 13px;
   color: var(--color-text-muted);
@@ -1422,7 +1420,7 @@
   gap: 1px;
   overflow: hidden;
   border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   background: var(--color-border-light);
 }
 
@@ -1447,7 +1445,7 @@
 .metricEyebrow {
   color: var(--color-text-muted);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1471,7 +1469,7 @@
   padding: 12px 34px 12px 0;
   color: var(--color-text-secondary);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .inlineDisclosure > summary::-webkit-details-marker,
@@ -1542,7 +1540,7 @@
   margin-bottom: 8px;
   color: var(--color-text-secondary);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1593,7 +1591,7 @@
   gap: 1px;
   overflow: hidden;
   border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   background: var(--color-border-light);
 }
 
@@ -1780,7 +1778,7 @@
 .snapshotVerdict dt {
   color: var(--color-text-muted);
   font-size: 10px;
-  font-weight: 650;
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1797,7 +1795,7 @@
 
 .snapshotGradeLink {
   display: block;
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   color: inherit;
   text-decoration: none;
 }
@@ -1827,7 +1825,7 @@
 .snapshotSummary strong {
   color: var(--color-text-primary);
   font-size: 18px;
-  font-weight: 680;
+  font-weight: 500;
 }
 
 .snapshotSummary p {
@@ -1855,7 +1853,7 @@
   margin: 0;
   color: var(--color-text-primary);
   font-size: 15px;
-  font-weight: 680;
+  font-weight: 500;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1874,7 +1872,7 @@
 }
 
 .snapshotVerdictLink {
-  border-radius: var(--radius-sm);
+  border-radius: 6px;
   color: inherit;
   text-decoration: none;
 }
@@ -1911,7 +1909,7 @@
 .snapshotAxis strong {
   color: var(--color-text-primary);
   font-size: 10px;
-  font-weight: 650;
+  font-weight: 500;
   text-align: right;
 }
 
@@ -1919,7 +1917,7 @@
   display: block;
   height: 3px;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: 6px;
   background: var(--color-border-light);
 }
 
@@ -1927,7 +1925,7 @@
   display: block;
   width: var(--axis-fill, 0%);
   height: 100%;
-  border-radius: inherit;
+  border-radius: 6px;
   background: var(--axis-color, var(--color-neutral));
 }
 
@@ -1939,7 +1937,7 @@
   padding: 8px 0;
   border: 0;
   border-top: 1px solid var(--color-border-light);
-  border-radius: 0;
+  border-radius: 6px;
   background: transparent;
   font-size: 10px;
   text-align: left;
@@ -1970,7 +1968,7 @@
 .interpretationRow > span {
   color: var(--color-text-muted);
   font-size: 10px;
-  font-weight: 650;
+  font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -1980,7 +1978,7 @@
   display: block;
   color: var(--color-text-primary);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 500;
 }
 
 .snapshotInterpretation p,
@@ -2072,7 +2070,7 @@
 .inlineDataState strong {
   color: var(--color-text-muted);
   font-size: 9px;
-  font-weight: 650;
+  font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -2080,7 +2078,7 @@
 .previewNote {
   color: var(--color-text-muted);
   font-size: 9px;
-  font-weight: 650;
+  font-weight: 500;
   letter-spacing: 0.07em;
   text-transform: uppercase;
 }
@@ -2115,14 +2113,14 @@
 .evidenceTrack {
   height: 3px;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: 6px;
   background: var(--color-border-light);
 }
 
 .evidenceTrack > span {
   display: block;
   height: 100%;
-  border-radius: inherit;
+  border-radius: 6px;
   background: var(--color-accent);
 }
 
@@ -2135,8 +2133,8 @@
   margin: 0 0 18px;
   color: var(--color-text-primary);
   font-size: 17px;
-  font-weight: 650;
-  letter-spacing: -0.02em;
+  font-weight: 500;
+  letter-spacing: normal;
 }
 
 .modelSignalInline {
@@ -2162,7 +2160,7 @@
   margin: 0;
   color: var(--color-text-primary);
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 500;
 }
 
 .inlineUnavailable {
@@ -2206,7 +2204,7 @@
 .relationshipEditorial a {
   color: var(--color-accent);
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 500;
   text-decoration: none;
 }
 
@@ -2227,7 +2225,7 @@
   padding: 12px 0 11px;
   color: var(--color-text-primary);
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 500;
 }
 
 .fundamentalEvidenceGrid section > div {
@@ -2266,7 +2264,7 @@
 
 .fundamentalEvidenceGrid .primaryFundamental strong {
   font-size: 17px;
-  letter-spacing: -0.02em;
+  letter-spacing: normal;
 }
 
 .businessInterpretations {

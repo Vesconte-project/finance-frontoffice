@@ -359,14 +359,8 @@ function seededUnit(seed: number, salt: number): number {
   return value - Math.floor(value)
 }
 
-function withAlpha(hex: string, alpha: number): string {
-  const normalized = hex.replace('#', '')
-  if (normalized.length !== 6) return hex
-  const r = Number.parseInt(normalized.slice(0, 2), 16)
-  const g = Number.parseInt(normalized.slice(2, 4), 16)
-  const b = Number.parseInt(normalized.slice(4, 6), 16)
-  if (![r, g, b].every(Number.isFinite)) return hex
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+function withAlpha(color: string, alpha: number): string {
+  return `color-mix(in srgb, ${color} ${Math.round(alpha * 100)}%, transparent)`
 }
 
 function directionLabel(direction: NodeSignalState): string {
@@ -379,8 +373,8 @@ function directionLabel(direction: NodeSignalState): string {
 function directionColor(direction: NodeSignalState, palette: ReturnType<typeof useChartPalette>): string {
   if (direction === 'bullish') return palette.bullish
   if (direction === 'bearish') return palette.bearish
-  if (direction === 'neutral') return palette.isDark ? '#B8AA82' : '#9A8A5C'
-  return palette.isDark ? '#8E99AB' : '#95A1B1'
+  if (direction === 'neutral') return palette.isDark ? 'var(--text)' : 'var(--text)'
+  return palette.isDark ? 'var(--text-muted)' : 'var(--text-muted)'
 }
 
 function fromNormalized(point: NormalizedPoint): { x: number; y: number } {
@@ -1039,21 +1033,6 @@ export default function HeroSignalNetwork({ signals }: { signals: ScreenerSignal
         role="img"
         aria-label="Global signal network"
       >
-        <defs>
-          <filter id="hero-atmos-blur" x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur stdDeviation="24" />
-          </filter>
-        </defs>
-
-        <g filter="url(#hero-atmos-blur)" opacity={palette.isDark ? 0.8 : 0.72}>
-          <ellipse cx={252} cy={162} rx={228} ry={114} fill={withAlpha(palette.primary, palette.isDark ? 0.2 : 0.12)} />
-          <ellipse cx={590} cy={182} rx={198} ry={102} fill={withAlpha(palette.signalNeutral, palette.isDark ? 0.19 : 0.1)} />
-          <ellipse cx={918} cy={166} rx={230} ry={112} fill={withAlpha(palette.secondary, palette.isDark ? 0.19 : 0.11)} />
-          <ellipse cx={328} cy={308} rx={112} ry={86} fill={withAlpha(palette.primary, palette.isDark ? 0.11 : 0.07)} />
-          <ellipse cx={634} cy={300} rx={142} ry={98} fill={withAlpha(palette.accent, palette.isDark ? 0.1 : 0.07)} />
-          <ellipse cx={918} cy={334} rx={124} ry={84} fill={withAlpha(palette.secondary, palette.isDark ? 0.09 : 0.06)} />
-        </g>
-
         <g transform={bgTransform} style={{ transition: 'transform 180ms cubic-bezier(0.2,0.8,0.2,1)' }}>
           {edges.map((edge, index) => {
             const from = nodeByTicker.get(edge.from)
@@ -1127,7 +1106,6 @@ export default function HeroSignalNetwork({ signals }: { signals: ScreenerSignal
                 const showLabel = isHovered || node.importance >= 0.84
                 const tierBoost = node.sizeTier === 4 ? 0.8 : node.sizeTier === 3 ? 0.45 : node.sizeTier === 2 ? 0.22 : 0
                 const ringRadius = node.radius + (isHovered ? 6.1 : (isNoSignal ? 3.2 : 2.6) + tierBoost)
-                const blurPx = isNoSignal ? 0.24 : layerKey === 'background' ? 0.65 : layerKey === 'mid' ? 0.25 : 0
                 const confidenceOpacity = isNoSignal ? 0.74 : clamp(0.54 + node.conviction * 0.4, 0.45, 0.98)
                 const nodeOpacity = isMuted ? 0.2 : confidenceOpacity
                 const ringOpacity = isMuted ? 0.1 : isNoSignal ? 0.58 : clamp(0.16 + node.conviction * 0.6, 0.2, 0.84)
@@ -1197,7 +1175,7 @@ export default function HeroSignalNetwork({ signals }: { signals: ScreenerSignal
                         className={isNoSignal ? '' : isHovered ? 'signal-network-node-active' : 'signal-network-node'}
                         style={{
                           animationDelay: isNoSignal ? undefined : `${node.pulseDelay.toFixed(2)}s`,
-                          filter: blurPx > 0 ? `blur(${blurPx}px)` : undefined,
+                          filter: 'none',
                         }}
                         opacity={nodeOpacity}
                       />
@@ -1247,7 +1225,7 @@ export default function HeroSignalNetwork({ signals }: { signals: ScreenerSignal
           Neutral {neutralCount}
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-slate-400/55 shadow-none" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[var(--surface)]" />
           Not Implemented {noSignalCount}
         </span>
         <span className="inline-flex items-center gap-1.5">
@@ -1259,7 +1237,7 @@ export default function HeroSignalNetwork({ signals }: { signals: ScreenerSignal
 
       {hoveredNode && hover ? (
         <div
-          className="text-micro pointer-events-none absolute z-20 rounded-[var(--radius-lg)] border border-chart-tooltip-border bg-chart-tooltip px-2.5 py-2 shadow-[var(--shadow-lg)]"
+          className="text-micro pointer-events-none absolute z-20 rounded-[var(--radius-lg)] border border-chart-tooltip-border bg-chart-tooltip px-2.5 py-2"
           style={{ left: hover.x, top: hover.y }}
         >
           <div className="text-label-sm text-content-primary">{hoveredNode.ticker}</div>

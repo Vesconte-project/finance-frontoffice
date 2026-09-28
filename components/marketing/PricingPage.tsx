@@ -1,12 +1,8 @@
 import Link from 'next/link'
-import { Sora, JetBrains_Mono, Inter } from 'next/font/google'
 import { ArrowRight, Check } from 'lucide-react'
 import { GlassPanel, SiteHeader, sharedHeaderSpacerClass } from '@/components/marketing/site-chrome'
 import { getViewerAccess } from '@/lib/billing'
 
-const sora = Sora({ subsets: ['latin'], weight: ['400', '600', '700', '800'], display: 'swap' })
-const inter = Inter({ subsets: ['latin'], display: 'swap' })
-const mono = JetBrains_Mono({ subsets: ['latin'], weight: ['400', '500', '600'], display: 'swap' })
 
 const freeFeatures = ['Signal previews', 'Market and ticker context'] as const
 
@@ -52,13 +48,7 @@ export default async function PricingPage() {
 
   return (
     <main
-      data-theme="light"
-      className={`marketing-pricing relative min-h-screen overflow-hidden ${inter.className}`}
-      style={{
-        ['--pricing-display' as string]: sora.style.fontFamily,
-        ['--pricing-body' as string]: inter.style.fontFamily,
-        ['--pricing-mono' as string]: mono.style.fontFamily,
-      }}
+      className="marketing-pricing relative min-h-screen overflow-hidden"
     >
       <div className="pricing-ambient pricing-ambient--top" aria-hidden="true" />
       <SiteHeader activeHref="/pricing" />
@@ -123,7 +113,7 @@ export default async function PricingPage() {
         <div className="pricing-note-inner">
           <div>
             <p className="pricing-kicker">What is live</p>
-            <h2 id="pricing-note-heading" className="pricing-note-heading pricing-display mt-3 text-2xl font-bold tracking-[-0.04em]">
+            <h2 id="pricing-note-heading" className="pricing-note-heading pricing-display mt-3 text-2xl font-bold tracking-normal">
               Start free today. Paid tiers are still being prepared.
             </h2>
           </div>
