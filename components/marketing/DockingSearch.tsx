@@ -56,6 +56,16 @@ export default function DockingSearch() {
     return () => { cancelled = true }
   }, [])
 
+  useEffect(() => {
+    const dismissWhenLeavingHero = () => {
+      if (window.scrollY < 72) return
+      const active = document.activeElement
+      if (active instanceof HTMLElement && active.closest('[data-dock-search]')) active.blur()
+    }
+    window.addEventListener('scroll', dismissWhenLeavingHero, { passive: true })
+    return () => window.removeEventListener('scroll', dismissWhenLeavingHero)
+  }, [])
+
   // The header keys off the same signal, so its entrance stays in step with the
   // copy however long the display font takes. See the .site-header rules under
   // `hero-reveal-ready` in globals.css.

@@ -79,7 +79,7 @@
   border-radius: 6px;
   background:
     var(--bg);
-  color: var(--surface);
+  color: var(--text);
 }
 
 .auth-page__story-copy,
@@ -105,7 +105,7 @@
 .auth-page__story-copy > p {
   max-width: 38ch;
   margin-top: 26px;
-  color: var(--line);
+  color: var(--text-muted);
   font-size: clamp(0.95rem, 1.25vw, 1.1rem);
   line-height: 1.65;
 }
@@ -123,7 +123,7 @@
 
 .auth-page__story-signoff {
   margin-top: 30px;
-  color: var(--line);
+  color: var(--text-muted);
   font-family: var(--font-mono), monospace;
   font-size: 0.72rem;
   letter-spacing: 0.04em;
@@ -2239,7 +2239,7 @@ main.marketing-pricing {
   --surface-hover: color-mix(in srgb, var(--bg) 6%, transparent);
   --card: var(--surface-card);
   --card-foreground: var(--content-primary);
-  color-scheme: light;
+  color-scheme: inherit;
   background:
     var(--bg);
   color: var(--content-primary);
@@ -2353,7 +2353,7 @@ main.marketing-pricing .site-header__backdrop {
 }
 
 .pricing-plan-card .pricing-kicker {
-  color: var(--bg);
+  color: var(--text);
 }
 
 .pricing-status {
@@ -2382,7 +2382,7 @@ main.marketing-pricing .site-header__backdrop {
   place-items: center;
   margin-top: 0.05rem;
   border-radius: 6px;
-  background: var(--brand-spark);
+  background: var(--text);
   color: var(--surface);
 }
 
@@ -2428,7 +2428,7 @@ main.marketing-pricing .site-header__backdrop {
   background: var(--bg) !important;
   border-color: color-mix(in srgb, var(--line) 42%, transparent) !important;
   box-shadow: none !important;
-  color: var(--surface);
+  color: var(--text);
 }
 
 .pricing-plan-card--free .pricing-display,
@@ -2445,11 +2445,11 @@ main.marketing-pricing .site-header__backdrop {
 .pricing-plan-card--basic .pricing-period,
 .pricing-plan-card--basic .pricing-plan-summary,
 .pricing-plan-card--basic .pricing-plan-features {
-  color: var(--surface);
+  color: var(--text);
 }
 
 .pricing-plan-card--basic .pricing-feature-state {
-  color: var(--bg);
+  color: var(--text-muted);
 }
 
 .pricing-plan-card--basic .pricing-plan-features {
@@ -2457,7 +2457,7 @@ main.marketing-pricing .site-header__backdrop {
 }
 
 .pricing-plan-card--basic .pricing-check {
-  background: var(--bg);
+  background: var(--text);
   color: var(--bg);
 }
 
@@ -2472,26 +2472,26 @@ main.marketing-pricing .site-header__backdrop {
 .pricing-plan-card--pro .pricing-status {
   border-color: color-mix(in srgb, var(--line) 28%, transparent);
   background: var(--surface);
-  color: var(--bg);
+  color: var(--text-muted);
 }
 
 .pricing-plan-card--free .pricing-status:hover,
 .pricing-plan-card--pro .pricing-status:hover {
   border-color: color-mix(in srgb, var(--line) 42%, transparent);
   background: var(--surface);
-  color: var(--bg);
+  color: var(--text);
 }
 
 .pricing-plan-card--basic .pricing-status--future {
   border-color: color-mix(in srgb, var(--line) 42%, transparent);
   background: var(--surface);
-  color: var(--bg);
+  color: var(--text-muted);
 }
 
 .pricing-plan-card--basic .pricing-status--future:hover {
   border-color: color-mix(in srgb, var(--line) 72%, transparent);
   background: var(--surface);
-  color: var(--surface);
+  color: var(--text);
 }
 
 .pricing-price-row {
@@ -2571,7 +2571,7 @@ main.marketing-pricing .site-header__backdrop {
 
 .pricing-plan-card--basic .pricing-future-note {
   border-color: color-mix(in srgb, var(--line) 13%, transparent);
-  color: color-mix(in srgb, var(--surface) 62%, transparent);
+  color: var(--text-muted);
 }
 
 .pricing-note {
@@ -2719,13 +2719,18 @@ html.chrome-scrolled .site-header__pill-search :is(input) {
   padding-right: 12px;
 }
 html.chrome-scrolled .site-header__pill-search {
-  max-width: 150px;
+  width: 42px;
+  max-width: 42px;
+  flex: 0 0 42px;
   opacity: 1;
   pointer-events: auto;
   /* The clip is only needed to hide the field while collapsed at max-width: 0.
      Once the pill exists it has to go: it was cutting off both the suggestion
      panel (absolute, at top-full) and the input's focus ring. */
   overflow: visible;
+}
+html.chrome-scrolled .site-header__pill-search:not(:focus-within) :is(input)::placeholder {
+  color: transparent !important;
 }
 /* Focused, the row grows to 600px — wider than the content needs — and the
    slack pooled between the field and the nav. The field takes it instead. */
@@ -2806,7 +2811,7 @@ main.marketing-home :is(input, textarea) {
 }
 
 main.marketing-home .dock-search :is(input) {
-  color-scheme: light;
+  color-scheme: inherit;
   color: var(--text) !important;
   caret-color: var(--brand-spark);
 }
@@ -2853,7 +2858,7 @@ html[data-theme="dark"] main.marketing-home {
 }
 html[data-theme="dark"] main.marketing-home .dock-search :is(input),
 main.marketing-home[data-theme="dark"] .dock-search :is(input) {
-  color: var(--surface) !important;
+  color: var(--text) !important;
 }
 
 .marketing-home .site-header__brand {
@@ -3521,5 +3526,4 @@ html.atlas-immersive .site-header__brand { visibility: hidden !important; pointe
 .app-shell { background: var(--bg); }
 .app-shell__atmosphere { display: none; }
 .site-header__brand, .site-header__brand-full, [data-ticker-identity], [data-ticker-identity] :is(h1, p, span, strong) { color: var(--text) !important; }
-.marketing-home .site-header__row { background: var(--bg); }
 .auth-page, main.marketing-home, main.marketing-pricing, .app-shell, input { color-scheme: inherit; }

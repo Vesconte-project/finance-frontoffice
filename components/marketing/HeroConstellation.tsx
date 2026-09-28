@@ -14,7 +14,6 @@ type HcNode = {
   P1: number; P2: number; P3: number; ph: number; sx: number; sy: number; sc: number
   da: number; hover: number; clar: number
 }
-type HcPulse = { a: number; b: number; t: number; sp: number }
 
 const CSS = `
 .hc-root{
@@ -30,7 +29,7 @@ const CSS = `
 .hc-root .hc-veil::before,.hc-root .hc-veil::after{content:"";position:absolute;inset:0}
 .hc-root .hc-veil::after{background:var(--bg);opacity:calc(var(--hc-field-progress,0) * .65)}
 .hc-root .hc-veil::before{background:none}
-.hc-root .hc-progress{position:fixed;left:0;top:0;height:2px;width:0;background:var(--accent);z-index:60}
+.hc-root .hc-progress{display:none}
 .hc-root #hc-stage{position:relative;height:100vh;z-index:10;pointer-events:none}
 .hc-root .hc-beat{position:absolute;inset:0;display:flex;align-items:center;padding:0 clamp(24px,6vw,90px);will-change:opacity,transform}
 .hc-root .hc-in{max-width:1080px;width:100%;margin:0 auto}
@@ -84,7 +83,6 @@ export default function HeroConstellation() {
 
     let W = 0, H = 0, DPR = 1, cx = 0, cy = 0, R = 0, cam = 0
     let nodes: HcNode[] = [], pairs: number[] = []
-    const pulses: HcPulse[] = []
     let mx = 0, my = 0, tmx = 0, tmy = 0, mpx = -1e4, mpy = -1e4
     let rafId = 0
     let heroVisible = true
@@ -160,7 +158,9 @@ export default function HeroConstellation() {
       softenStartedAt = now
     }
 
-    const TICKERS = ['SPY','NVDA','AAPL','MSFT','QQQ','AMZN','META','TSLA','GOOGL','JPM','XOM','AVGO','AMD','LLY','V','COST','NFLX','HD','BRK.B','GLD']
+    const TICKERS = ['VT','ASML','NVDA','SPY','TSM','AAPL','VEA','MSFT','BABA','QQQ','AMZN','NVO','META','VWO','TSLA','SHEL','GOOGL','GLD','JPM','SONY','XOM','AVGO','AMD','LLY','V','COST','NFLX','HD','BRK.B']
+    const ETF_TICKERS = new Set(['VT', 'VEA', 'VWO', 'SPY', 'QQQ', 'GLD'])
+    const ETF_COUNT = ETF_TICKERS.size
     const COLORS: [number, number, number][] = [themeRgb('--text')]
     const G: [number, number, number] = themeRgb('--accent')
     const spark = themeColor('--accent')
@@ -179,12 +179,25 @@ export default function HeroConstellation() {
       nodes = []; const HUBS = TICKERS.length, EXTRA = Math.max(90, Math.floor(W / 12)), N = HUBS + EXTRA
       for (let i = 0; i < N; i++) {
         let bx: number, by: number, bz: number, label: string | null = null, rad: number
-        if (i === 0) { bx = by = bz = 0; label = 'SPY'; rad = 7 }
-        else if (i < HUBS) { const v = fib(i, HUBS); const rr = R * (0.45 + Math.random() * 0.5); bx = v[0] * rr; by = v[1] * rr; bz = v[2] * rr; label = TICKERS[i]; rad = 3.0 }
+        if (i < HUBS) {
+          label = TICKERS[i]
+          const etfIndex = [...ETF_TICKERS].indexOf(label)
+          if (etfIndex >= 0) {
+            const angle = (etfIndex / ETF_COUNT) * Math.PI * 2 + 0.35
+            bx = Math.cos(angle) * R * 0.64
+            by = Math.sin(angle) * R * 0.43
+            bz = Math.sin(angle * 2) * R * 0.12
+            rad = 5.2
+          } else {
+            const v = fib(i, HUBS)
+            const rr = R * (0.45 + Math.random() * 0.5)
+            bx = v[0] * rr; by = v[1] * rr; bz = v[2] * rr; rad = 3.0
+          }
+        }
         else { const th = Math.random() * 6.283, ph = Math.acos(2 * Math.random() - 1), rr = R * (0.12 + Math.random() * 0.92); bx = rr * Math.sin(ph) * Math.cos(th); by = rr * Math.cos(ph); bz = rr * Math.sin(ph) * Math.sin(th); rad = 1.1 + Math.random() * 1.3 }
-        const dm = i === 0 ? 0.25 : 1
-        nodes.push({ bx, by, bz, r: rad, label, signal: i === 0, rgb: i === 0 ? G : COLORS[(Math.random() * COLORS.length) | 0],
-          A1: R * (0.02 + Math.random() * 0.05) * dm, A2: R * (0.02 + Math.random() * 0.05) * dm, A3: R * (0.02 + Math.random() * 0.05) * dm,
+        const isEtf = label !== null && ETF_TICKERS.has(label)
+        nodes.push({ bx, by, bz, r: rad, label, signal: isEtf, rgb: isEtf ? G : COLORS[(Math.random() * COLORS.length) | 0],
+          A1: R * (0.02 + Math.random() * 0.05), A2: R * (0.02 + Math.random() * 0.05), A3: R * (0.02 + Math.random() * 0.05),
           S1: 0.2 + Math.random() * 0.4, S2: 0.2 + Math.random() * 0.4, S3: 0.2 + Math.random() * 0.4,
           P1: Math.random() * 6.28, P2: Math.random() * 6.28, P3: Math.random() * 6.28,
           ph: Math.random() * 6.28, sx: 0, sy: 0, sc: 1, da: 1, hover: 0, clar: 1 })
@@ -213,16 +226,12 @@ export default function HeroConstellation() {
         g.strokeStyle = 'rgba(' + (conn ? sparkRgb : lineRgb) + ',' + (aA * edgeReveal) + ')'; g.lineWidth = 1 + hv * 0.5 + (conn ? focus.t * 2 : 0)
         g.beginPath(); g.moveTo(a.sx, a.sy); g.lineTo(b.sx, b.sy); g.stroke()
       }
-      if (mode !== 'conn' && focus.i < 0) {
-        if (!reducedMotion && Math.random() < 0.03 && pairs.length) { const k = ((Math.random() * pairs.length / 2) | 0) * 2; pulses.push({ a: pairs[k], b: pairs[k + 1], t: 0, sp: .006 + Math.random() * .006 }) }
-        for (let i = pulses.length - 1; i >= 0; i--) { const P = pulses[i]; P.t += P.sp; if (P.t >= 1) { pulses.splice(i, 1); continue } const a = nodes[P.a], b = nodes[P.b]; const px = a.sx + (b.sx - a.sx) * P.t, py = a.sy + (b.sy - a.sy) * P.t; g.beginPath(); g.arc(px, py, 2, 0, 6.28); g.fillStyle = spark; g.fill() }
-      }
       if (mode !== 'conn') {
         for (let idx = 0; idx < nodes.length; idx++) { const n = nodes[idx]
           if (idx === focus.i) continue
           n.ph += reducedMotion ? 0 : (focus.i < 0 ? 0.006 : 0.002)
           let col: string; if (n.signal) col = spark; else { col = 'rgb(' + n.rgb.join(',') + ')' }
-          const r = Math.min(24, Math.max(0.5, ((n.signal ? (n.r + sig * 6) : n.r) + n.hover * 5) * n.sc))
+          const r = Math.min(15, Math.max(0.5, ((n.signal ? (n.r + sig * 1.2) : n.r) + n.hover * 3) * n.sc))
           const dim = 1 - focus.t * (1 - (0.10 + 0.90 * n.clar))
           g.globalAlpha = Math.min(1, (n.da + n.hover * 0.6) * dim * nodeReveal)
           g.beginPath(); g.arc(n.sx, n.sy, r, 0, 6.28); g.fillStyle = col; g.fill()

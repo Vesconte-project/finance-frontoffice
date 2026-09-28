@@ -81,7 +81,7 @@ export default function AboutPage() {
             const Icon = item.icon
             return (
               <GlassPanel key={item.title} className="p-6">
-                <div className="grid size-12 place-items-center rounded-md bg-[var(--bg)]/12 text-[var(--bg)] dark:bg-[var(--surface)] dark:text-[var(--bg)]">
+                <div className="grid size-12 place-items-center rounded-md border border-[var(--line)] bg-[var(--bg)] text-[var(--text)]">
                   <Icon className="size-6" />
                 </div>
                 <h3 className="mt-6 text-2xl font-semibold">{item.title}</h3>

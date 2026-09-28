@@ -11,7 +11,7 @@
 | `--line` | `#D9D2C4` | `#2A3444` | Borders and dividers |
 | `--text` | `#15202E` | `#ECE6DA` | Primary text and wordmark |
 | `--text-muted` | `#3B4657` | `#A9B0BB` | Secondary text; the lightest permitted text role |
-| `--accent` | `#A87A2A` | `#C99A48` | Focus, selection, active indicator, selected universe node |
+| `--accent` | `#A87A2A` | `#C99A48` | Focus, selection, active indicator, small ETF nodes in the homepage network |
 | `--up` | `#3E7A55` | `#6FAF86` | Positive data and chart marks |
 | `--down` | `#A34A3C` | `#D07565` | Negative data and chart marks |
 | `--btn-primary-bg` / `--btn-primary-fg` | Ink / paper | Paper / ink | Primary actions |
@@ -27,6 +27,8 @@ The only logo is “Vesconte” in Source Serif 4 small caps, with approximately
 ## Components
 
 Panels are solid `--surface` with a 1 px `--line` border. Buttons and cards use about 6 px radius; search uses about 8 px. Primary actions use the primary button roles. Secondary actions have a `--text` outline and transparent background. Search uses `--surface`, a `--text` outline, and `--accent` focus. Icons use approximately 1.5 px strokes. Avoid translucent panels, gradients, glow, blur, soft shadows, and pill shaped controls.
+
+The homepage network distributes ETF nodes around the field in `--accent`. No single ticker is the fixed center. The compact scrolled header shows a search icon and expands the field on focus.
 
 Keep green and red in data displays. Ocre marks where the reader is: focus, selection, active navigation, and the selected network node. It should not cover large areas. Canvas and Three.js components resolve computed CSS tokens at the rendering boundary; they must not carry a second palette.
 

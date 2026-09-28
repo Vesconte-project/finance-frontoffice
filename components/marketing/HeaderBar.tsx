@@ -167,7 +167,7 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
         {isHome ? (
           <div data-pill-search className="site-header__pill-search hidden md:block">
             {/* Condensed chrome — a short list reads as a shortcut, not a browser. */}
-            <HeaderSearch className="w-full" maxSuggestions={3} placeholder="Search…" />
+            <HeaderSearch className="w-full" maxSuggestions={3} placeholder="Search" />
           </div>
         ) : (
           <div
