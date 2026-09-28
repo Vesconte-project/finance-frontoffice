@@ -82,7 +82,17 @@ jobs:
           # that production build via `next start`, instead of spawning a second
           # `next dev` server, so QA exercises the runtime Vercel serves.
           PLAYWRIGHT_SERVER_MODE: production
+          PLAYWRIGHT_CAPTURE: '1'
         run: npm run qa:frontend
+
+      - name: Keep viewport screenshots for review
+        if: always() && steps.route.outputs.needed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-viewport-screenshots
+          path: test-results/**/*.png
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Record not-applicable result
         if: steps.route.outputs.needed != 'true'

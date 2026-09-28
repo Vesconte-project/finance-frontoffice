@@ -66,8 +66,9 @@
 
 .auth-page__content {
   display: grid;
-  min-height: 610px;
+  min-height: 0;
   flex: 1;
+  align-items: center;
   grid-template-columns: minmax(0, 1.03fr) minmax(0, 0.97fr);
   gap: clamp(24px, 5vw, 90px);
 }
@@ -75,7 +76,7 @@
 .auth-page__story {
   position: relative;
   display: flex;
-  min-height: 610px;
+  height: clamp(540px, 70svh, 680px);
   overflow: hidden;
   flex-direction: column;
   justify-content: space-between;
@@ -154,6 +155,7 @@
   }
 
   .auth-page__story {
+    height: auto;
     min-height: 250px;
     padding: 34px;
   }
@@ -3278,6 +3280,7 @@ html.chrome-scrolled .dock-search {
   }
   .dock-search__intro {
     margin-bottom: 20px;
+    transition: opacity 140ms ease;
   }
   .dock-search__title {
     font-size: clamp(1.8rem, 8.8vw, 2.5rem);
@@ -3298,6 +3301,10 @@ html.chrome-scrolled .dock-search {
      above it, leaving the keyboard the most room it can get for the panel. */
   .dock-search:has(.ticker-search__root[data-open='true']) {
     --dock-search-open-lift: -240px;
+  }
+  .dock-search:has(.ticker-search__root[data-open='true']) .dock-search__intro {
+    opacity: 0;
+    pointer-events: none;
   }
 }
 
@@ -3322,6 +3329,9 @@ html.chrome-scrolled .dock-search {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .dock-search__intro {
+    transition: none;
+  }
   .site-header,
   .site-header__row {
     transition: none;

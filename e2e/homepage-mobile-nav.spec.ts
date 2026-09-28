@@ -73,7 +73,7 @@ test('mobile Correlation trigger navigates directly to the network page', async 
   await expect(page).toHaveURL(/\/markets\/network$/)
 })
 
-test('opening hero search results on mobile lifts the field toward the top, clearing room below it', async ({ page }) => {
+test('opening hero search results on mobile clears the title and leaves room for suggestions', async ({ page }, testInfo) => {
   await stubBackends(page)
   await page.goto('/', { waitUntil: 'load' })
   await page.evaluate(() => document.fonts.ready)
@@ -87,6 +87,36 @@ test('opening hero search results on mobile lifts the field toward the top, clea
   await field.fill('a')
   await expect(page.locator('[data-dock-search] .ticker-search__root')).toHaveAttribute('data-open', 'true')
   await expect.poll(() => field.boundingBox().then((box) => box?.y ?? 9999)).toBeLessThan(130)
+  await expect(page.locator('.dock-search__intro')).toHaveCSS('opacity', '0')
+  await expect(page.locator('[data-dock-search] .ticker-search__scroll')).toBeVisible()
+
+  await page.screenshot({ path: testInfo.outputPath('homepage-mobile-search-open.png') })
+})
+
+test('homepage suggestions fit above a simulated mobile keyboard', async ({ page }, testInfo) => {
+  await stubBackends(page)
+  await page.goto('/', { waitUntil: 'load' })
+  await page.evaluate(() => document.fonts.ready)
+
+  const field = page.locator('[data-dock-search] input')
+  await field.click()
+  await field.fill('a')
+  await expect(page.locator('[data-dock-search] .ticker-search__scroll')).toBeVisible()
+  await expect(page.locator('.dock-search__intro')).toHaveCSS('opacity', '0')
+
+  await page.evaluate(() => {
+    const viewport = window.visualViewport
+    if (!viewport) throw new Error('visualViewport is unavailable')
+    Object.defineProperty(viewport, 'height', { configurable: true, value: 480 })
+    viewport.dispatchEvent(new Event('resize'))
+  })
+
+  await expect.poll(async () => {
+    const bounds = await page.locator('[data-dock-search] .ticker-search__scroll').boundingBox()
+    return bounds ? bounds.y + bounds.height : Number.POSITIVE_INFINITY
+  }).toBeLessThanOrEqual(480)
+
+  await page.screenshot({ path: testInfo.outputPath('homepage-mobile-search-keyboard-simulated.png') })
 })
 
 test('suggestion panel shrinks to fit the visible viewport instead of overflowing it', async ({ page }) => {
