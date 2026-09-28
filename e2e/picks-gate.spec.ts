@@ -75,5 +75,9 @@ test('Signals is locked and kept out of the index while it is rebuilt', async ({
 
   await expect(page.getByRole('heading', { name: /signals is in development/i })).toBeVisible()
   await expect(page.getByRole('heading', { name: /come back in the near future/i })).toBeVisible()
-  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/)
+  const robotsTags = page.locator('meta[name="robots"]')
+  expect(await robotsTags.count()).toBeGreaterThan(0)
+  for (const tag of await robotsTags.all()) {
+    await expect(tag).toHaveAttribute('content', /noindex/)
+  }
 })

@@ -2,10 +2,10 @@
  * Deterministic fixture backend for browser QA.
  *
  * The Market Universe page fetches its atlas server-side, so a Playwright
- * page.route() mock cannot reach it. This serves the three relationship
- * endpoints that page needs from repository-owned synthetic data, so the
- * browser suite never depends on production, staging or self-hosted
- * infrastructure and needs no credentials.
+ * page.route() mock cannot reach it. This serves the relationship endpoints
+ * from repository-owned synthetic data and an explicitly empty Picks ranking
+ * needed by the homepage smoke test. Browser QA needs no external backend
+ * infrastructure or credentials.
  *
  * Every other path answers 503, which is what the app already sees when no
  * backend is reachable. That keeps the unrelated specs on the behaviour they
@@ -58,6 +58,19 @@ const server = createServer((request, response) => {
   // keeps the browser console clean without weakening any assertion.
   if (path === '/tickers/index') {
     send(response, 200, tickerIndexFixture())
+    return
+  }
+
+  // Homepage reads all three rankings server-side. A successful empty fixture
+  // keeps the smoke test focused on layout and unexpected console errors;
+  // Picks data and entitlement behavior are tested separately.
+  if (path === '/screener/rankings' && ['longTerm', 'income', 'shortTerm'].includes(url.searchParams.get('reading'))) {
+    send(response, 200, {
+      asOf: null,
+      reading: url.searchParams.get('reading'),
+      filters: { minCoverage: 0, eligibility: null, includeNonCompanies: false, nonCompanyRule: null },
+      items: [],
+    })
     return
   }
 

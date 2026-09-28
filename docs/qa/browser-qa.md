@@ -43,6 +43,7 @@ These are load-bearing. Each was learned from a failure that looked like an appl
 
 - Page and primary content load without uncaught errors, hydration warnings, failed essential resources, or unexpected console errors.
 - No horizontal overflow, clipped text, overlapping UI, broken max-width, unstable hover sizing, or unintended layout shift.
+- Inspect saved screenshots of each changed route and important state at representative viewport sizes; a passing overflow or geometry assertion does not establish a good composition. Check first-viewport hierarchy, element collisions, and usable space around the primary action.
 - Alignment, hierarchy, line length, data formatting, image/canvas framing, and contrast remain coherent from small mobile to wide desktop.
 - Navigation and mobile menu open, close, trap/release focus appropriately, restore focus, and respond to Escape and outside interaction when intended.
 - All controls work with keyboard and have visible focus. Tab order follows the visual/task order; sticky content does not cover focus.
@@ -55,6 +56,8 @@ These are load-bearing. Each was learned from a failure that looked like an appl
 Record route, commit/diff state, browser, viewport, steps, expected/actual, severity, console excerpt, and screenshot/trace path. Use traces or video for timing/scroll defects; avoid large baseline suites until a stable visual-review policy exists.
 
 Minimum candidate evidence is limited to each affected route, its changed or important states, and representative required viewports from `viewport-matrix.md`; include applicable keyboard, touch, zoom, and reduced-motion behavior. Broaden evidence only when the changed surface or risk requires it.
+
+Frontend QA keeps viewport screenshots as a CI artifact for review. The reviewer opens the artifact and checks the affected states before visual handoff; the green CI badge alone does not record that review. Local runs can set `PLAYWRIGHT_CAPTURE=1` to capture the homepage matrix. The sign-up layout and open mobile search capture their states in their focused tests. Record any real-device screenshot separately with its effective CSS viewport and keyboard/browser state.
 
 Automated checks, screenshots, traces, and Preview evidence establish technical and review evidence only. They do not constitute visual, product, or release acceptance; the human approver records those decisions separately. Non-visual changes may mark Preview and visual acceptance not applicable with a reason.
 
