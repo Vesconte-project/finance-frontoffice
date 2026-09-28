@@ -5,7 +5,7 @@ import { ArrowUpRight } from 'lucide-react'
 import { CONTACT_EMAIL } from '@/components/marketing/site-config'
 
 const inputClass =
-  'w-full rounded-2xl border border-border bg-white/70 px-4 py-3 text-base text-content-primary outline-none transition placeholder:text-content-muted focus:border-brand-spark/50 focus:bg-white focus:ring-2 focus:ring-brand-spark/15'
+  'w-full rounded-md border border-border bg-[var(--surface)] px-4 py-3 text-base text-content-primary outline-none transition placeholder:text-content-muted focus:border-brand-spark/50 focus:bg-[var(--surface)] focus:ring-2 focus:ring-brand-spark/15'
 
 export default function AskUsForm() {
   const [email, setEmail] = useState('')
@@ -44,7 +44,7 @@ export default function AskUsForm() {
       />
       <button
         type="submit"
-        className="group inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-brand-spark px-6 font-semibold text-[color:var(--brand-spark-on)] shadow-[0_16px_38px_rgba(11,129,120,0.2)] transition duration-200 ease-out hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-spark"
+        className="group inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-[var(--btn-primary-bg)] px-6 font-medium text-[var(--btn-primary-fg)] transition duration-200 ease-out focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)]"
       >
         {sent ? 'Opening your mail app…' : 'Send it our way'}
         <ArrowUpRight className="size-4 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />

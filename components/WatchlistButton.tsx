@@ -105,7 +105,7 @@ export default function WatchlistButton({
         aria-busy={pending}
         aria-expanded={signedIn ? undefined : recoveryOpen}
         aria-controls={!signedIn && recoveryOpen ? recoveryId : undefined}
-        className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-[var(--glass-border)] bg-[var(--glass-bg)] text-[var(--color-text-secondary)] shadow-[inset_0_1px_0_var(--glass-highlight)] backdrop-blur-[30px] saturate-[1.8] transition-[border-color,color,transform] duration-150 hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] active:scale-90 disabled:opacity-60"
+        className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-[var(--glass-border)] bg-[var(--glass-bg)] text-[var(--color-text-secondary)] transition-[border-color,color,transform] duration-150 hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] active:scale-90 disabled:opacity-60"
       >
         {pending ? (
           <Loader2 size={16} className="animate-spin" aria-hidden="true" />
@@ -113,7 +113,7 @@ export default function WatchlistButton({
           <Star
             size={16}
             aria-hidden="true"
-            className={inWatchlist ? 'fill-amber-400 text-amber-400' : undefined}
+            className={inWatchlist ? 'fill-[var(--text-muted)] text-[var(--text-muted)]' : undefined}
           />
         )}
       </button>

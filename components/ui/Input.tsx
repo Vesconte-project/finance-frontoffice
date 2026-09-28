@@ -7,7 +7,7 @@ export default function Input({ className, ...props }: InputProps) {
   return (
     <input
       className={cn(
-        'state-interactive h-11 w-full rounded-[var(--radius-md)] border border-input bg-surface-card px-4 text-body-sm text-content-primary outline-none placeholder:text-content-muted focus-visible:border-primary/55 focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-1 focus-visible:ring-offset-page-bg',
+        'state-interactive h-11 w-full rounded-[8px] border border-[var(--text)] bg-[var(--surface)] px-4 text-body-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] focus-visible:border-[var(--accent)] focus-visible:outline-2 focus-visible:outline-[var(--accent)]',
         className
       )}
       {...props}

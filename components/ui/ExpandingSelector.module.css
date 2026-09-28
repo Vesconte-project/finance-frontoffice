@@ -14,12 +14,12 @@
   min-height: 46px;
   overflow: hidden;
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius-pill);
+  border-radius: 6px;
   isolation: isolate;
   color: var(--content-primary);
   user-select: none;
-  box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow);
-  backdrop-filter: blur(30px) saturate(1.55);
+  box-shadow: none;
+  backdrop-filter: none;
   transition:
     width var(--motion-slow) var(--motion-ease-soft),
     grid-template-columns var(--motion-slow) var(--motion-ease-soft),
@@ -31,7 +31,7 @@
   grid-template-columns: 62px minmax(0, 1fr);
   width: min(100%, 430px);
   border-color: color-mix(in srgb, var(--brand-spark) 34%, var(--glass-border));
-  box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow-strong, var(--glass-shadow));
+  box-shadow: none;
 }
 
 .vessel {
@@ -39,9 +39,7 @@
   z-index: -2;
   inset: 0;
   background:
-    radial-gradient(circle at 48% -40%, var(--glass-highlight), transparent 58%),
-    linear-gradient(180deg, color-mix(in srgb, var(--glass-highlight) 48%, transparent), transparent),
-    var(--glass-bg);
+    var(--bg);
 }
 
 .readout {
@@ -54,7 +52,7 @@
   gap: 8px;
   padding: 0 12px;
   border: 0;
-  border-radius: var(--radius-pill);
+  border-radius: 6px;
   background: transparent;
   color: inherit;
   text-align: left;
@@ -72,7 +70,7 @@
   right: 0;
   bottom: 9px;
   width: 1px;
-  background: color-mix(in srgb, var(--glass-highlight) 64%, transparent);
+  background: var(--surface);
   content: '';
 }
 
@@ -85,7 +83,7 @@
 .eyebrow {
   color: var(--content-muted);
   font-size: 10px;
-  font-weight: 620;
+  font-weight: 500;
   line-height: 1.2;
   white-space: nowrap;
 }
@@ -96,7 +94,7 @@
   overflow: hidden;
   color: var(--content-primary);
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 500;
   line-height: 1.3;
   white-space: nowrap;
   transition: opacity var(--motion-fast) var(--motion-ease-standard), transform var(--motion-fast) var(--motion-ease-standard);
@@ -116,7 +114,7 @@
   position: relative;
   min-width: 0;
   overflow: hidden;
-  border-radius: var(--radius-pill);
+  border-radius: 6px;
   contain: paint;
   opacity: 0;
   pointer-events: none;
@@ -142,12 +140,12 @@
 
 .selectorShell::before {
   left: 0;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--page-bg) 92%, transparent), transparent);
+  background: var(--bg);
 }
 
 .selectorShell::after {
   right: 0;
-  background: linear-gradient(270deg, color-mix(in srgb, var(--page-bg) 92%, transparent), transparent);
+  background: var(--bg);
 }
 
 .reel {
@@ -177,7 +175,7 @@
   color: var(--content-secondary);
   font: inherit;
   font-size: 10px;
-  font-weight: 590;
+  font-weight: 500;
   white-space: nowrap;
   opacity: 0.34;
   cursor: pointer;
@@ -186,12 +184,12 @@
 
 .reelOption[data-position='current'] {
   border-inline: 1px solid color-mix(in srgb, var(--brand-spark) 18%, transparent);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--glass-highlight) 58%, transparent), color-mix(in srgb, var(--brand-spark) 5%, transparent));
+  background: var(--bg);
   color: var(--content-primary);
   font-size: 10.5px;
-  font-weight: 720;
+  font-weight: 500;
   opacity: 1;
-  box-shadow: inset 0 1px 0 var(--glass-highlight), 0 0 22px color-mix(in srgb, var(--brand-spark) 9%, transparent);
+  box-shadow: none;
 }
 
 .reelOption[data-position='current']::after {
@@ -201,7 +199,7 @@
   left: 34%;
   height: 1px;
   background: var(--brand-spark-soft);
-  box-shadow: 0 0 8px var(--brand-cyan-glow);
+  box-shadow: none;
   content: '';
   opacity: 0.82;
 }

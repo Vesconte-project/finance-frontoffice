@@ -54,12 +54,12 @@ export default function SegmentedControl<T extends string>({
       ref={containerRef}
       role="tablist"
       aria-label={ariaLabel}
-      className={cn('glass relative inline-flex items-center gap-0.5 rounded-full p-1', className)}
+      className={cn('glass relative inline-flex items-center gap-0.5 rounded-md p-1', className)}
     >
       {thumb ? (
         <span
           aria-hidden="true"
-          className="glass-thumb absolute top-1 bottom-1 rounded-full transition-[left,width] duration-[420ms] ease-[cubic-bezier(0.34,1.45,0.44,1)] motion-reduce:transition-none"
+          className="glass-thumb absolute top-1 bottom-1 rounded-md transition-[left,width] duration-[420ms] ease-[cubic-bezier(0.34,1.45,0.44,1)] motion-reduce:transition-none"
           style={{ left: thumb.left, width: thumb.width }}
         />
       ) : null}
@@ -77,7 +77,7 @@ export default function SegmentedControl<T extends string>({
             data-analytics-value={option}
             onClick={() => onChange(option)}
             className={cn(
-              'relative z-10 cursor-pointer rounded-full px-2.5 py-1 text-[12px] leading-none transition-[color,transform] duration-150 active:scale-90',
+              'relative z-10 cursor-pointer rounded-md px-2.5 py-1 text-[12px] leading-none transition-[color,transform] duration-150 active:scale-90',
               active
                 ? 'font-semibold text-[var(--color-accent)]'
                 : 'text-content-secondary hover:text-content-primary'

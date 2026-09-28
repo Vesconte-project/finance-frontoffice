@@ -264,9 +264,9 @@ function Inspector({
   return (
     <motion.aside
       className={styles.inspector}
-      initial={{ opacity: 0, x: 22, filter: 'blur(8px)' }}
-      animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
-      exit={{ opacity: 0, x: 14, filter: 'blur(6px)' }}
+      initial={{ opacity: 0, x: 22 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 14 }}
       transition={{ duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
       aria-label={activeNode ? `${activeNode.name} relationship context` : `${community?.displayName ?? 'Market'} context`}
     >

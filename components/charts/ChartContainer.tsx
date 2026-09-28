@@ -25,42 +25,26 @@ export type ChartPalette = {
 
 export const LIGHT_CHART_PALETTE: ChartPalette = {
   isDark: false,
-  primary: '#0A99FF',
-  secondary: '#007BE0',
-  accent: '#D99A0B',
-  neutral: '#64768A',
-  grid: '#CBD7E3',
-  text: '#142133',
-  textMuted: '#7E8DA1',
-  axisText: '#506176',
-  tooltipBg: '#ffffff',
-  tooltipBorder: '#D9E2EC',
-  bullish: '#12B76A',
-  bearish: '#E23D2E',
-  signalNeutral: '#64768A',
-  regimeBullish: 'rgba(18, 183, 106, 0.14)',
-  regimeBearish: 'rgba(226, 61, 46, 0.14)',
-  regimeNeutral: 'rgba(100, 118, 138, 0.12)',
+  primary: 'var(--text)', secondary: 'var(--text-muted)', accent: 'var(--accent)',
+  neutral: 'var(--text-muted)', grid: 'var(--line)', text: 'var(--text)',
+  textMuted: 'var(--text-muted)', axisText: 'var(--text-muted)',
+  tooltipBg: 'var(--surface)', tooltipBorder: 'var(--line)',
+  bullish: 'var(--up)', bearish: 'var(--down)', signalNeutral: 'var(--text-muted)',
+  regimeBullish: 'color-mix(in srgb, var(--up) 14%, transparent)',
+  regimeBearish: 'color-mix(in srgb, var(--down) 14%, transparent)',
+  regimeNeutral: 'color-mix(in srgb, var(--text-muted) 12%, transparent)',
 }
 
 export const DARK_CHART_PALETTE: ChartPalette = {
   isDark: true,
-  primary: '#36B3FF',
-  secondary: '#73CBFF',
-  accent: '#FFCB47',
-  neutral: '#ACBCCB',
-  grid: 'rgba(142, 162, 191, 0.15)',
-  text: '#dde8f6',
-  textMuted: '#9cb0c9',
-  axisText: '#b3c3d8',
-  tooltipBg: '#132238',
-  tooltipBorder: '#476184',
-  bullish: '#67DEAB',
-  bearish: '#FF867B',
-  signalNeutral: '#ACBCCB',
-  regimeBullish: 'rgba(18, 183, 106, 0.2)',
-  regimeBearish: 'rgba(226, 61, 46, 0.2)',
-  regimeNeutral: 'rgba(100, 118, 138, 0.2)',
+  primary: 'var(--text)', secondary: 'var(--text-muted)', accent: 'var(--accent)',
+  neutral: 'var(--text-muted)', grid: 'var(--line)', text: 'var(--text)',
+  textMuted: 'var(--text-muted)', axisText: 'var(--text-muted)',
+  tooltipBg: 'var(--surface)', tooltipBorder: 'var(--line)',
+  bullish: 'var(--up)', bearish: 'var(--down)', signalNeutral: 'var(--text-muted)',
+  regimeBullish: 'color-mix(in srgb, var(--up) 20%, transparent)',
+  regimeBearish: 'color-mix(in srgb, var(--down) 20%, transparent)',
+  regimeNeutral: 'color-mix(in srgb, var(--text-muted) 20%, transparent)',
 }
 
 export const CHART_PALETTE: ChartPalette = LIGHT_CHART_PALETTE
@@ -125,7 +109,7 @@ export function ChartTooltipCard({
   if (rows.length === 0) return null
 
   return (
-    <div className="rounded-[var(--radius-lg)] border border-chart-tooltip-border bg-chart-tooltip px-3.5 py-3 shadow-[var(--shadow-sm)] backdrop-blur-[3px]">
+    <div className="rounded-[var(--radius-lg)] border border-chart-tooltip-border bg-chart-tooltip px-3.5 py-3">
       {title ? (
         <div className="mb-2 text-label-sm text-content-primary">
           {title}

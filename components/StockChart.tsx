@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useId, useState } from 'react'
+import React, { useState } from 'react'
 import type { PricePoint } from '@/lib/finance'
 import { formatMoney } from '@/lib/currency'
 import ChartContainer, { CHART_MARGINS, type ChartPalette, ChartTooltipCard } from '@/components/charts/ChartContainer'
@@ -165,10 +165,6 @@ export default function StockChart({
   showRegimes?: boolean
   showSignalMarkers?: boolean
 }) {
-  const gradientToken = useId().replace(/:/g, '')
-  const areaGradientId = `stock-area-gradient-${gradientToken}`
-  const lineGradientId = `stock-line-gradient-${gradientToken}`
-  const currentRegimeGradientId = `stock-current-regime-gradient-${gradientToken}`
   const [hover, setHover] = useState<HoverState | null>(null)
   const [isHovering, setIsHovering] = useState(false)
 
@@ -324,31 +320,12 @@ export default function StockChart({
           : 0
         const hoverX = hover?.mouseX ?? 0
         const hoverYOnCurve = hover?.yOnCurve ?? 0
-        const areaTopOpacity = palette.isDark ? 0.16 : 0.24
-        const areaMidOpacity = palette.isDark ? 0.06 : 0.09
-        const areaBottomOpacity = palette.isDark ? 0.015 : 0.02
         const lineGlowOpacity = palette.isDark ? 0.14 : 0.22
 
         return (
           <>
             <svg width={width} height={height} className="block overflow-visible">
-              <defs>
-                <linearGradient id={areaGradientId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={palette.primary} stopOpacity={areaTopOpacity} />
-                  <stop offset="70%" stopColor={palette.primary} stopOpacity={areaMidOpacity} />
-                  <stop offset="100%" stopColor={palette.primary} stopOpacity={areaBottomOpacity} />
-                </linearGradient>
-                <linearGradient id={lineGradientId} x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor={palette.primary} />
-                  <stop offset="100%" stopColor={palette.primary} />
-                </linearGradient>
-                <linearGradient id={currentRegimeGradientId} x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor={withAlpha(currentRegimeColor, 0)} />
-                  <stop offset="100%" stopColor={withAlpha(currentRegimeColor, palette.isDark ? 0.13 : 0.16)} />
-                </linearGradient>
-              </defs>
-
-              <rect x={0} y={0} width={width} height={height} fill="transparent" />
+<rect x={0} y={0} width={width} height={height} fill="transparent" />
 
               {signalBands.map((band, idx) => (
                 <g key={`band-${idx}`}>
@@ -386,7 +363,7 @@ export default function StockChart({
                   y={padding.top}
                   width={Math.max(0, padding.left + innerW - Math.max(currentBand.x, padding.left + innerW * 0.76))}
                   height={innerH}
-                  fill={`url(#${currentRegimeGradientId})`}
+                  fill="color-mix(in srgb, var(--text) 12%, transparent)"
                 />
               ) : null}
 
@@ -435,9 +412,9 @@ export default function StockChart({
                 )
               })}
 
-              {areaPath ? <path d={areaPath} fill={`url(#${areaGradientId})`} stroke="none" /> : null}
+              {areaPath ? <path d={areaPath} fill="color-mix(in srgb, var(--text) 12%, transparent)" stroke="none" /> : null}
               {path ? <path d={path} fill="none" stroke={withAlpha(palette.primary, lineGlowOpacity)} strokeWidth={6} /> : null}
-              {path ? <path d={path} fill="none" stroke={`url(#${lineGradientId})`} strokeWidth={2.5} /> : null}
+              {path ? <path d={path} fill="none" stroke="var(--text)" strokeWidth={2.5} /> : null}
               {lastPoint ? (
                 <g style={{ pointerEvents: 'none' }}>
                   <circle cx={lastPoint.x} cy={lastPoint.y} r={13} fill={withAlpha(currentRegimeColor, palette.isDark ? 0.13 : 0.18)} />

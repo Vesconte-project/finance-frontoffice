@@ -33,7 +33,7 @@ export default function DismissibleLocalHint({
   return (
     <div
       className={cn(
-        'flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-content-secondary',
+        'flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-content-secondary',
         className
       )}
       role="status"

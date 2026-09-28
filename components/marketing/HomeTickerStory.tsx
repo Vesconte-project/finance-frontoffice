@@ -70,7 +70,7 @@ const TRANSFORM_DURATION_RATIO = 0.84
 const DESKTOP_CAPTURE_START = 0.04
 const MOBILE_CAPTURE_START = 0.06
 const compactSurfaceClassName =
-  'relative overflow-hidden rounded-[1.1rem] border border-white/10 bg-white/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_28px_rgba(0,0,0,0.18)]'
+  'relative overflow-hidden rounded-md border border-[var(--line)] bg-[var(--surface)]'
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
@@ -96,18 +96,18 @@ function toneClasses(tone: TickerTone) {
   if (tone === 'bullish') {
     return {
       chip: 'border-[color:color-mix(in_srgb,var(--signal-bullish)_32%,transparent)] bg-[color:color-mix(in_srgb,var(--signal-bullish)_12%,transparent)] text-signal-bullish',
-      accent: 'bg-[radial-gradient(circle_at_top,color-mix(in_srgb,var(--signal-bullish)_16%,transparent),transparent_68%)]',
+      accent: 'bg-transparent',
     }
   }
   if (tone === 'defensive') {
     return {
       chip: 'border-[color:color-mix(in_srgb,var(--signal-bearish)_32%,transparent)] bg-[color:color-mix(in_srgb,var(--signal-bearish)_12%,transparent)] text-signal-bearish',
-      accent: 'bg-[radial-gradient(circle_at_top,color-mix(in_srgb,var(--signal-bearish)_16%,transparent),transparent_68%)]',
+      accent: 'bg-transparent',
     }
   }
   return {
     chip: 'border-[color:color-mix(in_srgb,var(--signal-neutral)_28%,transparent)] bg-[color:color-mix(in_srgb,var(--signal-neutral)_12%,transparent)] text-content-secondary',
-    accent: 'bg-[radial-gradient(circle_at_top,color-mix(in_srgb,var(--brand-spark)_12%,transparent),transparent_68%)]',
+    accent: 'bg-transparent',
   }
 }
 
@@ -280,7 +280,7 @@ function CompactTickerRow({
       style={{ opacity: textOpacity }}
     >
       <span
-        className="size-2 rounded-full bg-brand-spark shadow-[0_0_16px_color-mix(in_srgb,var(--brand-spark)_75%,transparent)]"
+        className="size-2 rounded-full bg-brand-spark"
         data-compact-part="dot"
       />
       <span className="font-semibold tracking-[0.16em] text-content-primary" data-compact-part="symbol">
@@ -318,7 +318,7 @@ const CompactTickerSurface = forwardRef<HTMLDivElement, {
   return (
     <div ref={ref} className={cn(compactSurfaceClassName, paddingClassName, className)} style={style}>
       <div
-        className="absolute inset-0 rounded-[inherit] bg-[linear-gradient(180deg,rgba(255,255,255,0.1),rgba(255,255,255,0.02)_60%)]"
+        className="absolute inset-0 rounded-[inherit] bg-transparent"
         style={{ opacity: highlightOpacity }}
         aria-hidden="true"
       />
@@ -371,8 +371,6 @@ function TransformingTickerCard({
   const currentTop = lerp(source.sourceY, source.sourceY + target.y, travel) + lerp(0, isMobile ? 8 : 10, detach * (1 - travel))
   const shellRadius = lerp(Math.min(source.sourceHeight / 2 + 4, 24), 30, expandHeight)
   const shellScale = lerp(1, 1.012, easeInOut(rangeProgress(progress, 0.2, 0.44)) * (1 - expandWidth))
-  const pieceShadow = easeInOut(rangeProgress(progress, 0.1, 0.38))
-  const cardShadow = easeInOut(rangeProgress(progress, 0.44, 0.86))
   const bandInsetX = lerp(0, isMobile ? 10 : 14, bandSettle)
   const bandTop = lerp(0, isMobile ? 10 : 12, bandSettle)
   const bandHeight = lerp(source.sourceHeight, isMobile ? 44 : 46, bandSettle)
@@ -399,25 +397,21 @@ function TransformingTickerCard({
           borderRadius: `${shellRadius}px`,
           overflow: 'hidden',
           transform: `scale(${shellScale})`,
-          boxShadow:
-            `inset 0 1px 0 rgba(255,255,255,${lerp(0.56, 0.9, pieceShadow)}), ` +
-            `0 ${lerp(2, 18, pieceShadow)}px ${lerp(8, 46, pieceShadow)}px rgba(16,28,45,${lerp(0.02, 0.08, pieceShadow)}), ` +
-            `0 ${lerp(0, 26, cardShadow)}px ${lerp(0, 84, cardShadow)}px rgba(16,28,45,${lerp(0, 0.16, cardShadow)})`,
         }}
       >
-        <GlassPanel className="relative h-full overflow-hidden border-white/16 bg-[#08111d]/86 p-0 shadow-none">
+        <GlassPanel className="relative h-full overflow-hidden border-[var(--line)] bg-[var(--line)]/86 p-0">
           <div
             className={`absolute inset-0 ${tone.accent}`}
             style={{ opacity: lerp(0.06, 0.54, expandHeight) }}
             aria-hidden="true"
           />
           <div
-            className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.1),transparent_56%)]"
+            className="absolute inset-0 bg-transparent"
             style={{ opacity: lerp(0.32, 0.9, freeze) }}
             aria-hidden="true"
           />
           <div
-            className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_48%)]"
+            className="absolute inset-0 bg-transparent"
             style={{ opacity: bodyOpacity }}
             aria-hidden="true"
           />
@@ -465,7 +459,7 @@ function TransformingTickerCard({
                   Market posture
                 </div>
               </div>
-              <div className={`rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.18em] ${tone.chip}`}>
+              <div className={`rounded-md border px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.18em] ${tone.chip}`}>
                 {item.posture}
               </div>
             </div>
@@ -514,7 +508,7 @@ function TransformingTickerCard({
               {item.chips.map((chip) => (
                 <span
                   key={chip}
-                  className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[0.72rem] font-medium text-content-secondary"
+                  className="rounded-md border border-[var(--line)] bg-[var(--surface)] px-2.5 py-1 text-[0.72rem] font-medium text-content-secondary"
                 >
                   {chip}
                 </span>
@@ -552,14 +546,14 @@ function DesktopSourceRail({
 }) {
   return (
     <div
-      className="absolute inset-x-6 top-8 z-20 hidden overflow-hidden rounded-full border border-white/14 bg-white/[0.035] py-3 text-content-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_18px_70px_rgba(0,0,0,0.34)] backdrop-blur-[30px] saturate-[1.8] lg:block"
+      className="absolute inset-x-6 top-8 z-20 hidden overflow-hidden rounded-md border border-[var(--line)] bg-[var(--surface)] py-3 text-content-primary lg:block"
       style={{
         opacity,
         transform: `translate3d(0, ${lerp(0, 8, 1 - opacity)}px, 0) scale(${lerp(1, 0.985, 1 - opacity)})`,
       }}
     >
       <div
-        className="pointer-events-none absolute inset-y-2 left-5 right-40 rounded-full bg-[linear-gradient(90deg,rgba(255,255,255,0.08),rgba(255,255,255,0.01))]"
+        className="pointer-events-none absolute inset-y-2 left-5 right-40 rounded-full bg-transparent"
         aria-hidden="true"
       />
 
@@ -581,7 +575,7 @@ function DesktopSourceRail({
               >
                 {index > 0 ? (
                   <div
-                    className="pointer-events-none absolute -left-[5px] inset-y-[10px] w-px bg-white/10"
+                    className="pointer-events-none absolute -left-[5px] inset-y-[10px] w-px bg-[var(--surface)]"
                     aria-hidden="true"
                   />
                 ) : null}
@@ -609,7 +603,7 @@ function DesktopSourceRail({
         </div>
       </div>
 
-      <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2 rounded-full border border-white/12 bg-white/[0.05] px-4 py-2 text-sm text-content-secondary shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_14px_30px_rgba(0,0,0,0.28)] backdrop-blur-[26px]">
+      <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-4 py-2 text-sm text-content-secondary">
         <Activity className="size-4 text-brand-spark" aria-hidden="true" />
         <span>Live now</span>
       </div>
@@ -636,7 +630,7 @@ function MobileSourceRail({
 }) {
   return (
     <div
-      className="absolute left-1/2 top-8 z-20 w-[min(94vw,22rem)] -translate-x-1/2 rounded-[2rem] border border-white/14 bg-white/[0.035] px-4 py-3 text-content-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_18px_70px_rgba(0,0,0,0.34)] backdrop-blur-[30px] saturate-[1.8] lg:hidden"
+      className="absolute left-1/2 top-8 z-20 w-[min(94vw,22rem)] -translate-x-1/2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-content-primary lg:hidden"
       style={{
         opacity,
         transform: `translate3d(-50%, ${lerp(0, 8, 1 - opacity)}px, 0) scale(${lerp(1, 0.985, 1 - opacity)})`,
@@ -673,8 +667,8 @@ function MobileSourceRail({
 function TickerSceneBackground() {
   return (
     <>
-      <div className="absolute inset-x-0 bottom-0 top-[4.5rem] bg-[linear-gradient(180deg,transparent,rgba(4,6,12,0.72)_4.5rem,rgba(4,6,12,0.98)_52%),radial-gradient(circle_at_20%_24%,color-mix(in_srgb,var(--brand-spark)_10%,transparent),transparent_30%),radial-gradient(circle_at_82%_26%,color-mix(in_srgb,var(--brand-base)_14%,transparent),transparent_24%)] md:top-20" />
-      <div className="absolute inset-x-0 bottom-0 top-[4.5rem] opacity-50 [mask-image:linear-gradient(180deg,transparent,black_5rem)] [background-image:linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] [background-size:40px_40px] md:top-20" />
+      <div className="absolute inset-x-0 bottom-0 top-[4.5rem] bg-transparent md:top-20" />
+      <div className="absolute inset-x-0 bottom-0 top-[4.5rem] opacity-50   [background-size:40px_40px] md:top-20" />
     </>
   )
 }

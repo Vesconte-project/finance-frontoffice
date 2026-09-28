@@ -1,6 +1,6 @@
 'use client'
 
-import { useId, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 export type SystemProfileDimension = {
@@ -76,7 +76,6 @@ export default function SystemProfileChart({
   compact = false,
 }: SystemProfileChartProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
-  const gradientId = useId()
 
   const points = useMemo(() => {
     return dimensions.slice(0, 5).map((dimension, index, arr) => {
@@ -141,14 +140,7 @@ export default function SystemProfileChart({
         className="h-auto w-full"
         onMouseLeave={() => setActiveIndex(null)}
       >
-        <defs>
-          <linearGradient id={`${gradientId}-fill`} x1="15%" y1="12%" x2="86%" y2="90%">
-            <stop offset="0%" stopColor="var(--accent-400)" stopOpacity={0.3} />
-            <stop offset="100%" stopColor="var(--accent-600)" stopOpacity={0.08} />
-          </linearGradient>
-        </defs>
-
-        {gridRings.map((ring, index) => (
+{gridRings.map((ring, index) => (
           <path
             key={`ring-${index}`}
             d={polygonPath(ring)}
@@ -180,7 +172,7 @@ export default function SystemProfileChart({
           />
         ) : null}
 
-        <path d={shapePath} fill={`url(#${gradientId}-fill)`} stroke="none" />
+        <path d={shapePath} fill="color-mix(in srgb, var(--text) 12%, transparent)" stroke="none" />
         <path d={shapePath} fill="none" stroke="var(--accent-500)" strokeWidth={2.4} />
 
         {profilePoints.map((point, index) => (
@@ -189,7 +181,7 @@ export default function SystemProfileChart({
             onMouseEnter={() => setActiveIndex(index)}
             style={{ cursor: 'default' }}
           >
-            <circle cx={point.x} cy={point.y} r={5.5} fill="rgba(10, 153, 255, 0.16)" />
+            <circle cx={point.x} cy={point.y} r={5.5} fill="var(--text-muted)" opacity={0.16} />
             <circle cx={point.x} cy={point.y} r={3.4} fill="var(--chart-tooltip-bg)" stroke="var(--accent-500)" strokeWidth={2} />
           </g>
         ))}
@@ -216,7 +208,7 @@ export default function SystemProfileChart({
                 dominantBaseline="middle"
                 fill="var(--content-primary)"
                 fontSize={compact ? 11 : 12}
-                fontWeight={600}
+                fontWeight={500}
               >
                 {point.label}
               </text>

@@ -1,9 +1,7 @@
 import Link from 'next/link'
-import { Sora } from 'next/font/google'
 import { ArrowLeft } from 'lucide-react'
 import { BRAND_DESCRIPTION, BRAND_NAME } from '@/components/marketing/site-config'
 
-const sora = Sora({ subsets: ['latin'], weight: ['400', '600', '700'], display: 'swap', variable: '--font-auth-display' })
 
 type AuthLayoutProps = {
   children: React.ReactNode
@@ -11,11 +9,11 @@ type AuthLayoutProps = {
 
 export default function AuthLayout({ children }: AuthLayoutProps) {
   return (
-    <div className={`auth-page ${sora.variable}`}>
+    <div className="auth-page">
       <main className="auth-page__shell">
         <nav className="auth-page__nav" aria-label="Account navigation">
           <Link href="/" className="auth-page__brand" aria-label={`${BRAND_NAME} home`}>
-            {BRAND_NAME}<span aria-hidden="true">/</span>
+            {BRAND_NAME}
           </Link>
           <Link href="/" className="auth-page__home-link">
             <ArrowLeft aria-hidden="true" size={16} strokeWidth={1.8} />

@@ -291,9 +291,9 @@ export default function TickerRelationshipField({
     const colors = () => {
       const computed = window.getComputedStyle(root)
       return {
-        accent: computed.getPropertyValue('--relationship-accent').trim() || '#0b8178',
-        line: computed.getPropertyValue('--relationship-line').trim() || '#142943',
-        node: computed.getPropertyValue('--relationship-node').trim() || '#617789',
+        accent: computed.getPropertyValue('--relationship-accent').trim() || computed.getPropertyValue('--accent').trim(),
+        line: computed.getPropertyValue('--relationship-line').trim() || computed.getPropertyValue('--text').trim(),
+        node: computed.getPropertyValue('--relationship-node').trim() || computed.getPropertyValue('--text-muted').trim(),
       }
     }
 
@@ -337,13 +337,6 @@ export default function TickerRelationshipField({
       backgroundContext.setTransform(dpr, 0, 0, dpr, 0, 0)
       backgroundContext.clearRect(0, 0, width, height)
 
-      const atmosphere = backgroundContext.createRadialGradient(anchor.x, anchor.y, 0, anchor.x, anchor.y, Math.max(width, height) * 0.82)
-      atmosphere.addColorStop(0, colorWithAlpha(palette.accent, 0.055))
-      atmosphere.addColorStop(0.45, colorWithAlpha(palette.node, 0.018))
-      atmosphere.addColorStop(1, colorWithAlpha(palette.node, 0))
-      backgroundContext.fillStyle = atmosphere
-      backgroundContext.fillRect(0, 0, width, height)
-
       backgroundContext.lineWidth = 0.8
       pairs.forEach(([startIndex, endIndex]) => {
         const start = fieldNodes[startIndex]
@@ -374,20 +367,11 @@ export default function TickerRelationshipField({
       context.translate(anchor.x * dpr, anchor.y * dpr)
       context.scale(backgroundScale, backgroundScale)
       context.translate(-anchor.x * dpr, -anchor.y * dpr)
-      context.filter = `blur(${(focus.progress * (width < 640 ? 2.8 : 4.2) * dpr).toFixed(2)}px)`
       context.globalAlpha = 0.9 - focus.progress * 0.18
       context.drawImage(backgroundCanvas, 0, 0)
       context.restore()
 
       context.setTransform(dpr, 0, 0, dpr, 0, 0)
-      const haloRadius = width < 640 ? 120 : 190
-      const halo = context.createRadialGradient(anchor.x, anchor.y, 0, anchor.x, anchor.y, haloRadius)
-      halo.addColorStop(0, colorWithAlpha(palette.accent, 0.15 * focus.progress))
-      halo.addColorStop(0.32, colorWithAlpha(palette.accent, 0.045 * focus.progress))
-      halo.addColorStop(1, colorWithAlpha(palette.accent, 0))
-      context.fillStyle = halo
-      context.fillRect(0, 0, width, height)
-
       const continuationPoints = relationshipCount > 0
         ? [
             { x: -width * 0.14, y: anchor.y + height * 0.12 },
@@ -396,14 +380,9 @@ export default function TickerRelationshipField({
         : []
 
       context.save()
-      context.filter = `blur(${((width < 640 ? 0.85 : 1.35) * dpr).toFixed(2)}px)`
 
       continuationPoints.forEach((point) => {
-        const gradient = context.createLinearGradient(anchor.x, anchor.y, point.x, point.y)
-        gradient.addColorStop(0, colorWithAlpha(palette.accent, 0.08 * focus.progress))
-        gradient.addColorStop(0.55, colorWithAlpha(palette.accent, 0.025 * focus.progress))
-        gradient.addColorStop(1, colorWithAlpha(palette.accent, 0))
-        context.strokeStyle = gradient
+        context.strokeStyle = colorWithAlpha(palette.line, 0.08 * focus.progress)
         context.lineWidth = width < 640 ? 0.65 : 0.75
         context.beginPath()
         context.moveTo(anchor.x, anchor.y)
@@ -416,11 +395,7 @@ export default function TickerRelationshipField({
         if (!node) continue
         const point = focusedPoint(node)
         const lineAlpha = (0.07 + node.strength * 0.12 + node.confidence * 0.04) * focus.progress
-        const gradient = context.createLinearGradient(anchor.x, anchor.y, point.x, point.y)
-        gradient.addColorStop(0, colorWithAlpha(palette.accent, lineAlpha * 0.78))
-        gradient.addColorStop(0.5, colorWithAlpha(palette.accent, lineAlpha * 0.34))
-        gradient.addColorStop(1, colorWithAlpha(palette.accent, lineAlpha * 0.06))
-        context.strokeStyle = gradient
+        context.strokeStyle = colorWithAlpha(palette.line, lineAlpha)
         context.lineWidth = width < 640 ? 0.8 : 0.9 + node.strength * 0.28
         context.beginPath()
         context.moveTo(anchor.x, anchor.y)
@@ -436,7 +411,6 @@ export default function TickerRelationshipField({
       context.restore()
 
       context.save()
-      context.filter = `blur(${((width < 640 ? 0.22 : 0.32) * dpr).toFixed(2)}px)`
       context.lineCap = 'round'
 
       const drawAnchorFocus = (point: ProjectedPoint, localAlpha: number, lineWidth: number) => {
@@ -446,11 +420,7 @@ export default function TickerRelationshipField({
           x: anchor.x + (point.x - anchor.x) * focusRatio,
           y: anchor.y + (point.y - anchor.y) * focusRatio,
         }
-        const localGradient = context.createLinearGradient(anchor.x, anchor.y, focusPoint.x, focusPoint.y)
-        localGradient.addColorStop(0, colorWithAlpha(palette.accent, localAlpha))
-        localGradient.addColorStop(0.38, colorWithAlpha(palette.accent, localAlpha * 0.62))
-        localGradient.addColorStop(1, colorWithAlpha(palette.accent, 0))
-        context.strokeStyle = localGradient
+        context.strokeStyle = colorWithAlpha(palette.line, localAlpha)
         context.lineWidth = lineWidth
         context.beginPath()
         context.moveTo(anchor.x, anchor.y)

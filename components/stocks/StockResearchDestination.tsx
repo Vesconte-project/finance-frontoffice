@@ -41,14 +41,14 @@ export default function StockResearchDestination({ ticker, kind }: { ticker: str
         <ResearchOverviewLink ticker={ticker} />
       </div>
 
-      <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-border)] bg-[var(--bg-surface)] shadow-sm">
+      <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-border)] bg-[var(--bg-surface)]">
         <div className="grid lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.55fr)]">
           <div className="min-h-80 p-5 lg:p-7">
             <div className="flex flex-wrap items-center gap-3">
               <p className="text-caption font-semibold uppercase tracking-[0.14em] text-[var(--color-accent)]">{planned ? 'Preview' : 'Partial coverage'}</p>
-              <span className="rounded-full border border-[var(--color-border)] px-2.5 py-1 text-caption text-content-muted">{planned ? 'Pending integration' : 'Available structure'}</span>
+              <span className="rounded-md border border-[var(--color-border)] px-2.5 py-1 text-caption text-content-muted">{planned ? 'Pending integration' : 'Available structure'}</span>
             </div>
-            <h2 className="mt-4 max-w-xl text-[clamp(1.4rem,2.5vw,2.15rem)] font-semibold tracking-[-0.035em] text-content-primary">The final research surface is already reserved.</h2>
+            <h2 className="mt-4 max-w-xl text-[clamp(1.4rem,2.5vw,2.15rem)] font-semibold tracking-normal text-content-primary">The final research surface is already reserved.</h2>
             <p className="mt-3 max-w-2xl text-body text-content-secondary">{planned ? 'The layout will receive canonical data without changing the page hierarchy. No values, series or conclusions are simulated in this preview.' : 'This destination will progressively combine the currently covered evidence with its deeper research controls.'}</p>
             <div className="mt-8 grid gap-3 sm:grid-cols-[1.25fr_0.75fr]">
               <div className="min-h-36 rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border)] bg-[var(--bg-surface-raised)] p-4">

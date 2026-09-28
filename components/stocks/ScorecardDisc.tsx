@@ -51,8 +51,8 @@ function axisByKey(scorecard: Scorecard): Map<ScorecardAxis['key'], ScorecardAxi
 }
 
 function centerTextColor(score: number | null): string {
-  if (score !== null && score >= 38 && score <= 58) return '#11182a'
-  return '#ffffff'
+  if (score !== null && score >= 38 && score <= 58) return 'var(--text)'
+  return 'var(--surface)'
 }
 
 export default function ScorecardDisc({
@@ -72,7 +72,7 @@ export default function ScorecardDisc({
   const slice = 360 / SCORECARD_AXIS_ORDER.length
   const gap = mini ? 2.5 : 3.8
   const overallScore = scorecard.overall.score
-  const overallColor = overallScore === null ? '#64768a' : scoreColor(overallScore)
+  const overallColor = overallScore === null ? 'var(--text-muted)' : scoreColor(overallScore)
   const grade = scorecard.overall.grade || '–'
   const showLabels = !mini
   const showRings = !mini
@@ -143,7 +143,7 @@ export default function ScorecardDisc({
                 d={wedgePath(center, radius, startAngle, endAngle)}
                 fill={available ? scoreColor(score) : 'var(--neutral-300)'}
                 fillOpacity={available ? 0.9 : 0.24}
-                stroke={available ? 'rgba(255,255,255,0.46)' : 'var(--neutral-500)'}
+                stroke={available ? 'var(--text)' : 'var(--text-muted)'}
                 strokeWidth={mini ? 1.4 : 1.1}
                 strokeDasharray={available ? undefined : mini ? '3 3' : '5 4'}
                 style={{ animationDelay: `${index * 42}ms` }}
@@ -154,7 +154,7 @@ export default function ScorecardDisc({
                   y={missingMark.y + 4}
                   textAnchor="middle"
                   fontSize={14}
-                  fontWeight={700}
+                  fontWeight={500}
                   fill="var(--content-muted)"
                 >
                   –
@@ -181,7 +181,7 @@ export default function ScorecardDisc({
           cy={center}
           r={centerRadius}
           fill={overallColor}
-          stroke="rgba(255,255,255,0.64)"
+          stroke="var(--text)"
           strokeWidth={mini ? 2.3 : 2.8}
         />
         <circle
@@ -198,7 +198,7 @@ export default function ScorecardDisc({
           y={center + (mini ? 5.5 : -1)}
           textAnchor="middle"
           fontSize={Math.max(mini ? 8 : 24, (mini ? 63 : 22) * fontScale)}
-          fontWeight={800}
+          fontWeight={500}
           fill={centerTextColor(overallScore)}
         >
           {grade}

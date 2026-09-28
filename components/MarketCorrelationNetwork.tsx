@@ -286,11 +286,11 @@ export default function MarketCorrelationNetwork({
 
           <div className="border-t border-border pt-3 text-caption text-content-muted">
             <div className="flex items-center gap-2">
-              <span className="inline-block h-px w-8 bg-[#36B3FF]" />
+              <span className="inline-block h-px w-8 bg-[var(--bg)]" />
               Distance follows relationship strength
             </div>
             <div className="mt-2 flex items-center gap-2">
-              <span className="inline-block h-1.5 w-8 rounded bg-[#36B3FF]" />
+              <span className="inline-block h-1.5 w-8 rounded bg-[var(--bg)]" />
               Thickness and opacity follow confidence when available
             </div>
             <p className="mt-2">

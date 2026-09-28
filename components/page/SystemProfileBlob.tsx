@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 export type SystemProfileBlobDimension = {
@@ -24,11 +24,10 @@ type Point = {
   y: number
 }
 
-const COOL_BLUE: [number, number, number] = [74, 166, 255]
-const COOL_GREEN: [number, number, number] = [183, 255, 81]
-const HOT_AMBER: [number, number, number] = [255, 171, 74]
-const HOT_RED: [number, number, number] = [255, 79, 69]
-const CHALK: [number, number, number] = [245, 247, 255]
+const NEUTRAL = 'var(--text)'
+const POSITIVE = 'var(--up)'
+const WARNING = 'var(--text-muted)'
+const NEGATIVE = 'var(--down)'
 
 function clamp01(value: number): number {
   if (!Number.isFinite(value)) return 0
@@ -49,21 +48,12 @@ function easeOutCubic(value: number): number {
   return 1 - (1 - x) ** 3
 }
 
-function mixRgb(
-  from: [number, number, number],
-  to: [number, number, number],
-  amount: number
-): [number, number, number] {
-  const t = clamp01(amount)
-  return [
-    Math.round(lerp(from[0], to[0], t)),
-    Math.round(lerp(from[1], to[1], t)),
-    Math.round(lerp(from[2], to[2], t)),
-  ]
+function mixColor(from: string, to: string, amount: number): string {
+  return `color-mix(in srgb, ${from} ${Math.round((1 - clamp01(amount)) * 100)}%, ${to})`
 }
 
-function rgba(color: [number, number, number], alpha: number): string {
-  return `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${Math.max(0, Math.min(1, alpha)).toFixed(3)})`
+function withAlpha(color: string, alpha: number): string {
+  return `color-mix(in srgb, ${color} ${Math.round(clamp01(alpha) * 100)}%, transparent)`
 }
 
 function smoothClosedPath(points: Point[], tension = 1): string {
@@ -226,7 +216,6 @@ export default function SystemProfileBlob({
   marketCapLabel = null,
 }: SystemProfileBlobProps) {
   const [clock, setClock] = useState({ time: 0, intro: 0 })
-  const gradientSeed = useId()
 
   useEffect(() => {
     let frame = 0
@@ -294,11 +283,11 @@ export default function SystemProfileBlob({
   const orbitBrokenness = clamp01(instability * 0.82 - heavyContainment * 0.18 + riskHeat * 0.14)
   const trailStrength = clamp01(momentum * 0.44 + riskHeat * 0.28 + microBurst * 0.48)
 
-  const coolGlow = mixRgb(COOL_BLUE, COOL_GREEN, clamp01(cleanEnergy * 0.92))
-  const hotGlow = mixRgb(HOT_AMBER, HOT_RED, clamp01(riskHeat * 0.94))
-  const orbitGlow = mixRgb(coolGlow, hotGlow, clamp01(riskHeat * 0.7))
-  const particleGlow = mixRgb(coolGlow, hotGlow, clamp01(riskHeat * 0.88 + microBurst * 0.12))
-  const coreGlow = mixRgb(COOL_BLUE, HOT_AMBER, clamp01(riskHeat * 0.58 + mass * 0.16 + yieldValue * 0.16))
+  const coolGlow = mixColor(NEUTRAL, POSITIVE, cleanEnergy * 0.92)
+  const hotGlow = mixColor(WARNING, NEGATIVE, riskHeat * 0.94)
+  const orbitGlow = mixColor(coolGlow, hotGlow, riskHeat * 0.7)
+  const particleGlow = mixColor(coolGlow, hotGlow, riskHeat * 0.88 + microBurst * 0.12)
+  const coreGlow = mixColor(NEUTRAL, WARNING, riskHeat * 0.58 + mass * 0.16 + yieldValue * 0.16)
 
   const baseAngle =
     clock.time * angularSpeed +
@@ -398,33 +387,26 @@ export default function SystemProfileBlob({
   return (
     <div
       className={cn(
-        'relative mx-auto aspect-square w-full overflow-hidden rounded-[28px] border border-white/10',
+        'relative mx-auto aspect-square w-full overflow-hidden rounded-[28px] border border-[var(--line)]',
         mini ? 'rounded-[12px]' : compact ? 'max-w-[240px]' : undefined,
         className
       )}
       style={{
         width: `${resolvedSize}px`,
         maxWidth: '100%',
-        background:
-          'radial-gradient(circle at 50% 44%, rgba(183,255,81,0.05), transparent 14%), radial-gradient(circle at 56% 52%, rgba(55,130,255,0.14), transparent 36%), linear-gradient(180deg, rgba(5,8,14,0.98), rgba(2,4,11,0.98) 58%, rgba(0,0,0,0.98))',
-        boxShadow: mini
-          ? 'inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 20px rgba(0,0,0,0.22)'
-          : 'inset 0 1px 0 rgba(255,255,255,0.08), 0 28px 80px rgba(0,0,0,0.28)',
+        background: 'var(--surface)',
       }}
     >
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 opacity-80"
         style={{
-          backgroundImage:
-            'radial-gradient(circle at 18% 14%, rgba(55,130,255,0.18), transparent 20%), radial-gradient(circle at 82% 76%, rgba(255,171,74,0.14), transparent 24%), linear-gradient(rgba(255,255,255,0.024) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)',
-          backgroundSize: 'auto, auto, 32px 32px, 32px 32px',
-          maskImage: 'radial-gradient(circle at 50% 50%, black, transparent 82%)',
+          backgroundImage: 'none',
         }}
       />
       {!compact && !mini ? (
-        <div className="pointer-events-none absolute left-4 top-3 z-10 text-[12px] uppercase tracking-[0.32em] text-white/55">
-          <span className="font-semibold text-[rgba(183,255,81,0.92)]">lb/</span> signal orbit
+        <div className="pointer-events-none absolute left-4 top-3 z-10 text-[12px] uppercase tracking-[0.32em] text-[var(--text)]">
+          <span className="font-semibold text-[var(--text)]">lb/</span> signal orbit
         </div>
       ) : null}
 
@@ -435,40 +417,19 @@ export default function SystemProfileBlob({
         aria-label="Animated signal orbit showing trend, momentum, risk control, yield, stability, and mass."
       >
         <defs>
-          <filter id={`${gradientSeed}-glow`} x="-35%" y="-35%" width="170%" height="170%">
-            <feGaussianBlur stdDeviation={compact ? 3.2 : 4.8} />
-          </filter>
-          <filter id={`${gradientSeed}-softGlow`} x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur stdDeviation={compact ? 10 : 15} />
-          </filter>
-          <filter id={`${gradientSeed}-particleGlow`} x="-60%" y="-60%" width="220%" height="220%">
-            <feGaussianBlur stdDeviation={compact ? 7 : 11} />
-          </filter>
-          <radialGradient id={`${gradientSeed}-coreFill`} cx="50%" cy="46%" r="64%">
-            <stop offset="0%" stopColor={rgba(CHALK, 0.94)} />
-            <stop offset="22%" stopColor={rgba(coreGlow, 0.9)} />
-            <stop offset="62%" stopColor={rgba(coreGlow, 0.28)} />
-            <stop offset="100%" stopColor="rgba(3,7,16,0.02)" />
-          </radialGradient>
-          <radialGradient id={`${gradientSeed}-particleFill`} cx="42%" cy="40%" r="70%">
-            <stop offset="0%" stopColor={rgba(CHALK, 1)} />
-            <stop offset="24%" stopColor={rgba(CHALK, 0.96)} />
-            <stop offset="56%" stopColor={rgba(particleGlow, 0.98)} />
-            <stop offset="100%" stopColor={rgba(particleGlow, 0.18)} />
-          </radialGradient>
         </defs>
 
         <path
           d={`M ${resolvedSize * 0.1} ${resolvedSize * 0.2} Q ${resolvedSize * 0.18} ${resolvedSize * 0.15} ${resolvedSize * 0.26} ${resolvedSize * 0.22}`}
           fill="none"
-          stroke={rgba(COOL_BLUE, 0.18)}
+          stroke={withAlpha(NEUTRAL, 0.18)}
           strokeWidth={compact ? 1.1 : 1.6}
           strokeLinecap="round"
         />
         <path
           d={`M ${resolvedSize * 0.78} ${resolvedSize * 0.82} Q ${resolvedSize * 0.88} ${resolvedSize * 0.76} ${resolvedSize * 0.92} ${resolvedSize * 0.86}`}
           fill="none"
-          stroke={rgba(HOT_AMBER, 0.16)}
+          stroke={withAlpha(WARNING, 0.16)}
           strokeWidth={compact ? 1.1 : 1.6}
           strokeLinecap="round"
         />
@@ -477,25 +438,25 @@ export default function SystemProfileBlob({
           cx={center}
           cy={center}
           r={coreRadius * lerp(2.9, 4.3, mass + riskHeat * 0.18)}
-          fill={rgba(coreGlow, 0.12 + mass * 0.12 + riskHeat * 0.06)}
-          filter={`url(#${gradientSeed}-softGlow)`}
+          fill={withAlpha(coreGlow, 0.12 + mass * 0.12 + riskHeat * 0.06)}
+
         />
         <circle
           cx={center}
           cy={center}
           r={coreRadius * (1.55 + yieldValue * 0.5)}
           fill="none"
-          stroke={rgba(coreGlow, 0.4 + mass * 0.1)}
+          stroke={withAlpha(coreGlow, 0.4 + mass * 0.1)}
           strokeWidth={compact ? 1.1 : 1.6}
           strokeDasharray={compact ? '8 6' : '12 7'}
         />
-        <circle cx={center} cy={center} r={coreRadius} fill={`url(#${gradientSeed}-coreFill)`} />
+        <circle cx={center} cy={center} r={coreRadius} fill="color-mix(in srgb, var(--text) 12%, transparent)" />
         <circle
           cx={center}
           cy={center}
           r={coreRadius + 5}
           fill="none"
-          stroke={rgba(coreGlow, 0.72)}
+          stroke={withAlpha(coreGlow, 0.72)}
           strokeWidth={compact ? 1.3 : 1.8}
           strokeDasharray={compact ? '10 7' : '14 9'}
         />
@@ -505,11 +466,10 @@ export default function SystemProfileBlob({
             key={`orbit-layer-${index}`}
             d={path}
             fill="none"
-            stroke={rgba(orbitGlow, index === 0 ? 0.9 : index === 1 ? 0.42 : 0.24)}
+            stroke={withAlpha(orbitGlow, index === 0 ? 0.9 : index === 1 ? 0.42 : 0.24)}
             strokeWidth={compact ? (index === 0 ? 2.2 : 1.1) : index === 0 ? 3 : 1.35}
             strokeDasharray={index === 0 ? orbitDasharray : fractureDasharray}
             strokeDashoffset={index === 0 ? clock.time * angularSpeed * -14 : clock.time * (6 + index * 3)}
-            filter={index === 0 ? `url(#${gradientSeed}-glow)` : undefined}
             strokeLinecap="round"
           />
         ))}
@@ -518,7 +478,7 @@ export default function SystemProfileBlob({
           <path
             d={orbitPaths[0] ?? ''}
             fill="none"
-            stroke={rgba(hotGlow, 0.42)}
+            stroke={withAlpha(hotGlow, 0.42)}
             strokeWidth={compact ? 1.3 : 1.9}
             strokeDasharray={compact ? '4 18' : '5 24'}
             strokeDashoffset={clock.time * 16}
@@ -531,16 +491,16 @@ export default function SystemProfileBlob({
             <path
               d={trailPath}
               fill="none"
-              stroke={rgba(particleGlow, 0.28 + trailStrength * 0.32)}
+              stroke={withAlpha(particleGlow, 0.28 + trailStrength * 0.32)}
               strokeWidth={compact ? 5 : 7.5}
               strokeLinecap="round"
               strokeLinejoin="round"
-              filter={`url(#${gradientSeed}-particleGlow)`}
+
             />
             <path
               d={trailPath}
               fill="none"
-              stroke={rgba(particleGlow, 0.62)}
+              stroke={withAlpha(particleGlow, 0.62)}
               strokeWidth={compact ? 1.6 : 2.2}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -554,7 +514,7 @@ export default function SystemProfileBlob({
             cx={point.x}
             cy={point.y}
             r={point.radius}
-            fill={rgba(particleGlow, point.opacity)}
+            fill={withAlpha(particleGlow, point.opacity)}
           />
         ))}
 
@@ -565,7 +525,7 @@ export default function SystemProfileBlob({
             y1={spark.y1}
             x2={spark.x2}
             y2={spark.y2}
-            stroke={rgba(hotGlow, spark.opacity)}
+            stroke={withAlpha(hotGlow, spark.opacity)}
             strokeWidth={1.2}
             strokeLinecap="round"
           />
@@ -575,61 +535,60 @@ export default function SystemProfileBlob({
           cx={particle.x}
           cy={particle.y}
           r={particleHaloRadius}
-          fill={rgba(particleGlow, 0.16 + trailStrength * 0.1)}
-          filter={`url(#${gradientSeed}-particleGlow)`}
+          fill={withAlpha(particleGlow, 0.16 + trailStrength * 0.1)}
+
         />
         <circle
           cx={particle.x}
           cy={particle.y}
           r={particleShockRadius}
           fill="none"
-          stroke={rgba(particleGlow, 0.38 + momentum * 0.18)}
+          stroke={withAlpha(particleGlow, 0.38 + momentum * 0.18)}
           strokeWidth={compact ? 1.1 : 1.5}
           strokeDasharray={compact ? '5 7' : '7 10'}
         />
-        <circle cx={particle.x} cy={particle.y} r={particleCoreRadius} fill={`url(#${gradientSeed}-particleFill)`} />
-        <circle cx={particle.x} cy={particle.y} r={particleCoreRadius * 0.34} fill={rgba(CHALK, 0.98)} />
+        <circle cx={particle.x} cy={particle.y} r={particleCoreRadius} fill="color-mix(in srgb, var(--text) 12%, transparent)" />
+        <circle cx={particle.x} cy={particle.y} r={particleCoreRadius * 0.34} fill={withAlpha(NEUTRAL, 0.98)} />
 
         {!compact && !mini ? (
           <g
             fontFamily='"Bradley Hand", "Comic Sans MS", cursive'
-            fill="rgba(245,247,255,0.88)"
-            style={{ textShadow: '0 0 12px rgba(255,255,255,0.18)' }}
+            fill="var(--text)"
           >
-            <text x={24} y={64} fontSize="18" fill={rgba(CHALK, 0.92)}>
+            <text x={24} y={64} fontSize="18" fill="var(--text)">
               real signal
             </text>
             <path
               d={`M 30 70 Q 46 78 76 74`}
               fill="none"
-              stroke={rgba(HOT_AMBER, 0.85)}
+              stroke={withAlpha(WARNING, 0.85)}
               strokeWidth={2}
               strokeLinecap="round"
             />
 
-            <text x={resolvedSize - 132} y={82} fontSize="16" fill={rgba(particleGlow, 0.96)}>
+            <text x={resolvedSize - 132} y={82} fontSize="16" fill="var(--text)">
               {actionText}
             </text>
             <path
               d={`M ${resolvedSize - 140} 90 Q ${resolvedSize - 108} 102 ${particle.x.toFixed(1)} ${(particle.y - 8).toFixed(1)}`}
               fill="none"
-              stroke={rgba(particleGlow, 0.54)}
+              stroke={withAlpha(particleGlow, 0.54)}
               strokeWidth={1.6}
               strokeLinecap="round"
             />
 
-            <text x={resolvedSize - 148} y={resolvedSize - 56} fontSize="16" fill={rgba(coreGlow, 0.92)}>
+            <text x={resolvedSize - 148} y={resolvedSize - 56} fontSize="16" fill="var(--text)">
               {massText}
             </text>
             {marketCapLabel ? (
-              <text x={resolvedSize - 146} y={resolvedSize - 36} fontSize="12" fill="rgba(245,247,255,0.62)">
+              <text x={resolvedSize - 146} y={resolvedSize - 36} fontSize="12" fill="var(--text-muted)">
                 {marketCapLabel}
               </text>
             ) : null}
             <path
               d={`M ${resolvedSize - 138} ${resolvedSize - 62} Q ${resolvedSize - 104} ${resolvedSize - 90} ${center + 8} ${center + 18}`}
               fill="none"
-              stroke={rgba(coreGlow, 0.48)}
+              stroke={withAlpha(coreGlow, 0.48)}
               strokeWidth={1.6}
               strokeLinecap="round"
             />

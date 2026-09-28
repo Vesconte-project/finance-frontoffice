@@ -133,7 +133,7 @@ function sourceChipClass(item: DisplayItem): string {
     return 'border-danger/30 bg-danger/10 text-danger'
   }
   if (item.readiness?.tone === 'missing') {
-    return 'border-amber-400/30 bg-amber-400/10 text-amber-500'
+    return 'border-[var(--line)] bg-[var(--text-muted)] text-[var(--text-muted)]'
   }
   if (item.readiness?.tone === 'partial') {
     return 'border-primary/28 bg-primary/10 text-accent-text'
@@ -167,7 +167,7 @@ function rightSubLabel(item: DisplayItem): string | null {
 
 function statusIconClass(item: DisplayItem): string {
   if (item.readiness?.label === 'Rejected') return 'border-danger/25 bg-danger/10 text-danger'
-  if (item.readiness?.tone === 'missing') return 'border-amber-400/30 bg-amber-400/10 text-amber-500'
+  if (item.readiness?.tone === 'missing') return 'border-[var(--line)] bg-[var(--text-muted)] text-[var(--text-muted)]'
   if (item.readiness?.tone === 'partial') return 'border-primary/25 bg-primary/10 text-accent-text'
   if (item.hasSignals) return 'border-primary/25 bg-primary/10 text-accent-text'
   return 'border-border bg-surface-elevated text-content-muted'
@@ -683,7 +683,7 @@ export default function TickerSearchCombobox({
           </div>
           <div className="flex shrink-0 items-center gap-2 text-right">
             {labelText ? (
-              <span className={cn('ticker-search__status-chip rounded-full border px-1.5 py-0.5 text-micro', sourceChipClass(item))}>
+              <span className={cn('ticker-search__status-chip rounded-md border px-1.5 py-0.5 text-micro', sourceChipClass(item))}>
                 {labelText}
               </span>
             ) : null}
@@ -696,13 +696,13 @@ export default function TickerSearchCombobox({
 
   const inputClassName =
     variant === 'header'
-      ? 'no-lift-interaction h-12 rounded-full border-[color:var(--glass-border)] bg-[color:var(--glass-bg)] pl-11 pr-10 shadow-[var(--glass-shadow)] backdrop-blur-xl placeholder:text-content-muted/80 hover:border-[color:var(--app-border-strong,var(--glass-border))] hover:bg-[color:var(--surface-hover)] focus-visible:border-brand-spark focus-visible:ring-brand-spark/30'
+      ? 'no-lift-interaction h-12 rounded-[8px] border-[var(--text)] bg-[var(--surface)] pl-11 pr-10 placeholder:text-[var(--text-muted)] focus-visible:border-[var(--accent)]'
       : 'h-11 pr-24 pl-9 uppercase'
 
   const panelClassName =
     variant === 'header'
-      ? 'ticker-search__panel mt-2 rounded-[18px] border border-[color:var(--glass-border)] bg-[color:var(--glass-bg)] shadow-[var(--glass-shadow-strong,var(--glass-shadow))] ring-1 ring-[color:var(--glass-border)] backdrop-blur-[24px]'
-      : 'mt-1 rounded-xl border border-border bg-surface-card shadow-sm'
+      ? 'ticker-search__panel mt-2 rounded-[8px] border border-[var(--line)] bg-[var(--surface)]'
+      : 'mt-1 rounded-[8px] border border-[var(--line)] bg-[var(--surface)]'
 
   return (
     <div

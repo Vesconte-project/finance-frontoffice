@@ -38,8 +38,8 @@
 .multipleHead h2 {
   margin: 0;
   font-size: 1rem;
-  font-weight: 640;
-  letter-spacing: -0.02em;
+  font-weight: 500;
+  letter-spacing: normal;
 }
 
 .multipleHead p {
@@ -50,9 +50,9 @@
 
 .multipleHead strong {
   font-size: clamp(1.4rem, 2.2vw, 1.7rem);
-  font-weight: 660;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.03em;
+  letter-spacing: normal;
   line-height: 1;
 }
 

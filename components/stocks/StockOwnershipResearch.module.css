@@ -70,7 +70,7 @@
 .moduleHeader h2 {
   margin: 0;
   font-size: 1.15rem;
-  letter-spacing: -0.025em;
+  letter-spacing: normal;
 }
 
 .breakdownFrame {
@@ -131,7 +131,7 @@
   margin: 0;
   color: var(--color-text-muted);
   font-size: 10px;
-  font-weight: 650;
+  font-weight: 500;
   text-transform: uppercase;
 }
 
@@ -167,14 +167,14 @@
   margin: 0;
   color: var(--color-text-primary);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 500;
   text-align: right;
 }
 
 .pendingValue {
   color: var(--color-text-muted) !important;
   font-size: 10px !important;
-  font-weight: 550 !important;
+  font-weight: 500 !important;
   text-transform: uppercase;
 }
 
@@ -194,7 +194,7 @@
 .detailModule h2 {
   margin: 0;
   font-size: 1.15rem;
-  letter-spacing: -0.025em;
+  letter-spacing: normal;
 }
 
 .capitalIntro p,
@@ -338,7 +338,7 @@
 .methodology a {
   color: var(--color-accent);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
   text-decoration: none;
 }
 

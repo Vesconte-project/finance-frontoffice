@@ -28,7 +28,7 @@ export default function MetricGrid({ items, columns = 4 }: MetricGridProps) {
           hint={item.hint}
           className={
             index % 2 === 0
-              ? 'bg-[linear-gradient(180deg,var(--brand-electric-glow),transparent_68%)] glow-key'
+              ? 'bg-transparent glow-key'
               : 'sm:translate-y-[2px]'
           }
         />

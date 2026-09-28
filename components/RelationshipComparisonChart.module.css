@@ -16,7 +16,7 @@
   align-items: center;
   color: var(--content-secondary);
   font-size: 10px;
-  font-weight: 650;
+  font-weight: 500;
 }
 
 .legend strong {
@@ -107,9 +107,9 @@
   gap: 4px;
   padding: 9px 10px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--page-bg) 94%, transparent);
-  box-shadow: var(--shadow-sm);
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: none;
   color: var(--content-secondary);
   font-size: 9px;
   pointer-events: none;
@@ -142,7 +142,7 @@
 .loading i {
   display: block;
   height: 1px;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--brand-spark) 36%, transparent), transparent);
+  background: var(--bg);
   opacity: 0.18;
   transform: scaleX(0.45);
   transform-origin: left;

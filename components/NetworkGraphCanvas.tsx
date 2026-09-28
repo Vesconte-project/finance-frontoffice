@@ -63,8 +63,8 @@ export const NETWORK_ARCS = {
 } as const
 
 export const NETWORK_GLOW = {
-  normalBlur: 10,
-  focusBlur: 22,
+  normalBlur: 0,
+  focusBlur: 0,
   clusterAlpha: 1,
   dimAlpha: 0.12,
   sectorDimAlpha: 0.18,
@@ -174,7 +174,7 @@ function linkColor(edge: Pick<NetworkEdge, 'correlation' | 'relationshipColor'>,
       ? edge.relationshipColor
       : hexToRgba(edge.relationshipColor, alpha)
   }
-  return edge.correlation >= 0 ? `rgba(54, 179, 255, ${alpha})` : `rgba(255, 134, 123, ${alpha})`
+  return hexToRgba(themeColor('--text'), alpha)
 }
 
 function linkWidth(edge: Pick<NetworkEdge, 'inMst' | 'absCorrelation' | 'relationshipWidthBoost' | 'relationshipConfidence'> & { visualConfidence?: number | null }, mode: 'global' | 'peer'): number {
@@ -195,8 +195,18 @@ function linkAlpha(edge: Pick<NetworkEdge, 'absCorrelation' | 'relationshipAlpha
   return clamp(NETWORK_ARCS.baseAlpha + edge.absCorrelation * NETWORK_ARCS.correlationAlpha, 0.16, 0.86)
 }
 
+function themeColor(token: '--bg' | '--surface' | '--text' | '--text-muted' | '--accent' | '--down'): string {
+  if (typeof document === 'undefined') return `var(${token})`
+  return getComputedStyle(document.documentElement).getPropertyValue(token).trim()
+}
+
+function resolveCssColor(color: string): string {
+  const token = color.match(/^var\((--[a-z-]+)\)$/)?.[1]
+  return token && typeof document !== 'undefined' ? getComputedStyle(document.documentElement).getPropertyValue(token).trim() : color
+}
+
 function hexToRgba(color: string, alpha: number): string {
-  const hex = color.trim().replace(/^#/, '')
+  const hex = resolveCssColor(color).trim().replace(/^#/, '')
   if (!/^[0-9a-f]{6}$/i.test(hex)) return color
   const value = Number.parseInt(hex, 16)
   const r = (value >> 16) & 255
@@ -669,7 +679,7 @@ export default function NetworkGraphCanvas({
   return (
     <div
       ref={wrapperRef}
-      className="relative h-full w-full overflow-hidden rounded-[8px] bg-[#07111f]"
+      className="relative h-full w-full overflow-hidden rounded-[8px] bg-[var(--bg)]"
       onMouseMove={(event) => {
         if (!hover) return
         updateTooltipPosition(event.clientX, event.clientY, hover.ticker)
@@ -684,7 +694,7 @@ export default function NetworkGraphCanvas({
         graphData={graphData}
         width={width}
         height={height}
-        backgroundColor="#07111f"
+        backgroundColor={themeColor('--bg')}
         nodeId="id"
         linkSource="source"
         linkTarget="target"
@@ -837,19 +847,19 @@ export default function NetworkGraphCanvas({
             const paddingY = 3 / globalScale
 
             ctx.save()
-            ctx.font = `700 ${fontSize}px Inter, ui-sans-serif, system-ui, sans-serif`
+            ctx.font = `500 ${fontSize}px IBM Plex Sans, sans-serif`
             const metrics = ctx.measureText(label)
             const boxWidth = metrics.width + paddingX * 2
             const boxHeight = fontSize + paddingY * 2
             ctx.globalAlpha = dimmed ? 0.34 : 0.9
-            ctx.fillStyle = 'rgba(7, 17, 31, 0.76)'
+            ctx.fillStyle = themeColor('--surface')
             ctx.strokeStyle = linkColor(link, 0.58)
             ctx.lineWidth = 1 / globalScale
             ctx.beginPath()
             ctx.roundRect(labelX - boxWidth / 2, labelY - boxHeight / 2, boxWidth, boxHeight, 4 / globalScale)
             ctx.fill()
             ctx.stroke()
-            ctx.fillStyle = '#f7fbff'
+            ctx.fillStyle = themeColor('--text')
             ctx.textAlign = 'center'
             ctx.textBaseline = 'middle'
             ctx.fillText(label, labelX, labelY + 0.5 / globalScale)
@@ -863,7 +873,7 @@ export default function NetworkGraphCanvas({
           const focused = focusedTicker === node.ticker
           const connected = connectedTickers?.has(node.ticker) ?? false
           const dimmed = isNodeDimmed(node)
-          const color = nodeColor(node, colorMode)
+          const color = resolveCssColor(nodeColor(node, colorMode))
           const alpha = dimmed ? (sectorFilter ? NETWORK_GLOW.sectorDimAlpha : NETWORK_GLOW.dimAlpha) : 1
           const radius = node.radius + (focused ? 4 : connected ? 2 : 0)
 
@@ -871,7 +881,7 @@ export default function NetworkGraphCanvas({
           if (node.isCenter) {
             ctx.beginPath()
             ctx.arc(x, y, radius + 7, 0, Math.PI * 2)
-            ctx.strokeStyle = `rgba(255, 255, 255, ${dimmed ? 0.22 : 0.62})`
+              ctx.strokeStyle = hexToRgba(themeColor('--text'), dimmed ? 0.22 : 0.62)
             ctx.lineWidth = 1.6
             ctx.setLineDash([2.5, 4.5])
             ctx.stroke()
@@ -887,7 +897,7 @@ export default function NetworkGraphCanvas({
             if (edge?.correlation && edge.correlation < 0) {
               ctx.beginPath()
               ctx.arc(x, y, radius + 4, 0, Math.PI * 2)
-              ctx.strokeStyle = `rgba(255, 118, 108, ${dimmed ? 0.28 : 0.95})`
+              ctx.strokeStyle = hexToRgba(themeColor('--down'), dimmed ? 0.28 : 0.95)
               ctx.lineWidth = 2
               ctx.setLineDash([3, 3])
               ctx.stroke()
@@ -924,12 +934,12 @@ export default function NetworkGraphCanvas({
               : focused || connected || node.rank <= limits.labels
           if (showLabel) {
             const fontSize = (node.isCenter ? 12 : 10.5) / globalScale
-            ctx.font = `700 ${fontSize}px Inter, ui-sans-serif, system-ui, sans-serif`
+            ctx.font = `500 ${fontSize}px IBM Plex Mono, monospace`
             ctx.textAlign = 'center'
             ctx.textBaseline = node.isCenter && mode === 'peer' ? 'middle' : 'bottom'
             ctx.lineWidth = 3.6 / globalScale
-            ctx.strokeStyle = '#07111f'
-            ctx.fillStyle = '#f7fbff'
+            ctx.strokeStyle = themeColor('--bg')
+            ctx.fillStyle = themeColor('--text')
             ctx.globalAlpha = dimmed ? 0.34 : 0.96
             const labelY = mode === 'peer' && !node.isCenter ? y - radius - 5 / globalScale : mode === 'peer' ? y : y - radius - 5 / globalScale
             ctx.strokeText(node.symbol ?? node.ticker, x, labelY)

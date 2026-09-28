@@ -48,7 +48,7 @@ export default function FilterChip({
     : {}
 
   const sharedClass = cn(
-    'state-interactive inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-[var(--radius-pill)] border px-3 text-label-sm shadow-[inset_0_1px_0_var(--glass-highlight),var(--glass-shadow)] backdrop-blur-[30px] saturate-[1.8] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-page-bg',
+    'state-interactive inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-[var(--radius-pill)] border px-3 text-label-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-page-bg',
     active
       ? 'border-[color-mix(in_srgb,var(--color-accent)_55%,transparent)] bg-[var(--color-accent-light)] font-medium text-[var(--color-accent)]'
       : 'border-[var(--glass-border)] bg-[var(--glass-bg)] text-content-secondary hover:border-[color-mix(in_srgb,var(--color-accent)_45%,transparent)] hover:text-content-primary',

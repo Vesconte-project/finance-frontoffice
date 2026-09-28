@@ -51,7 +51,7 @@
   padding: 0 1px;
   color: var(--content-secondary);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
   transition: color var(--duration-fast, 180ms) var(--ease-standard, ease);
@@ -59,7 +59,7 @@
 
 .item[data-active='true'] .link,
 .link:hover {
-  color: var(--brand-spark);
+  color: var(--text);
 }
 
 .link:focus-visible {
@@ -67,11 +67,11 @@
 }
 
 .linkLabel {
-  border-radius: 3px;
+  border-radius: 6px;
 }
 
 .link:focus-visible .linkLabel {
-  outline: 2px solid color-mix(in srgb, var(--brand-spark) 60%, transparent);
+  outline: 2px solid var(--accent);
   outline-offset: 4px;
 }
 
@@ -82,7 +82,7 @@
   left: 0;
   width: var(--active-rail-width);
   height: 2px;
-  background: var(--brand-spark);
+  background: var(--accent);
   opacity: 0;
   pointer-events: none;
   transform: translate3d(var(--active-rail-left), 0, 0) scaleX(0.35);
@@ -107,7 +107,7 @@
     gap: 20px;
     padding-inline: 2px 22px;
     scroll-padding-inline: 12px;
-    mask-image: linear-gradient(to right, transparent, #000 18px, #000 calc(100% - 18px), transparent);
+    mask-image: none;
   }
 
   .link {

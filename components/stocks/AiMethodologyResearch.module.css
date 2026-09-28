@@ -9,7 +9,7 @@
   margin: 0;
   color: var(--color-text-muted);
   font-size: 10px;
-  font-weight: 750;
+  font-weight: 500;
   letter-spacing: .14em;
   line-height: 1.2;
   text-transform: uppercase;
@@ -30,7 +30,7 @@
   margin: 8px 0 0;
   color: var(--color-text-primary);
   font-size: clamp(1.35rem, 2.6vw, 2.15rem);
-  letter-spacing: -.04em;
+  letter-spacing: normal;
   line-height: 1.05;
 }
 
@@ -43,7 +43,7 @@
 
 .contextFacts div { display: grid; gap: 4px; }
 .contextFacts dt { color: var(--color-text-muted); font-size: 10px; text-transform: uppercase; }
-.contextFacts dd { margin: 0; color: var(--color-text-secondary); font-size: 12px; font-weight: 650; white-space: nowrap; }
+.contextFacts dd { margin: 0; color: var(--color-text-secondary); font-size: 12px; font-weight: 500; white-space: nowrap; }
 
 .preview {
   display: grid;
@@ -67,29 +67,29 @@
 }
 
 .questionPreview { min-width: 0; }
-.questionPreview label { display: block; margin-bottom: 8px; color: var(--color-text-secondary); font-size: 12px; font-weight: 650; }
+.questionPreview label { display: block; margin-bottom: 8px; color: var(--color-text-secondary); font-size: 12px; font-weight: 500; }
 
 .questionRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
-.questionRow input { min-width: 0; height: 44px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: color-mix(in srgb, var(--bg-surface-raised) 78%, transparent); padding: 0 13px; color: var(--color-text-muted); font: inherit; opacity: 1; }
+.questionRow input { min-width: 0; height: 44px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--surface); padding: 0 13px; color: var(--color-text-muted); font: inherit; opacity: 1; }
 .questionRow input::placeholder { color: var(--color-text-muted); }
-.questionRow button { min-width: 68px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--bg-surface-raised); color: var(--color-text-muted); font-size: 12px; font-weight: 700; opacity: 1; }
+.questionRow button { min-width: 68px; border: 1px solid var(--color-border); border-radius: 6px; background: var(--bg-surface-raised); color: var(--color-text-muted); font-size: 12px; font-weight: 500; opacity: 1; }
 .disabledNote { margin-top: 7px; font-size: 11px; }
 
 .suggestions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding-top: 2px; }
 .suggestions > span { color: var(--color-text-muted); font-size: 11px; }
 .suggestions > div { display: flex; flex-wrap: wrap; gap: 7px; }
-.suggestions button { border: 1px solid var(--color-border); border-radius: var(--radius-pill); background: transparent; padding: 7px 10px; color: var(--color-text-secondary); font-size: 11px; opacity: .72; }
+.suggestions button { border: 1px solid var(--color-border); border-radius: 6px; background: transparent; padding: 7px 10px; color: var(--color-text-secondary); font-size: 11px; opacity: 1; }
 
 .responseGrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, .38fr); gap: 36px; align-items: start; }
 .response, .sources { min-width: 0; padding-top: 2px; }
 .sources { padding-left: 28px; border-left: 1px solid var(--research-line); }
 .sectionHead { display: flex; gap: 16px; align-items: start; justify-content: space-between; }
 .sectionHead h2 { font-size: 1.15rem; }
-.status { flex: 0 0 auto; color: var(--color-text-muted); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.status { flex: 0 0 auto; color: var(--color-text-muted); font-size: 10px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; }
 
 .responseCanvas { display: grid; gap: 10px; min-height: 190px; align-content: center; margin-top: 18px; border-block: 1px dashed var(--color-border); padding: 26px 0; }
 .responseCanvas p { max-width: 420px; margin: 4px 0 0; color: var(--color-text-muted); font-size: 12px; line-height: 1.5; }
-.responseLine, .responseLineShort { display: block; height: 5px; border-radius: var(--radius-pill); background: var(--bg-surface-raised); }
+.responseLine, .responseLineShort { display: block; height: 5px; border-radius: 6px; background: var(--bg-surface-raised); }
 .responseLine { width: min(72%, 440px); }
 .responseLineShort { width: min(48%, 280px); }
 .sourceRule { height: 1px; margin: 22px 0 12px; background: var(--research-line); }
@@ -98,7 +98,7 @@
 .availability > div { display: grid; gap: 6px; }
 .availability strong { color: var(--color-text-primary); font-size: 13px; }
 .availability p { margin: 0; }
-.availability a, .linkRow a { color: var(--color-accent); font-size: 12px; font-weight: 700; text-decoration: none; }
+.availability a, .linkRow a { color: var(--color-accent); font-size: 12px; font-weight: 500; text-decoration: none; }
 .availability a:hover, .availability a:focus-visible, .linkRow a:hover, .linkRow a:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
 
 .methodology { grid-template-columns: minmax(150px, .24fr) minmax(0, 1fr); gap: 48px; align-items: start; }
@@ -107,17 +107,17 @@
 .index a { color: var(--color-text-muted); font-size: 11px; line-height: 1.35; text-decoration: none; }
 .index a:hover, .index a:focus-visible { color: var(--color-accent); }
 .editorial { min-width: 0; max-width: 780px; }
-.intro { max-width: 680px; margin: 0 0 34px; color: var(--color-text-primary); font-size: clamp(1.2rem, 2.1vw, 1.65rem); line-height: 1.4; letter-spacing: -.025em; }
+.intro { max-width: 680px; margin: 0 0 34px; color: var(--color-text-primary); font-size: clamp(1.2rem, 2.1vw, 1.65rem); line-height: 1.4; letter-spacing: normal; }
 .methodSection { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 20px; padding: 26px 0; border-top: 1px solid var(--research-line); scroll-margin-top: 108px; }
 .sectionLabel { color: var(--color-text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
-.methodSection h2 { margin: 0; color: var(--color-text-primary); font-size: clamp(1.2rem, 2vw, 1.55rem); letter-spacing: -.03em; }
+.methodSection h2 { margin: 0; color: var(--color-text-primary); font-size: clamp(1.2rem, 2vw, 1.55rem); letter-spacing: normal; }
 .sectionCopy { max-width: 650px; margin: 9px 0 0; color: var(--color-text-muted); font-size: 12px; line-height: 1.55; }
 .definitionList, .statusList, .factList { margin-top: 18px; }
 .definitionList > div, .statusList > div, .factList > div { display: grid; grid-template-columns: minmax(130px, .42fr) minmax(0, 1fr); gap: 20px; padding: 11px 0; border-bottom: 1px solid var(--research-line); }
-.definitionList strong, .statusList strong, .factList dt { color: var(--color-text-secondary); font-size: 12px; font-weight: 700; }
+.definitionList strong, .statusList strong, .factList dt { color: var(--color-text-secondary); font-size: 12px; font-weight: 500; }
 .definitionList p, .statusList span, .factList dd { margin: 0; color: var(--color-text-muted); font-size: 12px; line-height: 1.45; }
 .definitionList p { margin: 0; }
-.factList dt { font-weight: 600; }
+.factList dt { font-weight: 500; }
 .factList dd { text-align: right; }
 .limitList { display: grid; gap: 9px; margin: 16px 0 0; padding-left: 17px; color: var(--color-text-muted); font-size: 12px; line-height: 1.5; }
 .linkRow { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; }
