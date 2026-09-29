@@ -3364,6 +3364,7 @@ html.chrome-scrolled .dock-search {
   --text: #15202E;
   --text-muted: #3B4657;
   --text-body: color-mix(in srgb, var(--text) 72%, var(--text-muted));
+  --text-small: color-mix(in srgb, var(--text) 80%, var(--text-muted));
   --accent: #A87A2A;
   --up: #3E7A55;
   --down: #A34A3C;
@@ -3375,11 +3376,12 @@ html.chrome-scrolled .dock-search {
   :root:not([data-theme='light']):not(.light) {
     --bg: #0F1620;
     --surface: #172130;
-    --surface-raised: color-mix(in srgb, var(--surface) 92%, var(--text));
+    --surface-raised: color-mix(in srgb, var(--surface) 96%, var(--text));
     --line: #2A3444;
     --text: #ECE6DA;
     --text-muted: #A9B0BB;
-    --text-body: color-mix(in srgb, var(--text) 60%, var(--text-muted));
+    --text-body: color-mix(in srgb, var(--text-muted) 85%, var(--text));
+    --text-small: color-mix(in srgb, var(--text-muted) 52%, var(--text));
     --accent: #C99A48;
     --up: #6FAF86;
     --down: #D07565;
@@ -3392,11 +3394,12 @@ html.chrome-scrolled .dock-search {
 :root[data-theme='dark'], :root.dark {
   --bg: #0F1620;
   --surface: #172130;
-  --surface-raised: color-mix(in srgb, var(--surface) 92%, var(--text));
+  --surface-raised: color-mix(in srgb, var(--surface) 96%, var(--text));
   --line: #2A3444;
   --text: #ECE6DA;
   --text-muted: #A9B0BB;
-  --text-body: color-mix(in srgb, var(--text) 60%, var(--text-muted));
+  --text-body: color-mix(in srgb, var(--text-muted) 85%, var(--text));
+  --text-small: color-mix(in srgb, var(--text-muted) 52%, var(--text));
   --accent: #C99A48;
   --up: #6FAF86;
   --down: #D07565;
@@ -3426,9 +3429,9 @@ html.chrome-scrolled .dock-search {
   --foreground: var(--text);
   --content-primary: var(--text);
   --content-secondary: var(--text-body);
-  --content-muted: var(--text-muted);
+  --content-muted: var(--text-small);
   --muted: var(--surface);
-  --muted-foreground: var(--text-muted);
+  --muted-foreground: var(--text-small);
   --border: var(--line-soft);
   --divider-strong: var(--line-strong);
   --input: var(--line);
@@ -3469,8 +3472,8 @@ html.chrome-scrolled .dock-search {
   --color-border-light: var(--line-soft);
   --color-text-primary: var(--text);
   --color-text-secondary: var(--text-body);
-  --color-text-muted: var(--text-muted);
-  --color-text-hint: var(--text-muted);
+  --color-text-muted: var(--text-small);
+  --color-text-hint: var(--text-small);
   --color-positive: var(--up);
   --color-positive-bg: var(--surface);
   --color-negative: var(--down);
@@ -3487,7 +3490,7 @@ html.chrome-scrolled .dock-search {
   --app-border-strong: var(--line-strong);
   --app-text-primary: var(--text);
   --app-text-secondary: var(--text-body);
-  --app-text-muted: var(--text-muted);
+  --app-text-muted: var(--text-small);
   --app-navy: var(--text);
   --app-teal: var(--text);
   --app-teal-highlight: var(--text);
@@ -3514,8 +3517,7 @@ html.chrome-scrolled .dock-search {
 
 html, body { background: var(--bg); color: var(--text); font-family: var(--font-body), sans-serif; }
 body { font-weight: 400; font-variant-numeric: tabular-nums; }
-h1, .marketing-logo-type, .auth-page__brand { font-family: var(--font-display), serif; letter-spacing: normal !important; }
-:is(h2, h3) { font-family: var(--font-body), sans-serif; letter-spacing: normal !important; }
+h1, h2, h3, .marketing-logo-type, .auth-page__brand { font-family: var(--font-display), serif; letter-spacing: normal !important; }
 :is(h1, h2, h3, h4, h5, h6, b, strong, .font-semibold, .font-bold, .font-extrabold, .font-black) { font-weight: 500; }
 .marketing-logo-type, .auth-page__brand { font-variant: small-caps; letter-spacing: 0.06em; color: var(--text); }
 :is(button, input, select, textarea, nav, label) { font-family: var(--font-body), sans-serif; }
@@ -3530,18 +3532,18 @@ h1, .marketing-logo-type, .auth-page__brand { font-family: var(--font-display), 
   backdrop-filter: none;
 }
 .surface-tertiary { background: var(--surface-soft); }
-.surface-secondary[data-surface='featured'] { background: var(--surface-raised); border-color: var(--line-strong); }
-.surface-secondary[data-surface='quiet'] { background: var(--surface-soft); }
-.data-panel { --table-sticky-bg: var(--surface); background: var(--surface); border: 1px solid var(--line-soft); border-radius: 6px; }
+.surface-secondary[data-surface='featured'] { background: var(--surface-soft); border-color: var(--line-strong); }
+.surface-secondary[data-surface='quiet'] { background: transparent; border: 0; border-top: 1px solid var(--line-soft); border-radius: 0; }
+.data-section { --table-sticky-bg: var(--bg); border-bottom: 1px solid var(--line-soft); }
 
 /* Shared reading and data hierarchy. Page modules retain layout and spacing. */
 .reading-copy { max-width: 68ch; color: var(--text-body); line-height: 1.65; }
 .data-table { font-family: var(--font-body), sans-serif; }
 .data-table :is(th, td) { border-bottom: 1px solid var(--line-soft); }
-.data-table thead th { color: var(--text-muted); font-size: 0.6875rem; }
-.data-table tbody th { color: var(--text-body); font-weight: 500; }
+.data-table thead th { color: var(--text-small); font-size: 0.6875rem; }
+.data-table tbody th { color: var(--text-small); font-weight: 500; }
 .data-table tbody td {
-  color: var(--text-body);
+  color: var(--text-small);
   font-family: var(--font-mono), monospace;
   font-size: 0.8125rem;
   font-weight: 400;
@@ -3551,6 +3553,7 @@ h1, .marketing-logo-type, .auth-page__brand { font-family: var(--font-display), 
 .data-table tbody td[data-direction='up'] { color: var(--up); }
 .data-table tbody td[data-direction='down'] { color: var(--down); }
 .data-table tbody tr:hover :is(th, td) { background: var(--surface-soft); }
+.faq-accordion [data-faq-question] { font-family: var(--font-display), serif; }
 
 .ticker-search__root .ticker-search__input:focus-visible {
   border-color: transparent;
@@ -3566,6 +3569,7 @@ h1, .marketing-logo-type, .auth-page__brand { font-family: var(--font-display), 
   border-left: 1px solid var(--accent);
   background: var(--surface-soft);
 }
+.ticker-search__panel .ticker-search__status-chip { color: var(--text-small); }
 button, [role='button'], .surface-primary, .surface-secondary, .surface-tertiary { border-radius: 6px; box-shadow: none; }
 input, [role='combobox'], .ticker-search__root { border-radius: 8px; }
 svg.lucide { stroke-width: 1.5px; }

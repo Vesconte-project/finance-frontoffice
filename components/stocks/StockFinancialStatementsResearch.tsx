@@ -138,7 +138,7 @@ function Statement({
   })
 
   return (
-    <section className={`${styles.statement} data-panel`} id={statement}>
+    <section className={`${styles.statement} data-section`} id={statement}>
       <h2 className={styles.statementHeading}>{label}</h2>
       <StatementHistoryWindow
         periodLabels={periods.map(formatPeriod)}

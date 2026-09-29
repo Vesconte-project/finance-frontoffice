@@ -110,14 +110,14 @@ export default function FaqAccordion({ groups }: { groups: readonly FaqGroup[] }
                       >
                         <span
                           style={{ fontFamily: 'var(--font-mono)' }}
-                          className="text-xs font-medium tabular-nums tracking-[0.12em] text-[var(--text-muted)] sm:text-sm"
+                          className="text-xs font-medium tabular-nums tracking-[0.12em] text-[var(--text-small)] sm:text-sm"
                           aria-hidden="true"
                         >
                           {String(itemStartNumber + itemIndex + 1).padStart(2, '0')}
                         </span>
                         <span
                           data-faq-question={item.slug}
-                          className="min-w-0 text-[1.05rem] font-medium leading-6 text-content-primary sm:text-lg sm:leading-7"
+                          className="min-w-0 text-[1.05rem] font-medium leading-6 text-content-primary sm:text-xl sm:leading-7"
                         >
                           {item.question}
                         </span>

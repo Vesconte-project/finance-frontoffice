@@ -34,7 +34,7 @@ export function PickHeroCard({ item, rank }: { item: PickItem; rank: number }) {
         </div>
         <div className="text-right">
           <div className="numeric-tabular text-3xl font-black leading-none text-[var(--text)]">{item.score}</div>
-          <div className="text-caption mt-1 text-[var(--text-muted)]">score</div>
+          <div className="text-caption mt-1 text-[var(--text-small)]">score</div>
         </div>
       </div>
 
@@ -49,7 +49,7 @@ export function PickHeroCard({ item, rank }: { item: PickItem; rank: number }) {
           {item.name ? <div className="mt-1 text-lg text-[var(--text-body)]">{item.name}</div> : null}
         </Link>
 
-        {item.sector ? <div className="text-caption mt-3 text-[var(--text-muted)]">{item.sector}</div> : null}
+        {item.sector ? <div className="text-caption mt-3 text-[var(--text-small)]">{item.sector}</div> : null}
 
         {parts.length > 0 ? (
           <div className="mt-5 flex flex-wrap gap-2">

@@ -504,14 +504,18 @@
 
 .chapters {
   display: grid;
-  gap: 16px;
+  gap: 0;
 }
 
 .chapter {
   display: grid;
   gap: 14px;
-  padding: 22px 24px;
+  padding: 26px 0 30px;
   scroll-margin-top: 108px;
+}
+
+.chapter:first-child {
+  padding-top: 6px;
 }
 
 .chapterHead {
@@ -615,10 +619,6 @@
 }
 
 @media (max-width: 640px) {
-  .chapter {
-    padding: 18px 16px;
-  }
-
   .changeTable th,
   .changeTable td {
     padding-left: 16px;
@@ -636,7 +636,7 @@
 .statement {
   display: grid;
   gap: 16px;
-  padding: 22px 24px;
+  padding: 26px 0 30px;
   scroll-margin-top: 108px;
 }
 
@@ -658,7 +658,7 @@
 }
 
 .statementChart {
-  --statement-ink: var(--text-body);
+  --statement-ink: var(--text-small);
   display: grid;
   gap: 10px;
   margin: 0;
@@ -702,7 +702,7 @@
 }
 
 .chartLegend dt {
-  color: var(--color-text-secondary);
+  color: var(--color-text-muted);
   font-size: 11px;
   font-weight: 500;
   overflow: hidden;
@@ -1014,10 +1014,6 @@
 /* The window already limits the columns to three or four; the line item names
    wrap rather than push them off screen. */
 @media (max-width: 640px) {
-  .statement {
-    padding: 18px 16px;
-  }
-
   .statementTable th,
   .statementTable td {
     padding-left: 14px;

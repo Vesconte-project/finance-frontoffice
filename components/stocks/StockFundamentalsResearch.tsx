@@ -84,7 +84,7 @@ export default function StockFundamentalsResearch({
     <ResearchViewShell data={data} title="Fundamentals" showHeader={false}>
       <div className={styles.chapters}>
         {view.chapters.map((chapter) => (
-          <section className={`${styles.chapter} data-panel`} id={chapter.key} key={chapter.key}>
+          <section className={`${styles.chapter} data-section`} id={chapter.key} key={chapter.key}>
             <h2 className={styles.chapterHead}>{chapter.label}</h2>
             <ChangeTable chapter={chapter} />
             <TailList metrics={chapter.tail} />

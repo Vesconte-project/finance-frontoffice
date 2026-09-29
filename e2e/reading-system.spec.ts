@@ -22,19 +22,30 @@ for (const colorScheme of ['light', 'dark'] as const) {
       const title = document.querySelector<HTMLElement>('#faq-questions-heading')!
       const question = document.querySelector<HTMLElement>('[data-faq-question]')!
       const answer = document.querySelector<HTMLElement>('.faq-accordion__panel .reading-copy')!
+      const small = document.querySelector<HTMLElement>('.faq-accordion article button > span:first-child')!
       const root = getComputedStyle(document.documentElement)
+      const brightness = (value: string) => {
+        const modern = value.match(/^color\(srgb\s+([^)]+)\)$/)
+        const channels = modern
+          ? modern[1].split('/')[0].trim().split(/\s+/).map(Number)
+          : value.match(/^rgba?\(([^)]+)\)$/)?.[1].split(/[\s,\/]+/).filter(Boolean).slice(0, 3).map((channel) => Number(channel) / 255)
+        return channels ? channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722 : 0
+      }
       return {
         title: getComputedStyle(title).fontFamily,
         question: getComputedStyle(question).fontFamily,
         interface: getComputedStyle(document.body).fontFamily,
         answer: getComputedStyle(answer).color,
+        answerBrightness: brightness(getComputedStyle(answer).color),
+        smallBrightness: brightness(getComputedStyle(small).color),
         body: root.getPropertyValue('--text-body').trim(),
         page: getComputedStyle(document.querySelector<HTMLElement>('.marketing-faq')!).backgroundColor,
         open: getComputedStyle(document.querySelector<HTMLElement>('.faq-accordion article')!).backgroundColor,
       }
     })
-    expect(typography.title).not.toBe(typography.question)
-    expect(typography.question).toBe(typography.interface)
+    expect(typography.title.split(',')[0]).toBe(typography.question.split(',')[0])
+    expect(typography.question).not.toBe(typography.interface)
+    if (colorScheme === 'dark') expect(typography.smallBrightness).toBeGreaterThan(typography.answerBrightness)
     expect(typography.answer).not.toBe('')
     expect(typography.open).not.toBe(typography.page)
     await page.screenshot({ path: testInfo.outputPath(`faq-${colorScheme}.png`) })
