@@ -25,7 +25,8 @@ export function PickHeroCard({ item, rank }: { item: PickItem; rank: number }) {
   return (
     <Card
       padding="none"
-      className="picks-hero group relative flex min-h-[280px] flex-col justify-between rounded-[var(--radius-2xl)] border-0 p-6 md:p-7"
+      tone="featured"
+      className="group relative flex min-h-[280px] flex-col justify-between rounded-[var(--radius-2xl)] p-6 md:p-7"
     >
       <div className="relative z-10 flex items-start justify-between gap-4">
         <div className="text-caption inline-flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 py-1 uppercase tracking-[0.18em] text-[var(--text)]">
@@ -33,7 +34,7 @@ export function PickHeroCard({ item, rank }: { item: PickItem; rank: number }) {
         </div>
         <div className="text-right">
           <div className="numeric-tabular text-3xl font-black leading-none text-[var(--text)]">{item.score}</div>
-          <div className="text-caption mt-1 text-[var(--text)]">score</div>
+          <div className="text-caption mt-1 text-[var(--text-small)]">score</div>
         </div>
       </div>
 
@@ -45,10 +46,10 @@ export function PickHeroCard({ item, rank }: { item: PickItem; rank: number }) {
           <div className="numeric-tabular text-4xl font-black tracking-tight text-[var(--text)] md:text-5xl">
             {item.symbol}
           </div>
-          {item.name ? <div className="mt-1 text-lg text-[var(--text)]">{item.name}</div> : null}
+          {item.name ? <div className="mt-1 text-lg text-[var(--text-body)]">{item.name}</div> : null}
         </Link>
 
-        {item.sector ? <div className="text-caption mt-3 text-[var(--text)]">{item.sector}</div> : null}
+        {item.sector ? <div className="text-caption mt-3 text-[var(--text-small)]">{item.sector}</div> : null}
 
         {parts.length > 0 ? (
           <div className="mt-5 flex flex-wrap gap-2">
@@ -56,7 +57,7 @@ export function PickHeroCard({ item, rank }: { item: PickItem; rank: number }) {
               <span
                 key={component.key}
                 title={component.detail ?? undefined}
-                className="text-caption inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 py-1 text-[var(--text)]"
+                className="text-caption inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 py-1 text-[var(--text-body)]"
               >
                 {component.label}
                 <span className="numeric-tabular text-[var(--text)]">{component.score}</span>

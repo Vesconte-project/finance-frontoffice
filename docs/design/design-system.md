@@ -10,7 +10,7 @@
 | `--surface` | `#FAF7F1` | `#172130` | Solid panels, cards, menus, inputs |
 | `--line` | `#D9D2C4` | `#2A3444` | Borders and dividers |
 | `--text` | `#15202E` | `#ECE6DA` | Primary text and wordmark |
-| `--text-muted` | `#3B4657` | `#A9B0BB` | Secondary text; the lightest permitted text role |
+| `--text-muted` | `#3B4657` | `#A9B0BB` | Cool text base and low emphasis metadata; derived roles adjust reading hierarchy |
 | `--accent` | `#A87A2A` | `#C99A48` | Focus, selection, active indicator, small ETF nodes in the homepage network |
 | `--up` | `#3E7A55` | `#6FAF86` | Positive data and chart marks |
 | `--down` | `#A34A3C` | `#D07565` | Negative data and chart marks |
@@ -18,9 +18,15 @@
 
 The light theme is declared on `:root`; the dark theme follows the system preference unless the existing `html[data-theme]` or `.dark` / `.light` override applies. Legacy variables in `globals.css` are compatibility aliases to these roles. New components should consume the semantic roles directly and should not introduce literal colors. `--up-ink` is derived from `--up` and `--text` so small positive data labels reach normal-text contrast on the light background.
 
+### Reading layers
+
+The base palette above remains the only set of literal colours. `globals.css` derives `--surface-soft`, `--surface-raised`, `--line-soft`, `--line-strong`, `--text-body`, and `--text-small` from those roles. In dark mode, headlines and decisive values keep the warm `--text`; ordinary reading uses the cooler `--text-body`; small labels use the brighter `--text-small`. Size and temperature establish hierarchy without spending ocre on decoration. All three text roles maintain normal-text contrast on the page and surface.
+
+`Card` exposes `tone="default" | "featured" | "quiet"` for panels with different jobs. Default is the normal content surface, featured is a quiet near-canvas surface, and quiet is transparent for supporting explanation. Use `.data-section` for editorial analytical chapters, `.reading-copy` for prose, and `.data-table` for financial tables; page CSS modules continue to own geometry and responsive layout. Search results share the same surface roles and use one accent edge only for the keyboard-selected row. These are semantic roles, not page-specific palettes.
+
 ## Type and logo
 
-`app/layout.tsx` loads Source Serif 4, IBM Plex Sans, and IBM Plex Mono through `next/font`, each at 400 and 500. Page titles, the company name at the top of a company page, and the wordmark use Source Serif 4. Interface copy and controls use Plex Sans. Tickers, prices, scores, and dates use Plex Mono. Numbers use tabular figures.
+`app/layout.tsx` loads Source Serif 4, IBM Plex Sans, and IBM Plex Mono through `next/font`, each at 400 and 500. Page and section headings, FAQ questions, the company name at the top of a company page, and the wordmark use Source Serif 4. Interface copy and controls use Plex Sans. Tickers, prices, scores, and dates use Plex Mono. Numbers use tabular figures.
 
 The only logo is “Vesconte” in Source Serif 4 small caps, with approximately `0.06em` letter spacing and `--text`. There is no separate symbol. Do not add the old initials or footer slash mark.
 
@@ -28,9 +34,10 @@ The only logo is “Vesconte” in Source Serif 4 small caps, with approximately
 
 Panels are solid `--surface` with a 1 px `--line` border. Buttons and cards use about 6 px radius; search uses about 8 px. Primary actions use the primary button roles. Secondary actions have a `--text` outline and transparent background. Search uses `--surface`, a `--text` outline, and `--accent` focus. Icons use approximately 1.5 px strokes. Avoid translucent panels, gradients, glow, blur, soft shadows, and pill shaped controls.
 
-The homepage network distributes ETF nodes around the field in `--accent`. No single ticker is the fixed center. The compact scrolled header shows a search icon and expands the field on focus.
+The homepage network distributes ETF nodes around the field in `--accent`. No single ticker is the fixed center. The compact scrolled header shows a search icon and expands the field on focus. Its result list keeps names, tickers, and tracking status; secondary source and exchange metadata stay in the full search panel.
 
 Keep green and red in data displays. Ocre marks where the reader is: focus, selection, active navigation, and the selected network node. It should not cover large areas. Canvas and Three.js components resolve computed CSS tokens at the rendering boundary; they must not carry a second palette.
+Absolute financial amounts use neutral ink marks in charts; signed changes may use the up/down roles. This prevents a large ocre chart from implying that every number is a selection.
 
 ## Accessibility and implementation
 

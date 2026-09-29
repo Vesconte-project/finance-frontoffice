@@ -45,15 +45,11 @@ function niceCeiling(value: number): number {
  * in that column's figures, and it shows the latest period until then, so
  * nothing moves when the pointer arrives.
  *
- * The hue is the ticker's own identity colour — the one on the node beside the
- * company name — so the page's data carries the company's mark rather than a
- * decorative colour of the chart's own. The innermost step is that colour
- * exactly; the outer ones are it mixed toward the page. Every entry in the
- * identity palette holds a monotonic ramp against this surface, which is what a
- * sequential scale needs.
+ * A neutral ink ramp shows nested amounts. Ocre remains reserved for focus and
+ * selection; these absolute figures carry no positive/negative verdict.
  */
 // Distributed across the series actually present, so the innermost step is
-// always the identity colour itself — a two-line statement should not stop at
+// always the darkest ink itself — a two-line statement should not stop at
 // a washed-out middle tint.
 function tint(depth: number, count: number): string {
   const span = Math.max(1, count - 1)
@@ -65,14 +61,12 @@ export default function StatementChart({
   series,
   currency,
   caption,
-  accentColor,
   height = 210,
 }: {
   periods: string[]
   series: StatementSeries[]
   currency: string
   caption: string
-  accentColor: string
   height?: number
 }) {
   const [hovered, setHovered] = useState<number | null>(null)
@@ -85,7 +79,7 @@ export default function StatementChart({
   const readAt = hovered !== null && hovered < periods.length ? hovered : periods.length - 1
 
   return (
-    <figure className={styles.statementChart} style={{ ['--statement-ink' as string]: accentColor }}>
+    <figure className={styles.statementChart}>
       <figcaption>
         <p className={styles.chartReadoutPeriod}>{periods[readAt]}</p>
         <dl className={styles.chartLegend}>

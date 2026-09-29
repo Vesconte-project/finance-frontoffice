@@ -68,7 +68,6 @@ export default function FaqAccordion({ groups }: { groups: readonly FaqGroup[] }
             <div className="mb-5 flex flex-wrap items-baseline gap-x-5 gap-y-2 border-t border-border pt-4">
               <h2
                 id={groupId}
-                style={{ fontFamily: 'var(--font-display)' }}
                 className="text-2xl font-bold tracking-normal text-content-primary sm:text-3xl"
               >
                 {group.label}
@@ -88,7 +87,7 @@ export default function FaqAccordion({ groups }: { groups: readonly FaqGroup[] }
                     key={item.slug}
                     id={item.slug}
                     className={`group border-b border-border last:border-b-0 scroll-mt-28 transition-colors duration-200 ease-out ${
-                      isOpen ? 'bg-surface-hover/45' : ''
+                      isOpen ? 'bg-surface-card' : ''
                     }`}
                   >
                     {/*
@@ -111,14 +110,13 @@ export default function FaqAccordion({ groups }: { groups: readonly FaqGroup[] }
                       >
                         <span
                           style={{ fontFamily: 'var(--font-mono)' }}
-                          className="text-xs font-medium tabular-nums tracking-[0.12em] text-[var(--text-muted)] sm:text-sm"
+                          className="text-xs font-medium tabular-nums tracking-[0.12em] text-[var(--text-small)] sm:text-sm"
                           aria-hidden="true"
                         >
                           {String(itemStartNumber + itemIndex + 1).padStart(2, '0')}
                         </span>
                         <span
                           data-faq-question={item.slug}
-                          style={{ fontFamily: 'var(--font-display)' }}
                           className="min-w-0 text-[1.05rem] font-medium leading-6 text-content-primary sm:text-xl sm:leading-7"
                         >
                           {item.question}
@@ -154,7 +152,7 @@ export default function FaqAccordion({ groups }: { groups: readonly FaqGroup[] }
                           }`}
                         >
                           <span aria-hidden="true" />
-                          <span className="min-w-0 max-w-[68ch]">
+                          <span className="reading-copy min-w-0">
                             {item.answer}{' '}
                             {item.link ? (
                               <>

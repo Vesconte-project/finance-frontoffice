@@ -18,6 +18,12 @@ for (const colorScheme of ['light', 'dark'] as const) {
       const failures = await page.evaluate(() => {
         type Rgb = [number, number, number, number]
         const parse = (value: string): Rgb | null => {
+          const modern = value.match(/^color\(srgb\s+([^)]+)\)$/)
+          if (modern) {
+            const [channels, alpha] = modern[1].split('/')
+            const rgb = channels.trim().split(/\s+/).map(Number)
+            return [rgb[0] * 255, rgb[1] * 255, rgb[2] * 255, alpha ? Number(alpha.trim()) : 1]
+          }
           const match = value.match(/^rgba?\(([^)]+)\)$/)
           if (!match) return null
           const channels = match[1].split(/[\s,\/]+/).filter(Boolean).map(Number)

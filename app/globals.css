@@ -842,25 +842,6 @@
     var(--bg);
 }
 
-/* Picks hero — rank 1 gets the navy treatment so the top of a ranking reads as a
-   conclusion rather than as the first row of a table. Deep enough that the white
-   type on it clears contrast in both themes, which is why it does not use the
-   surface tokens: those follow the theme and this card deliberately does not. */
-.picks-hero {
-  background:
-    var(--bg);
-  box-shadow:
-    none;
-}
-.picks-hero::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  border-radius: 6px;
-  border: 1px solid color-mix(in srgb, var(--line) 10%, transparent);
-}
-
 /* ── Immersive atlas route (/markets/network) ──────────────────────────────
    Full-screen dashboard: lock page scroll and let the map fill the whole
    viewport. The app top bar is replaced (in the route) by the compact marketing
@@ -1732,20 +1713,39 @@ html.chrome-scrolled .site-header[data-internal] .site-header__row:not([data-men
   border-radius: 6px;
 }
 html.chrome-scrolled .site-header[data-internal] .site-header__bar {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 150px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 42px auto;
 }
 html[data-scroll-profile='operational'].chrome-scrolled .site-header[data-internal] .site-header__row:not([data-menu-open]) .site-header__bar {
   gap: 10px;
 }
 html.chrome-scrolled .site-header[data-internal] .site-header__row:not([data-menu-open]) [data-header-search] {
-  max-width: 150px;
-  width: min(150px, 100%);
+  max-width: 42px;
+  width: 42px;
 }
 html.chrome-scrolled .site-header[data-internal] .site-header__row:not([data-menu-open]) [data-header-search] :is(input) {
   height: 32px;
   /* The header input reserves pr-10 for a trailing control the condensed field
      does not have, which clipped the placeholder mid-word. */
   padding-right: 12px;
+}
+html.chrome-scrolled .site-header[data-internal] .site-header__row:not([data-menu-open]) [data-header-search]:not(:focus-within) :is(input)::placeholder {
+  color: transparent;
+}
+html.chrome-scrolled .site-header[data-internal] .site-header__row:not([data-menu-open]):focus-within {
+  max-width: 680px;
+}
+html.chrome-scrolled .site-header[data-internal] .site-header__row:not([data-menu-open]):focus-within .site-header__bar {
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 300px) auto;
+}
+html.chrome-scrolled .site-header[data-internal] .site-header__row:not([data-menu-open]):focus-within [data-header-search] {
+  width: 100%;
+  max-width: 300px;
+}
+html.chrome-scrolled .site-header[data-internal] .site-header__row:not([data-menu-open]) [data-header-search] .ticker-search__panel {
+  width: min(420px, calc(100vw - 3rem));
+}
+html.chrome-scrolled .site-header[data-internal] .site-header__row:not([data-menu-open]) [data-header-search] :is(.ticker-search__source, .ticker-search__exchange) {
+  display: none;
 }
 
 /* Liquid-glass surface on ::before so it fades in as one unit. Repo recipe,
@@ -2894,7 +2894,7 @@ main.marketing-home[data-theme="dark"] .dock-search :is(input) {
   padding-block: 0.375rem;
   border-radius: 8px;
   border-color: color-mix(in srgb, var(--brand-base) 16%, transparent);
-  background: var(--dock-search-surface);
+  background: var(--surface-raised);
   box-shadow:
     none;
   -webkit-backdrop-filter: none;
@@ -2941,7 +2941,7 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__root[data-o
   box-shadow: none;
 }
 .marketing-home .dock-search .ticker-search__root[data-open='true'] .ticker-search__panel {
-  border-color: var(--brand-spark);
+  border-color: var(--line-strong);
 }
 .marketing-home .dock-search .ticker-search__panel::before {
   content: '';
@@ -2957,8 +2957,8 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__root[data-o
 }
 .marketing-home .dock-search .ticker-search__panel button {
   min-height: 52px;
-  border-color: color-mix(in srgb, var(--brand-base) 12%, transparent);
-  background: var(--surface);
+  border-color: transparent;
+  background: transparent;
   transition:
     border-color 180ms ease,
     background-color 180ms ease,
@@ -2966,14 +2966,15 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__root[data-o
     transform 180ms var(--motion-ease-standard);
 }
 .marketing-home .dock-search .ticker-search__panel button:hover {
-  transform: translateX(3px);
-  border-color: color-mix(in srgb, var(--brand-spark) 48%, var(--brand-base) 10%);
-  background: var(--surface);
+  transform: none;
+  border-color: var(--line-soft);
+  background: var(--surface-soft);
   box-shadow: none;
 }
 .marketing-home .dock-search .ticker-search__panel button[data-highlighted='true'] {
-  border-color: color-mix(in srgb, var(--brand-spark) 48%, var(--brand-base) 10%);
-  background: var(--surface);
+  border-color: var(--line-soft);
+  border-left: 1px solid var(--accent);
+  background: var(--surface-soft);
   box-shadow: none;
 }
 .marketing-home .dock-search .ticker-search__panel .ticker-search__name {
@@ -3006,25 +3007,26 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__root[data-o
 }
 .marketing-home[data-theme="dark"] .dock-search .ticker-search__panel,
 html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel {
-  border-color: color-mix(in srgb, var(--line) 10%, transparent);
-  background: var(--surface);
+  border-color: var(--line-strong);
+  background: var(--surface-raised);
   box-shadow:
     none;
 }
 .marketing-home[data-theme="dark"] .dock-search .ticker-search__panel button,
 html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel button {
-  border-color: color-mix(in srgb, var(--line) 12%, transparent);
-  background: var(--surface);
+  border-color: transparent;
+  background: transparent;
 }
 .marketing-home[data-theme="dark"] .dock-search .ticker-search__panel button:hover,
 html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel button:hover {
-  border-color: color-mix(in srgb, var(--brand-spark) 55%, var(--surface) 10%);
-  background: var(--surface);
+  border-color: var(--line-soft);
+  background: var(--surface-soft);
 }
 .marketing-home[data-theme="dark"] .dock-search .ticker-search__panel button[data-highlighted='true'],
 html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel button[data-highlighted='true'] {
-  border-color: color-mix(in srgb, var(--brand-spark) 55%, var(--surface) 10%);
-  background: var(--surface);
+  border-color: var(--line-soft);
+  border-left: 1px solid var(--accent);
+  background: var(--surface-soft);
 }
 
 @keyframes ticker-row-query-in {
@@ -3354,9 +3356,15 @@ html.chrome-scrolled .dock-search {
 :root {
   --bg: #F3EFE7;
   --surface: #FAF7F1;
+  --surface-soft: color-mix(in srgb, var(--surface) 55%, var(--bg));
+  --surface-raised: var(--surface);
   --line: #D9D2C4;
+  --line-soft: color-mix(in srgb, var(--line) 65%, var(--bg));
+  --line-strong: color-mix(in srgb, var(--line) 72%, var(--text-muted));
   --text: #15202E;
   --text-muted: #3B4657;
+  --text-body: color-mix(in srgb, var(--text) 72%, var(--text-muted));
+  --text-small: color-mix(in srgb, var(--text) 80%, var(--text-muted));
   --accent: #A87A2A;
   --up: #3E7A55;
   --down: #A34A3C;
@@ -3368,9 +3376,12 @@ html.chrome-scrolled .dock-search {
   :root:not([data-theme='light']):not(.light) {
     --bg: #0F1620;
     --surface: #172130;
+    --surface-raised: color-mix(in srgb, var(--surface) 96%, var(--text));
     --line: #2A3444;
     --text: #ECE6DA;
     --text-muted: #A9B0BB;
+    --text-body: color-mix(in srgb, var(--text-muted) 85%, var(--text));
+    --text-small: color-mix(in srgb, var(--text-muted) 52%, var(--text));
     --accent: #C99A48;
     --up: #6FAF86;
     --down: #D07565;
@@ -3383,9 +3394,12 @@ html.chrome-scrolled .dock-search {
 :root[data-theme='dark'], :root.dark {
   --bg: #0F1620;
   --surface: #172130;
+  --surface-raised: color-mix(in srgb, var(--surface) 96%, var(--text));
   --line: #2A3444;
   --text: #ECE6DA;
   --text-muted: #A9B0BB;
+  --text-body: color-mix(in srgb, var(--text-muted) 85%, var(--text));
+  --text-small: color-mix(in srgb, var(--text-muted) 52%, var(--text));
   --accent: #C99A48;
   --up: #6FAF86;
   --down: #D07565;
@@ -3414,12 +3428,12 @@ html.chrome-scrolled .dock-search {
   --background: var(--bg);
   --foreground: var(--text);
   --content-primary: var(--text);
-  --content-secondary: var(--text-muted);
-  --content-muted: var(--text-muted);
+  --content-secondary: var(--text-body);
+  --content-muted: var(--text-small);
   --muted: var(--surface);
-  --muted-foreground: var(--text-muted);
-  --border: var(--line);
-  --divider-strong: var(--line);
+  --muted-foreground: var(--text-small);
+  --border: var(--line-soft);
+  --divider-strong: var(--line-strong);
   --input: var(--line);
   --primary: var(--text);
   --primary-foreground: var(--bg);
@@ -3431,8 +3445,8 @@ html.chrome-scrolled .dock-search {
   --brand-electric: var(--text);
   --brand-cyan: var(--text);
   --surface-card: var(--surface);
-  --surface-elevated: var(--surface);
-  --surface-hover: var(--surface);
+  --surface-elevated: var(--surface-raised);
+  --surface-hover: var(--surface-raised);
   --glass-bg: var(--surface);
   --glass-border: var(--line);
   --glass-highlight: var(--surface);
@@ -3448,18 +3462,18 @@ html.chrome-scrolled .dock-search {
   --card-foreground: var(--text);
   --bg-page: var(--bg);
   --bg-surface: var(--surface);
-  --bg-surface-raised: var(--surface);
+  --bg-surface-raised: var(--surface-raised);
   --bg-surface-border: var(--line);
   --text-primary: var(--text);
-  --text-secondary: var(--text-muted);
+  --text-secondary: var(--text-body);
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-border: var(--line);
-  --color-border-light: var(--line);
+  --color-border-light: var(--line-soft);
   --color-text-primary: var(--text);
-  --color-text-secondary: var(--text-muted);
-  --color-text-muted: var(--text-muted);
-  --color-text-hint: var(--text-muted);
+  --color-text-secondary: var(--text-body);
+  --color-text-muted: var(--text-small);
+  --color-text-hint: var(--text-small);
   --color-positive: var(--up);
   --color-positive-bg: var(--surface);
   --color-negative: var(--down);
@@ -3470,13 +3484,13 @@ html.chrome-scrolled .dock-search {
   --color-accent-light: var(--surface);
   --app-background: var(--bg);
   --app-surface: var(--surface);
-  --app-surface-elevated: var(--surface);
-  --app-surface-hover: var(--surface);
-  --app-border: var(--line);
-  --app-border-strong: var(--line);
+  --app-surface-elevated: var(--surface-raised);
+  --app-surface-hover: var(--surface-raised);
+  --app-border: var(--line-soft);
+  --app-border-strong: var(--line-strong);
   --app-text-primary: var(--text);
-  --app-text-secondary: var(--text-muted);
-  --app-text-muted: var(--text-muted);
+  --app-text-secondary: var(--text-body);
+  --app-text-muted: var(--text-small);
   --app-navy: var(--text);
   --app-teal: var(--text);
   --app-teal-highlight: var(--text);
@@ -3513,10 +3527,49 @@ h1, h2, h3, .marketing-logo-type, .auth-page__brand { font-family: var(--font-di
 /* Visual primitives share the same flat material across both themes. */
 :is(.surface-primary, .surface-secondary, .surface-tertiary, .pricing-plan-card, .app-shell__atmosphere) {
   background: var(--surface);
-  border-color: var(--line);
+  border-color: var(--line-soft);
   box-shadow: none;
   backdrop-filter: none;
 }
+.surface-tertiary { background: var(--surface-soft); }
+.surface-secondary[data-surface='featured'] { background: var(--surface-soft); border-color: var(--line-strong); }
+.surface-secondary[data-surface='quiet'] { background: transparent; border: 0; border-top: 1px solid var(--line-soft); border-radius: 0; }
+.data-section { --table-sticky-bg: var(--bg); border-bottom: 1px solid var(--line-soft); }
+
+/* Shared reading and data hierarchy. Page modules retain layout and spacing. */
+.reading-copy { max-width: 68ch; color: var(--text-body); line-height: 1.65; }
+.data-table { font-family: var(--font-body), sans-serif; }
+.data-table :is(th, td) { border-bottom: 1px solid var(--line-soft); }
+.data-table thead th { color: var(--text-small); font-size: 0.6875rem; }
+.data-table tbody th { color: var(--text-small); font-weight: 500; }
+.data-table tbody td {
+  color: var(--text-small);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.data-table tbody td:last-child { color: var(--text); font-weight: 500; }
+.data-table tbody td[data-direction='up'] { color: var(--up); }
+.data-table tbody td[data-direction='down'] { color: var(--down); }
+.data-table tbody tr:hover :is(th, td) { background: var(--surface-soft); }
+.faq-accordion [data-faq-question] { font-family: var(--font-display), serif; }
+
+.ticker-search__root .ticker-search__input:focus-visible {
+  border-color: transparent;
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.ticker-search__panel { background: var(--surface-raised); border-color: var(--line-strong); }
+.ticker-search__panel li + li { border-top: 1px solid var(--line-soft); }
+.ticker-search__panel .ticker-search__option { border-color: transparent; background: transparent; }
+.ticker-search__panel .ticker-search__option:hover { border-color: var(--line-soft); background: var(--surface-soft); }
+.ticker-search__panel .ticker-search__option[data-highlighted='true'] {
+  border-color: var(--line-soft);
+  border-left: 1px solid var(--accent);
+  background: var(--surface-soft);
+}
+.ticker-search__panel .ticker-search__status-chip { color: var(--text-small); }
 button, [role='button'], .surface-primary, .surface-secondary, .surface-tertiary { border-radius: 6px; box-shadow: none; }
 input, [role='combobox'], .ticker-search__root { border-radius: 8px; }
 svg.lucide { stroke-width: 1.5px; }

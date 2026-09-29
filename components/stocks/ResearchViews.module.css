@@ -317,7 +317,7 @@
   left: 0;
   padding-left: 0;
   padding-right: 28px;
-  background: var(--page-bg, var(--color-page-bg));
+  background: var(--table-sticky-bg, var(--page-bg, var(--color-page-bg)));
   color: var(--color-text-primary);
   font-weight: 500;
   text-align: left;
@@ -511,7 +511,6 @@
   display: grid;
   gap: 14px;
   padding: 26px 0 30px;
-  border-bottom: 1px solid var(--research-line);
   scroll-margin-top: 108px;
 }
 
@@ -582,16 +581,6 @@
   font-weight: 500;
 }
 
-/* Direction carries a sign as well as a colour, and the palette stays the
-   product's own — no red, no green, as everywhere else. */
-.changeTable td[data-direction='up'] {
-  color: var(--color-accent);
-}
-
-.changeTable td[data-direction='down'] {
-  color: var(--color-text-primary);
-}
-
 .changeLevel {
   color: var(--color-text-primary) !important;
   font-weight: 500;
@@ -640,29 +629,14 @@
    Financials — all three statements on one page, each drawn as a nesting and
    read as a table beside it.
 
-   One hue, light to dark. The series here are nested quantities rather than
-   competing categories, and a nested magnitude wants a sequential ramp — the
-   three unrelated hues this carried before were solving a problem the chart
-   should not have had, which was that grouped bars claimed the lines were
-   siblings.
-
-   The hue is the ticker's own identity colour, the one on the node beside the
-   company name, so the page's data carries the company's mark. It also settles
-   the constraint that ruled out the alternatives: that palette is blues through
-   magentas, so it can never be the green that buy and sell have spoken for on a
-   page about money.
-
-   The innermost step is that colour exactly and the outer ones are it mixed
-   toward the page, distributed across however many series are present. Checked
-   across all seven palette entries: every one holds a monotonic ramp on this
-   surface, which is what a sequential scale needs.
+   Nested quantities use one neutral ink ramp. Green/red remain reserved for
+   signed variation, and ocre remains reserved for focus and selection.
    ------------------------------------------------------------------------- */
 
 .statement {
   display: grid;
   gap: 16px;
   padding: 26px 0 30px;
-  border-bottom: 1px solid var(--research-line);
   scroll-margin-top: 108px;
 }
 
@@ -684,6 +658,7 @@
 }
 
 .statementChart {
+  --statement-ink: var(--text-small);
   display: grid;
   gap: 10px;
   margin: 0;
@@ -727,7 +702,7 @@
 }
 
 .chartLegend dt {
-  color: var(--color-text-secondary);
+  color: var(--color-text-muted);
   font-size: 11px;
   font-weight: 500;
   overflow: hidden;
@@ -813,7 +788,7 @@
   position: sticky;
   left: 0;
   padding-left: 0;
-  background: var(--page-bg, var(--color-page-bg));
+  background: var(--table-sticky-bg, var(--page-bg, var(--color-page-bg)));
   color: var(--color-text-primary);
   font-weight: 500;
   text-align: left;
