@@ -92,7 +92,7 @@ export default function ProductPage() {
           <p style={{ fontFamily: 'var(--font-mono)' }} className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-spark">
             The flow
           </p>
-          <h2 id="flow-title" style={{ fontFamily: 'var(--font-display)' }} className="mt-4 text-4xl font-extrabold tracking-normal sm:text-5xl">
+          <h2 id="flow-title" className="mt-4 text-4xl font-extrabold tracking-normal sm:text-5xl">
             Start with a name, not a blank dashboard.
           </h2>
           <p className="mt-5 max-w-xl text-base leading-7 text-content-secondary">
@@ -104,7 +104,7 @@ export default function ProductPage() {
           {productPath.map((step, index) => (
             <div key={step.label} className="grid gap-4 py-6 sm:grid-cols-[5rem_10rem_minmax(0,1fr)] sm:items-baseline sm:gap-6">
               <span style={{ fontFamily: 'var(--font-mono)' }} className="text-sm font-semibold tracking-[0.16em] text-brand-spark">0{index + 1}</span>
-              <h3 style={{ fontFamily: 'var(--font-display)' }} className="text-2xl font-bold tracking-normal">{step.label}</h3>
+              <h3 className="text-2xl font-bold tracking-normal">{step.label}</h3>
               <p className="max-w-2xl text-base leading-7 text-content-secondary">{step.body}</p>
             </div>
           ))}
@@ -117,7 +117,7 @@ export default function ProductPage() {
             <p style={{ fontFamily: 'var(--font-mono)' }} className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-spark">
               Ticker pages
             </p>
-            <h2 id="ticker-pages-title" style={{ fontFamily: 'var(--font-display)' }} className="mt-4 text-4xl font-extrabold tracking-normal sm:text-5xl">
+            <h2 id="ticker-pages-title" className="mt-4 text-4xl font-extrabold tracking-normal sm:text-5xl">
               One asset, one research surface.
             </h2>
             <p className="mt-5 max-w-md text-base leading-7 text-content-secondary">
@@ -145,7 +145,7 @@ export default function ProductPage() {
             <p style={{ fontFamily: 'var(--font-mono)' }} className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-spark">
               Compare
             </p>
-            <h2 id="compare-title" style={{ fontFamily: 'var(--font-display)' }} className="mt-4 text-4xl font-extrabold tracking-normal sm:text-5xl">
+            <h2 id="compare-title" className="mt-4 text-4xl font-extrabold tracking-normal sm:text-5xl">
               Make the shortlist visible.
             </h2>
             <p className="mt-5 max-w-md text-base leading-7 text-content-secondary">
@@ -194,7 +194,7 @@ export default function ProductPage() {
             <p style={{ fontFamily: 'var(--font-mono)' }} className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-spark">
               Save and monitor
             </p>
-            <h2 id="watchlists-title" style={{ fontFamily: 'var(--font-display)' }} className="mt-4 text-4xl font-extrabold tracking-normal sm:text-5xl">
+            <h2 id="watchlists-title" className="mt-4 text-4xl font-extrabold tracking-normal sm:text-5xl">
               Keep the names that matter close.
             </h2>
             <p className="mt-5 max-w-xl text-base leading-7 text-content-secondary">
@@ -234,7 +234,7 @@ export default function ProductPage() {
           <p style={{ fontFamily: 'var(--font-mono)' }} className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-spark">
             Interpretation
           </p>
-          <h2 id="methodology-title" style={{ fontFamily: 'var(--font-display)' }} className="mt-4 text-4xl font-extrabold tracking-normal sm:text-5xl">
+          <h2 id="methodology-title" className="mt-4 text-4xl font-extrabold tracking-normal sm:text-5xl">
             Read the output with its limits attached.
           </h2>
           <p className="mt-5 max-w-xl text-base leading-7 text-content-secondary">
@@ -284,7 +284,7 @@ export default function ProductPage() {
             <p style={{ fontFamily: 'var(--font-mono)' }} className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-spark">
               Access and limits
             </p>
-            <h2 id="limits-title" style={{ fontFamily: 'var(--font-display)' }} className="mt-4 text-3xl font-extrabold tracking-normal sm:text-4xl">
+            <h2 id="limits-title" className="mt-4 text-3xl font-extrabold tracking-normal sm:text-4xl">
               Explore first. Decide what you need next.
             </h2>
             <p className="mt-4 text-base leading-7 text-content-secondary">

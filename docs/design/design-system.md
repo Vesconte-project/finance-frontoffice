@@ -18,9 +18,15 @@
 
 The light theme is declared on `:root`; the dark theme follows the system preference unless the existing `html[data-theme]` or `.dark` / `.light` override applies. Legacy variables in `globals.css` are compatibility aliases to these roles. New components should consume the semantic roles directly and should not introduce literal colors. `--up-ink` is derived from `--up` and `--text` so small positive data labels reach normal-text contrast on the light background.
 
+### Reading layers
+
+The base palette above remains the only set of literal colours. `globals.css` derives `--surface-soft`, `--surface-raised`, `--line-soft`, `--line-strong`, and `--text-body` from those roles. Use `--text` for titles and decisive values, `--text-body` for prose and ordinary table values, and `--text-muted` for metadata. The derived body colour keeps normal-text contrast on the page and panel surfaces; muted text remains legible rather than disappearing into the background.
+
+`Card` exposes `tone="default" | "featured" | "quiet"` for panels with different jobs. Default is the normal content surface, featured lifts an important result, and quiet holds supporting explanation. Use `.data-panel` around analytical chapters, `.reading-copy` for prose, and `.data-table` for financial tables; page CSS modules continue to own geometry and responsive layout. Search results share the same surface roles and use one accent edge only for the keyboard-selected row. These are semantic roles, not page-specific palettes.
+
 ## Type and logo
 
-`app/layout.tsx` loads Source Serif 4, IBM Plex Sans, and IBM Plex Mono through `next/font`, each at 400 and 500. Page titles, the company name at the top of a company page, and the wordmark use Source Serif 4. Interface copy and controls use Plex Sans. Tickers, prices, scores, and dates use Plex Mono. Numbers use tabular figures.
+`app/layout.tsx` loads Source Serif 4, IBM Plex Sans, and IBM Plex Mono through `next/font`, each at 400 and 500. Page titles, the company name at the top of a company page, and the wordmark use Source Serif 4. Section headings, questions, interface copy, and controls use Plex Sans. Tickers, prices, scores, and dates use Plex Mono. Numbers use tabular figures.
 
 The only logo is “Vesconte” in Source Serif 4 small caps, with approximately `0.06em` letter spacing and `--text`. There is no separate symbol. Do not add the old initials or footer slash mark.
 
@@ -28,9 +34,10 @@ The only logo is “Vesconte” in Source Serif 4 small caps, with approximately
 
 Panels are solid `--surface` with a 1 px `--line` border. Buttons and cards use about 6 px radius; search uses about 8 px. Primary actions use the primary button roles. Secondary actions have a `--text` outline and transparent background. Search uses `--surface`, a `--text` outline, and `--accent` focus. Icons use approximately 1.5 px strokes. Avoid translucent panels, gradients, glow, blur, soft shadows, and pill shaped controls.
 
-The homepage network distributes ETF nodes around the field in `--accent`. No single ticker is the fixed center. The compact scrolled header shows a search icon and expands the field on focus.
+The homepage network distributes ETF nodes around the field in `--accent`. No single ticker is the fixed center. The compact scrolled header shows a search icon and expands the field on focus. Its result list keeps names, tickers, and tracking status; secondary source and exchange metadata stay in the full search panel.
 
 Keep green and red in data displays. Ocre marks where the reader is: focus, selection, active navigation, and the selected network node. It should not cover large areas. Canvas and Three.js components resolve computed CSS tokens at the rendering boundary; they must not carry a second palette.
+Absolute financial amounts use neutral ink marks in charts; signed changes may use the up/down roles. This prevents a large ocre chart from implying that every number is a selection.
 
 ## Accessibility and implementation
 

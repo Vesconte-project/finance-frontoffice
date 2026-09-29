@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 
 type CardProps = React.HTMLAttributes<HTMLDivElement> & {
   padding?: 'sm' | 'md' | 'lg' | 'none'
+  tone?: 'default' | 'featured' | 'quiet'
 }
 
 function paddingClass(padding: CardProps['padding']): string {
@@ -15,6 +16,7 @@ function paddingClass(padding: CardProps['padding']): string {
 export default function Card({
   className,
   padding = 'md',
+  tone = 'default',
   ...props
 }: CardProps) {
   return (
@@ -24,6 +26,7 @@ export default function Card({
         paddingClass(padding),
         className
       )}
+      data-surface={tone}
       {...props}
     />
   )

@@ -639,7 +639,7 @@ export default function TickerSearchCombobox({
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => navigateToTicker(item.symbol)}
           className={cn(
-            'state-interactive grid w-full cursor-pointer grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 rounded-[14px] border px-3.5 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-inset',
+            'ticker-search__option state-interactive grid w-full cursor-pointer grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 rounded-md border px-3.5 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-inset',
             index === highlightedIndex ? 'bg-surface-hover' : 'hover:bg-surface-elevated'
           )}
         >
@@ -687,7 +687,7 @@ export default function TickerSearchCombobox({
                 {labelText}
               </span>
             ) : null}
-            {subLabelText ? <span className="text-micro text-content-muted">{subLabelText}</span> : null}
+            {subLabelText ? <span className="ticker-search__exchange text-micro text-content-muted">{subLabelText}</span> : null}
           </div>
         </button>
       </li>
@@ -696,8 +696,8 @@ export default function TickerSearchCombobox({
 
   const inputClassName =
     variant === 'header'
-      ? 'no-lift-interaction h-12 rounded-[8px] border-[var(--text)] bg-[var(--surface)] pl-11 pr-10 placeholder:text-[var(--text-muted)] focus-visible:border-[var(--accent)]'
-      : 'h-11 pr-24 pl-9 uppercase'
+      ? 'ticker-search__input no-lift-interaction h-12 rounded-[8px] border-[var(--text)] bg-[var(--surface)] pl-11 pr-10 placeholder:text-[var(--text-muted)] focus-visible:border-[var(--accent)]'
+      : 'ticker-search__input h-11 pr-24 pl-9 uppercase'
 
   const panelClassName =
     variant === 'header'

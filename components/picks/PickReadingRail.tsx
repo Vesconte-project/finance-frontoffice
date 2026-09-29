@@ -56,7 +56,7 @@ export default function PickReadingRail({
         ) : null}
       </Card>
 
-      <Card className="rounded-[var(--radius-2xl)]">
+      <Card tone="quiet" className="rounded-[var(--radius-2xl)]">
         <h2 className="text-card-title text-content-primary">What was filtered out</h2>
         <p className="text-body-sm mt-2 text-content-secondary">
           {totalRanked} names qualified out of the tracked universe. Two filters run before the
@@ -90,7 +90,7 @@ export default function PickReadingRail({
         </dl>
       </Card>
 
-      <Card className="rounded-[var(--radius-2xl)]">
+      <Card tone="quiet" className="rounded-[var(--radius-2xl)]">
         <h2 className="text-card-title text-content-primary">The same companies, read differently</h2>
         <p className="text-body-sm mt-2 text-content-secondary">
           These are not three weightings of one score. They measure different things, so a name near the

@@ -49,7 +49,7 @@ export default function FaqPage() {
             >
               Still stuck?
             </p>
-            <p style={{ fontFamily: 'var(--font-display)' }} className="mt-2 text-2xl font-semibold tracking-normal text-content-primary sm:text-3xl">
+            <p className="mt-2 text-2xl font-semibold tracking-normal text-content-primary sm:text-3xl">
               Ask us directly.
             </p>
           </div>
