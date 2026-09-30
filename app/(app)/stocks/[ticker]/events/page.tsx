@@ -1,14 +1,22 @@
 import StockEventsResearch from '@/components/stocks/StockEventsResearch'
 import ResearchUnavailable from '@/components/stocks/ResearchUnavailable'
 import { getTickerDisclosures, getTickerEvents } from '@/lib/canonical-research'
+import { getPublicCalendar } from '@/lib/calendar-events'
+import { calendarMonth, type CalendarCategory } from '@/lib/calendar-model'
 import { getStockResearchData } from '@/lib/stock-research'
 
 function isoDate(value: Date): string {
   return value.toISOString().slice(0, 10)
 }
 
-export default async function EventsPage({ params }: { params: Promise<{ ticker: string }> }) {
-  const { ticker } = await params
+export default async function EventsPage({ params, searchParams }: {
+  params: Promise<{ ticker: string }>
+  searchParams: Promise<{ month?: string; day?: string; type?: string }>
+}) {
+  const [{ ticker }, query] = await Promise.all([params, searchParams])
+  const month = calendarMonth(query.month)
+  const category: CalendarCategory = ['all', 'earnings', 'dividends', 'company'].includes(query.type ?? '')
+    ? query.type as CalendarCategory : 'all'
   // One window, fetched once. The Upcoming / Recent / History tabs each moved
   // this range and re-requested; the page now splits what comes back into
   // scheduled and past, so nothing is hidden behind a tab the reader has to
@@ -19,7 +27,7 @@ export default async function EventsPage({ params }: { params: Promise<{ ticker:
   const end = new Date(today)
   end.setUTCFullYear(end.getUTCFullYear() + 1)
 
-  const [data, events, disclosures] = await Promise.all([
+  const [data, events, disclosures, calendar] = await Promise.all([
     getStockResearchData(ticker).catch(() => null),
     getTickerEvents(ticker, {
       startDate: isoDate(start),
@@ -28,7 +36,9 @@ export default async function EventsPage({ params }: { params: Promise<{ ticker:
       limit: 200,
     }).catch(() => null),
     getTickerDisclosures(ticker, { latestOnly: true, limit: 100 }).catch(() => null),
+    getPublicCalendar(month, category, ticker),
   ])
   if (!data) return <ResearchUnavailable ticker={ticker.toUpperCase()} />
-  return <StockEventsResearch data={data} events={events} disclosures={disclosures} />
+  return <StockEventsResearch data={data} events={events} disclosures={disclosures}
+    calendar={calendar} month={month} category={category} selectedDay={query.day} />
 }
