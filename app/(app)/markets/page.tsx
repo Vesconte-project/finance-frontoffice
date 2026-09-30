@@ -51,7 +51,7 @@ function DiscoveryLane({ title, body, href, cta, rows }: DiscoveryLaneProps) {
             <Link
               key={`${title}-${row.ticker}`}
               href={`/stocks/${row.ticker}`}
-              className="grid gap-3 rounded-[22px] border border-border bg-surface-elevated px-4 py-3 transition hover:border-primary/20 hover:bg-white/70 dark:hover:bg-white/[0.06] sm:grid-cols-[minmax(0,1fr)_auto_auto]"
+              className="grid gap-3 rounded-md border border-border bg-surface-elevated px-4 py-3 transition hover:border-primary/20 hover:bg-[var(--surface)] dark:hover:bg-[var(--surface)] sm:grid-cols-[minmax(0,1fr)_auto_auto]"
             >
               <div>
                 <div className="text-label-lg text-content-primary">{row.ticker}</div>
@@ -210,7 +210,7 @@ export default async function MarketsPage() {
           {['Themes', 'Sectors', 'IPOs', 'ETFs', 'Regime shifts', 'Cross-market heat'].map((label) => (
             <span
               key={label}
-              className="inline-flex rounded-full border border-border bg-surface-elevated px-3 py-1.5 text-xs font-medium text-content-secondary"
+              className="inline-flex rounded-md border border-border bg-surface-elevated px-3 py-1.5 text-xs font-medium text-content-secondary"
             >
               {label}
             </span>

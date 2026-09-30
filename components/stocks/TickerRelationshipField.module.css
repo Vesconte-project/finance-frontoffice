@@ -1,13 +1,13 @@
 .field,
 .fallback {
-  --relationship-accent: #0b8178;
-  --relationship-line: #142943;
-  --relationship-node: #617789;
+  --relationship-accent: var(--accent);
+  --relationship-line: var(--text);
+  --relationship-node: var(--text-muted);
   position: absolute;
   z-index: 0;
   inset: 0;
   overflow: hidden;
-  border-radius: inherit;
+  border-radius: 6px;
   pointer-events: none;
 }
 
@@ -19,16 +19,13 @@
 
 .fallback {
   background:
-    radial-gradient(circle at 72% 22%, color-mix(in srgb, var(--relationship-node) 19%, transparent) 0 2px, transparent 3px),
-    radial-gradient(circle at 46% 68%, color-mix(in srgb, var(--relationship-node) 15%, transparent) 0 2px, transparent 3px),
-    radial-gradient(circle at 88% 76%, color-mix(in srgb, var(--relationship-node) 12%, transparent) 0 1.5px, transparent 3px),
-    linear-gradient(112deg, color-mix(in srgb, var(--relationship-node) 4%, transparent), transparent 42%);
+    var(--bg);
 }
 
 :global(html[data-theme='dark']) .field,
 :global(html[data-theme='dark']) .fallback {
-  --relationship-line: #8ba3b5;
-  --relationship-node: #9ab0bf;
+  --relationship-line: var(--text);
+  --relationship-node: var(--text-muted);
 }
 
 @media (prefers-reduced-motion: reduce) {

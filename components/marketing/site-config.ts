@@ -1,12 +1,5 @@
 export const BRAND_NAME = 'Vesconte'
 
-// Lowercase wordmark, used where the type is set as a logotype rather than prose.
-export const BRAND_WORDMARK = 'vesconte'
-
-// Condensed mark for narrow chrome. The initials of Pietro Vesconte, the
-// cartographer the product is named after. See docs/brand/naming.md.
-export const BRAND_SHORT_MARK = 'pv'
-
 export const BRAND_DESCRIPTION =
   'Market signals, company research, watchlists, and AI context in one workspace.'
 

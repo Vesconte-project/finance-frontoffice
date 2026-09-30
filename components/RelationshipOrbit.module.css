@@ -34,7 +34,7 @@
   gap: 10px;
   color: var(--content-muted);
   font-size: 11px;
-  font-weight: 620;
+  font-weight: 500;
   white-space: nowrap;
 }
 
@@ -98,8 +98,8 @@
   right: 0;
   left: 0;
   height: 2px;
-  border-radius: 2px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--brand-spark) 24%, transparent), var(--brand-spark));
+  border-radius: 6px;
+  background: var(--bg);
   content: '';
   transform: scaleY(0.65);
   transform-origin: left;
@@ -119,12 +119,12 @@
 
 .mapLegend i[data-key='sector']::before {
   left: 1px;
-  background: #28aee4;
+  background: var(--bg);
 }
 
 .mapLegend i[data-key='sector']::after {
   right: 1px;
-  background: #dc559c;
+  background: var(--bg);
 }
 
 .mapLegend i[data-key='confidence']::before {
@@ -165,7 +165,7 @@
 .companyCard a:focus-visible,
 .showAll:focus-visible,
 .openLink:focus-visible {
-  border-radius: 4px;
+  border-radius: 6px;
   outline: 2px solid color-mix(in srgb, var(--brand-spark) 62%, transparent);
   outline-offset: 4px;
 }
@@ -185,8 +185,7 @@
   overflow: hidden;
   isolation: isolate;
   background:
-    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--brand-spark) 8%, transparent), transparent 19%),
-    radial-gradient(ellipse at 50% 48%, color-mix(in srgb, var(--surface-card) 42%, transparent), transparent 74%);
+    var(--bg);
 }
 
 .stage::before,
@@ -240,10 +239,10 @@
   display: block;
   width: var(--center-ball-size);
   height: var(--center-ball-size);
-  border: 7px solid color-mix(in srgb, var(--brand-spark) 68%, white);
+  border: 7px solid color-mix(in srgb, var(--brand-spark) 68%, var(--surface));
   border-radius: 50%;
-  background: color-mix(in srgb, var(--page-bg) 94%, transparent);
-  box-shadow: 0 9px 28px color-mix(in srgb, var(--brand-spark) 18%, transparent), 0 0 0 13px color-mix(in srgb, var(--brand-spark) 6%, transparent);
+  background: var(--surface);
+  box-shadow: none;
 }
 
 .centerNode strong {
@@ -295,7 +294,7 @@
 
 .node:focus-visible {
   border-radius: 50%;
-  outline: 2px solid color-mix(in srgb, var(--node-color) 72%, white);
+  outline: 2px solid color-mix(in srgb, var(--node-color) 72%, var(--surface));
   outline-offset: 3px;
 }
 
@@ -308,7 +307,7 @@
   border: 1px solid color-mix(in srgb, var(--node-color) 56%, transparent);
   border-radius: 50%;
   background: color-mix(in srgb, var(--page-bg) 90%, var(--node-color));
-  box-shadow: 0 7px 19px color-mix(in srgb, var(--node-color) 13%, transparent);
+  box-shadow: none;
   transition: border-color var(--motion-normal) var(--motion-ease-standard), box-shadow var(--motion-slow) var(--motion-ease-standard), filter var(--motion-normal) var(--motion-ease-standard);
 }
 
@@ -318,14 +317,14 @@
   height: 34%;
   border-radius: 50%;
   background: var(--node-color);
-  box-shadow: 0 0 11px color-mix(in srgb, var(--node-color) 42%, transparent);
+  box-shadow: none;
 }
 
 .node[data-active='true'] .nodeBall,
 .node:hover .nodeBall,
 .node:focus-visible .nodeBall {
   border-color: var(--node-color);
-  box-shadow: 0 10px 28px color-mix(in srgb, var(--node-color) 22%, transparent), 0 0 0 8px color-mix(in srgb, var(--node-color) 8%, transparent);
+  box-shadow: none;
 }
 
 .node strong {
@@ -333,8 +332,8 @@
   top: calc(50% + var(--node-size) / 2 + 5px);
   left: 50%;
   padding: 2px 4px;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--page-bg) 82%, transparent);
+  border-radius: 6px;
+  background: var(--surface);
   color: var(--content-primary);
   font-size: 9px;
   line-height: 1;
@@ -394,10 +393,10 @@
   display: block;
   width: 11px;
   height: 11px;
-  border: 3px solid color-mix(in srgb, var(--company-color) 55%, white);
+  border: 3px solid color-mix(in srgb, var(--company-color) 55%, var(--surface));
   border-radius: 50%;
   background: var(--company-color);
-  box-shadow: 0 0 0 5px color-mix(in srgb, var(--company-color) 9%, transparent);
+  box-shadow: none;
   margin-top: 6px;
 }
 
@@ -406,9 +405,9 @@
   margin: 0;
   color: var(--content-primary);
   font-size: clamp(1.55rem, 2.15vw, 2.2rem);
-  font-weight: 560;
+  font-weight: 500;
   line-height: 1.02;
-  letter-spacing: -0.03em;
+  letter-spacing: normal;
   overflow-wrap: anywhere;
 }
 
@@ -417,11 +416,11 @@
   min-height: 22px;
   align-items: center;
   border: 1px solid color-mix(in srgb, var(--content-muted) 22%, transparent);
-  border-radius: var(--radius-pill);
+  border-radius: 6px;
   padding: 0 8px;
   color: var(--content-secondary);
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.06em;
 }
 
@@ -453,7 +452,7 @@
   margin: 22px 0 18px;
   color: var(--content-primary);
   font-size: 13px;
-  font-weight: 590;
+  font-weight: 500;
   line-height: 1.45;
   text-wrap: balance;
 }
@@ -494,7 +493,7 @@
   border-bottom: 1px solid color-mix(in srgb, var(--brand-spark) 34%, transparent);
   color: var(--brand-spark);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
   text-decoration: none;
 }
 
@@ -519,7 +518,7 @@
   margin: 0;
   color: var(--content-primary);
   font-size: 1.25rem;
-  letter-spacing: -0.025em;
+  letter-spacing: normal;
 }
 
 .discoveryHeader p {
@@ -550,8 +549,8 @@
   min-height: 156px;
   grid-template-rows: 1fr auto;
   border: 1px solid color-mix(in srgb, var(--content-muted) 16%, transparent);
-  border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--surface-card) 72%, transparent);
+  border-radius: 6px;
+  background: var(--surface);
   overflow: hidden;
   transition: border-color var(--motion-normal) var(--motion-ease-standard), background var(--motion-normal) var(--motion-ease-standard), transform var(--motion-slow) var(--motion-ease-soft);
 }
@@ -634,7 +633,7 @@
   border-top: 1px solid var(--border);
   color: var(--brand-spark);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 500;
   text-decoration: none;
 }
 
@@ -649,7 +648,7 @@
   color: var(--brand-spark);
   font: inherit;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
   cursor: pointer;
 }
 
@@ -757,7 +756,7 @@
 
   .centerBall {
     border-width: 6px;
-    box-shadow: 0 7px 22px color-mix(in srgb, var(--brand-spark) 16%, transparent), 0 0 0 10px color-mix(in srgb, var(--brand-spark) 6%, transparent);
+    box-shadow: none;
   }
 
   .centerNode small {

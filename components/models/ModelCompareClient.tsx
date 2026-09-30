@@ -261,7 +261,7 @@ function ComparePageSkeleton() {
         {[0, 1].map((key) => (
           <Card key={`compare-skeleton-model-${key}`} className="section-gap">
             <Skeleton className="h-4 w-16 rounded-md" />
-            <Skeleton className="h-10 w-full rounded-xl" />
+            <Skeleton className="h-10 w-full rounded-md" />
             <div className="space-y-2">
               <Skeleton className="h-6 w-2/3 rounded-md" />
               <Skeleton className="h-4 w-1/4 rounded-md" />
@@ -270,14 +270,14 @@ function ComparePageSkeleton() {
               <Skeleton className="h-6 w-28 rounded-full" />
               <Skeleton className="h-6 w-32 rounded-full" />
             </div>
-            <Skeleton className="h-16 w-full rounded-lg" />
+            <Skeleton className="h-16 w-full rounded-md" />
             <Skeleton className="h-4 w-32 rounded-md" />
           </Card>
         ))}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Skeleton className="h-10 w-36 rounded-xl" />
+        <Skeleton className="h-10 w-36 rounded-md" />
         <Skeleton className="h-4 w-48 rounded-md" />
       </div>
 
@@ -286,9 +286,9 @@ function ComparePageSkeleton() {
         <div className="grid grid-cols-[160px_1fr_1fr] gap-2">
           {[0, 1, 2, 3, 4, 5].map((row) => (
             <div key={`compare-skeleton-metric-${row}`} className="contents">
-              <Skeleton className="h-12 w-full rounded-lg" />
-              <Skeleton className="h-12 w-full rounded-lg" />
-              <Skeleton className="h-12 w-full rounded-lg" />
+              <Skeleton className="h-12 w-full rounded-md" />
+              <Skeleton className="h-12 w-full rounded-md" />
+              <Skeleton className="h-12 w-full rounded-md" />
             </div>
           ))}
         </div>
@@ -297,7 +297,7 @@ function ComparePageSkeleton() {
       <Card className="section-gap">
         <Skeleton className="h-6 w-56 rounded-md" />
         <Skeleton className="h-4 w-72 rounded-md" />
-        <Skeleton className="h-[300px] w-full rounded-xl" />
+        <Skeleton className="h-[300px] w-full rounded-md" />
         <div className="flex flex-wrap gap-3">
           <Skeleton className="h-4 w-16 rounded-md" />
           <Skeleton className="h-4 w-16 rounded-md" />
@@ -309,7 +309,7 @@ function ComparePageSkeleton() {
         <Skeleton className="h-6 w-56 rounded-md" />
         <div className="space-y-2">
           {[0, 1, 2, 3, 4].map((row) => (
-            <Skeleton key={`compare-skeleton-diff-${row}`} className="h-12 w-full rounded-lg" />
+            <Skeleton key={`compare-skeleton-diff-${row}`} className="h-12 w-full rounded-md" />
           ))}
         </div>
       </Card>

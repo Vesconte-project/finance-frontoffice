@@ -1,34 +1,6 @@
 import Link from 'next/link'
 import { ArrowRight, ArrowUpRight, Bookmark, BrainCircuit, GitBranch, History, Search, ShieldCheck, SlidersHorizontal, Sparkles } from 'lucide-react'
-import { Inter, JetBrains_Mono, Sora } from 'next/font/google'
 import { SiteHeader, sharedHeaderSpacerClass } from '@/components/marketing/site-chrome'
-
-const sora = Sora({ subsets: ['latin'], weight: ['400', '600', '700', '800'], display: 'swap' })
-const inter = Inter({ subsets: ['latin'], display: 'swap' })
-const mono = JetBrains_Mono({ subsets: ['latin'], weight: ['400', '500', '600'], display: 'swap' })
-
-const productThemeStyle = {
-  ['--page-bg' as never]: '#f3efe6',
-  ['--background' as never]: '#f3efe6',
-  ['--foreground' as never]: '#142943',
-  ['--content-primary' as never]: '#142943',
-  ['--content-secondary' as never]: '#53657b',
-  ['--content-muted' as never]: '#7c8994',
-  ['--brand-spark' as never]: '#0b8178',
-  ['--brand-spark-soft' as never]: '#1ba69a',
-  ['--brand-spark-on' as never]: '#04201d',
-  ['--border' as never]: 'rgba(20, 41, 67, 0.14)',
-  ['--surface-card' as never]: 'rgba(255, 255, 255, 0.62)',
-  ['--surface-hover' as never]: 'rgba(20, 41, 67, 0.055)',
-  ['--glass-bg' as never]: 'rgba(255, 255, 255, 0.72)',
-  ['--glass-border' as never]: 'rgba(20, 41, 67, 0.13)',
-  ['--glass-highlight' as never]: 'rgba(255, 255, 255, 0.9)',
-  ['--glass-shadow' as never]: '0 16px 56px rgba(25, 40, 53, 0.1)',
-  ['--font-display' as never]: sora.style.fontFamily,
-  ['--font-body' as never]: inter.style.fontFamily,
-  ['--font-mono' as never]: mono.style.fontFamily,
-  fontFamily: 'var(--font-body)',
-}
 
 const productPath = [
   { label: 'Search', body: 'Find a ticker or company by symbol, name, or exchange.', icon: Search },
@@ -55,8 +27,6 @@ const signalReading = [
 export default function ProductPage() {
   return (
     <main
-      data-theme="light"
-      style={productThemeStyle}
       className="marketing-product relative min-h-screen overflow-x-clip bg-[var(--page-bg)] text-content-primary"
     >
       <SiteHeader activeHref="/product" />
@@ -64,7 +34,7 @@ export default function ProductPage() {
 
       <section className="relative overflow-hidden border-b border-border" aria-labelledby="product-title">
         <div
-          className="pointer-events-none absolute -right-48 -top-40 h-[38rem] w-[38rem] rounded-full bg-[radial-gradient(circle,rgba(11,129,120,0.13),transparent_68%)] blur-2xl"
+          className="pointer-events-none absolute -right-48 -top-40 h-[38rem] w-[38rem] rounded-md bg-transparent"
           aria-hidden="true"
         />
         <div className="relative mx-auto grid max-w-[1180px] gap-12 px-6 pb-16 pt-12 sm:px-10 sm:pb-20 sm:pt-16 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:px-14 lg:py-24">
@@ -75,7 +45,7 @@ export default function ProductPage() {
             <h1
               id="product-title"
               style={{ fontFamily: 'var(--font-display)' }}
-              className="mt-5 max-w-xl text-5xl font-extrabold leading-[0.98] tracking-[-0.055em] sm:text-6xl"
+              className="mt-5 max-w-xl text-5xl font-extrabold leading-[0.98] tracking-normal sm:text-6xl"
             >
               Research the market with more context.
             </h1>
@@ -85,7 +55,7 @@ export default function ProductPage() {
             <div className="mt-9 flex flex-col gap-4 sm:flex-row sm:items-center">
               <Link
                 href="/screener"
-                className="inline-flex h-12 items-center justify-center gap-3 rounded-full bg-brand-spark px-6 font-semibold text-[color:var(--brand-spark-on)] shadow-[0_18px_50px_-12px_var(--brand-spark)] transition hover:brightness-110"
+                className="inline-flex h-12 items-center justify-center gap-3 rounded-md bg-[var(--btn-primary-bg)] px-6 font-medium text-[var(--btn-primary-fg)] transition"
               >
                 Open the screener <ArrowRight className="size-4" aria-hidden="true" />
               </Link>
@@ -122,7 +92,7 @@ export default function ProductPage() {
           <p style={{ fontFamily: 'var(--font-mono)' }} className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-spark">
             The flow
           </p>
-          <h2 id="flow-title" style={{ fontFamily: 'var(--font-display)' }} className="mt-4 text-4xl font-extrabold tracking-[-0.05em] sm:text-5xl">
+          <h2 id="flow-title" className="mt-4 text-4xl font-extrabold tracking-normal sm:text-5xl">
             Start with a name, not a blank dashboard.
           </h2>
           <p className="mt-5 max-w-xl text-base leading-7 text-content-secondary">
@@ -134,20 +104,20 @@ export default function ProductPage() {
           {productPath.map((step, index) => (
             <div key={step.label} className="grid gap-4 py-6 sm:grid-cols-[5rem_10rem_minmax(0,1fr)] sm:items-baseline sm:gap-6">
               <span style={{ fontFamily: 'var(--font-mono)' }} className="text-sm font-semibold tracking-[0.16em] text-brand-spark">0{index + 1}</span>
-              <h3 style={{ fontFamily: 'var(--font-display)' }} className="text-2xl font-bold tracking-[-0.04em]">{step.label}</h3>
+              <h3 className="text-2xl font-bold tracking-normal">{step.label}</h3>
               <p className="max-w-2xl text-base leading-7 text-content-secondary">{step.body}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <section id="ticker-pages" className="border-y border-border bg-white/30" aria-labelledby="ticker-pages-title">
+      <section id="ticker-pages" className="border-y border-border bg-[var(--surface)]" aria-labelledby="ticker-pages-title">
         <div className="mx-auto grid max-w-[1180px] gap-12 px-6 py-16 sm:px-10 sm:py-20 lg:grid-cols-[0.8fr_1.2fr] lg:px-14 lg:py-24">
           <div>
             <p style={{ fontFamily: 'var(--font-mono)' }} className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-spark">
               Ticker pages
             </p>
-            <h2 id="ticker-pages-title" style={{ fontFamily: 'var(--font-display)' }} className="mt-4 text-4xl font-extrabold tracking-[-0.05em] sm:text-5xl">
+            <h2 id="ticker-pages-title" className="mt-4 text-4xl font-extrabold tracking-normal sm:text-5xl">
               One asset, one research surface.
             </h2>
             <p className="mt-5 max-w-md text-base leading-7 text-content-secondary">
@@ -175,7 +145,7 @@ export default function ProductPage() {
             <p style={{ fontFamily: 'var(--font-mono)' }} className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-spark">
               Compare
             </p>
-            <h2 id="compare-title" style={{ fontFamily: 'var(--font-display)' }} className="mt-4 text-4xl font-extrabold tracking-[-0.05em] sm:text-5xl">
+            <h2 id="compare-title" className="mt-4 text-4xl font-extrabold tracking-normal sm:text-5xl">
               Make the shortlist visible.
             </h2>
             <p className="mt-5 max-w-md text-base leading-7 text-content-secondary">
@@ -218,13 +188,13 @@ export default function ProductPage() {
         </div>
       </section>
 
-      <section id="watchlists" className="border-y border-border bg-[#ebe5da]" aria-labelledby="watchlists-title">
+      <section id="watchlists" className="border-y border-border bg-[var(--line)]" aria-labelledby="watchlists-title">
         <div className="mx-auto grid max-w-[1180px] gap-12 px-6 py-16 sm:px-10 sm:py-20 lg:grid-cols-[1.1fr_0.9fr] lg:px-14 lg:py-24">
           <div>
             <p style={{ fontFamily: 'var(--font-mono)' }} className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-spark">
               Save and monitor
             </p>
-            <h2 id="watchlists-title" style={{ fontFamily: 'var(--font-display)' }} className="mt-4 text-4xl font-extrabold tracking-[-0.05em] sm:text-5xl">
+            <h2 id="watchlists-title" className="mt-4 text-4xl font-extrabold tracking-normal sm:text-5xl">
               Keep the names that matter close.
             </h2>
             <p className="mt-5 max-w-xl text-base leading-7 text-content-secondary">
@@ -264,7 +234,7 @@ export default function ProductPage() {
           <p style={{ fontFamily: 'var(--font-mono)' }} className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-spark">
             Interpretation
           </p>
-          <h2 id="methodology-title" style={{ fontFamily: 'var(--font-display)' }} className="mt-4 text-4xl font-extrabold tracking-[-0.05em] sm:text-5xl">
+          <h2 id="methodology-title" className="mt-4 text-4xl font-extrabold tracking-normal sm:text-5xl">
             Read the output with its limits attached.
           </h2>
           <p className="mt-5 max-w-xl text-base leading-7 text-content-secondary">
@@ -314,7 +284,7 @@ export default function ProductPage() {
             <p style={{ fontFamily: 'var(--font-mono)' }} className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-spark">
               Access and limits
             </p>
-            <h2 id="limits-title" style={{ fontFamily: 'var(--font-display)' }} className="mt-4 text-3xl font-extrabold tracking-[-0.04em] sm:text-4xl">
+            <h2 id="limits-title" className="mt-4 text-3xl font-extrabold tracking-normal sm:text-4xl">
               Explore first. Decide what you need next.
             </h2>
             <p className="mt-4 text-base leading-7 text-content-secondary">

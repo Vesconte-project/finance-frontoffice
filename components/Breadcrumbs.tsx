@@ -12,7 +12,7 @@ export default function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
   return (
     <nav
       aria-label="Breadcrumb"
-      className="mb-5 inline-flex rounded-full border border-slate-950/8 bg-white/78 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.84),0_10px_28px_rgba(20,33,51,0.05)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+      className="mb-5 inline-flex rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 py-2 dark:border-[var(--line)] dark:bg-[var(--surface)]"
     >
       <ol className="flex flex-wrap items-center gap-1.5 text-[12px] text-content-muted">
         {items.map((item, index) => {

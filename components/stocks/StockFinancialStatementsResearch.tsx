@@ -3,7 +3,6 @@ import ResearchViewShell, { ResearchAdPlacement } from '@/components/stocks/Rese
 import { type StatementSeries } from '@/components/stocks/StatementChart'
 import StatementHistoryWindow from '@/components/stocks/StatementHistoryWindow'
 import { formatCompactMoney } from '@/lib/currency'
-import { tickerIdentityColor } from '@/lib/ticker-identity-color'
 import type { FinancialStatementLineItem, FinancialStatementsPayload } from '@/lib/canonical-research'
 import { lockedHistoryCopy, type HistoryTier, type LockedHistoryCopy } from '@/lib/statement-history'
 import type { StockResearchData } from '@/lib/stock-research'
@@ -94,7 +93,6 @@ function Statement({
   payload,
   currency,
   period,
-  accentColor,
   withheld,
   locked,
 }: {
@@ -103,7 +101,6 @@ function Statement({
   payload: FinancialStatementsPayload | null
   currency: string
   period: StatementPeriod
-  accentColor: string
   withheld: number
   locked: LockedHistoryCopy | null
 }) {
@@ -141,7 +138,7 @@ function Statement({
   })
 
   return (
-    <section className={styles.statement} id={statement}>
+    <section className={`${styles.statement} data-section`} id={statement}>
       <h2 className={styles.statementHeading}>{label}</h2>
       <StatementHistoryWindow
         periodLabels={periods.map(formatPeriod)}
@@ -152,7 +149,6 @@ function Statement({
           cells: periods.map((row) => formatStatementValue(cells.get(`${lineItem.lineItemId}:${row.periodEnd}`), currency)),
         }))}
         currency={currency}
-        accentColor={accentColor}
         caption={`${label} · ${period === 'annual' ? 'annual' : 'quarterly'} periods`}
         period={period}
         withheld={withheld}
@@ -218,7 +214,6 @@ export default function StockFinancialStatementsResearch({
             payload={statements[item.key]}
             currency={data.currency}
             period={period}
-            accentColor={tickerIdentityColor(data.ticker)}
             withheld={withheldBy[item.key]}
             locked={lockedHistoryCopy(tier, period, withheldBy[item.key])}
           />

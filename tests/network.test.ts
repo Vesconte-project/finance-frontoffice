@@ -79,7 +79,7 @@ test('normalizes the relationship-map payload with entity graph ids and represen
       relationshipAlpha: 0.71,
       relationshipLabel: 'Residual price',
       relationshipDescription: 'Idiosyncratic relationship after market and FX factors.',
-      relationshipColor: '#1FC8A7',
+      relationshipColor: 'var(--text-muted)',
       relationshipDash: null,
       relationshipDirectional: false,
     },

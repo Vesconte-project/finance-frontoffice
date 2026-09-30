@@ -10,8 +10,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
   return (
     <ScrollExperience profile="operational">
       <div
-        data-app-theme="light"
-        data-theme="light"
         className="app-shell relative min-h-screen text-foreground"
         style={{ overflowX: 'clip' }}
       >

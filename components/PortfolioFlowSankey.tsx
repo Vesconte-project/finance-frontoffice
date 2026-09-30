@@ -44,30 +44,30 @@ function formatPercent(value: number): string {
 function getNodeFill(tone: PortfolioFlowNodeTone): string {
   switch (tone) {
     case 'sector':
-      return '#3b78b7'
+      return 'var(--text)'
     case 'portfolio':
-      return '#3b827d'
+      return 'var(--up)'
     case 'holding':
-      return '#b2874d'
+      return 'var(--down)'
     case 'other':
-      return '#7a8797'
+      return 'var(--text-muted)'
     default:
-      return '#7a8797'
+      return 'var(--text-muted)'
   }
 }
 
 function getLinkFill(tone: PortfolioFlowNodeTone): string {
   switch (tone) {
     case 'sector':
-      return 'rgba(59, 120, 183, 0.16)'
+      return 'color-mix(in srgb, var(--text) 16%, transparent)'
     case 'portfolio':
-      return 'rgba(59, 130, 125, 0.16)'
+      return 'color-mix(in srgb, var(--up) 16%, transparent)'
     case 'holding':
-      return 'rgba(178, 135, 77, 0.14)'
+      return 'color-mix(in srgb, var(--down) 14%, transparent)'
     case 'other':
-      return 'rgba(122, 135, 151, 0.14)'
+      return 'color-mix(in srgb, var(--text-muted) 14%, transparent)'
     default:
-      return 'rgba(122, 135, 151, 0.14)'
+      return 'color-mix(in srgb, var(--text-muted) 14%, transparent)'
   }
 }
 
@@ -94,7 +94,7 @@ function FlowNode(props: SankeyNodeProps) {
         y={Math.max(18, props.y - 8)}
         textAnchor={anchor}
         fontSize={12}
-        fontWeight={600}
+        fontWeight={500}
         fill="var(--content-primary)"
       >
         {trimLabel(payload.name, depth === 1 ? 20 : 18)}
@@ -151,15 +151,15 @@ export default function PortfolioFlowSankey({
           <p className="text-body mt-1 max-w-3xl">{subtitle}</p>
         </div>
         <div className="grid grid-cols-3 gap-2 text-sm">
-          <div className="rounded-xl border border-border bg-surface-elevated px-3 py-2">
+          <div className="rounded-md border border-border bg-surface-elevated px-3 py-2">
             <div className="text-filter-label">Sector Coverage</div>
             <div className="mt-1 font-semibold text-content-primary">{formatPercent(totalWeight)}</div>
           </div>
-          <div className="rounded-xl border border-border bg-surface-elevated px-3 py-2">
+          <div className="rounded-md border border-border bg-surface-elevated px-3 py-2">
             <div className="text-filter-label">Top Holdings</div>
             <div className="mt-1 font-semibold text-content-primary">{formatPercent(topHoldingsWeight)}</div>
           </div>
-          <div className="rounded-xl border border-border bg-surface-elevated px-3 py-2">
+          <div className="rounded-md border border-border bg-surface-elevated px-3 py-2">
             <div className="text-filter-label">Residual</div>
             <div className="mt-1 font-semibold text-content-primary">{formatPercent(residualWeight)}</div>
           </div>

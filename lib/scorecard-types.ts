@@ -57,44 +57,16 @@ export const SCORECARD_AXIS_LABELS: Record<ScorecardAxisKey, string> = {
   momentum: 'Momentum',
 }
 
-type Rgb = [number, number, number]
-
 function clampScore(value: number | null | undefined): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 0
   return Math.max(0, Math.min(100, value))
 }
 
-function lerp(start: number, end: number, amount: number): number {
-  return start + (end - start) * Math.max(0, Math.min(1, amount))
-}
-
-function mixRgb(from: Rgb, to: Rgb, amount: number): Rgb {
-  const t = Math.max(0, Math.min(1, amount))
-  return [
-    Math.round(lerp(from[0], to[0], t)),
-    Math.round(lerp(from[1], to[1], t)),
-    Math.round(lerp(from[2], to[2], t)),
-  ]
-}
-
-function toHex(value: number): string {
-  return value.toString(16).padStart(2, '0')
-}
-
-function rgbToHex([red, green, blue]: Rgb): string {
-  return `#${toHex(red)}${toHex(green)}${toHex(blue)}`
-}
-
 export function scoreColor(score: number | null | undefined): string {
   const clamped = clampScore(score)
-  const red: Rgb = [226, 61, 46]
-  const amber: Rgb = [217, 154, 11]
-  const green: Rgb = [18, 183, 106]
-
-  if (clamped <= 50) {
-    return rgbToHex(mixRgb(red, amber, clamped / 50))
-  }
-  return rgbToHex(mixRgb(amber, green, (clamped - 50) / 50))
+  if (clamped < 40) return 'var(--down)'
+  if (clamped < 64) return 'var(--text-muted)'
+  return 'var(--up)'
 }
 
 export function scoreGrade(score: number | null | undefined): string {

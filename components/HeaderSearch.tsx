@@ -5,7 +5,7 @@ import TickerSearchCombobox from '@/components/search/TickerSearchCombobox'
 export default function HeaderSearch({
   className,
   maxSuggestions,
-  placeholder = 'Search tracked tickers or company names...',
+  placeholder = 'Search tickers or companies',
   typingHints,
 }: {
   className?: string

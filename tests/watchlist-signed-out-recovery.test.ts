@@ -163,7 +163,7 @@ test('the star geometry and the control rail are preserved', () => {
 
   // R-3: the existing 36px control is not resized or redesigned.
   assert.match(source, /inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full/)
-  assert.match(source, /fill-amber-400 text-amber-400/)
+  assert.match(source, /fill-\[var\(--text-muted\)\] text-\[var\(--text-muted\)\]/)
 
   // The only call site is unchanged.
   assert.match(chrome, /<WatchlistButton/)

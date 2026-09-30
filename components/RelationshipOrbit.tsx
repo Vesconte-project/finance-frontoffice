@@ -430,9 +430,9 @@ function RelationshipInspector({
       <motion.div
         key={`${layer}:${row.symbol}`}
         className={styles.readout}
-        initial={reduceMotion ? false : { opacity: 0, y: 9, filter: 'blur(5px)' }}
-        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-        exit={reduceMotion ? undefined : { opacity: 0, y: -5, filter: 'blur(4px)' }}
+        initial={reduceMotion ? false : { opacity: 0, y: 9 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={reduceMotion ? undefined : { opacity: 0, y: -5 }}
         transition={{ duration: reduceMotion ? 0 : 0.28, ease: [0.16, 1, 0.3, 1] }}
       >
         <div className={styles.readoutHeader}>

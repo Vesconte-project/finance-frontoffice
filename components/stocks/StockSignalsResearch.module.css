@@ -20,7 +20,7 @@
 .currentSignal h2,
 .methodology h2 {
   margin: 0;
-  letter-spacing: -0.035em;
+  letter-spacing: normal;
 }
 
 .intro h2 {
@@ -34,7 +34,7 @@
 .statusLabel {
   color: var(--color-text-muted);
   font-size: 10px;
-  font-weight: 720;
+  font-weight: 500;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -86,17 +86,17 @@
   align-items: center;
   gap: 10px;
   font-size: clamp(1.55rem, 3vw, 2.25rem);
-  font-weight: 700;
-  letter-spacing: -0.045em;
+  font-weight: 500;
+  letter-spacing: normal;
 }
 
 .directionDot {
   width: 10px;
   height: 10px;
   flex: 0 0 auto;
-  border-radius: 999px;
+  border-radius: 6px;
   background: var(--color-signal-neutral);
-  box-shadow: 0 0 0 5px var(--color-neutral-tint);
+  box-shadow: none;
 }
 
 .bullish .directionDot,
@@ -106,7 +106,7 @@
 
 .bullish .directionDot {
   background: var(--color-signal-bullish);
-  box-shadow: 0 0 0 5px var(--color-bullish-tint);
+  box-shadow: none;
 }
 
 .bearish .directionDot,
@@ -116,7 +116,7 @@
 
 .bearish .directionDot {
   background: var(--color-signal-bearish);
-  box-shadow: 0 0 0 5px var(--color-bearish-tint);
+  box-shadow: none;
 }
 
 .neutral .directionDot,
@@ -158,7 +158,7 @@
 .factRow dd,
 .metricRow dd {
   color: var(--color-text-primary);
-  font-weight: 650;
+  font-weight: 500;
   text-align: right;
 }
 
@@ -189,7 +189,7 @@
   margin-top: 16px;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
+  border-radius: 6px;
   background: color-mix(in srgb, var(--bg-surface-raised) 78%, var(--color-accent-light));
 }
 
@@ -265,7 +265,7 @@
 .legendDot {
   width: 7px;
   height: 7px;
-  border-radius: 999px;
+  border-radius: 6px;
 }
 
 .technicalSection,
@@ -294,7 +294,7 @@
 
 .overallRead strong {
   font-size: 1.35rem;
-  letter-spacing: -0.03em;
+  letter-spacing: normal;
 }
 
 .overallRead span,
@@ -329,7 +329,7 @@
 
 .action {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .scale {
@@ -337,8 +337,8 @@
   height: 5px;
   margin: 14px 0 8px;
   overflow: hidden;
-  border-radius: 99px;
-  background: linear-gradient(90deg, var(--color-signal-bearish), var(--color-signal-neutral) 50%, var(--color-signal-bullish));
+  border-radius: 6px;
+  background: var(--bg);
   opacity: 0.72;
 }
 
@@ -351,7 +351,7 @@
   border: 2px solid var(--bg-surface-raised);
   border-radius: 50%;
   background: var(--color-text-primary);
-  box-shadow: 0 0 0 1px var(--color-text-primary);
+  box-shadow: none;
   transform: translateX(-50%);
 }
 
@@ -374,7 +374,7 @@
   padding: 10px 0;
   color: var(--color-text-secondary);
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 500;
 }
 
 .trackDetails summary:focus-visible,
@@ -429,7 +429,7 @@
 }
 
 .historyRow strong {
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .emptyLine,
@@ -460,7 +460,7 @@
 .methodLink {
   color: var(--color-accent);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 500;
   text-decoration: none;
 }
 

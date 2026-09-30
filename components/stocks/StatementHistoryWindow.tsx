@@ -55,7 +55,6 @@ export default function StatementHistoryWindow({
   series,
   rows,
   currency,
-  accentColor,
   caption,
   period,
   withheld,
@@ -65,7 +64,6 @@ export default function StatementHistoryWindow({
   series: StatementSeries[]
   rows: StatementTableRow[]
   currency: string
-  accentColor: string
   caption: string
   period: HistoryPeriod
   withheld: number
@@ -152,7 +150,6 @@ export default function StatementHistoryWindow({
                 periods={windowLabels}
                 series={windowSeries}
                 currency={currency}
-                accentColor={accentColor}
                 caption={caption}
               />
             </div>
@@ -170,7 +167,7 @@ export default function StatementHistoryWindow({
       </div>
 
       <div className={styles.statementTableWrap}>
-        <table className={styles.statementTable}>
+        <table className={`${styles.statementTable} data-table`}>
           <thead>
             <tr>
               <th scope="col">Line item</th>

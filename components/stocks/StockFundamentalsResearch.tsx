@@ -22,7 +22,7 @@ function ChangeTable({ chapter }: { chapter: FundamentalChapter }) {
 
   return (
     <div className={styles.changeScroll}>
-      <table className={styles.changeTable}>
+      <table className={`${styles.changeTable} data-table`}>
         <thead>
           <tr>
             <th scope="col">Measure</th>
@@ -84,7 +84,7 @@ export default function StockFundamentalsResearch({
     <ResearchViewShell data={data} title="Fundamentals" showHeader={false}>
       <div className={styles.chapters}>
         {view.chapters.map((chapter) => (
-          <section className={styles.chapter} id={chapter.key} key={chapter.key}>
+          <section className={`${styles.chapter} data-section`} id={chapter.key} key={chapter.key}>
             <h2 className={styles.chapterHead}>{chapter.label}</h2>
             <ChangeTable chapter={chapter} />
             <TailList metrics={chapter.tail} />

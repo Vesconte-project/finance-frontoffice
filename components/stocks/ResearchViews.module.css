@@ -20,7 +20,7 @@
   margin: 0;
   font-size: clamp(1.9rem, 3.3vw, 3rem);
   line-height: 1;
-  letter-spacing: -0.035em;
+  letter-spacing: normal;
 }
 
 .headerMeta {
@@ -35,11 +35,11 @@
   min-height: 26px;
   align-items: center;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
+  border-radius: 6px;
   padding: 0 10px;
   color: var(--color-text-muted);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -58,7 +58,7 @@
   color: var(--color-text-primary);
   font-size: clamp(1.25rem, 2.4vw, 2rem);
   line-height: 1.42;
-  letter-spacing: -0.025em;
+  letter-spacing: normal;
 }
 
 .descriptionPending {
@@ -96,7 +96,7 @@
   margin: 0;
   color: var(--color-text-primary);
   font-size: 13px;
-  font-weight: 620;
+  font-weight: 500;
   text-align: right;
   overflow-wrap: anywhere;
 }
@@ -122,7 +122,7 @@
 .chapterIntro h2 {
   margin: 0;
   font-size: 1.2rem;
-  letter-spacing: -0.025em;
+  letter-spacing: normal;
 }
 
 .chapterIntro p {
@@ -198,14 +198,14 @@
   grid-column: 1 / -1;
   height: 3px;
   overflow: hidden;
-  border-radius: var(--radius-pill);
+  border-radius: 6px;
   background: var(--bg-surface-raised);
 }
 
 .sectorTrack i {
   display: block;
   height: 100%;
-  border-radius: inherit;
+  border-radius: 6px;
   background: var(--color-accent);
 }
 
@@ -227,7 +227,7 @@
 .statusLabel {
   color: var(--color-accent);
   font-size: 9px;
-  font-weight: 750;
+  font-weight: 500;
   letter-spacing: 0.09em;
   text-transform: uppercase;
 }
@@ -259,11 +259,11 @@
   align-items: center;
   justify-content: center;
   border: 1px solid transparent;
-  border-radius: var(--radius-pill);
+  border-radius: 6px;
   padding: 0 13px;
   color: var(--color-text-muted);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
   text-decoration: none;
 }
 
@@ -317,9 +317,9 @@
   left: 0;
   padding-left: 0;
   padding-right: 28px;
-  background: var(--page-bg, var(--color-page-bg));
+  background: var(--table-sticky-bg, var(--page-bg, var(--color-page-bg)));
   color: var(--color-text-primary);
-  font-weight: 560;
+  font-weight: 500;
   text-align: left;
 }
 
@@ -340,7 +340,7 @@
 
 .statementTable td {
   font-variant-numeric: tabular-nums;
-  font-weight: 560;
+  font-weight: 500;
 }
 
 .pendingCell {
@@ -356,7 +356,7 @@
   overflow: hidden;
   margin-top: 24px;
   border: 1px solid var(--research-line);
-  border-radius: var(--radius-md);
+  border-radius: 6px;
 }
 
 .snapshotStrip div {
@@ -392,10 +392,10 @@
   gap: 16px;
   padding: 9px 14px;
   border: 1px dashed var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   color: var(--color-text-muted);
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -511,7 +511,6 @@
   display: grid;
   gap: 14px;
   padding: 26px 0 30px;
-  border-bottom: 1px solid var(--research-line);
   scroll-margin-top: 108px;
 }
 
@@ -522,8 +521,8 @@
 .chapterHead {
   margin: 0;
   font-size: 1.05rem;
-  font-weight: 640;
-  letter-spacing: -0.02em;
+  font-weight: 500;
+  letter-spacing: normal;
 }
 
 /* A long reporting history widens this past the column; it scrolls in its own
@@ -556,7 +555,7 @@
   border-bottom: 1px solid var(--research-line);
   color: var(--color-text-muted);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -564,7 +563,7 @@
 .changeTable tbody th {
   color: var(--color-text-primary);
   font-size: 12px;
-  font-weight: 560;
+  font-weight: 500;
   white-space: normal;
 }
 
@@ -579,23 +578,13 @@
 .changeTable td {
   color: var(--color-text-muted);
   font-size: 12px;
-  font-weight: 620;
-}
-
-/* Direction carries a sign as well as a colour, and the palette stays the
-   product's own — no red, no green, as everywhere else. */
-.changeTable td[data-direction='up'] {
-  color: var(--color-accent);
-}
-
-.changeTable td[data-direction='down'] {
-  color: var(--color-text-primary);
+  font-weight: 500;
 }
 
 .changeLevel {
   color: var(--color-text-primary) !important;
-  font-weight: 660;
-  letter-spacing: -0.01em;
+  font-weight: 500;
+  letter-spacing: normal;
 }
 
 /* Funds only: an ETF files no statements, so its chapters carry attributes
@@ -624,7 +613,7 @@
 .tailList dd {
   margin: 0;
   font-size: 12px;
-  font-weight: 620;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
@@ -640,37 +629,22 @@
    Financials — all three statements on one page, each drawn as a nesting and
    read as a table beside it.
 
-   One hue, light to dark. The series here are nested quantities rather than
-   competing categories, and a nested magnitude wants a sequential ramp — the
-   three unrelated hues this carried before were solving a problem the chart
-   should not have had, which was that grouped bars claimed the lines were
-   siblings.
-
-   The hue is the ticker's own identity colour, the one on the node beside the
-   company name, so the page's data carries the company's mark. It also settles
-   the constraint that ruled out the alternatives: that palette is blues through
-   magentas, so it can never be the green that buy and sell have spoken for on a
-   page about money.
-
-   The innermost step is that colour exactly and the outer ones are it mixed
-   toward the page, distributed across however many series are present. Checked
-   across all seven palette entries: every one holds a monotonic ramp on this
-   surface, which is what a sequential scale needs.
+   Nested quantities use one neutral ink ramp. Green/red remain reserved for
+   signed variation, and ocre remains reserved for focus and selection.
    ------------------------------------------------------------------------- */
 
 .statement {
   display: grid;
   gap: 16px;
   padding: 26px 0 30px;
-  border-bottom: 1px solid var(--research-line);
   scroll-margin-top: 108px;
 }
 
 .statementHeading {
   margin: 0;
   font-size: 1.05rem;
-  font-weight: 640;
-  letter-spacing: -0.02em;
+  font-weight: 500;
+  letter-spacing: normal;
 }
 
 /* The chart is sized to its data. Three periods do not need eighteen hundred
@@ -684,6 +658,7 @@
 }
 
 .statementChart {
+  --statement-ink: var(--text-small);
   display: grid;
   gap: 10px;
   margin: 0;
@@ -722,14 +697,14 @@
   width: 9px;
   height: 9px;
   align-self: center;
-  border-radius: 2px;
+  border-radius: 6px;
   background: color-mix(in srgb, var(--statement-ink) var(--tint), transparent);
 }
 
 .chartLegend dt {
-  color: var(--color-text-secondary);
+  color: var(--color-text-muted);
   font-size: 11px;
-  font-weight: 560;
+  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -739,7 +714,7 @@
   margin: 0;
   color: var(--color-text-primary);
   font-size: 11px;
-  font-weight: 660;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 
@@ -747,7 +722,7 @@
   margin: 0 0 8px;
   color: var(--color-text-muted);
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -813,23 +788,23 @@
   position: sticky;
   left: 0;
   padding-left: 0;
-  background: var(--page-bg, var(--color-page-bg));
+  background: var(--table-sticky-bg, var(--page-bg, var(--color-page-bg)));
   color: var(--color-text-primary);
-  font-weight: 560;
+  font-weight: 500;
   text-align: left;
 }
 
 .statementTable thead th {
   color: var(--color-text-muted);
   font-size: 9px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .statementTable td {
   font-variant-numeric: tabular-nums;
-  font-weight: 560;
+  font-weight: 500;
 }
 
 .statementTable tbody tr:last-child th,
@@ -868,7 +843,7 @@
   flex: 0 0 clamp(112px, 36%, 140px);
   overflow: hidden;
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
+  border-radius: 6px;
   isolation: isolate;
 }
 
@@ -883,7 +858,7 @@
 
 .statementLockedBars span {
   flex: 1;
-  border-radius: 2px;
+  border-radius: 6px;
   background: color-mix(in srgb, var(--color-text-muted) 22%, transparent);
 }
 
@@ -893,8 +868,8 @@
   align-content: center;
   padding: 14px 12px;
   background: var(--glass-bg);
-  box-shadow: inset 0 1px 0 var(--glass-highlight);
-  backdrop-filter: blur(10px) saturate(1.2);
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .statementLockedIcon {
@@ -907,8 +882,8 @@
   margin: 0;
   color: var(--color-text-primary);
   font-size: 12px;
-  font-weight: 660;
-  letter-spacing: -0.01em;
+  font-weight: 500;
+  letter-spacing: normal;
 }
 
 .statementLockedBody {
@@ -922,7 +897,7 @@
   justify-self: start;
   color: var(--color-primary);
   font-size: 11px;
-  font-weight: 620;
+  font-weight: 500;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -930,7 +905,7 @@
 .statementLockedLink:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
-  border-radius: 2px;
+  border-radius: 6px;
 }
 
 /* The table's locked column: generic shapes only, hidden from assistive tech —
@@ -950,9 +925,9 @@
   display: inline-block;
   width: 36px;
   height: 8px;
-  border-radius: var(--radius-pill);
+  border-radius: 6px;
   background: color-mix(in srgb, var(--color-text-muted) 20%, transparent);
-  filter: blur(1.5px);
+  filter: none;
 }
 
 /* The scrubber: one thin line, one glass thumb. The track's padding is the hit
@@ -970,7 +945,7 @@
   position: absolute;
   top: 50%;
   height: 2px;
-  border-radius: var(--radius-pill);
+  border-radius: 6px;
   transform: translateY(-50%);
 }
 
@@ -984,11 +959,7 @@
 .historyTrackMuted {
   left: 0;
   width: var(--muted-share);
-  background: repeating-linear-gradient(
-    90deg,
-    var(--color-border) 0 3px,
-    transparent 3px 6px
-  );
+  background: var(--bg);
 }
 
 .historyThumb {
@@ -999,10 +970,10 @@
   min-width: 22px;
   height: 12px;
   border: 1px solid var(--glass-thumb-border);
-  border-radius: var(--radius-pill);
+  border-radius: 6px;
   background: var(--glass-thumb-bg);
-  box-shadow: inset 0 1px 0 var(--glass-highlight), 0 2px 8px rgba(15, 23, 42, 0.12);
-  backdrop-filter: blur(8px);
+  box-shadow: none;
+  backdrop-filter: none;
   cursor: grab;
   transform: translateY(-50%);
   transition:

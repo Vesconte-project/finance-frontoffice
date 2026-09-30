@@ -99,7 +99,7 @@ export default function FinancialStatementBarChart({
             tick={{ fontSize: 12, fill: palette.text }}
             interval={0}
           />
-          <Tooltip content={<FinancialTooltip palette={palette} />} cursor={{ fill: 'rgba(37,99,235,0.08)' }} />
+          <Tooltip content={<FinancialTooltip palette={palette} />} cursor={{ fill: 'var(--surface)' }} />
           <Bar dataKey="value" fill={palette.primary} radius={[6, 6, 6, 6]} />
         </BarChart>
       )}

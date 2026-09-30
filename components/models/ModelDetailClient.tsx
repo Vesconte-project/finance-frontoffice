@@ -196,9 +196,9 @@ function frequencyToneClass(direction: DeltaDirection): string {
 }
 
 function markerColor(signal: ModelRecord['signals'][number]['signal']): string {
-  if (signal === 'bullish') return '#12B76A'
-  if (signal === 'bearish') return '#E23D2E'
-  return '#64768A'
+  if (signal === 'bullish') return 'var(--up)'
+  if (signal === 'bearish') return 'var(--down)'
+  return 'var(--text-muted)'
 }
 
 function buildMetricHints(summary: NonNullable<ModelRecord['summary']>): {
@@ -1017,7 +1017,7 @@ export default function ModelDetailClient({
           text="Start here: Explore a model → tweak it → compare results"
         />
 
-        <Card className="section-gap border-primary/20 bg-[radial-gradient(circle_at_top_right,var(--accent-glow),transparent_68%)]">
+        <Card className="section-gap border-primary/20 bg-transparent">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="text-filter-label">Model identity</div>
@@ -1031,9 +1031,9 @@ export default function ModelDetailClient({
                     {confidence} · {confidencePct}
                   </span>
                 </div>
-                <div className="relative mt-1 h-2 w-[150px] overflow-hidden rounded-full bg-gradient-to-r from-[var(--bear-400)] via-[var(--warn-400)] to-[var(--bull-500)]">
+                <div className="relative mt-1 h-2 w-[150px] overflow-hidden rounded-full bg-[var(--line)]">
                   <div
-                    className="state-interactive absolute top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border bg-surface-card"
+                    className="state-interactive absolute top-1/2 h-3 w-3 -translate-y-1/2 rounded-md border bg-surface-card"
                     style={{ left: `calc(${confidencePct}% - 6px)`, borderColor: chartPalette.tooltipBg }}
                   />
                 </div>
@@ -1354,10 +1354,6 @@ export default function ModelDetailClient({
                 {({ width, height, palette }) => (
                   <AreaChart width={width} height={height} data={model.equityCurve} margin={CHART_MARGINS.stock}>
                       <defs>
-                        <linearGradient id="modelStrategyFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor={palette.secondary} stopOpacity={0.26} />
-                          <stop offset="100%" stopColor={palette.secondary} stopOpacity={0.02} />
-                        </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="2 6" stroke={palette.grid} vertical={false} />
                       <XAxis dataKey="t" tick={{ fontSize: 11, fill: palette.textMuted }} axisLine={false} tickLine={false} />
@@ -1379,7 +1375,7 @@ export default function ModelDetailClient({
                           dot={false}
                         />
                       ) : null}
-                      <Area type="monotone" dataKey="strategy" stroke="none" fill="url(#modelStrategyFill)" />
+                      <Area type="monotone" dataKey="strategy" stroke="none" fill="color-mix(in srgb, var(--text) 12%, transparent)" />
                       <Line
                         type="monotone"
                         dataKey="strategy"

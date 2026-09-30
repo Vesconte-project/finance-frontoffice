@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 export type ScoreRingTone = 'primary' | 'success' | 'warning' | 'danger' | 'neutral'
@@ -21,25 +21,17 @@ type ScoreRingsProps = {
   subtitle?: string
 }
 
-const TONE_STOPS: Record<ScoreRingTone, { start: string; end: string }> = {
-  primary: { start: '#4f8ef7', end: '#2563eb' },
-  success: { start: '#34d399', end: '#10b981' },
-  warning: { start: '#f59e0b', end: '#d97706' },
-  danger: { start: '#fb7185', end: '#ef4444' },
-  neutral: { start: '#94a3b8', end: '#64748b' },
+const TONE_COLOR: Record<ScoreRingTone, string> = {
+  primary: 'var(--text)',
+  success: 'var(--up)',
+  warning: 'var(--text-muted)',
+  danger: 'var(--down)',
+  neutral: 'var(--text-muted)',
 }
 
 function clampScore(value: number): number {
   if (!Number.isFinite(value)) return 0
   return Math.max(0, Math.min(100, value))
-}
-
-function toneDotClass(tone: ScoreRingTone): string {
-  if (tone === 'primary') return 'bg-blue-500'
-  if (tone === 'success') return 'bg-emerald-500'
-  if (tone === 'warning') return 'bg-amber-500'
-  if (tone === 'danger') return 'bg-rose-500'
-  return 'bg-slate-500'
 }
 
 export default function ScoreRings({
@@ -52,7 +44,6 @@ export default function ScoreRings({
 }: ScoreRingsProps) {
   const [isAnimated, setIsAnimated] = useState(false)
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
-  const gradientSeed = useId()
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setIsAnimated(true))
@@ -91,7 +82,6 @@ export default function ScoreRings({
       radius,
       circumference,
       dashOffset,
-      gradientId: `${gradientSeed}-ring-${index}`,
       active: activeIndex === null || activeIndex === index,
     }
   })
@@ -109,25 +99,6 @@ export default function ScoreRings({
     >
       <div className="relative mx-auto">
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="overflow-visible">
-          <defs>
-            {rings.map((ring) => {
-              const stops = TONE_STOPS[ring.tone]
-              return (
-                <linearGradient
-                  key={ring.gradientId}
-                  id={ring.gradientId}
-                  x1="0%"
-                  y1="0%"
-                  x2="100%"
-                  y2="100%"
-                >
-                  <stop offset="0%" stopColor={stops.start} />
-                  <stop offset="100%" stopColor={stops.end} />
-                </linearGradient>
-              )
-            })}
-          </defs>
-
           <g transform={`rotate(-90 ${center} ${center})`}>
             {rings.map((ring, index) => (
               <g
@@ -143,7 +114,7 @@ export default function ScoreRings({
                   cy={center}
                   r={ring.radius}
                   fill="none"
-                  stroke="rgba(148, 163, 184, 0.16)"
+                  stroke="var(--line)"
                   strokeWidth={stroke}
                 />
                 <circle
@@ -151,7 +122,7 @@ export default function ScoreRings({
                   cy={center}
                   r={ring.radius}
                   fill="none"
-                  stroke={`url(#${ring.gradientId})`}
+                  stroke={TONE_COLOR[ring.tone]}
                   strokeOpacity={0.2}
                   strokeWidth={stroke + 3}
                   strokeLinecap="round"
@@ -166,7 +137,7 @@ export default function ScoreRings({
                   cy={center}
                   r={ring.radius}
                   fill="none"
-                  stroke={`url(#${ring.gradientId})`}
+                  stroke={TONE_COLOR[ring.tone]}
                   strokeWidth={stroke}
                   strokeLinecap="round"
                   strokeDasharray={ring.circumference}
@@ -184,13 +155,13 @@ export default function ScoreRings({
           <div className="text-center">
             <div
               className={cn(
-                'font-semibold leading-none text-neutral-900 dark:text-neutral-100',
+                'font-semibold leading-none text-[var(--text)] dark:text-[var(--text)]',
                 compact ? 'text-[1.9rem]' : 'text-[2.4rem]'
               )}
             >
               {overallScore}
             </div>
-            <div className="mt-1 text-[10px] uppercase tracking-[0.08em] text-neutral-500 dark:text-neutral-400">
+            <div className="mt-1 text-[10px] uppercase tracking-[0.08em] text-[var(--text-muted)] dark:text-[var(--text-muted)]">
               {overallLabel}
             </div>
             {!compact ? <div className="text-body mt-1">{subtitle}</div> : null}
@@ -205,26 +176,21 @@ export default function ScoreRings({
               key={`${ring.label}-${index}-legend`}
               type="button"
               onMouseEnter={() => setActiveIndex(index)}
-              className={cn(
-                'w-full rounded-lg border border-neutral-200 px-3 py-2 text-left transition-colors dark:border-neutral-800',
-                activeIndex === index
-                  ? 'bg-neutral-100/90 dark:bg-neutral-800/70'
-                  : 'bg-white/70 dark:bg-neutral-900/50'
-              )}
+              className={cn('w-full rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-left transition-colors', activeIndex === index && 'border-[var(--accent)]')}
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="inline-flex items-center gap-2">
-                  <span className={cn('h-2.5 w-2.5 rounded-full', toneDotClass(ring.tone))} />
-                  <span className={cn('text-neutral-900 dark:text-neutral-100', compact ? 'text-xs font-medium' : 'text-sm font-medium')}>
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: TONE_COLOR[ring.tone] }} />
+                  <span className={cn('text-[var(--text)]', compact ? 'text-xs font-medium' : 'text-sm font-medium')}>
                     {ring.label}
                   </span>
                 </div>
-                <span className={cn('font-semibold text-neutral-900 dark:text-neutral-100', compact ? 'text-xs' : 'text-sm')}>
+                <span className={cn('font-mono text-[var(--text)]', compact ? 'text-xs' : 'text-sm')}>
                   {Math.round(ring.score)}
                 </span>
               </div>
               {!compact && ring.hint && activeIndex === index ? (
-                <div className="mt-1 text-[12px] text-neutral-500 dark:text-neutral-400">{ring.hint}</div>
+                <div className="mt-1 text-[12px] text-[var(--text-muted)]">{ring.hint}</div>
               ) : null}
             </button>
           ))}

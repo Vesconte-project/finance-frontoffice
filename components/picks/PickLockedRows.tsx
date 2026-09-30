@@ -28,7 +28,7 @@ export default function PickLockedRows({
 
   return (
     <Card padding="none" className="rounded-[var(--radius-2xl)] p-6 md:p-7">
-      <div className="text-caption inline-flex w-fit items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-primary">
+      <div className="text-caption inline-flex w-fit items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-1 text-primary">
         <Lock className="h-3.5 w-3.5" aria-hidden="true" />
         Ranks {visibleCount + 1}–{totalRanked}
       </div>

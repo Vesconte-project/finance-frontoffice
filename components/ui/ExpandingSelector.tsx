@@ -55,9 +55,9 @@ function ReelLabel({
       <motion.span
         key={label}
         className={styles.reelLabel}
-        initial={reduceMotion ? false : { opacity: 0, x: direction * 10, filter: 'blur(3px)' }}
-        animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
-        exit={reduceMotion ? undefined : { opacity: 0, x: direction * -10, filter: 'blur(3px)' }}
+        initial={reduceMotion ? false : { opacity: 0, x: direction * 10 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={reduceMotion ? undefined : { opacity: 0, x: direction * -10 }}
         transition={{ duration: reduceMotion ? 0 : 0.18, ease: [0.16, 1, 0.3, 1] }}
       >
         {label}

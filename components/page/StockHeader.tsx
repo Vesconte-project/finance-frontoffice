@@ -58,7 +58,7 @@ export default function StockHeader({
           ) : null}
         </div>
 
-        <HandScript className="mt-2 block text-[1.9rem] leading-none text-[#7d8cff]">
+        <HandScript className="mt-2 block text-[1.9rem] leading-none text-[var(--text)]">
           Live tape. Real calm.
         </HandScript>
 

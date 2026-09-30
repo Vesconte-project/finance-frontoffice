@@ -1,5 +1,8 @@
 import ResearchViewShell, { ResearchAdPlacement } from '@/components/stocks/ResearchViewShell'
+import EventCalendar from '@/components/calendar/EventCalendar'
 import type { CanonicalEvent, DisclosurePayload, EventCalendarPayload } from '@/lib/canonical-research'
+import type { CalendarResult } from '@/lib/calendar-events'
+import type { CalendarCategory } from '@/lib/calendar-model'
 import { normalizeEarningsHistory } from '@/lib/event-research'
 import { formatCompactMoney } from '@/lib/currency'
 import type { StockResearchData } from '@/lib/stock-research'
@@ -138,10 +141,18 @@ export default function StockEventsResearch({
   data,
   events,
   disclosures,
+  calendar,
+  month,
+  category,
+  selectedDay,
 }: {
   data: StockResearchData
   events: EventCalendarPayload | null
   disclosures: DisclosurePayload | null
+  calendar: CalendarResult
+  month: string
+  category: CalendarCategory
+  selectedDay?: string
 }) {
   const isFund = data.kind === 'fund'
   const entries = collapseEvents([...(events?.rows ?? []), ...(disclosures?.rows ?? [])])
@@ -178,6 +189,11 @@ export default function StockEventsResearch({
           </p>
         </section>
       ) : null}
+
+      <EventCalendar month={month} selectedDay={selectedDay} category={category}
+        events={calendar.events} scope="ticker" basePath={`/stocks/${encodeURIComponent(data.ticker)}/events`}
+        available={calendar.available} reason={calendar.reason}
+        unavailableDomains={calendar.unavailableDomains} truncated={calendar.truncated} />
 
       {!isFund ? <EarningsHistory data={data} /> : null}
       <Calendar title="Scheduled" entries={upcoming} />

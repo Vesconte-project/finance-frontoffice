@@ -5,7 +5,7 @@ import { useAuth, useUser } from '@clerk/nextjs'
 import { ChevronDown } from 'lucide-react'
 
 const joinClassName =
-  'site-header__join inline-flex items-center justify-center rounded-full bg-brand-spark px-4 font-semibold text-[color:var(--brand-spark-on)] shadow-[0_10px_24px_-8px_var(--brand-spark)] transition duration-200 hover:brightness-[1.08]'
+  'site-header__join inline-flex items-center justify-center rounded-md bg-[var(--btn-primary-bg)] px-4 font-medium text-[var(--btn-primary-fg)] transition duration-200'
 
 /**
  * The header's right-hand control.
