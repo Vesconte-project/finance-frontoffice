@@ -38,6 +38,7 @@ const MENUS: Menu[] = [
       { label: 'Long term', href: '/picks/long-term' },
       { label: 'Income', href: '/picks/income' },
       { label: 'Short term', href: '/picks/short-term' },
+      { label: 'Calendar', href: '/calendar' },
     ],
   },
   {
