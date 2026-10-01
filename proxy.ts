@@ -22,6 +22,7 @@ export const config = {
     '/dashboard(.*)',
     '/stocks(.*)',
     '/api/watchlist(.*)',
+    '/api/research/synthetic(.*)',
     '/api/export-signals(.*)',
     // Telemetry ingress is deliberately NOT matched. clerkMiddleware throws
     // when no publishable key is configured, which would turn every usage
