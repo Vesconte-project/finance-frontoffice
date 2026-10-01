@@ -36,7 +36,12 @@ Contract for the agent handling ENG-148: public `status` describes execution onl
 This UI always says financial validity is not established for completed runs, and
 currently receives no audit findings. If diagnostics become public later, they
 need their own explicit projection and display contract. No ENG-148 code is
-changed here. No direct channel to the first agent was available in this session.
+changed here. The first agent's [Backend #19](https://github.com/Vesconte-project/finance-backend/pull/19)
+was subsequently discovered and the contract was coordinated in its PR comments.
+Its proposed `audit_summary` is deliberately omitted by the initial BFF projection;
+merging that Backend patch alone does not make diagnostics visible in this UI.
+A separate explicit frontend consumption change would be needed. Technical audit
+`validated` must not become a financial-validity claim.
 
 ## Local evidence and boundaries
 
