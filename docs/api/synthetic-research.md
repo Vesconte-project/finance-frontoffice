@@ -25,8 +25,16 @@ not an atomic reservation; this boundary does not claim to fix that limitation.
 
 Backend artefact routes provide identity/type/hash/date metadata only, not file
 contents or download URLs. No local paths, commands, stderr or internal execution
-configuration cross this boundary. Public diagnostics are currently absent; ENG-148
-is separate and `completed` must remain an execution state, not a validation badge.
+configuration cross this boundary. The optional `audit_summary` from Backend #19 is projected through a closed schema:
+summary status/boolean, the two diagnostic types, statuses, nonnegative counts and
+at most 100 finding identifiers per diagnostic. Arrays are capped at two diagnostic
+records; incomplete, duplicated or malformed evidence never passes. Unknown keys,
+raw payloads/messages, paths and commands are discarded. Legacy absence becomes
+`not_available`, independent of execution. `validated` refers only to technical
+audits; financial validity is never established by these checks.
+
+Backend #18 `public_request` and `comparison_id` remain alongside this summary.
+The two additions are independent: runs from either older contract stay readable.
 
 Admission evidence: company-os #119, run 36793650691 attempt 1, trusted code
 `f390fb00f35f4575243f293375a7b643fc6f8cbc`; current comment timestamps both
