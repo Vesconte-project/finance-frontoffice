@@ -28,20 +28,18 @@ name/timestamp guess. History is limited to 50 runs; this is not full pagination
 
 Backend #18 adds `public_request` and `comparison_id`: enough to reconstruct the
 user's closed request, including both variants and original name. It does not
-expose internal execution configuration. Executed runtime SHA, audit findings and
+expose internal execution configuration. Executed runtime SHA and
 artefact contents/downloads remain unavailable; the UI does not invent them.
 The old host proof's file references do not establish historical content digests.
 
-Contract for the agent handling ENG-148: public `status` describes execution only.
-This UI always says financial validity is not established for completed runs, and
-currently receives no audit findings. If diagnostics become public later, they
-need their own explicit projection and display contract. No ENG-148 code is
-changed here. The first agent's [Backend #19](https://github.com/Vesconte-project/finance-backend/pull/19)
-was subsequently discovered and the contract was coordinated in its PR comments.
-Its proposed `audit_summary` is deliberately omitted by the initial BFF projection;
-merging that Backend patch alone does not make diagnostics visible in this UI.
-A separate explicit frontend consumption change would be needed. Technical audit
-`validated` must not become a financial-validity claim.
+Contract coordinated with the ENG-148 agent in [Backend #19](https://github.com/Vesconte-project/finance-backend/pull/19):
+execution, technical audit and financial validity are separate fields in the UI.
+The BFF projects only the bounded `audit_summary`: two allowed diagnostic types,
+status, counts and up to 100 finding identifiers per check. Raw diagnostics,
+paths, commands and stderr never pass through. Missing/historical evidence says
+“No audit evidence”; incomplete evidence is inconclusive. Failed checks remain
+failed even when execution completed. Both technical checks passing still leaves
+financial validity “Not established”. No ENG-148 implementation is changed here.
 
 ## Local evidence and boundaries
 
@@ -69,9 +67,9 @@ never sent to the synthetic mock boundary. No host jobs/artefacts/DB were touche
 
 ## Proposed integration order — human review and merge only
 
-1. Review Backend #18 and Frontoffice #44 independently. #44 handles old projections
+1. Review Backend #18/#19 and Frontoffice #44 independently. #44 handles old projections
    and includes the missing Clerk middleware matcher; #18 enables faithful recovery.
-2. Integrate Backend #18 through its separately authorised development release path.
+2. Integrate Backend #18 and #19 through its separately authorised development release path.
    This task does not install it on the host or access its database.
 3. Review the stacked UI PR against #44. After human integration of #44, retarget the
    UI to main and rerun CI. Main may publish; keep the flag absent/false in Production.
@@ -101,7 +99,8 @@ never sent to the synthetic mock boundary. No host jobs/artefacts/DB were touche
    comparison/run IDs, public request and fixture/definition/configuration hashes.
    Observe queued → running → completed or failed and event timestamps. Refresh and
    reload the page, inspect both variants and missing-metric states. Completion must
-   retain the explicit financial-validity limitation. Do not assert success if the
+   retain the explicit financial-validity limitation. Check failed/inconclusive and
+   absent historical audit evidence independently of execution state. Do not assert success if the
    worker is not reachable.
 6. In a separate profile sign in as viewer B. List must exclude A's runs. Request A's
    detail, events, artefact list and artefact detail via the local BFF; all must be
@@ -125,16 +124,20 @@ never sent to the synthetic mock boundary. No host jobs/artefacts/DB were touche
     screenshots with route, viewer label A/B, viewport, commit and expected/actual.
 
 Outstanding: real Clerk → BFF → isolated Backend/worker; preview env reachability;
-complete app chrome and real-device input; executed code lineage, audit diagnostics,
+complete app chrome and real-device input; executed code lineage, real worker audit evidence,
 artefact content integrity and runtime idempotency/concurrency. None is inferred from
 local mocks or the previously reported host API proof.
 
 ## Review evidence — 2026-10-01
 
-- Local Frontoffice verify: 186 tests passed; lint/typecheck passed with the existing
+- Local Frontoffice verify: 193 tests passed; lint/typecheck passed with the existing
   unused `takeLast` warning. Production build passed.
-- Local Backend: 504 tests and 15 subtests passed; generated-contract check passed.
-- Focused Playwright: seven tests passed on the production-build harness. A focused
+- Combined Backend #18/#19: five isolated FastAPI scenarios passed at local commit
+  `40f7c30`, using actual public responses and owner/other-viewer 200/404 for detail,
+  events and artefacts. The captured synthetic responses drive BFF and browser
+  tests. This fixture proof does not execute the worker or use a real Clerk session.
+- Local Backend (original #18 validation): 504 tests and 15 subtests passed; generated-contract check passed.
+- Focused Playwright: eleven tests passed on the production-build harness. A focused
   result-capture confirmation also passed after restoring capture scroll.
 - Independent finish reviewer: repeated Inspect and sticky capture findings resolved;
   review passes within the local harness scope. Real authenticated preview remains

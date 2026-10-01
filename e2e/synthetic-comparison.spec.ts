@@ -147,11 +147,9 @@ test('configure, reject duplicate variants, submit, inspect both states and repe
   jobs = [run('baseline', 'completed'), run('forest', 'failed')]
   await page.getByRole('button', { name: 'Refresh', exact: true }).click()
   await expect(
-    page.getByText('Execution completed · Financial validity not established'),
+    page.getByRole('table').getByText('Execution completed', { exact: true }),
   ).toBeVisible()
-  await expect(
-    page.getByText('Execution failed · No complete result.', { exact: false }),
-  ).toBeVisible()
+  await expect(page.getByText('No complete result.', { exact: false })).toBeVisible()
   await expect(page.getByRole('table')).toContainText('1.2')
   await expect(page.getByRole('table')).toContainText('Unavailable')
   await expect(page.getByText('Metadata only.', { exact: false }).first()).toBeVisible()
@@ -295,3 +293,59 @@ test('unknown submission outcome blocks retry until a successful read and eviden
   await page.getByRole('button', { name: 'Retry evidence' }).click()
   await expect(page.getByText('No artefacts recorded yet.', { exact: false })).toBeVisible()
 })
+
+for (const [scenario, execution, audit] of [
+  ['completed_failed_audit', 'Execution completed', 'Failed technical audit'],
+  ['failed_inconclusive_audit', 'Execution failed', 'Inconclusive technical audit'],
+  ['historical_missing_audit', 'Execution completed', 'No audit evidence'],
+  ['completed_passed_audit', 'Execution completed', 'Passed technical checks'],
+] as const) {
+  test(`combined Backend declaration and audit: ${scenario}`, async ({ page }, testInfo) => {
+    const fixture = JSON.parse(
+      await readFile('tests/fixtures/synthetic-audit-combined.json', 'utf8'),
+    )
+    const job = fixture[scenario]
+    if (scenario === 'historical_missing_audit') {
+      delete job.public_request
+      delete job.comparison_id
+      delete job.audit_summary
+    }
+    await page.route('**/api/research/synthetic/**', async (route) => {
+      const url = new URL(route.request().url())
+      if (url.pathname.endsWith('/experiments')) return route.fulfill({ json: { jobs: [job] } })
+      if (url.pathname.endsWith('/events')) return route.fulfill({ json: { events: [] } })
+      if (url.pathname.endsWith('/artifacts')) return route.fulfill({ json: { artifacts: [] } })
+      return route.fulfill({ json: job })
+    })
+    await mount(page)
+    await page.getByRole('button', { name: 'Inspect run', exact: true }).click()
+    const states = page.getByRole('article').locator('dl[aria-label="Run states"]').getByRole('definition')
+    await expect(states).toHaveText([execution, audit, 'Not established'])
+    const evidence = page.getByRole('region', { name: 'Technical audit evidence' })
+    await expect(evidence).toContainText(audit)
+    if (scenario === 'completed_failed_audit') {
+      await evidence.getByText('Recorded finding identifiers (1)').click()
+      await expect(evidence).toContainText('ret_5d')
+      await expect(evidence).toContainText('missing_feature_availability_contract')
+      await page.evaluate(() => window.scrollTo(0, 0))
+      await page.screenshot({
+        path: testInfo.outputPath('synthetic-audit-failed.png'),
+        fullPage: true,
+      })
+    }
+    if (scenario === 'historical_missing_audit') {
+      await expect(evidence).toContainText('Historical runs may predate this contract')
+      await expect(page.getByRole('button', { name: 'Load these options to repeat' })).toHaveCount(
+        0,
+      )
+    } else {
+      await page.getByRole('button', { name: 'Load these options to repeat' }).click()
+      await expect(page.getByLabel('Comparison name')).toHaveValue(
+        job.public_request.experiment_name,
+      )
+      await expect(page.getByLabel('Variant name').nth(1)).toHaveValue('forest')
+    }
+    await expect(page.locator('body')).not.toContainText('/host/')
+    await expect(page.locator('body')).not.toContainText('stderr')
+  })
+}

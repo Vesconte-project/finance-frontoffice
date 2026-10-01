@@ -5,6 +5,8 @@ import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Badge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
+import RunAuditEvidence, { RunStateSummary } from './RunAuditEvidence'
+import { auditStatusLabel } from '@/lib/synthetic-audit'
 import {
   parseComparison,
   projectRun,
@@ -120,7 +122,8 @@ export function RunEvidence({
         </dl>
         <p className="mt-3 text-sm text-content-secondary">
           These hashes identify the recorded configuration and fixture. The public API does not
-          currently provide the executed code revision or audit findings.
+          currently provide the executed code revision. Technical audit evidence is shown separately
+          below.
         </p>
         {run.public_request ? (
           <details className="mt-4">
@@ -137,6 +140,9 @@ export function RunEvidence({
             parameters are shown above.
           </p>
         )}
+      </div>
+      <div>
+        <RunAuditEvidence summary={run.audit_summary} />
       </div>
       <div>
         <h3 className="text-lg font-semibold">Execution events</h3>
@@ -213,9 +219,7 @@ export function MetricsComparison({ runs }: { runs: Run[] }) {
               {runs.map((run) => (
                 <th scope="col" className="py-3 px-3" key={run.experiment_id}>
                   {run.variant ?? run.experiment_name}
-                  <span className="mt-1 block font-normal text-content-secondary">
-                    {statusLabel[run.status]}
-                  </span>
+                  <RunStateSummary run={run} />
                 </th>
               ))}
             </tr>
@@ -607,7 +611,8 @@ export default function SyntheticComparison() {
                 <div className="mt-2 flex flex-wrap gap-2">
                   {members.map((run) => (
                     <Badge key={run.experiment_id}>
-                      {run.variant ?? 'Variant'} · {statusLabel[run.status]}
+                      {run.variant ?? 'Variant'} · Execution: {statusLabel[run.status]} · Audit:{' '}
+                      {auditStatusLabel[run.audit_summary.status]}
                     </Badge>
                   ))}
                 </div>
@@ -668,14 +673,14 @@ export default function SyntheticComparison() {
                 <h2 className="text-section-title break-all">
                   {run.variant ?? run.experiment_name}
                 </h2>
-                <p className="mt-2 mb-5 text-sm font-medium">
-                  {statusLabel[run.status]}
-                  {run.status === 'completed'
-                    ? ' · Financial validity not established'
-                    : run.status === 'failed'
-                      ? ' · No complete result. Inspect events; refresh to check the recorded state.'
-                      : ''}
-                </p>
+                <div className="mb-5">
+                  <RunStateSummary run={run} />
+                </div>
+                {run.status === 'failed' ? (
+                  <p className="mb-5 text-sm">
+                    No complete result. Inspect events; refresh to check the recorded state.
+                  </p>
+                ) : null}
                 {evidence[run.experiment_id] ? (
                   <RunEvidence run={run} {...evidence[run.experiment_id]} />
                 ) : null}

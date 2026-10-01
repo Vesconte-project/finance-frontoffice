@@ -21,6 +21,6 @@ The implementation reuses `Button`, `Input`, `Badge` and `Card`, flat bordered `
 
 ## Claims and review limits
 
-Metrics use synthetic test data. Completed execution does not establish investment performance, causal validity or financial validation; the proof offers no investment advice and does not change official models. Artefacts expose metadata only, without contents or downloads. Recorded hashes identify configuration and fixture; the public API supplies neither executed code revision nor audit findings.
+Metrics use synthetic test data. Completed execution does not establish investment performance, causal validity or financial validation; the proof offers no investment advice and does not change official models. Artefacts expose metadata only, without contents or downloads. Recorded hashes identify configuration and fixture; the public API does not supply executed code revision. Execution, bounded technical audit evidence and financial validity are shown separately. Missing historical evidence is explicit; a completed run can have a failed or inconclusive audit, and passing technical checks never establishes financial validity.
 
 This note records built behavior, not product or visual acceptance. Preview review still needs the real Clerk-authenticated route and the complete global/sticky headers, including their interaction with controls and focused fields. Follow [`../qa/eng147-preview.md`](../qa/eng147-preview.md) for the technical preview runbook.
