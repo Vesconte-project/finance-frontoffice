@@ -1,3 +1,5 @@
+import { projectAuditSummary, type AuditSummary } from './synthetic-audit'
+
 /** Closed public contract of finance-backend's synthetic proof. */
 export type Model = 'logistic_regression' | 'random_forest_classifier'
 export type Variant = { name: string; model: Model; probability_threshold: 0.5 | 0.6 }
@@ -11,6 +13,7 @@ export type Run = {
   ml_run_id: string | null; strategy_run_id: string | null; backtest_run_id: string | null
   created_at: string | null; started_at: string | null; finished_at: string | null
   parameters: { model: Model | null; probability_threshold: number | null }
+  audit_summary: AuditSummary
   result_json: { metrics_summary_json: Record<string, number> } | null
 }
 export type RunEvent = { event_id: string; event_type: string; step: string | null; status: string | null; created_at: string | null }
@@ -47,6 +50,7 @@ export function projectRun(value: unknown): Run {
   const comparisonId = v.comparison_id
   if (comparisonId != null && (typeof comparisonId !== 'string' || !/^[a-f0-9]{32}$/.test(comparisonId))) throw new Error('Invalid comparison ID')
   return { experiment_id: token(v.experiment_id), experiment_name: token(v.experiment_name), variant: nullableToken(v.variant), status: status(v.status), comparison_id: comparisonId as string ?? null,
+    audit_summary: projectAuditSummary(v.audit_summary),
     public_request: v.public_request == null ? null : parseComparison(v.public_request), definition_hash: hash(v.definition_hash), orchestrator_config_hash: hash(v.orchestrator_config_hash), fixture_sha256: hash(v.fixture_sha256),
     experiment_version: nullableToken(v.experiment_version), feature_snapshot_id: nullableToken(v.feature_snapshot_id), snapshot_name: nullableToken(v.snapshot_name), snapshot_version: nullableToken(v.snapshot_version), ml_run_id: nullableToken(v.ml_run_id), strategy_run_id: nullableToken(v.strategy_run_id), backtest_run_id: nullableToken(v.backtest_run_id),
     created_at: date(v.created_at), started_at: date(v.started_at), finished_at: date(v.finished_at), parameters: { model: isModel(p.model) ? p.model : null, probability_threshold: p.probability_threshold === 0.5 || p.probability_threshold === 0.6 ? p.probability_threshold : null }, result_json: Object.keys(metrics).length ? { metrics_summary_json: metrics } : null }

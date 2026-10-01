@@ -62,3 +62,35 @@ test('real route wiring resolves server auth and matcher supplies Clerk context 
   assert.doesNotMatch(middleware.split('export default')[0], /api\/research\/synthetic/)
   assert.match(route, /viewer: getViewerUserId/); assert.match(route, /enabled: syntheticResearchEnabled/)
 })
+
+test('combined public request, comparison identity and bounded audit survive detail and list BFF projections', async () => {
+  const audit = { status: 'failed', validated: false, diagnostics: [{ diagnostic_type: 'lead_lag_audit', status: 'warning', fail_count: 1, unchecked_count: 2, command: 'private-command', path: '/srv/private', stderr: 'server-secret', findings: [{ feature: 'ret_5d', severity: 'fail', classification: 'inconclusive', audit_reason: 'missing_feature_availability_contract', payload_json: { secret: 'server-secret' }, message: '/srv/private' }] }] }
+  const combined = { ...job, status: 'completed', audit_summary: audit }
+  for (const parts of [['experiments'], ['experiments', 'one']]) {
+    const response = await proxySynthetic(req('GET', parts.join('/')), parts, { ...boundary(), upstream: async () => Response.json(parts.length === 1 ? { jobs: [combined] } : combined) })
+    assert.equal(response.status, 200)
+    const payload = await response.json(), run = parts.length === 1 ? payload.jobs[0] : payload
+    assert.equal(run.status, 'completed'); assert.equal(run.audit_summary.status, 'failed'); assert.equal(run.audit_summary.validated, false)
+    assert.deepEqual(run.public_request, requestBody); assert.equal(run.comparison_id, 'c'.repeat(32))
+    assert.deepEqual(run.audit_summary.diagnostics[0].findings, [{ feature: 'ret_5d', severity: 'fail', classification: 'inconclusive', audit_reason: 'missing_feature_availability_contract' }])
+    assert.doesNotMatch(JSON.stringify(payload), /private|stderr|command|payload_json|server-secret|\/srv\//)
+  }
+})
+
+test('actual combined Backend #18+#19 fixture projects through BFF without losing identity or the declarative request', async () => {
+  // Produced by five owner-scoped FastAPI fixture tests on combined Backend
+  // commit 40f7c30 (de36a2c #18 plus the #19 audit contract). No host services.
+  const fixtures = JSON.parse(readFileSync('tests/fixtures/synthetic-audit-combined.json', 'utf8')) as Record<string, typeof job & { status: string; audit_summary: { status: string; validated: boolean } }>
+  const expected: Record<string, string> = { completed_failed_audit: 'failed', failed_inconclusive_audit: 'inconclusive', historical_missing_audit: 'not_available', queued_missing_audit: 'not_available', completed_passed_audit: 'ok' }
+  for (const [name, fixture] of Object.entries(fixtures)) {
+    const response = await proxySynthetic(req('GET', 'experiments/one'), ['experiments', 'one'], { ...boundary(), upstream: async () => Response.json(fixture) })
+    assert.equal(response.status, 200)
+    const result = await response.json()
+    assert.equal(result.audit_summary.status, expected[name]); assert.equal(result.status, fixture.status)
+    assert.equal(result.audit_summary.validated, name === 'completed_passed_audit')
+    assert.deepEqual(result.public_request, fixture.public_request); assert.equal(result.comparison_id, fixture.comparison_id)
+    assert.doesNotMatch(JSON.stringify(result), /config_json|stderr|command|artifact_ref|\/srv\//)
+  }
+  const legacy = projectRun({ ...fixtures.historical_missing_audit, audit_summary: undefined, public_request: undefined, comparison_id: undefined })
+  assert.equal(legacy.audit_summary.status, 'not_available'); assert.equal(legacy.audit_summary.validated, false); assert.equal(legacy.public_request, null); assert.equal(legacy.comparison_id, null)
+})
