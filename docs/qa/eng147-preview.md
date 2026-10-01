@@ -123,3 +123,24 @@ Outstanding: real Clerk → BFF → isolated Backend/worker; preview env reachab
 complete app chrome and real-device input; executed code lineage, audit diagnostics,
 artefact content integrity and runtime idempotency/concurrency. None is inferred from
 local mocks or the previously reported host API proof.
+
+## Review evidence — 2026-10-01
+
+- Local Frontoffice verify: 186 tests passed; lint/typecheck passed with the existing
+  unused `takeLast` warning. Production build passed.
+- Local Backend: 504 tests and 15 subtests passed; generated-contract check passed.
+- Focused Playwright: seven tests passed on the production-build harness. A focused
+  result-capture confirmation also passed after restoring capture scroll.
+- Independent finish reviewer: repeated Inspect and sticky capture findings resolved;
+  review passes within the local harness scope. Real authenticated preview remains
+  an outstanding evidence limitation, not an implementation acceptance.
+- [Backend CI, PR #18](https://github.com/Vesconte-project/finance-backend/actions/runs/36795057095) passed.
+- [Frontoffice CI, PR #44](https://github.com/Vesconte-project/finance-frontoffice/actions/runs/36795280723)
+  and [complete Frontend QA](https://github.com/Vesconte-project/finance-frontoffice/actions/runs/36795280678) passed at head `2c2844159b568f853f724ad4973ff4664250819a`.
+- The UI's current checks are on [Draft PR #48](https://github.com/Vesconte-project/finance-frontoffice/pull/48).
+  The complete authenticated preview proof remains separate from those checks.
+
+No merge, manual deployment or environment mutation was performed. The existing
+GitHub/Vercel integration automatically built PR previews after pushes; readiness
+does not prove Clerk, backend connectivity or feature activation. The proof flag
+remains absent/false by default and refuses Vercel Production.
