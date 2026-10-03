@@ -57,7 +57,7 @@ export function HeaderSearchField({
       aria-hidden={!open}
       inert={!open ? true : undefined}
     >
-      <HeaderSearch className="site-header__search-combobox" maxSuggestions={rows} />
+      <HeaderSearch maxSuggestions={rows} />
       <button type="button" className="site-header__search-cancel" onClick={onCancel}>
         Cancel
       </button>

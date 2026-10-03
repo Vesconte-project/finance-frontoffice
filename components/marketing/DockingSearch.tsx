@@ -91,7 +91,7 @@ export default function DockingSearch() {
         <p className="dock-search__subtitle">{"Don't guess. Analyze."}</p>
       </div>
       <TapToActivateField className="dock-search__field">
-        <HeaderSearch className="w-full" maxSuggestions={4} placeholder="Search tickers or companies…" typingHints={TYPING_HINTS} />
+        <HeaderSearch className="w-full" maxSuggestions={4} placeholder="Search a ticker or company…" typingHints={TYPING_HINTS} />
       </TapToActivateField>
       <div className="dock-search__support">
         <Link

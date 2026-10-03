@@ -745,14 +745,10 @@ export default function TickerSearchCombobox({
         aria-activedescendant={shouldShowDropdown ? activeDescendantId : undefined}
         aria-haspopup="listbox"
         aria-label={label ? undefined : placeholder}
-        // "off" keeps browser form history out of the suggestions. Chrome's
-        // password/card/address bar is a separate matter that this attribute
-        // does not reach; see TapToActivateField. The data attributes are the
-        // opt-outs password managers read.
+        // Keeps browser form history out of the suggestions. Chrome's
+        // password/card/address bar is not reached by this; see
+        // TapToActivateField.
         autoComplete="off"
-        data-1p-ignore=""
-        data-lpignore="true"
-        data-form-type="other"
         autoCapitalize="characters"
         autoCorrect="off"
         spellCheck={false}
