@@ -974,6 +974,21 @@ html.atlas-immersive .atlas-view {
   }
 }
 
+/* Touch screens keep the browser's pull-to-refresh: the spinner that follows
+   the finger down from the top of any page. The rule above exists for wheel
+   and trackpad overscroll against the smooth-scroll runtime, which touch does
+   not use. An open header panel still holds the page still. */
+@media (hover: none) and (pointer: coarse) {
+  html,
+  body {
+    overscroll-behavior-y: auto;
+  }
+  html.has-header-menu,
+  html.has-header-menu body {
+    overscroll-behavior-y: none;
+  }
+}
+
 @layer utilities {
   .surface-card {
     @apply bg-surface-card border border-border;
@@ -2098,7 +2113,9 @@ html.chrome-scrolled .site-header__row:not([data-menu-open]) [data-header-search
   }
   /* Phone rows carry the name and symbol only. Tracking already shows in the
      row's icon, and the status chip, source label and exchange repeated it
-     across a line too narrow to hold them. */
+     across a line too narrow to hold them. The homepage hero drops the same
+     repeats but keeps its own row geometry, which its open/close choreography
+     is measured against. */
   .site-header__search-field .ticker-search__option {
     grid-template-columns: 32px minmax(0, 1fr);
     gap: 12px;
@@ -2109,8 +2126,8 @@ html.chrome-scrolled .site-header__row:not([data-menu-open]) [data-header-search
     width: 32px;
     height: 32px;
   }
-  .site-header__search-field .ticker-search__option > div:nth-child(3),
-  .site-header__search-field .ticker-search__source {
+  :is(.site-header__search-field, .dock-search) .ticker-search__option > div:nth-child(3),
+  :is(.site-header__search-field, .dock-search) .ticker-search__source {
     display: none;
   }
   .site-header__search-cancel {
