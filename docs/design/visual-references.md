@@ -36,6 +36,10 @@ Study the rendered pattern, its responsive states, and its direct styling before
 
 `components/stocks/ExpandedChartDialog.tsx` and `ExpandedPriceCanvas.tsx` (PRD-74) are the repository's own Canvas 2D price chart, opened from an icon button in the top-left corner of the ticker hero chart, on the shared `Dialog`: full screen on phones, a large modal from 900px. It draws candles or a close line, volume, axes, a reading crosshair and the reader's Fibonacci and trend drawings straight from the backend OHLC rows. A bar without an open is drawn in the neutral colour, never assumed to be rising. Pinch, drag, wheel and keyboard move the view. The pure range, scale and level logic lives in `lib/expanded-chart.ts`. No chart library or third-party mark was added. Indicator controls and the 1D/5D ranges stay visible and answer with an explicit error until ENG-152 and ENG-153 supply the data. The founder's direction came from a clickable prototype with generated sample prices; no prototype code or data was copied.
 
+## Hero candles and two-day measurement — 2026-10-03
+
+PRD-76 adds a candle icon beside the hero's expand icon. `TemporalLineChart` draws candles from the OHLC fields on its points when `mode="candles"`, and the choice is shared with the expanded chart for the visit. With `measurable`, a mouse drag, or a touch held still for `LONG_PRESS_MS` and then dragged, measures between two days. The expanded chart uses Shift and drag, because a plain drag pans. Both charts snap to each day's close and show the shared `components/charts/MeasureSummary.tsx`: the change and percentage in the up/down roles, days and sessions, and both dates. The arithmetic is in `lib/chart-measure.ts`, and the neutral rule for a candle with no open is in `lib/candles.ts`. Charts that do not opt in, such as the valuation history, are unchanged.
+
 ## Expanding selector study — 2026-07-21
 
 The reusable expanding selector transforms mechanics from the references below into a Vesconte-specific analytical control. It carries no ticker, investment-horizon, URL, or routing semantics. No reference code, assets, branding, or layout was copied.

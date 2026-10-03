@@ -1,9 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import MeasureSummary, { describeMeasurement } from '@/components/charts/MeasureSummary'
 import Dialog from '@/components/ui/Dialog'
 import SegmentedControl from '@/components/ui/SegmentedControl'
-import { formatMoney } from '@/lib/currency'
+import { measureBetween } from '@/lib/chart-measure'
+import { formatMoney, formatSignedMoney } from '@/lib/currency'
 import {
   INTRADAY_RANGES,
   availableRanges,
@@ -14,7 +16,13 @@ import {
 } from '@/lib/expanded-chart'
 import type { OhlcPoint } from '@/lib/ohlc-data'
 import { cn } from '@/lib/utils'
-import ExpandedPriceCanvas, { type ChartAnchor, type ChartDrawing, type ChartKind, type DrawingTool } from './ExpandedPriceCanvas'
+import ExpandedPriceCanvas, {
+  type ChartAnchor,
+  type ChartDrawing,
+  type ChartKind,
+  type ChartMeasure,
+  type DrawingTool,
+} from './ExpandedPriceCanvas'
 import styles from './ExpandedChart.module.css'
 
 type Indicator = 'moving-averages' | 'bollinger' | 'rsi'
@@ -54,6 +62,9 @@ type ExpandedChartDialogProps = {
   ticker: string
   currency: string
   bars: readonly OhlcPoint[]
+  /** Line or candles, shared with the hero chart. */
+  kind: ChartKind
+  onKindChange: (kind: ChartKind) => void
   returnFocusRef: RefObject<HTMLElement | null>
 }
 
@@ -65,11 +76,13 @@ type ExpandedChartDialogProps = {
  * series and intraday ranges are listed but answer with an explicit error
  * until the backend supplies them (ENG-152, ENG-153); nothing is approximated.
  */
-export default function ExpandedChartDialog({ open, onClose, ticker, currency, bars, returnFocusRef }: ExpandedChartDialogProps) {
+export default function ExpandedChartDialog({ open, onClose, ticker, currency, bars, kind, onKindChange, returnFocusRef }: ExpandedChartDialogProps) {
   const ranges = useMemo(() => availableRanges(bars), [bars])
   const [range, setRange] = useState<ExpandedChartRange>('1Y')
   const [viewRequest, setViewRequest] = useState(() => ({ view: viewForRange(bars, '1Y'), id: 0 }))
-  const [kind, setKind] = useState<ChartKind>('candles')
+  const [measure, setMeasure] = useState<ChartMeasure | null>(null)
+  const [measuring, setMeasuring] = useState(false)
+  const chartAreaRef = useRef<HTMLDivElement>(null)
   const [showVolume, setShowVolume] = useState(true)
   const [drawTool, setDrawTool] = useState<DrawingTool | null>(null)
   const [pending, setPending] = useState<ChartAnchor | null>(null)
@@ -79,6 +92,29 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
   const [summary, setSummary] = useState('')
   const [announcement, setAnnouncement] = useState('')
   const canvasFocusRef = useRef<HTMLCanvasElement | null>(null)
+  const closes = useMemo(() => bars.map((bar) => ({ date: bar.date, value: bar.close })), [bars])
+  const measurement = measure ? measureBetween(closes, measure.first, measure.second) : null
+  const formatChange = (value: number) => formatSignedMoney(value, currency)
+
+  const onMeasure = useCallback((next: ChartMeasure | null, done: boolean) => {
+    setMeasuring(!done && next !== null)
+    if (done && (!next || Math.round(next.first) === Math.round(next.second))) {
+      setMeasure(null)
+      return
+    }
+    setMeasure(next)
+  }, [])
+
+  // A finished measurement stays until a tap outside the chart (or Escape on it).
+  useEffect(() => {
+    if (!measure || measuring) return
+    const dismiss = (event: PointerEvent) => {
+      if (chartAreaRef.current?.contains(event.target as Node)) return
+      setMeasure(null)
+    }
+    document.addEventListener('pointerdown', dismiss)
+    return () => document.removeEventListener('pointerdown', dismiss)
+  }, [measure, measuring])
   const summaryTimer = useRef<number | null>(null)
 
   const requestRange = useCallback((next: ExpandedChartRange) => {
@@ -179,7 +215,7 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
           </p>
         ) : null}
 
-        <div className={styles.chartArea} data-expanded-chart-canvas="">
+        <div ref={chartAreaRef} className={styles.chartArea} data-expanded-chart-canvas="">
           <ExpandedPriceCanvas
             focusRef={canvasFocusRef}
             bars={bars}
@@ -191,6 +227,8 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
             drawings={drawings}
             pending={pending}
             onPick={onPick}
+            measure={measure}
+            onMeasure={onMeasure}
             onInspect={setInspected}
             onViewChange={onViewChange}
             onReset={() => requestRange(range)}
@@ -200,6 +238,12 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
           {drawTool ? (
             <span className={styles.hint} aria-hidden="true">{pending ? 'Tap the second point' : 'Tap the first point'}</span>
           ) : null}
+          {measurement && !drawTool ? (
+            <MeasureSummary measurement={measurement} formatChange={formatChange} className={styles.measureSummary} />
+          ) : null}
+          <p className="sr-only" aria-live="polite">
+            {measurement && !measuring ? describeMeasurement(measurement, formatChange) : ''}
+          </p>
           <p id="expanded-chart-summary" className="sr-only" aria-live="polite">{summary}</p>
           <p className="sr-only" aria-live="polite">{announcement}</p>
         </div>
@@ -228,7 +272,7 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
           <SegmentedControl<KindLabel>
             options={KIND_OPTIONS}
             value={kind === 'candles' ? 'Candles' : 'Line'}
-            onChange={(label) => setKind(label === 'Candles' ? 'candles' : 'line')}
+            onChange={(label) => onKindChange(label === 'Candles' ? 'candles' : 'line')}
             ariaLabel="Chart type"
             analyticsId="ticker_expanded_chart_type"
           />

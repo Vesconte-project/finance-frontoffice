@@ -3,9 +3,9 @@
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { Suspense, use, useMemo, useRef, useState } from 'react'
-import { Maximize2 } from 'lucide-react'
+import { ChartCandlestick, ChartLine, Maximize2 } from 'lucide-react'
 import SegmentedControl from '@/components/ui/SegmentedControl'
-import TemporalLineChart from '@/components/charts/TemporalLineChart'
+import TemporalLineChart, { type TemporalLinePoint } from '@/components/charts/TemporalLineChart'
 import type { OhlcPoint, PricePoint } from '@/lib/finance'
 import type { Scorecard } from '@/lib/scorecard-types'
 import type { ReadingVerdict } from '@/lib/ticker-readings'
@@ -194,7 +194,7 @@ function startDateForHeroTimeframe(timeframe: ChartTimeframe, latestDate: Date):
   return latestDate.getTime() - 3650 * 24 * 60 * 60 * 1000
 }
 
-function filterChartData(data: PricePoint[], timeframe: ChartTimeframe): PricePoint[] {
+function filterChartData<T extends { date: string }>(data: T[], timeframe: ChartTimeframe): T[] {
   if (timeframe === 'ALL') return data
   if (data.length <= 2) return data
   if (timeframe === '1D') return data.slice(-2)
@@ -284,12 +284,14 @@ function Gauge({
 }
 
 function HeroPriceChart({
-  data,
+  points,
+  mode,
   state,
   className,
   currency,
 }: {
-  data: PricePoint[]
+  points: TemporalLinePoint[]
+  mode: 'line' | 'candles'
   state: HistoricalChartState
   className?: string
   currency: string
@@ -297,8 +299,10 @@ function HeroPriceChart({
   return (
     <TemporalLineChart
       className={cn(styles.heroChart, className)}
-      points={data.map((point) => ({ date: point.date, value: point.close }))}
-      ariaLabel="Historical closing price"
+      points={points}
+      mode={mode}
+      measurable
+      ariaLabel={mode === 'candles' ? 'Daily price candles' : 'Historical closing price'}
       valueFormat="currency"
       currency={currency}
       showRangeChange
@@ -418,6 +422,8 @@ export default function StockOverviewClient({
   const fullHistoryRequested = useRef(false)
   const [signalTimeframe, setSignalTimeframe] = useState<TechnicalTimeframe>('1D')
   const [chartExpanded, setChartExpanded] = useState(false)
+  // Line or candles, shared by the hero and the expanded chart for this visit.
+  const [chartKind, setChartKind] = useState<'line' | 'candles'>('line')
   const expandButtonRef = useRef<HTMLButtonElement>(null)
   // Never offer an empty expanded chart: it opens only over loaded backend OHLC.
   const canExpandChart = historicalChartState === 'loaded' && ohlcData.length >= 2
@@ -430,6 +436,23 @@ export default function StockOverviewClient({
     () => filterChartData(chartHistory, heroTimeframe),
     [chartHistory, heroTimeframe],
   )
+  const showCandles = chartKind === 'candles' && canExpandChart
+  const heroPoints = useMemo<TemporalLinePoint[]>(
+    () => showCandles
+      ? filterChartData(ohlcData, heroTimeframe).map((bar) => ({
+        date: bar.date,
+        value: bar.close,
+        open: bar.open,
+        high: bar.high,
+        low: bar.low,
+      }))
+      : filteredChartData.map((point) => ({ date: point.date, value: point.close })),
+    [showCandles, ohlcData, heroTimeframe, filteredChartData],
+  )
+  // Candles exist only for the loaded OHLC window; say so when "ALL" reaches further back.
+  const candlesFrom = showCandles && heroTimeframe === 'ALL' && ohlcData[0] && chartHistory[0] && chartHistory[0].date < ohlcData[0].date
+    ? ohlcData[0].date
+    : null
   const technicalSummary = useMemo(
     () => buildTechnicalSummary(ohlcData, signalTimeframe),
     [ohlcData, signalTimeframe]
@@ -625,22 +648,40 @@ export default function StockOverviewClient({
             <h2 className="sr-only">Quick Read</h2>
             <div className={styles.heroChartWrap} aria-busy={fullHistoryState === 'loading'}>
               <HeroPriceChart
-                data={filteredChartData}
+                points={heroPoints}
+                mode={showCandles ? 'candles' : 'line'}
                 state={fullHistoryState === 'error' ? 'error' : historicalChartState}
                 currency={currency}
               />
               {canExpandChart ? (
-                <button
-                  ref={expandButtonRef}
-                  type="button"
-                  className={expandedChartStyles.expandButton}
-                  aria-haspopup="dialog"
-                  aria-label="Expand chart"
-                  data-expand-chart=""
-                  onClick={() => setChartExpanded(true)}
-                >
-                  <Maximize2 size={16} aria-hidden="true" />
-                </button>
+                <div className={expandedChartStyles.heroTools}>
+                  <button
+                    ref={expandButtonRef}
+                    type="button"
+                    className={expandedChartStyles.heroToolButton}
+                    aria-haspopup="dialog"
+                    aria-label="Expand chart"
+                    data-expand-chart=""
+                    onClick={() => setChartExpanded(true)}
+                  >
+                    <Maximize2 size={16} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className={expandedChartStyles.heroToolButton}
+                    aria-pressed={showCandles}
+                    aria-label={showCandles ? 'Show line' : 'Show candles'}
+                    data-chart-kind-toggle=""
+                    onClick={() => setChartKind((kind) => (kind === 'candles' ? 'line' : 'candles'))}
+                  >
+                    {showCandles ? <ChartLine size={16} aria-hidden="true" /> : <ChartCandlestick size={16} aria-hidden="true" />}
+                  </button>
+                </div>
+              ) : null}
+              {candlesFrom ? (
+                <p className={styles.chartStatus} role="status" data-candles-from="">
+                  Candles from {new Date(`${candlesFrom}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}.
+                </p>
               ) : null}
               {chartExpanded ? (
                 <ExpandedChartDialog
@@ -649,6 +690,8 @@ export default function StockOverviewClient({
                   ticker={ticker}
                   currency={currency}
                   bars={ohlcData}
+                  kind={chartKind}
+                  onKindChange={setChartKind}
                   returnFocusRef={expandButtonRef}
                 />
               ) : null}

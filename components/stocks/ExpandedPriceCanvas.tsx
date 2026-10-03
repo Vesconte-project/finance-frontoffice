@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useLayoutEffect, useRef, type KeyboardEvent, type RefObject, type PointerEvent, type WheelEvent } from 'react'
+import { candleDirection } from '@/lib/candles'
+import { LONG_PRESS_MS } from '@/lib/chart-measure'
 import { formatMoney } from '@/lib/currency'
 import {
   fibonacciLevels,
@@ -18,6 +20,8 @@ export type ChartKind = 'candles' | 'line'
 export type DrawingTool = 'fibonacci' | 'trend'
 export type ChartAnchor = { index: number; price: number }
 export type ChartDrawing = { tool: DrawingTool; first: ChartAnchor; second: ChartAnchor }
+/** Two bar indices a reader measures between, in the order picked. */
+export type ChartMeasure = { first: number; second: number }
 
 type Palette = { up: string; down: string; accent: string; text: string; muted: string; line: string; surface: string; font: string }
 
@@ -41,7 +45,8 @@ type Geometry = {
 }
 
 type Gesture =
-  | { type: 'pending'; x: number; y: number; view: ChartView; mouse: boolean }
+  | { type: 'pending'; x: number; y: number; view: ChartView; mouse: boolean; timer: number | null }
+  | { type: 'measure'; first: number }
   | { type: 'pan'; x: number; view: ChartView; mouse: boolean }
   | { type: 'pinch'; distance: number; view: ChartView; anchor: number }
 
@@ -58,6 +63,9 @@ type ExpandedPriceCanvasProps = {
   drawings: readonly ChartDrawing[]
   pending: ChartAnchor | null
   onPick: (anchor: ChartAnchor) => void
+  measure: ChartMeasure | null
+  /** Called while a measurement is dragged (done=false) and when it is released. */
+  onMeasure: (measure: ChartMeasure | null, done: boolean) => void
   /** Index of the bar under the reader's pointer or tap, or null for the latest bar. */
   onInspect: (index: number | null) => void
   onViewChange: (view: ChartView) => void
@@ -85,12 +93,6 @@ function readPalette(element: Element): Palette {
     // next/font renames the family, so take the resolved one from CSS.
     font: `11px ${styles.fontFamily || 'ui-monospace, monospace'}`,
   }
-}
-
-/** Direction of one bar; without an open from the backend it is unknown, not assumed. */
-function direction(bar: OhlcPoint): 'up' | 'down' | 'unknown' {
-  if (bar.open === null) return 'unknown'
-  return bar.close >= bar.open ? 'up' : 'down'
 }
 
 function crisp(value: number): number {
@@ -126,6 +128,8 @@ export default function ExpandedPriceCanvas({
   drawings,
   pending,
   onPick,
+  measure,
+  onMeasure,
   onInspect,
   onViewChange,
   onReset,
@@ -144,9 +148,9 @@ export default function ExpandedPriceCanvas({
   const paletteRef = useRef<Palette | null>(null)
 
   // Latest props for the imperative draw and input handlers.
-  const propsRef = useRef({ bars, currency, kind, showVolume, drawTool, drawings, pending, onPick, onInspect, onViewChange, onReset })
+  const propsRef = useRef({ bars, currency, kind, showVolume, drawTool, drawings, pending, measure, onPick, onMeasure, onInspect, onViewChange, onReset })
   useLayoutEffect(() => {
-    propsRef.current = { bars, currency, kind, showVolume, drawTool, drawings, pending, onPick, onInspect, onViewChange, onReset }
+    propsRef.current = { bars, currency, kind, showVolume, drawTool, drawings, pending, measure, onPick, onMeasure, onInspect, onViewChange, onReset }
   })
 
   const draw = useCallback(() => {
@@ -154,7 +158,7 @@ export default function ExpandedPriceCanvas({
     const canvas = canvasRef.current
     const ctx = canvas?.getContext('2d')
     if (!canvas || !ctx) return
-    const { bars: data, currency: code, kind: chartKind, showVolume: volumeOn, drawings: shapes, pending: pick } = propsRef.current
+    const { bars: data, currency: code, kind: chartKind, showVolume: volumeOn, drawings: shapes, pending: pick, measure: span } = propsRef.current
     const rect = canvas.getBoundingClientRect()
     const dpr = window.devicePixelRatio || 1
     const pixelWidth = Math.max(1, Math.round(rect.width * dpr))
@@ -247,7 +251,7 @@ export default function ExpandedPriceCanvas({
         const bar = data[i]
         if (bar.volume === null) continue
         const barHeight = (bar.volume / geometry.maxVolume) * (geometry.volumeBottom - geometry.volumeTop)
-        groups[direction(bar)].rect(xOf(i) - barWidth / 2, geometry.volumeBottom - barHeight, barWidth, barHeight)
+        groups[candleDirection(bar.open, bar.close)].rect(xOf(i) - barWidth / 2, geometry.volumeBottom - barHeight, barWidth, barHeight)
       }
       ctx.globalAlpha = 0.42
       for (const side of ['up', 'down', 'unknown'] as const) {
@@ -255,6 +259,28 @@ export default function ExpandedPriceCanvas({
         ctx.fill(groups[side])
       }
       ctx.globalAlpha = 1
+    }
+
+    // Measurement band between two days, behind the price.
+    const spanFirst = span ? Math.max(0, Math.min(data.length - 1, Math.round(Math.min(span.first, span.second)))) : -1
+    const spanLast = span ? Math.max(0, Math.min(data.length - 1, Math.round(Math.max(span.first, span.second)))) : -1
+    if (span && spanLast > spanFirst) {
+      const left = xOf(spanFirst)
+      const right = xOf(spanLast)
+      const falling = data[spanLast].close < data[spanFirst].close
+      ctx.globalAlpha = 0.12
+      ctx.fillStyle = falling ? palette.down : palette.up
+      ctx.fillRect(left, 0, right - left, mainBottom)
+      ctx.globalAlpha = 1
+      ctx.setLineDash([3, 3])
+      ctx.strokeStyle = palette.muted
+      ctx.beginPath()
+      ctx.moveTo(crisp(left), 0)
+      ctx.lineTo(crisp(left), mainBottom)
+      ctx.moveTo(crisp(right), 0)
+      ctx.lineTo(crisp(right), mainBottom)
+      ctx.stroke()
+      ctx.setLineDash([])
     }
 
     // Price
@@ -268,7 +294,7 @@ export default function ExpandedPriceCanvas({
       for (let i = geometry.first; i <= geometry.last; i += 1) {
         const bar = data[i]
         const x = xOf(i)
-        const side = paths[direction(bar)]
+        const side = paths[candleDirection(bar.open, bar.close)]
         if (bar.high !== null && bar.low !== null) {
           side.wick.moveTo(crisp(x), yOf(bar.high))
           side.wick.lineTo(crisp(x), yOf(bar.low))
@@ -360,6 +386,18 @@ export default function ExpandedPriceCanvas({
         ctx.textAlign = 'left'
         ctx.fillText(text, left + 6, y - 9)
       }
+    }
+    if (span && spanLast > spanFirst) {
+      ctx.fillStyle = palette.text
+      ctx.strokeStyle = palette.surface
+      ctx.lineWidth = 2
+      for (const index of [spanFirst, spanLast]) {
+        ctx.beginPath()
+        ctx.arc(xOf(index), yOf(data[index].close), 4, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.stroke()
+      }
+      ctx.lineWidth = 1
     }
     if (pick) {
       ctx.fillStyle = palette.accent
@@ -464,7 +502,7 @@ export default function ExpandedPriceCanvas({
 
   useEffect(() => {
     schedule()
-  }, [bars, currency, kind, showVolume, drawings, pending, schedule])
+  }, [bars, currency, kind, showVolume, drawings, pending, measure, schedule])
 
   useEffect(() => {
     if (!drawTool) return
@@ -532,8 +570,35 @@ export default function ExpandedPriceCanvas({
     const pointers = pointersRef.current
     pointers.set(event.pointerId, point)
     if (pointers.size === 1) {
-      gestureRef.current = { type: 'pending', x: point.x, y: point.y, view: viewRef.current, mouse: event.pointerType === 'mouse' }
+      const mouse = event.pointerType === 'mouse'
+      const geometry = geometryRef.current
+      const indexAt = (x: number) => (geometry ? Math.round(viewRef.current.from + x / geometry.barWidth - 0.5) : 0)
+      const { drawTool: tool, onMeasure: measureTo } = propsRef.current
+      if (mouse && event.shiftKey && !tool && geometry && point.x < geometry.plotWidth) {
+        // Shift + drag measures; a plain drag keeps panning.
+        const first = indexAt(point.x)
+        gestureRef.current = { type: 'measure', first }
+        crossRef.current = null
+        measureTo({ first, second: first }, false)
+        return
+      }
+      const pending: Gesture = { type: 'pending', x: point.x, y: point.y, view: viewRef.current, mouse, timer: null }
+      if (!mouse && !tool) {
+        // A touch held still starts a measurement.
+        pending.timer = window.setTimeout(() => {
+          if (gestureRef.current !== pending || pointersRef.current.size !== 1) return
+          const first = indexAt(pending.x)
+          gestureRef.current = { type: 'measure', first }
+          crossRef.current = null
+          propsRef.current.onMeasure({ first, second: first }, false)
+        }, LONG_PRESS_MS)
+      }
+      gestureRef.current = pending
     } else if (pointers.size === 2 && geometryRef.current) {
+      const previous = gestureRef.current
+      if (previous?.type === 'pending' && previous.timer) window.clearTimeout(previous.timer)
+      // A second finger turns a measurement into a pinch.
+      if (previous?.type === 'measure') propsRef.current.onMeasure(null, true)
       const [a, b] = Array.from(pointers.values())
       const centre = (a.x + b.x) / 2
       const view = viewRef.current
@@ -562,6 +627,11 @@ export default function ExpandedPriceCanvas({
       }
       return
     }
+    if (gesture.type === 'measure') {
+      const second = Math.max(0, Math.min(count - 1, Math.round(viewRef.current.from + point.x / geometry.barWidth - 0.5)))
+      propsRef.current.onMeasure({ first: gesture.first, second }, false)
+      return
+    }
     if (gesture.type === 'pinch' && pointers.size === 2) {
       const [a, b] = Array.from(pointers.values())
       const distance = Math.hypot(a.x - b.x, a.y - b.y) || 1
@@ -570,6 +640,7 @@ export default function ExpandedPriceCanvas({
       return
     }
     if (gesture.type === 'pending' && Math.hypot(point.x - gesture.x, point.y - gesture.y) > TAP_SLOP) {
+      if (gesture.timer) window.clearTimeout(gesture.timer)
       gestureRef.current = { type: 'pan', x: gesture.x, view: gesture.view, mouse: gesture.mouse }
       if (!gesture.mouse) crossRef.current = null
       event.currentTarget.dataset.panning = 'true'
@@ -585,6 +656,11 @@ export default function ExpandedPriceCanvas({
     const pointers = pointersRef.current
     const gesture = gestureRef.current
     pointers.delete(event.pointerId)
+    if (gesture?.type === 'pending' && gesture.timer) window.clearTimeout(gesture.timer)
+    if (gesture?.type === 'measure') {
+      const current = propsRef.current.measure
+      propsRef.current.onMeasure(cancelled ? null : current, true)
+    }
     if (!cancelled && gesture?.type === 'pending' && pointers.size === 0) handleTap(localPoint(event), gesture.mouse)
     if (pointers.size === 0) {
       gestureRef.current = null
@@ -620,6 +696,13 @@ export default function ExpandedPriceCanvas({
   }, [])
 
   const onKeyDown = (event: KeyboardEvent<HTMLCanvasElement>) => {
+    if (event.key === 'Escape' && propsRef.current.measure) {
+      // Escape clears the measurement first, before it closes the dialog.
+      event.preventDefault()
+      event.stopPropagation()
+      propsRef.current.onMeasure(null, true)
+      return
+    }
     const view = viewRef.current
     const count = propsRef.current.bars.length
     const span = view.to - view.from

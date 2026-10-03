@@ -1,8 +1,11 @@
 'use client'
 
-import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import ChartContainer from '@/components/charts/ChartContainer'
-import { formatMoney } from '@/lib/currency'
+import MeasureSummary, { describeMeasurement } from '@/components/charts/MeasureSummary'
+import { candleDirection, type CandleDirection } from '@/lib/candles'
+import { LONG_PRESS_MS, LONG_PRESS_SLOP_PX, measureBetween } from '@/lib/chart-measure'
+import { formatMoney, formatSignedMoney } from '@/lib/currency'
 import { cn } from '@/lib/utils'
 import styles from './TemporalLineChart.module.css'
 
@@ -11,6 +14,22 @@ export type TemporalLinePoint = {
   value: number
   key?: string
   tooltipMeta?: string | null
+  /** Candle fields, as the backend supplied them; only read in candle mode. */
+  open?: number | null
+  high?: number | null
+  low?: number | null
+}
+
+export type TemporalChartMode = 'line' | 'candles'
+
+type MeasureGesture = {
+  pointerId: number
+  mouse: boolean
+  startX: number
+  startY: number
+  startIndex: number
+  active: boolean
+  timer: number | null
 }
 
 export type TemporalValueFormat = 'currency' | 'multiple' | 'number'
@@ -139,6 +158,8 @@ export default function TemporalLineChart({
   valueFormat = 'number',
   currency = 'USD',
   showRangeChange = false,
+  mode = 'line',
+  measurable = false,
 }: {
   points: TemporalLinePoint[]
   ariaLabel: string
@@ -147,30 +168,119 @@ export default function TemporalLineChart({
   valueFormat?: TemporalValueFormat
   currency?: string
   showRangeChange?: boolean
+  /** Candles read open, high and low from each point. */
+  mode?: TemporalChartMode
+  /** Press and drag (a held touch on phones) measures between two days. */
+  measurable?: boolean
 }) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
   // A touch reading has no hover to end it, so it stays until a tap elsewhere.
   const [touchReading, setTouchReading] = useState(false)
+  const [measure, setMeasure] = useState<{ first: number; second: number } | null>(null)
+  const [measuring, setMeasuring] = useState(false)
   const canvasRef = useRef<HTMLDivElement>(null)
+  const gestureRef = useRef<MeasureGesture | null>(null)
+  const measuringRef = useRef(false)
+
+  const clearMeasure = useCallback(() => {
+    setMeasure(null)
+    setMeasuring(false)
+    measuringRef.current = false
+  }, [])
+
+  // A new series (another range or mode) invalidates the measured indices.
+  const seriesKey = `${mode}:${points.length}:${points[0]?.date ?? ''}:${points.at(-1)?.date ?? ''}`
+  const [measuredSeries, setMeasuredSeries] = useState(seriesKey)
+  if (measuredSeries !== seriesKey) {
+    setMeasuredSeries(seriesKey)
+    setMeasure(null)
+    setHoverIndex(null)
+  }
 
   useEffect(() => {
-    if (!touchReading) return
+    if (!touchReading && !(measure && !measuring)) return
     const dismiss = (event: globalThis.PointerEvent) => {
       if (canvasRef.current?.contains(event.target as Node)) return
       setHoverIndex(null)
       setTouchReading(false)
+      clearMeasure()
+    }
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') clearMeasure()
     }
     document.addEventListener('pointerdown', dismiss)
-    return () => document.removeEventListener('pointerdown', dismiss)
-  }, [touchReading])
+    document.addEventListener('keydown', escape)
+    return () => {
+      document.removeEventListener('pointerdown', dismiss)
+      document.removeEventListener('keydown', escape)
+    }
+  }, [touchReading, measure, measuring, clearMeasure])
 
-  // Mouse hover, a tap, or a horizontal drag on touch all read the nearest point.
-  const readPoint = (event: PointerEvent<SVGRectElement>, count: number, innerWidth: number) => {
+  // While a held touch measures, stop the page from scrolling under it.
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!measurable || !canvas) return
+    const holdPage = (event: TouchEvent) => {
+      if (measuringRef.current && event.cancelable) event.preventDefault()
+    }
+    const noMenu = (event: Event) => event.preventDefault()
+    canvas.addEventListener('touchmove', holdPage, { passive: false })
+    canvas.addEventListener('contextmenu', noMenu)
+    return () => {
+      canvas.removeEventListener('touchmove', holdPage)
+      canvas.removeEventListener('contextmenu', noMenu)
+    }
+  })
+
+  useEffect(() => () => {
+    const timer = gestureRef.current?.timer
+    if (timer) window.clearTimeout(timer)
+  }, [])
+
+  const indexAt = (event: PointerEvent<SVGRectElement>, count: number, innerWidth: number) => {
     const rect = event.currentTarget.getBoundingClientRect()
     const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / innerWidth))
-    setHoverIndex(Math.round(ratio * Math.max(0, count - 1)))
-    if (event.pointerType !== 'mouse') setTouchReading(true)
+    return Math.round(ratio * Math.max(0, count - 1))
   }
+
+  // Mouse hover, a tap, or a horizontal drag on touch all read the nearest point.
+  const readPoint = (index: number, pointerType: string) => {
+    setHoverIndex(index)
+    if (pointerType !== 'mouse') setTouchReading(true)
+  }
+
+  const startMeasuring = (gesture: MeasureGesture, element: Element) => {
+    gesture.active = true
+    measuringRef.current = true
+    setMeasuring(true)
+    setMeasure({ first: gesture.startIndex, second: gesture.startIndex })
+    try {
+      element.setPointerCapture(gesture.pointerId)
+    } catch {
+      // The pointer may already be gone; the measurement still stands.
+    }
+  }
+
+  const endGesture = (keep: boolean) => {
+    const gesture = gestureRef.current
+    if (gesture?.timer) window.clearTimeout(gesture.timer)
+    gestureRef.current = null
+    if (!gesture?.active) return
+    measuringRef.current = false
+    setMeasuring(false)
+    if (!keep) {
+      setMeasure(null)
+      return
+    }
+    setMeasure((current) => (current && current.first !== current.second ? current : null))
+    setTouchReading(false)
+    setHoverIndex(null)
+  }
+
+  const formatChange = (value: number) =>
+    valueFormat === 'currency'
+      ? formatSignedMoney(value, currency)
+      : `${value >= 0 ? '+' : '−'}${formatChartValue(Math.abs(value), valueFormat, currency)}`
 
   return (
     <ChartContainer className={cn(styles.chart, points.length === 0 && styles.emptyChart, className)} loadingText="Loading chart...">
@@ -179,19 +289,22 @@ export default function TemporalLineChart({
           return <div className={styles.emptyState} data-chart-state="empty">{emptyState ?? 'Temporal data is unavailable.'}</div>
         }
 
+        const candles = mode === 'candles'
         const padding = { top: 12, right: 58, bottom: 24, left: 6 }
         const innerWidth = Math.max(1, width - padding.left - padding.right)
         const innerHeight = Math.max(1, height - padding.top - padding.bottom)
-        const values = points.map((point) => point.value)
-        const min = Math.min(...values)
-        const max = Math.max(...values)
+        const lows = points.map((point) => (candles && typeof point.low === 'number' ? point.low : point.value))
+        const highs = points.map((point) => (candles && typeof point.high === 'number' ? point.high : point.value))
+        const min = Math.min(...lows)
+        const max = Math.max(...highs)
         const spread = max - min || Math.max(1, Math.abs(min) * 0.03)
         const floor = min - spread * 0.08
         const ceiling = max + spread * 0.08
+        const yOf = (value: number) => padding.top + (1 - (value - floor) / (ceiling - floor)) * innerHeight
         const renderedPoints = points.map((point, index) => ({
           ...point,
           x: padding.left + (index / Math.max(1, points.length - 1)) * innerWidth,
-          y: padding.top + (1 - (point.value - floor) / (ceiling - floor)) * innerHeight,
+          y: yOf(point.value),
         }))
         const linePath = renderedPoints.map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(' ')
         const areaPath = `${linePath} L${renderedPoints.at(-1)?.x.toFixed(2)} ${(padding.top + innerHeight).toFixed(2)} L${renderedPoints[0]?.x.toFixed(2)} ${(padding.top + innerHeight).toFixed(2)} Z`
@@ -200,9 +313,9 @@ export default function TemporalLineChart({
         const xTicks = buildXTicks(points.map((point) => point.date), xTickLimit)
         const xLabels = placeXLabels(xTicks, renderedPoints, padding.left, innerWidth)
         const yTicks = Array.from({ length: 5 }, (_, index) => floor + ((ceiling - floor) / 4) * index)
-        const hoverPoint = hoverIndex === null ? null : renderedPoints[hoverIndex] ?? null
+        const hoverPoint = hoverIndex === null || measuring ? null : renderedPoints[hoverIndex] ?? null
         const tooltipLeft = hoverPoint ? Math.min(width - 156, Math.max(8, hoverPoint.x + 14)) : 0
-        const tooltipTop = hoverPoint ? Math.max(8, Math.min(height - 100, hoverPoint.y - 82)) : 0
+        const tooltipTop = hoverPoint ? Math.max(8, Math.min(height - (candles ? 140 : 100), hoverPoint.y - 82)) : 0
         const firstRenderedPoint = renderedPoints[0] ?? null
         const rangeBaseValue = firstRenderedPoint?.value ?? null
         const rangeChange = hoverPoint && rangeBaseValue !== null && rangeBaseValue !== 0
@@ -210,17 +323,85 @@ export default function TemporalLineChart({
           : null
         const chartKey = `${points.length}:${points[0]?.key ?? points[0]?.date ?? ''}:${points.at(-1)?.key ?? points.at(-1)?.date ?? ''}`
 
+        // Candle bodies and wicks, one path per direction.
+        const candlePaths: Record<CandleDirection, { wicks: string; bodies: string }> = {
+          up: { wicks: '', bodies: '' },
+          down: { wicks: '', bodies: '' },
+          unknown: { wicks: '', bodies: '' },
+        }
+        if (candles) {
+          const step = innerWidth / Math.max(1, points.length - 1)
+          const bodyWidth = Math.max(1, Math.min(12, step * 0.66))
+          renderedPoints.forEach((point) => {
+            const paths = candlePaths[candleDirection(point.open, point.value)]
+            const x = point.x
+            if (typeof point.high === 'number' && typeof point.low === 'number') {
+              paths.wicks += `M${x.toFixed(2)} ${yOf(point.high).toFixed(2)}V${yOf(point.low).toFixed(2)}`
+            }
+            const top = typeof point.open === 'number' ? Math.min(yOf(point.open), point.y) : point.y - 0.5
+            const bodyHeight = typeof point.open === 'number' ? Math.max(1, Math.abs(yOf(point.open) - point.y)) : 1
+            paths.bodies += `M${(x - bodyWidth / 2).toFixed(2)} ${top.toFixed(2)}h${bodyWidth.toFixed(2)}v${bodyHeight.toFixed(2)}h${(-bodyWidth).toFixed(2)}Z`
+          })
+        }
+
+        const measurement = measure ? measureBetween(renderedPoints, measure.first, measure.second) : null
+        const measureLeft = measure ? renderedPoints[Math.min(measure.first, measure.second)] : null
+        const measureRight = measure ? renderedPoints[Math.max(measure.first, measure.second)] : null
+        const summaryCentre = measureLeft && measureRight
+          ? Math.max(96, Math.min(width - 96, (measureLeft.x + measureRight.x) / 2))
+          : 0
+
         return (
-          <div ref={canvasRef} className={styles.canvas} data-chart-state="available" data-temporal-line-chart="">
+          <div
+            ref={canvasRef}
+            className={cn(styles.canvas, measurable && styles.measurable)}
+            data-chart-state="available"
+            data-chart-mode={mode}
+            data-measuring={measuring ? 'true' : undefined}
+            data-temporal-line-chart=""
+          >
             <svg width={width} height={height} className={styles.svg} role="img" aria-label={ariaLabel}>
               {yTicks.map((tick) => {
-                const y = padding.top + (1 - (tick - floor) / (ceiling - floor)) * innerHeight
+                const y = yOf(tick)
                 return <line key={tick} x1={padding.left} y1={y} x2={padding.left + innerWidth} y2={y} className={styles.gridLine} />
               })}
 
-              <path key={`area-${chartKey}`} className={styles.area} d={areaPath} />
-              <path key={`line-${chartKey}`} className={styles.line} d={linePath} pathLength={1} />
-{hoverPoint ? (
+              {measureLeft && measureRight ? (
+                <g data-measure-band="">
+                  <rect
+                    x={measureLeft.x}
+                    y={padding.top}
+                    width={Math.max(1, measureRight.x - measureLeft.x)}
+                    height={innerHeight}
+                    className={cn(styles.measureBand, measurement?.direction === 'down' ? styles.bandDown : styles.bandUp)}
+                  />
+                  <line x1={measureLeft.x} y1={padding.top} x2={measureLeft.x} y2={padding.top + innerHeight} className={styles.measureEdge} />
+                  <line x1={measureRight.x} y1={padding.top} x2={measureRight.x} y2={padding.top + innerHeight} className={styles.measureEdge} />
+                </g>
+              ) : null}
+
+              {candles ? (
+                (['up', 'down', 'unknown'] as const).map((direction) => (
+                  <g key={direction} className={styles[`candle_${direction}`]}>
+                    <path d={candlePaths[direction].wicks} className={styles.wick} />
+                    <path d={candlePaths[direction].bodies} className={styles.body} />
+                  </g>
+                ))
+              ) : (
+                <>
+                  <path key={`area-${chartKey}`} className={styles.area} d={areaPath} />
+                  <path key={`line-${chartKey}`} className={styles.line} d={linePath} pathLength={1} />
+                </>
+              )}
+
+              {measureLeft && measureRight ? (
+                <>
+                  <circle cx={measureLeft.x} cy={measureLeft.y} r="4" className={styles.measureDot} />
+                  <circle cx={measureRight.x} cy={measureRight.y} r="4" className={styles.measureDot} />
+                </>
+              ) : null}
+
+              {hoverPoint ? (
                 <>
                   <g className={styles.crosshair} style={{ transform: `translateX(${hoverPoint.x}px)` }}>
                     <line x1={0} y1={padding.top} x2={0} y2={padding.top + innerHeight} stroke="var(--text)" strokeWidth="1.4" />
@@ -236,10 +417,9 @@ export default function TemporalLineChart({
                 <text key={key} x={x} y={height - 4} textAnchor="middle" className={styles.axisLabel}>{label}</text>
               ))}
 
-              {yTicks.map((tick) => {
-                const y = padding.top + (1 - (tick - floor) / (ceiling - floor)) * innerHeight
-                return <text key={`y-${tick}`} x={width - 4} y={y + 4} textAnchor="end" className={styles.axisValue}>{formatChartValue(tick, valueFormat, currency)}</text>
-              })}
+              {yTicks.map((tick) => (
+                <text key={`y-${tick}`} x={width - 4} y={yOf(tick) + 4} textAnchor="end" className={styles.axisValue}>{formatChartValue(tick, valueFormat, currency)}</text>
+              ))}
 
               <rect
                 x={padding.left}
@@ -247,13 +427,54 @@ export default function TemporalLineChart({
                 width={innerWidth}
                 height={innerHeight}
                 fill="transparent"
-                onPointerDown={(event) => readPoint(event, renderedPoints.length, innerWidth)}
-                onPointerMove={(event) => readPoint(event, renderedPoints.length, innerWidth)}
+                onPointerDown={(event) => {
+                  const index = indexAt(event, renderedPoints.length, innerWidth)
+                  readPoint(index, event.pointerType)
+                  if (!measurable || (event.pointerType === 'mouse' && event.button !== 0)) return
+                  const previous = gestureRef.current
+                  if (previous?.timer) window.clearTimeout(previous.timer)
+                  const gesture: MeasureGesture = {
+                    pointerId: event.pointerId,
+                    mouse: event.pointerType === 'mouse',
+                    startX: event.clientX,
+                    startY: event.clientY,
+                    startIndex: index,
+                    active: false,
+                    timer: null,
+                  }
+                  if (!gesture.mouse) {
+                    const element = event.currentTarget
+                    gesture.timer = window.setTimeout(() => {
+                      gesture.timer = null
+                      if (gestureRef.current === gesture) startMeasuring(gesture, element)
+                    }, LONG_PRESS_MS)
+                  }
+                  gestureRef.current = gesture
+                }}
+                onPointerMove={(event) => {
+                  const index = indexAt(event, renderedPoints.length, innerWidth)
+                  const gesture = gestureRef.current
+                  if (gesture && gesture.pointerId === event.pointerId) {
+                    const moved = Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY)
+                    if (!gesture.active && moved > LONG_PRESS_SLOP_PX) {
+                      // A mouse drag measures; a touch that moves early is a scrub or a scroll.
+                      if (gesture.mouse) startMeasuring(gesture, event.currentTarget)
+                      else endGesture(false)
+                    }
+                    if (gesture.active) {
+                      setMeasure({ first: gesture.startIndex, second: index })
+                      return
+                    }
+                  }
+                  readPoint(index, event.pointerType)
+                }}
+                onPointerUp={() => endGesture(true)}
                 onPointerLeave={(event) => {
-                  if (event.pointerType === 'mouse') setHoverIndex(null)
+                  if (event.pointerType === 'mouse' && !gestureRef.current?.active) setHoverIndex(null)
                 }}
                 onPointerCancel={() => {
                   // The page took the gesture for a vertical scroll.
+                  endGesture(false)
                   setHoverIndex(null)
                   setTouchReading(false)
                 }}
@@ -263,7 +484,16 @@ export default function TemporalLineChart({
             {hoverPoint ? (
               <div className={styles.tooltip} data-chart-tooltip="" style={{ left: tooltipLeft, top: tooltipTop }}>
                 <div className={styles.tooltipMeta}>{formatDate(hoverPoint.date)}</div>
-                <div className={styles.tooltipValue}>{formatChartValue(hoverPoint.value, valueFormat, currency)}</div>
+                {candles ? (
+                  <dl className={styles.tooltipCandle}>
+                    {typeof hoverPoint.open === 'number' ? <div><dt>Open</dt><dd>{formatChartValue(hoverPoint.open, valueFormat, currency)}</dd></div> : null}
+                    {typeof hoverPoint.high === 'number' ? <div><dt>High</dt><dd>{formatChartValue(hoverPoint.high, valueFormat, currency)}</dd></div> : null}
+                    {typeof hoverPoint.low === 'number' ? <div><dt>Low</dt><dd>{formatChartValue(hoverPoint.low, valueFormat, currency)}</dd></div> : null}
+                    <div><dt>Close</dt><dd>{formatChartValue(hoverPoint.value, valueFormat, currency)}</dd></div>
+                  </dl>
+                ) : (
+                  <div className={styles.tooltipValue}>{formatChartValue(hoverPoint.value, valueFormat, currency)}</div>
+                )}
                 {showRangeChange && rangeChange !== null && firstRenderedPoint ? (
                   <div className={cn(styles.tooltipChange, rangeChange > 0 ? styles.positive : rangeChange < 0 ? styles.negative : styles.neutral)}>
                     {formatRangeChange(rangeChange)} <span>since {formatDate(firstRenderedPoint.date)}</span>
@@ -271,6 +501,20 @@ export default function TemporalLineChart({
                 ) : null}
                 {hoverPoint.tooltipMeta ? <div className={styles.tooltipMeta}>{hoverPoint.tooltipMeta}</div> : null}
               </div>
+            ) : null}
+
+            {measurement ? (
+              <MeasureSummary
+                measurement={measurement}
+                formatChange={formatChange}
+                className={styles.measureSummary}
+                style={{ left: summaryCentre }}
+              />
+            ) : null}
+            {measurable ? (
+              <p className="sr-only" aria-live="polite">
+                {measurement && !measuring ? describeMeasurement(measurement, formatChange) : ''}
+              </p>
             ) : null}
           </div>
         )
