@@ -4,6 +4,7 @@ import { Fragment, useEffect, useState, type CSSProperties, type FocusEvent } fr
 import Link from 'next/link'
 import { ChartNetwork } from 'lucide-react'
 import HeaderSearch from '@/components/HeaderSearch'
+import TapToActivateField from '@/components/search/TapToActivateField'
 
 const HEADLINE = 'Invest smarter, not harder'
 
@@ -89,9 +90,9 @@ export default function DockingSearch() {
         </h1>
         <p className="dock-search__subtitle">{"Don't guess. Analyze."}</p>
       </div>
-      <div className="dock-search__field">
+      <TapToActivateField className="dock-search__field">
         <HeaderSearch className="w-full" maxSuggestions={4} placeholder="Search tickers or companies…" typingHints={TYPING_HINTS} />
-      </div>
+      </TapToActivateField>
       <div className="dock-search__support">
         <Link
           href="/markets/network"

@@ -31,7 +31,8 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await page.screenshot({ path: join(directory, `homepage-top-${colorScheme}.png`) })
 
     const heroInput = page.locator('.dock-search__field input')
-    await heroInput.focus()
+    // The hero field sleeps until asked for (TapToActivateField).
+    await page.locator('.dock-search__field').focus()
     await expect(heroInput).toBeFocused()
     await page.mouse.wheel(0, 1000)
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(120)

@@ -224,7 +224,7 @@ test('opening hero search results on mobile clears the title and leaves room for
   const before = await field.boundingBox()
   expect(before?.y ?? 0).toBeGreaterThan(150)
 
-  await field.click()
+  await page.locator('[data-dock-search] .dock-search__field').click()
   await field.fill('a')
   await expect(page.locator('[data-dock-search] .ticker-search__root')).toHaveAttribute('data-open', 'true')
   await expect.poll(() => field.boundingBox().then((box) => box?.y ?? 9999)).toBeLessThan(130)
@@ -234,13 +234,30 @@ test('opening hero search results on mobile clears the title and leaves room for
   await page.screenshot({ path: testInfo.outputPath('homepage-mobile-search-open.png') })
 })
 
+test('hero search sleeps until tapped, then focuses in the same tap', async ({ page }) => {
+  await stubBackends(page)
+  await page.goto('/', { waitUntil: 'load' })
+  await page.evaluate(() => document.fonts.ready)
+  await page.waitForTimeout(1200)
+
+  const input = page.locator('[data-dock-search] input')
+  await expect.poll(() => input.evaluate((el) => !!el.closest('[inert]'))).toBe(true)
+
+  await page.locator('[data-dock-search] .dock-search__field').tap()
+  await expect(input).toBeFocused()
+  await expect.poll(() => input.evaluate((el) => !!el.closest('[inert]'))).toBe(false)
+
+  await input.evaluate((el) => el.blur())
+  await expect.poll(() => input.evaluate((el) => !!el.closest('[inert]'))).toBe(true)
+})
+
 test('homepage suggestions fit above a simulated mobile keyboard', async ({ page }, testInfo) => {
   await stubBackends(page)
   await page.goto('/', { waitUntil: 'load' })
   await page.evaluate(() => document.fonts.ready)
 
   const field = page.locator('[data-dock-search] input')
-  await field.click()
+  await page.locator('[data-dock-search] .dock-search__field').click()
   await field.fill('a')
   await expect(page.locator('[data-dock-search] .ticker-search__scroll')).toBeVisible()
   await expect(page.locator('.dock-search__intro')).toHaveCSS('opacity', '0')

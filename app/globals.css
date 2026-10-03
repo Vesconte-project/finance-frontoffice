@@ -3420,8 +3420,16 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel butto
   background: var(--dock-search-surface);
   box-shadow: none;
 }
-.dock-search__field :is(input):hover {
+.dock-search__field :is(input):hover,
+/* Asleep (TapToActivateField), the input is inert and takes no hover itself. */
+.dock-search__field[data-field-active='false']:hover :is(input) {
   border-color: color-mix(in srgb, var(--brand-spark) 68%, var(--content-primary) 12%);
+}
+.dock-search__field[data-field-active='false'] {
+  cursor: text;
+}
+.dock-search__field[data-field-active='false']:focus-visible {
+  outline: none;
 }
 .dock-search__field :is(input):focus-visible {
   border-color: var(--brand-spark);

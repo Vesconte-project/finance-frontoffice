@@ -32,8 +32,17 @@ function searchInput(page: Page) {
   return page.locator('[data-dock-search] input[role="combobox"]')
 }
 
-async function openResults(page: Page) {
+// The hero field sleeps until asked for (TapToActivateField), as a reader's
+// tap or Tab would wake it.
+async function activateSearch(page: Page) {
+  await page.locator('[data-dock-search] .dock-search__field').click()
   const input = searchInput(page)
+  await expect(input).toBeFocused()
+  return input
+}
+
+async function openResults(page: Page) {
+  const input = await activateSearch(page)
   await input.fill('alpha')
   await expect(input).toHaveAttribute('aria-expanded', 'true')
   await expect(page.getByRole('option')).toHaveCount(4)
@@ -117,7 +126,7 @@ async function sampleGeometryTransition(
       dock: [dock.getBoundingClientRect().top],
     }
     const startedAt = performance.now()
-    if (action === 'open') input.focus()
+    if (action === 'open') document.querySelector<HTMLElement>('[data-dock-search] .dock-search__field')?.focus()
     else input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
 
     await new Promise<void>((resolve) => {
@@ -150,7 +159,7 @@ async function sampleMidOpeningReversal(
     const startedAt = performance.now()
     const reverseAt = motionDuration * 0.5
     let reversalIndex = -1
-    input.focus()
+    document.querySelector<HTMLElement>('[data-dock-search] .dock-search__field')?.focus()
 
     await new Promise<void>((resolve) => {
       function sample(now: number) {
