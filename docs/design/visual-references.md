@@ -80,3 +80,12 @@ The dedicated Relationships view extends the approved ticker selected-node langu
 | Decision owner |  |
 
 Do not add an external reference merely to justify a predetermined visual. State what was learned, what was rejected, and how the result remains specific to Vesconte.
+
+## Liquid-glass selector drop — 2026-10-03
+
+| Reference | Principle retained | Rejected or replaced |
+| --- | --- | --- |
+| iOS 26 segmented controls and tab bars, as described by the founder from use on a phone | Press-and-drag selection: the selection lifts as a drop of glass, magnifies what is beneath it, follows the finger and settles on the nearest option when released | Refraction of the backdrop through an SVG displacement filter (not supported by Safari's `backdrop-filter`), system tint and vibrancy colours, and any Apple assets or code |
+| `components/ui/ExpandingSelector.tsx` (2026-07-21 study above) | Pointer capture with a direction threshold, so vertical page scroll still wins; controlled commit owned by the parent | The reel layout, which stays specific to that selector |
+
+Vesconte transformation: the magnification is a second, clipped copy of the labels inside the drop, counter-scaled against the drop's own stretch so text grows uniformly and works the same in every engine. The drop's geometry, lift and stretch are driven by damped springs in script; commit goes through the option's own click so selection and telemetry match a tap. The track is a solid `--surface` capsule; only the drop is translucent. No external code or assets were copied.

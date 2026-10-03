@@ -326,6 +326,8 @@
     --glass-shadow: none;
     --glass-thumb-bg: color-mix(in srgb, var(--surface) 95%, transparent);
     --glass-thumb-border: color-mix(in srgb, var(--line) 10%, transparent);
+    /* Specular edge of the liquid-glass selection lens (selectors only). */
+    --glass-lens-specular: color-mix(in srgb, var(--surface) 92%, transparent);
     --content-primary: var(--text);
     --content-secondary: var(--text-muted);
     --content-muted: var(--text-muted);
@@ -531,6 +533,8 @@
       --glass-shadow: none;
       --glass-thumb-bg: color-mix(in srgb, var(--surface) 16%, transparent);
       --glass-thumb-border: color-mix(in srgb, var(--line) 26%, transparent);
+      /* Specular edge of the liquid-glass selection lens (selectors only). */
+      --glass-lens-specular: color-mix(in srgb, var(--text) 24%, transparent);
       --content-primary: var(--surface);
       --content-secondary: var(--line);
       --content-muted: var(--text-muted);
@@ -650,6 +654,8 @@
     --glass-shadow: none;
     --glass-thumb-bg: color-mix(in srgb, var(--surface) 16%, transparent);
     --glass-thumb-border: color-mix(in srgb, var(--line) 26%, transparent);
+    /* Specular edge of the liquid-glass selection lens (selectors only). */
+    --glass-lens-specular: color-mix(in srgb, var(--text) 24%, transparent);
     --content-primary: var(--surface);
     --content-secondary: var(--line);
     --content-muted: var(--text-muted);

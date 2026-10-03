@@ -74,10 +74,10 @@ test.describe('Phase 3 relationship evidence', () => {
       await expect(page.locator('[data-relationship-evidence] aside').getByRole('link', { name: /^Explore / })).toBeVisible()
     }
 
-    const windowSelector = page.getByRole('tablist', { name: 'Evidence window' })
-    await windowSelector.getByRole('tab', { name: '126', exact: true }).click()
+    const windowSelector = page.getByRole('radiogroup', { name: 'Evidence window' })
+    await windowSelector.getByRole('radio', { name: '126', exact: true }).click()
     await expect(page).toHaveURL(/window=126/)
-    await expect(windowSelector.getByRole('tab', { name: '126', exact: true })).toHaveAttribute('aria-selected', 'true')
+    await expect(windowSelector.getByRole('radio', { name: '126', exact: true })).toHaveAttribute('aria-checked', 'true')
     await expect(page.locator('[data-ticker-research-loading]')).toHaveCount(0)
   })
 
