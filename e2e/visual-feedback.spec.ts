@@ -59,6 +59,7 @@ test('explicit dark theme keeps typed homepage search readable', async ({ page }
   await page.evaluate(() => { document.documentElement.dataset.theme = 'dark' })
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   const input = page.locator('.dock-search__field input')
+  await page.locator('.dock-search__field').focus()
   await input.fill('ASML')
   await expect(input).toHaveCSS('color', 'rgb(236, 230, 218)')
   await expect(input).toHaveCSS('background-color', 'rgb(23, 33, 48)')
