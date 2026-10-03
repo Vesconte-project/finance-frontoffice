@@ -629,6 +629,19 @@ export default function StockOverviewClient({
                 state={fullHistoryState === 'error' ? 'error' : historicalChartState}
                 currency={currency}
               />
+              {canExpandChart ? (
+                <button
+                  ref={expandButtonRef}
+                  type="button"
+                  className={expandedChartStyles.expandButton}
+                  aria-haspopup="dialog"
+                  aria-label="Expand chart"
+                  data-expand-chart=""
+                  onClick={() => setChartExpanded(true)}
+                >
+                  <Maximize2 size={16} aria-hidden="true" />
+                </button>
+              ) : null}
               {chartExpanded ? (
                 <ExpandedChartDialog
                   open
@@ -651,20 +664,6 @@ export default function StockOverviewClient({
                     <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>
                   ))}
                 </dl>
-              ) : null}
-              {canExpandChart ? (
-                <button
-                  ref={expandButtonRef}
-                  type="button"
-                  className={expandedChartStyles.expandButton}
-                  aria-haspopup="dialog"
-                  aria-label="Expand chart"
-                  data-expand-chart=""
-                  onClick={() => setChartExpanded(true)}
-                >
-                  <Maximize2 size={15} aria-hidden="true" />
-                  <span aria-hidden="true">Expand</span>
-                </button>
               ) : null}
               <div className={styles.chartFooterControl} data-chart-range="">
                 <SegmentedControl

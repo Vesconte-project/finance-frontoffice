@@ -126,6 +126,7 @@
 }
 
 .heroChartWrap {
+  position: relative;
 }
 
 .chartStatus {

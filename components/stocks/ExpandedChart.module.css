@@ -280,19 +280,20 @@ dialog.dialog > div {
   background: transparent;
 }
 
-/* Expand button in the hero chart's footer, beside the market facts. */
+/* Expand button in the top-left corner of the hero chart. */
 .expandButton {
-  display: inline-flex;
-  min-height: 40px;
-  flex: none;
-  align-items: center;
-  gap: 6px;
-  padding: 0 14px;
+  position: absolute;
+  z-index: 2;
+  top: 6px;
+  left: 6px;
+  display: inline-grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--surface);
   color: var(--text);
-  font: 500 13px var(--font-body), sans-serif;
   cursor: pointer;
   transition:
     border-color var(--motion-fast, 120ms) ease,
@@ -301,19 +302,6 @@ dialog.dialog > div {
 
 .expandButton:hover {
   border-color: var(--accent);
-}
-
-/* Narrow screens: icon only, so the button shares the market-facts line. */
-@media (max-width: 479px) {
-  .expandButton {
-    width: 40px;
-    justify-content: center;
-    padding: 0;
-  }
-
-  .expandButton span {
-    display: none;
-  }
 }
 
 .expandButton:active {
