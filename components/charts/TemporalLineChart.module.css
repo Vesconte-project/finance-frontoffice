@@ -11,6 +11,9 @@
 
 .canvas {
   position: relative;
+  /* Vertical swipes still scroll the page; horizontal drags read the chart.
+     Set here because Chrome ignores touch-action on SVG shapes. */
+  touch-action: pan-y;
   width: 100%;
   height: 100%;
 }

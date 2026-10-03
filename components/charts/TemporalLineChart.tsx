@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import ChartContainer from '@/components/charts/ChartContainer'
 import { formatMoney } from '@/lib/currency'
 import { cn } from '@/lib/utils'
@@ -149,6 +149,28 @@ export default function TemporalLineChart({
   showRangeChange?: boolean
 }) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
+  // A touch reading has no hover to end it, so it stays until a tap elsewhere.
+  const [touchReading, setTouchReading] = useState(false)
+  const canvasRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!touchReading) return
+    const dismiss = (event: globalThis.PointerEvent) => {
+      if (canvasRef.current?.contains(event.target as Node)) return
+      setHoverIndex(null)
+      setTouchReading(false)
+    }
+    document.addEventListener('pointerdown', dismiss)
+    return () => document.removeEventListener('pointerdown', dismiss)
+  }, [touchReading])
+
+  // Mouse hover, a tap, or a horizontal drag on touch all read the nearest point.
+  const readPoint = (event: PointerEvent<SVGRectElement>, count: number, innerWidth: number) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / innerWidth))
+    setHoverIndex(Math.round(ratio * Math.max(0, count - 1)))
+    if (event.pointerType !== 'mouse') setTouchReading(true)
+  }
 
   return (
     <ChartContainer className={cn(styles.chart, points.length === 0 && styles.emptyChart, className)} loadingText="Loading chart...">
@@ -189,7 +211,7 @@ export default function TemporalLineChart({
         const chartKey = `${points.length}:${points[0]?.key ?? points[0]?.date ?? ''}:${points.at(-1)?.key ?? points.at(-1)?.date ?? ''}`
 
         return (
-          <div className={styles.canvas} data-chart-state="available" data-temporal-line-chart="">
+          <div ref={canvasRef} className={styles.canvas} data-chart-state="available" data-temporal-line-chart="">
             <svg width={width} height={height} className={styles.svg} role="img" aria-label={ariaLabel}>
               {yTicks.map((tick) => {
                 const y = padding.top + (1 - (tick - floor) / (ceiling - floor)) * innerHeight
@@ -225,12 +247,16 @@ export default function TemporalLineChart({
                 width={innerWidth}
                 height={innerHeight}
                 fill="transparent"
-                onPointerMove={(event) => {
-                  const rect = event.currentTarget.getBoundingClientRect()
-                  const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / innerWidth))
-                  setHoverIndex(Math.round(ratio * Math.max(0, renderedPoints.length - 1)))
+                onPointerDown={(event) => readPoint(event, renderedPoints.length, innerWidth)}
+                onPointerMove={(event) => readPoint(event, renderedPoints.length, innerWidth)}
+                onPointerLeave={(event) => {
+                  if (event.pointerType === 'mouse') setHoverIndex(null)
                 }}
-                onPointerLeave={() => setHoverIndex(null)}
+                onPointerCancel={() => {
+                  // The page took the gesture for a vertical scroll.
+                  setHoverIndex(null)
+                  setTouchReading(false)
+                }}
               />
             </svg>
 
