@@ -398,6 +398,22 @@ export default function ExpandedPriceCanvas({
         ctx.stroke()
       }
       ctx.lineWidth = 1
+      // While dragging, mark the day under the pointer full height, above a thumb.
+      const active = gestureRef.current?.type === 'measure' ? Math.round(span.second) : -1
+      if (active >= 0 && active < data.length) {
+        const x = crisp(xOf(active))
+        ctx.strokeStyle = palette.text
+        ctx.lineWidth = 1.5
+        ctx.beginPath()
+        ctx.moveTo(x, 0)
+        ctx.lineTo(x, mainBottom)
+        ctx.stroke()
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.arc(xOf(active), yOf(data[active].close), 9, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.lineWidth = 1
+      }
     }
     if (pick) {
       ctx.fillStyle = palette.accent
@@ -550,6 +566,11 @@ export default function ExpandedPriceCanvas({
       pick({ index, price })
       return
     }
+    if (propsRef.current.measure) {
+      // A tap on the chart clears a finished measurement.
+      propsRef.current.onMeasure(null, true)
+      return
+    }
     const now = performance.now()
     if (now - lastTapRef.current < DOUBLE_TAP_MS) {
       lastTapRef.current = 0
@@ -590,6 +611,7 @@ export default function ExpandedPriceCanvas({
           const first = indexAt(pending.x)
           gestureRef.current = { type: 'measure', first }
           crossRef.current = null
+          navigator.vibrate?.(12)
           propsRef.current.onMeasure({ first, second: first }, false)
         }, LONG_PRESS_MS)
       }

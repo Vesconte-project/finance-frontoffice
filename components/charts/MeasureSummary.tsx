@@ -25,15 +25,18 @@ export default function MeasureSummary({
   formatChange,
   className,
   style,
+  inline = false,
 }: {
   measurement: Measurement
   formatChange: (value: number) => string
   className?: string
   style?: CSSProperties
+  /** One line, for a legend row above a chart rather than a box over it. */
+  inline?: boolean
 }) {
   const tone = measurement.direction === 'up' ? styles.up : measurement.direction === 'down' ? styles.down : styles.flat
   return (
-    <div className={cn(styles.summary, className)} style={style} data-measure-summary="">
+    <div className={cn(inline ? styles.inline : styles.summary, className)} style={style} data-measure-summary="">
       <div className={cn(styles.change, tone)}>
         {formatChange(measurement.change)}
         {measurement.percent !== null ? <span> ({formatSignedPercent(measurement.percent)})</span> : null}

@@ -160,6 +160,7 @@ export default function TemporalLineChart({
   showRangeChange = false,
   mode = 'line',
   measurable = false,
+  onMeasureActiveChange,
 }: {
   points: TemporalLinePoint[]
   ariaLabel: string
@@ -172,6 +173,8 @@ export default function TemporalLineChart({
   mode?: TemporalChartMode
   /** Press and drag (a held touch on phones) measures between two days. */
   measurable?: boolean
+  /** Told when a measurement appears or clears, so nearby controls can step aside. */
+  onMeasureActiveChange?: (active: boolean) => void
 }) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
   // A touch reading has no hover to end it, so it stays until a tap elsewhere.
@@ -181,6 +184,11 @@ export default function TemporalLineChart({
   const canvasRef = useRef<HTMLDivElement>(null)
   const gestureRef = useRef<MeasureGesture | null>(null)
   const measuringRef = useRef(false)
+
+  const measureActive = measure !== null
+  useEffect(() => {
+    onMeasureActiveChange?.(measureActive)
+  }, [measureActive, onMeasureActiveChange])
 
   const clearMeasure = useCallback(() => {
     setMeasure(null)
@@ -253,6 +261,10 @@ export default function TemporalLineChart({
     gesture.active = true
     measuringRef.current = true
     setMeasuring(true)
+    setTouchReading(false)
+    setHoverIndex(null)
+    // A short buzz confirms the hold where the device supports it.
+    if (!gesture.mouse) navigator.vibrate?.(12)
     setMeasure({ first: gesture.startIndex, second: gesture.startIndex })
     try {
       element.setPointerCapture(gesture.pointerId)
@@ -313,7 +325,8 @@ export default function TemporalLineChart({
         const xTicks = buildXTicks(points.map((point) => point.date), xTickLimit)
         const xLabels = placeXLabels(xTicks, renderedPoints, padding.left, innerWidth)
         const yTicks = Array.from({ length: 5 }, (_, index) => floor + ((ceiling - floor) / 4) * index)
-        const hoverPoint = hoverIndex === null || measuring ? null : renderedPoints[hoverIndex] ?? null
+        // The reading and the measurement never show at once.
+        const hoverPoint = hoverIndex === null || measure !== null ? null : renderedPoints[hoverIndex] ?? null
         const tooltipLeft = hoverPoint ? Math.min(width - 156, Math.max(8, hoverPoint.x + 14)) : 0
         const tooltipTop = hoverPoint ? Math.max(8, Math.min(height - (candles ? 140 : 100), hoverPoint.y - 82)) : 0
         const firstRenderedPoint = renderedPoints[0] ?? null
@@ -347,9 +360,48 @@ export default function TemporalLineChart({
         const measurement = measure ? measureBetween(renderedPoints, measure.first, measure.second) : null
         const measureLeft = measure ? renderedPoints[Math.min(measure.first, measure.second)] : null
         const measureRight = measure ? renderedPoints[Math.max(measure.first, measure.second)] : null
-        const summaryCentre = measureLeft && measureRight
-          ? Math.max(96, Math.min(width - 96, (measureLeft.x + measureRight.x) / 2))
-          : 0
+        const activeEnd = measure && measuring ? renderedPoints[measure.second] ?? null : null
+        // Put the summary in the plot corner that covers the least: never over
+        // the measured span, and away from the line where possible.
+        const summarySize = { width: Math.min(200, innerWidth - 16), height: 70 }
+        let summaryAt = { left: padding.left + 8, top: padding.top + 4 }
+        if (measureLeft && measureRight) {
+          const plotLeft = padding.left + 4
+          const plotRight = padding.left + innerWidth - 4
+          // The plot's corners, plus the spots just outside either side of the span.
+          const xs = [
+            padding.left + 8,
+            padding.left + innerWidth - 8 - summarySize.width,
+            measureLeft.x - 12 - summarySize.width,
+            measureRight.x + 12,
+            padding.left + (innerWidth - summarySize.width) / 2,
+          ].filter((left) => left >= plotLeft && left + summarySize.width <= plotRight)
+          const ys = [padding.top + 4, padding.top + innerHeight - 4 - summarySize.height]
+          let best = Infinity
+          for (const top of ys) {
+            for (const left of xs) {
+              const right = left + summarySize.width
+              const bottom = top + summarySize.height
+              const overlapsSpan = Math.min(right, measureRight.x + 12) - Math.max(left, measureLeft.x - 12) > 0
+              let covered = 0
+              for (const point of renderedPoints) {
+                if (point.x < left || point.x > right) continue
+                const high = candles && typeof point.high === 'number' ? yOf(point.high) : point.y
+                const low = candles && typeof point.low === 'number' ? yOf(point.low) : point.y
+                if (low >= top && high <= bottom) covered += 1
+              }
+              // Never cover the day under the finger; avoid the span; then the line.
+              const coversActive = activeEnd !== null
+                && activeEnd.x >= left - 12 && activeEnd.x <= right + 12
+                && activeEnd.y >= top - 12 && activeEnd.y <= bottom + 12
+              const score = (coversActive ? 100_000 : 0) + (overlapsSpan ? 10_000 : 0) + covered
+              if (score < best) {
+                best = score
+                summaryAt = { left, top }
+              }
+            }
+          }
+        }
 
         return (
           <div
@@ -377,6 +429,10 @@ export default function TemporalLineChart({
                   />
                   <line x1={measureLeft.x} y1={padding.top} x2={measureLeft.x} y2={padding.top + innerHeight} className={styles.measureEdge} />
                   <line x1={measureRight.x} y1={padding.top} x2={measureRight.x} y2={padding.top + innerHeight} className={styles.measureEdge} />
+                  {activeEnd ? (
+                    // The day under the finger, drawn full height so it shows above a thumb.
+                    <line x1={activeEnd.x} y1={padding.top} x2={activeEnd.x} y2={padding.top + innerHeight} className={styles.measureActive} />
+                  ) : null}
                 </g>
               ) : null}
 
@@ -398,6 +454,7 @@ export default function TemporalLineChart({
                 <>
                   <circle cx={measureLeft.x} cy={measureLeft.y} r="4" className={styles.measureDot} />
                   <circle cx={measureRight.x} cy={measureRight.y} r="4" className={styles.measureDot} />
+                  {activeEnd ? <circle cx={activeEnd.x} cy={activeEnd.y} r="9" className={styles.measureRing} /> : null}
                 </>
               ) : null}
 
@@ -429,6 +486,8 @@ export default function TemporalLineChart({
                 fill="transparent"
                 onPointerDown={(event) => {
                   const index = indexAt(event, renderedPoints.length, innerWidth)
+                  // A tap on the chart clears a finished measurement before anything else.
+                  if (measure && !measuring) clearMeasure()
                   readPoint(index, event.pointerType)
                   if (!measurable || (event.pointerType === 'mouse' && event.button !== 0)) return
                   const previous = gestureRef.current
@@ -508,7 +567,7 @@ export default function TemporalLineChart({
                 measurement={measurement}
                 formatChange={formatChange}
                 className={styles.measureSummary}
-                style={{ left: summaryCentre }}
+                style={{ left: summaryAt.left, top: summaryAt.top, maxWidth: summarySize.width }}
               />
             ) : null}
             {measurable ? (

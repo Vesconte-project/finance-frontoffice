@@ -129,14 +129,6 @@ dialog.dialog > div {
   white-space: nowrap;
 }
 
-.measureSummary {
-  position: absolute;
-  z-index: 3;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
 .controls {
   display: flex;
   flex-wrap: wrap;
@@ -296,6 +288,10 @@ dialog.dialog > div {
   left: 6px;
   display: flex;
   gap: 8px;
+}
+
+.heroTools[hidden] {
+  display: none;
 }
 
 .heroToolButton {

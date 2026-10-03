@@ -289,9 +289,11 @@ function HeroPriceChart({
   state,
   className,
   currency,
+  onMeasureActiveChange,
 }: {
   points: TemporalLinePoint[]
   mode: 'line' | 'candles'
+  onMeasureActiveChange: (active: boolean) => void
   state: HistoricalChartState
   className?: string
   currency: string
@@ -302,6 +304,7 @@ function HeroPriceChart({
       points={points}
       mode={mode}
       measurable
+      onMeasureActiveChange={onMeasureActiveChange}
       ariaLabel={mode === 'candles' ? 'Daily price candles' : 'Historical closing price'}
       valueFormat="currency"
       currency={currency}
@@ -424,6 +427,8 @@ export default function StockOverviewClient({
   const [chartExpanded, setChartExpanded] = useState(false)
   // Line or candles, shared by the hero and the expanded chart for this visit.
   const [chartKind, setChartKind] = useState<'line' | 'candles'>('line')
+  // The corner buttons step aside while a measurement is on the chart.
+  const [heroMeasuring, setHeroMeasuring] = useState(false)
   const expandButtonRef = useRef<HTMLButtonElement>(null)
   // Never offer an empty expanded chart: it opens only over loaded backend OHLC.
   const canExpandChart = historicalChartState === 'loaded' && ohlcData.length >= 2
@@ -650,11 +655,12 @@ export default function StockOverviewClient({
               <HeroPriceChart
                 points={heroPoints}
                 mode={showCandles ? 'candles' : 'line'}
+                onMeasureActiveChange={setHeroMeasuring}
                 state={fullHistoryState === 'error' ? 'error' : historicalChartState}
                 currency={currency}
               />
               {canExpandChart ? (
-                <div className={expandedChartStyles.heroTools}>
+                <div className={expandedChartStyles.heroTools} hidden={heroMeasuring}>
                   <button
                     ref={expandButtonRef}
                     type="button"

@@ -204,7 +204,11 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
           <p className={styles.subtitle}>Price chart · daily · {currency}</p>
         </header>
 
-        {bar ? (
+        {measurement ? (
+          <div className={styles.legend}>
+            <MeasureSummary measurement={measurement} formatChange={formatChange} inline />
+          </div>
+        ) : bar ? (
           <p className={styles.legend} data-expanded-chart-legend="">
             <span>{formatDate(bar.date)}</span>
             {bar.open !== null ? <span>O <b>{formatMoney(bar.open, currency)}</b></span> : null}
@@ -237,9 +241,6 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
           />
           {drawTool ? (
             <span className={styles.hint} aria-hidden="true">{pending ? 'Tap the second point' : 'Tap the first point'}</span>
-          ) : null}
-          {measurement && !drawTool ? (
-            <MeasureSummary measurement={measurement} formatChange={formatChange} className={styles.measureSummary} />
           ) : null}
           <p className="sr-only" aria-live="polite">
             {measurement && !measuring ? describeMeasurement(measurement, formatChange) : ''}

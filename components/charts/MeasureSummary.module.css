@@ -38,3 +38,17 @@
 .flat {
   color: var(--text);
 }
+
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  color: var(--text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.inline .change {
+  font-size: 13px;
+}

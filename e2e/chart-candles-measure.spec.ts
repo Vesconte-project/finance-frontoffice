@@ -64,7 +64,29 @@ test.describe('desktop', () => {
     await expect(summary).toContainText('→')
     await expect(chart.locator('[data-measure-band]')).toHaveCount(1)
 
+    // Nothing stacks: the corner buttons step aside, no price reading shows,
+    // and the summary sits clear of the measured span.
+    await expect(page.getByRole('button', { name: 'Expand chart' })).toBeHidden()
+    await expect(chart.locator('[data-chart-tooltip]')).toHaveCount(0)
+    const band = (await chart.locator('[data-measure-band] rect').boundingBox())!
+    const card = (await summary.boundingBox())!
+    expect(card.x + card.width <= band.x || card.x >= band.x + band.width).toBe(true)
+
     await page.keyboard.press('Escape')
+    await expect(summary).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Expand chart' })).toBeVisible()
+  })
+
+  test('a click on the chart clears a finished measurement', async ({ page }) => {
+    const chart = await openTicker(page)
+    const box = (await chart.locator('svg').boundingBox())!
+    await page.mouse.move(box.x + box.width * 0.25, box.y + box.height * 0.5)
+    await page.mouse.down()
+    await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.5, { steps: 8 })
+    await page.mouse.up()
+    const summary = chart.locator('[data-measure-summary]')
+    await expect(summary).toBeVisible()
+    await page.mouse.click(box.x + box.width * 0.85, box.y + box.height * 0.5)
     await expect(summary).toHaveCount(0)
   })
 
@@ -85,6 +107,9 @@ test.describe('desktop', () => {
     const summary = dialog.locator('[data-measure-summary]')
     await expect(summary).toBeVisible()
     await expect(summary).toContainText(/\d+ days · \d+ sessions/)
+    // The summary takes the legend line above the chart instead of covering it.
+    const card = (await summary.boundingBox())!
+    expect(card.y + card.height).toBeLessThanOrEqual(box.y + 1)
 
     await canvas.focus()
     await page.keyboard.press('Escape')
@@ -111,9 +136,10 @@ test.describe('touch phone', () => {
     await expect(summary).toContainText(/\d+ days · \d+ sessions/)
     expect(await page.evaluate(() => window.scrollY)).toBe(scrollBefore)
 
-    // A tap outside the chart clears it.
-    await page.touchscreen.tap(20, box.y + box.height + 160)
+    // A tap on the chart clears it and reads that day instead.
+    await page.touchscreen.tap(box.x + box.width * 0.5, box.y + box.height * 0.5)
     await expect(summary).toHaveCount(0)
+    await expect(chart.locator('[data-chart-tooltip]')).toBeVisible()
   })
 
   test('a quick drag still scrubs and does not measure', async ({ page }) => {
@@ -141,5 +167,7 @@ test.describe('touch phone', () => {
       600,
     )
     await expect(dialog.locator('[data-measure-summary]')).toBeVisible()
+    await page.touchscreen.tap(box.x + box.width * 0.5, box.y + box.height * 0.5)
+    await expect(dialog.locator('[data-measure-summary]')).toHaveCount(0)
   })
 })

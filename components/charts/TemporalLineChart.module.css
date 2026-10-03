@@ -205,7 +205,16 @@
 .measureSummary {
   position: absolute;
   z-index: 3;
-  /* Below the hero's corner buttons, so it never covers them. */
-  top: 54px;
-  transform: translateX(-50%);
+  white-space: normal;
+}
+
+.measureActive {
+  stroke: var(--text);
+  stroke-width: 1.5;
+}
+
+.measureRing {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2;
 }
