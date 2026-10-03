@@ -745,9 +745,15 @@ export default function TickerSearchCombobox({
         aria-activedescendant={shouldShowDropdown ? activeDescendantId : undefined}
         aria-haspopup="listbox"
         aria-label={label ? undefined : placeholder}
-        // Browser form history offered past queries above the mobile keyboard,
-        // a second suggestion list competing with this one.
-        autoComplete="off"
+        // Chrome ignores autocomplete="off" for its autofill heuristics, and on
+        // a phone raised its password/card/address bar over the keyboard for
+        // the homepage search. An autocomplete token it does not recognise is
+        // what it does honour; the data attributes are the opt-outs password
+        // managers read.
+        autoComplete="ticker-search"
+        data-1p-ignore=""
+        data-lpignore="true"
+        data-form-type="other"
         autoCapitalize="characters"
         autoCorrect="off"
         spellCheck={false}

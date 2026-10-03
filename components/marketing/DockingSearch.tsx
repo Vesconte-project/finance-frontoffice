@@ -90,10 +90,6 @@ export default function DockingSearch() {
         <p className="dock-search__subtitle">{"Don't guess. Analyze."}</p>
       </div>
       <div className="dock-search__field">
-        {/* "companies", not "company": Chrome's autofill reads a singular
-            "company" as an organisation field and raised its address, card and
-            password bar over the phone keyboard. autocomplete="off" does not
-            stop that heuristic. */}
         <HeaderSearch className="w-full" maxSuggestions={4} placeholder="Search tickers or companies…" typingHints={TYPING_HINTS} />
       </div>
       <div className="dock-search__support">
