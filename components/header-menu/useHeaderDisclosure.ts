@@ -13,9 +13,10 @@ const FOCUSABLE = 'a[href], button:not([disabled])'
 type DisclosureMenu = { key: string }
 
 /**
- * State and dismissal rules for the header's expanding menus.
+ * State and dismissal rules for the header's disclosures: the expanding menus
+ * and, on compact screens, the search folded into the bar.
  *
- * One menu is open at a time. It closes on an outside press, Escape, a route
+ * One disclosure is open at a time. It closes on an outside press, Escape, a route
  * change, or real scrolling. On compact screens the open panel fills most of
  * the viewport, so the page underneath is locked through the shared scroll
  * runtime instead of being closed by the first touch scroll.
@@ -51,8 +52,11 @@ export function useHeaderDisclosure<T extends DisclosureMenu>({
       }
       if (clearTimer.current) clearTimeout(clearTimer.current)
       returnFocus.current = trigger
-      focusPanelOnOpen.current = viaKeyboard
-      setDisplayed(menus.find((m) => m.key === key) ?? null)
+      // Keys without a menu (the search field) manage their own content and
+      // focus; the menu panel keeps whatever it last showed while it closes.
+      const menu = menus.find((m) => m.key === key)
+      focusPanelOnOpen.current = viaKeyboard && !!menu
+      if (menu) setDisplayed(menu)
       setOpenKey(key)
     },
     [close, menus, openKey]

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth, useClerk, useUser } from '@clerk/nextjs'
 import { ArrowRight, ChevronDown } from 'lucide-react'
@@ -8,12 +8,19 @@ import HeaderAccountControl from '@/components/HeaderAccountControl'
 import HeaderSearch from '@/components/HeaderSearch'
 import HeaderMenuPanel from '@/components/header-menu/HeaderMenuPanel'
 import HeaderMenuTrigger from '@/components/header-menu/HeaderMenuTrigger'
+import {
+  HeaderSearchField,
+  HeaderSearchTrigger,
+  openSearchFromTrigger,
+} from '@/components/header-menu/HeaderSearchDisclosure'
 import { HEADER_MENUS, accountMenu, type HeaderMenuData } from '@/components/header-menu/header-menus'
 import { useHeaderDisclosure } from '@/components/header-menu/useHeaderDisclosure'
 import { cn } from '@/lib/utils'
 import { BRAND_NAME } from '@/components/marketing/site-config'
 
 const PANEL_ID = 'site-header-menu'
+const SEARCH_ID = 'site-header-search'
+const SEARCH_KEY = 'search'
 
 export default function HeaderBar({ isHome }: { isHome: boolean }) {
   const { isSignedIn } = useAuth()
@@ -21,6 +28,8 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
   const clerk = useClerk()
   const rowRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  const barRef = useRef<HTMLDivElement>(null)
+  const searchFieldRef = useRef<HTMLDivElement>(null)
 
   const menus = useMemo<HeaderMenuData[]>(() => {
     if (!isSignedIn) return HEADER_MENUS
@@ -29,6 +38,21 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
   }, [isSignedIn, user])
 
   const { openKey, displayed, toggle, close } = useHeaderDisclosure({ menus, rowRef, panelRef })
+  const searchOpen = openKey === SEARCH_KEY
+  const menuOpen = !!openKey && !searchOpen
+
+  // Closing the search by any route (Cancel, outside tap, a menu) drops the
+  // keyboard with it.
+  useEffect(() => {
+    if (searchOpen) return
+    const active = document.activeElement
+    if (active instanceof HTMLElement && searchFieldRef.current?.contains(active)) active.blur()
+  }, [searchOpen])
+
+  function toggleSearch(trigger: HTMLButtonElement, viaKeyboard: boolean) {
+    if (!searchOpen) openSearchFromTrigger(barRef.current, searchFieldRef.current, trigger)
+    toggle(SEARCH_KEY, trigger, viaKeyboard)
+  }
 
   return (
     <div
@@ -36,10 +60,12 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
       data-site-header-row
       data-home={isHome ? '' : undefined}
       data-internal={!isHome ? '' : undefined}
-      data-menu-open={openKey ? '' : undefined}
+      data-menu-open={menuOpen ? '' : undefined}
+      data-search-open={searchOpen ? '' : undefined}
       className="site-header__row"
     >
       <div
+        ref={barRef}
         className={cn(
           'site-header__bar flex items-center gap-4',
           !isHome && 'justify-between md:grid md:grid-cols-[1fr_auto_1fr]'
@@ -74,6 +100,7 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
             'site-header__cluster md:justify-self-end'
           )}
         >
+          <HeaderSearchTrigger expanded={searchOpen} controls={SEARCH_ID} onToggle={toggleSearch} />
           <nav data-analytics-surface="site_header" className="flex items-center">
             {HEADER_MENUS.map((m) => (
               <HeaderMenuTrigger
@@ -94,12 +121,19 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
             onToggleAccount={(trigger, viaKeyboard) => toggle('account', trigger, viaKeyboard)}
           />
         </div>
+
+        <HeaderSearchField
+          id={SEARCH_ID}
+          open={searchOpen}
+          fieldRef={searchFieldRef}
+          onCancel={() => close()}
+        />
       </div>
 
       <HeaderMenuPanel
         id={PANEL_ID}
         menu={displayed}
-        open={!!openKey}
+        open={menuOpen}
         panelRef={panelRef}
         onNavigate={() => close()}
         intro={

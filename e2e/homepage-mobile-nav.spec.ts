@@ -38,19 +38,70 @@ test('mobile hero sits within the visible viewport, not pushed far below the fol
   expect(dockTop).toBeGreaterThan(0)
 })
 
-test('mobile search is reachable again after scrolling the homepage', async ({ page }) => {
+test('mobile search is reachable from the header bar after scrolling the homepage', async ({ page }) => {
   await stubBackends(page)
   await page.goto('/', { waitUntil: 'load' })
   await page.evaluate(() => document.fonts.ready)
   await page.waitForTimeout(1200)
 
+  // At the top the hero's own search is the search; the bar's icon stands down.
+  const trigger = page.getByRole('button', { name: 'Search tickers or companies' })
+  await expect(trigger).toHaveCSS('opacity', '0')
+
   await page.mouse.wheel(0, 400)
   await expect.poll(() => page.evaluate(() => document.documentElement.classList.contains('chrome-scrolled'))).toBe(true)
+  await expect(trigger).toHaveCSS('opacity', '1')
 
-  const mobileSearchInput = page.locator('.site-header__inner > .mt-3 input')
-  await expect(mobileSearchInput).toBeVisible()
-  const box = await mobileSearchInput.boundingBox()
-  expect(box?.width ?? 0).toBeGreaterThan(0)
+  await trigger.click()
+  const input = page.locator('#site-header-search input')
+  await expect(input).toBeFocused()
+  await expect(input).toBeVisible()
+  const box = await input.boundingBox()
+  expect(box?.width ?? 0).toBeGreaterThan(200)
+})
+
+test('mobile header is one bar with search folded into it', async ({ page }) => {
+  await stubBackends(page)
+  await page.goto('/faq', { waitUntil: 'load' })
+  await page.evaluate(() => document.fonts.ready)
+
+  const header = await page.locator('.site-header').boundingBox()
+  expect(header?.height ?? 0).toBeLessThanOrEqual(57)
+  const row = await page.locator('.site-header__row').boundingBox()
+  expect(row?.x ?? -1).toBe(0)
+  expect(row?.width ?? 0).toBe(390)
+
+  const trigger = page.getByRole('button', { name: 'Search tickers or companies' })
+  await trigger.click()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+  const input = page.locator('#site-header-search input')
+  await expect(input).toBeFocused()
+  await input.fill('a')
+  await expect(page.locator('#site-header-search .ticker-search__scroll')).toBeVisible()
+
+  // Suggestions span the screen under the bar.
+  const panel = await page.locator('#site-header-search [role="listbox"]').boundingBox()
+  expect(panel?.x ?? -1).toBe(0)
+  expect(panel?.width ?? 0).toBe(390)
+
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  await expect(input).not.toBeFocused()
+  await expect(page.locator('.site-header__brand')).toHaveCSS('opacity', '1')
+})
+
+test('Escape closes the mobile search and returns focus to its icon', async ({ page }) => {
+  await stubBackends(page)
+  await page.goto('/faq', { waitUntil: 'load' })
+  await page.evaluate(() => document.fonts.ready)
+
+  const trigger = page.getByRole('button', { name: 'Search tickers or companies' })
+  await trigger.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.locator('#site-header-search input')).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  await expect(trigger).toBeFocused()
 })
 
 test('mobile header exposes the same Today and Correlation triggers as desktop, no toggle/menu icon', async ({ page }) => {
@@ -95,10 +146,9 @@ test('mobile Correlation opens the shared menu panel as a vertical list', async 
     expect(box.right).toBeLessThanOrEqual(390)
   }
 
-  // The page underneath is locked and the docked search row stands down.
+  // The page underneath is locked.
   // Lenis clips the root when the runtime lock stops it; native mode hides it.
   await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).overflow)).toMatch(/^(hidden|clip)$/)
-  await expect(page.locator('.site-header__inner > .mt-3')).toBeHidden()
 
   await tiles.filter({ hasText: 'Network' }).click()
   // The first visit compiles the route under `next dev`.
@@ -215,10 +265,10 @@ test('suggestion panel shrinks to fit the visible viewport instead of overflowin
   await page.goto('/faq', { waitUntil: 'load' })
   await page.evaluate(() => document.fonts.ready)
 
-  const input = page.locator('.site-header__inner > .mt-3 input')
-  await input.click()
+  await page.getByRole('button', { name: 'Search tickers or companies' }).click()
+  const input = page.locator('#site-header-search input')
   await input.fill('a')
-  await expect.poll(() => page.locator('.site-header__inner > .mt-3 .ticker-search__scroll').isVisible()).toBe(true)
+  await expect.poll(() => page.locator('#site-header-search .ticker-search__scroll').isVisible()).toBe(true)
 
   // Simulate the on-screen keyboard: visualViewport shrinks, window.innerHeight does not.
   await page.evaluate(() => {
@@ -229,6 +279,6 @@ test('suggestion panel shrinks to fit the visible viewport instead of overflowin
   })
   await page.waitForTimeout(150)
 
-  const panelHeight = await page.locator('.site-header__inner > .mt-3 .ticker-search__scroll').evaluate((el) => el.getBoundingClientRect().height)
+  const panelHeight = await page.locator('#site-header-search .ticker-search__scroll').evaluate((el) => el.getBoundingClientRect().height)
   expect(panelHeight).toBeLessThan(300)
 })
