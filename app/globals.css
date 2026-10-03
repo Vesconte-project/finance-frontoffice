@@ -869,15 +869,12 @@ html.atlas-immersive .site-header,
 html.atlas-immersive .site-header__inner {
   pointer-events: none;
 }
-html.atlas-immersive .site-header__inner > .mt-3 {
-  pointer-events: auto;
-}
 /* The condensed row can temporarily be wider while scroll state settles. Its
    empty grid cells must never cover the atlas controls beside the pill. */
 html.atlas-immersive .site-header__row {
   pointer-events: none;
 }
-html.atlas-immersive .site-header__bar :is(a, button, [data-header-search], [data-pill-search]),
+html.atlas-immersive .site-header__bar :is(a, button, [data-header-search], [data-pill-search], [data-mobile-search]),
 html.atlas-immersive .site-header__dropdowns {
   pointer-events: auto;
 }
@@ -973,6 +970,21 @@ html.atlas-immersive .atlas-view {
   html,
   body {
     overflow-x: clip;
+    overscroll-behavior-y: none;
+  }
+}
+
+/* Touch screens keep the browser's pull-to-refresh: the spinner that follows
+   the finger down from the top of any page. The rule above exists for wheel
+   and trackpad overscroll against the smooth-scroll runtime, which touch does
+   not use. An open header panel still holds the page still. */
+@media (hover: none) and (pointer: coarse) {
+  html,
+  body {
+    overscroll-behavior-y: auto;
+  }
+  html.has-header-menu,
+  html.has-header-menu body {
     overscroll-behavior-y: none;
   }
 }
@@ -1705,9 +1717,6 @@ html[data-scroll-profile='operational'] .site-header[data-internal] .site-header
 .site-header[data-internal] .site-header__row [data-header-search] :is(input) {
   height: 48px;
 }
-.site-header[data-internal] .site-header__inner > .mt-3 :is(input) {
-  height: 48px;
-}
 html.chrome-scrolled .site-header[data-internal] .site-header__row:not([data-menu-open]) {
   max-width: 418px;
   border-radius: 6px;
@@ -1886,9 +1895,283 @@ html.chrome-scrolled .site-header__row:not([data-menu-open]) [data-header-search
     min-height: 170px;
   }
 }
+/* Compact: the same panel and the same menus, laid out as a vertical list. The
+   intro card leads; each destination is a full-width row. The panel scrolls
+   inside itself when a short screen cannot hold it, and the page underneath is
+   locked (useHeaderDisclosure) rather than scrolled. */
+.site-header__tile-chevron {
+  display: none;
+}
 @media (max-width: 767px) {
-  .site-header__dropdowns {
+  .site-header__row[data-menu-open] .site-header__dropdowns {
+    max-height: calc(100dvh - var(--site-header-rest-bar-height) - 36px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .site-header__dropgrid {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 2px 8px 8px;
+  }
+  .site-header__dropgrid .site-header__tile--text {
+    min-height: 0;
+    gap: 14px;
+    margin-bottom: 4px;
+    padding: 14px 12px;
+  }
+  .site-header__dropgrid .site-header__tile-blurb {
+    margin-top: 6px;
+  }
+  .site-header__dropgrid .site-header__tile:not(.site-header__tile--text) {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 52px;
+    padding: 0 12px;
+    border: 0;
+    border-top: 1px solid var(--line-soft);
+    border-radius: 0;
+    background: transparent;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color 120ms ease;
+  }
+  .site-header__dropgrid .site-header__tile:not(.site-header__tile--text)::after,
+  .site-header__dropgrid .site-header__tile-media {
     display: none;
+  }
+  .site-header__dropgrid .site-header__tile:not(.site-header__tile--text):active {
+    background-color: var(--surface-soft);
+  }
+  .site-header__dropgrid .site-header__tile:not(.site-header__tile--text):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+  .site-header__dropgrid .site-header__tile-label {
+    font-size: 19px;
+    color: var(--text);
+  }
+  .site-header__tile-chevron {
+    display: block;
+    flex-shrink: 0;
+    color: var(--content-secondary);
+  }
+  .site-header__dropgrid .site-header__tile-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .site-header__dropgrid :is(.site-header__tile-view, .site-header__tile-signout) {
+    height: 44px;
+  }
+  /* The page underneath stays put while the panel covers it. */
+  html.has-header-menu {
+    overflow: hidden;
+  }
+  /* Below a phone panel the page stays in view, faded back, so the open menu
+     or search reads as sitting on the page rather than replacing it. */
+  :root .site-header .site-header__backdrop {
+    height: 100lvh;
+    background: color-mix(in srgb, var(--bg) 78%, transparent);
+  }
+}
+
+/* --- Compact header: one edge-to-edge bar -----------------------------------
+   Below md the floating pill and the separate search row become a single
+   56px bar with a hairline under it. Search lives in the bar as an icon; it
+   grows out of the icon to cover the bar (clip from the icon's measured
+   edges, set by HeaderSearchDisclosure) and its suggestions drop below. The
+   desktop morph (pill widths, condensed padding) does not apply here, hence
+   the !important on geometry the scroll states would otherwise rewrite. */
+.site-header__search-trigger,
+.site-header__search-field {
+  display: none;
+}
+@media (max-width: 767px) {
+  .site-header .site-header__inner {
+    padding: 0;
+  }
+  .site-header .site-header__row {
+    max-width: none !important;
+    border-radius: 0 !important;
+  }
+  .site-header .site-header__row::before {
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    opacity: 1 !important;
+  }
+  /* The homepage opens on the phrase over its field, as on desktop. */
+  html:not(.chrome-scrolled) .site-header .site-header__row[data-home]:not([data-menu-open]):not([data-search-open])::before {
+    opacity: 0 !important;
+  }
+  .site-header .site-header__bar {
+    position: relative;
+    display: flex;
+    gap: 6px !important;
+    min-height: 56px !important;
+    padding: 0 20px !important;
+  }
+  .site-header .site-header__brand {
+    padding-left: 0;
+    font-size: 18px !important;
+  }
+  .site-header .site-header__cluster {
+    gap: 2px;
+  }
+  .site-header__navlink {
+    min-height: 40px;
+    padding-inline: 8px;
+  }
+  /* The bar's own edges give the menus their room; the chevrons would take it
+     back. The expanded state still marks the open trigger. */
+  .site-header .site-nav__trigger .site-nav__chev {
+    display: none;
+  }
+  /* One height in every scroll state: the desktop pill shrinks Join as it
+     condenses, which on a bar that never condenses read as Join collapsing. */
+  html .site-header .site-header__bar .site-header__join {
+    height: 36px;
+    margin-left: 4px;
+    padding-inline: 14px;
+    transition: none;
+  }
+
+  .site-header__search-trigger {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--content-primary);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity 160ms ease;
+  }
+  .site-header__search-trigger:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+  /* At the top of the homepage the hero's own search is the search. */
+  html:not(.chrome-scrolled) .site-header__row[data-home] .site-header__search-trigger {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .site-header__search-field {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 4px 0 12px;
+    background: var(--bg);
+    clip-path: inset(0 var(--search-from-right, 0px) 0 var(--search-from-left, 0px) round 6px);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      clip-path 300ms var(--chrome-ease),
+      opacity 140ms ease;
+  }
+  /* Open, the clip reaches past the bar's bottom edge so it never cuts the
+     suggestions hanging below it. */
+  .site-header__row[data-search-open] .site-header__search-field {
+    clip-path: inset(0 0 -100dvh 0 round 0px);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .site-header__bar > :not(.site-header__search-field) {
+    transition: opacity 180ms ease;
+  }
+  .site-header__row[data-search-open] .site-header__bar > :not(.site-header__search-field) {
+    opacity: 0;
+    pointer-events: none;
+  }
+  /* The combobox positions against the whole bar, so its suggestions span
+     the screen instead of stopping short of Cancel. */
+  .site-header__search-field .ticker-search__root {
+    position: static;
+    flex: 1;
+    min-width: 0;
+  }
+  .site-header__search-field .ticker-search__icon {
+    left: 26px;
+  }
+  .site-header__search-field .ticker-search__input {
+    height: 40px;
+    font-size: 16px;
+  }
+  .site-header__search-field .ticker-search__panel {
+    margin-top: 0;
+    border-width: 0 0 1px;
+    border-radius: 0;
+  }
+  /* Phone rows carry the name and symbol only. Tracking already shows in the
+     row's icon, and the status chip, source label and exchange repeated it
+     across a line too narrow to hold them. The homepage hero drops the same
+     repeats but keeps its own row geometry, which its open/close choreography
+     is measured against. */
+  .site-header__search-field .ticker-search__option {
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 12px;
+    min-height: 48px;
+    padding-block: 6px;
+  }
+  .site-header__search-field .ticker-search__option > div:first-child > span {
+    width: 32px;
+    height: 32px;
+  }
+  :is(.site-header__search-field, .dock-search) .ticker-search__option > div:nth-child(3),
+  :is(.site-header__search-field, .dock-search) .ticker-search__source {
+    display: none;
+  }
+  .site-header__search-cancel {
+    flex-shrink: 0;
+    height: 40px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--content-primary);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .site-header__search-cancel:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+}
+@media (max-width: 767px) and (prefers-reduced-motion: reduce) {
+  .site-header__search-field,
+  .site-header__bar > :not(.site-header__search-field) {
+    transition: none;
+  }
+}
+/* Small phones: brand, search, both triggers and Join/avatar share what is
+   left after the bar's edges. */
+@media (max-width: 389px) {
+  .site-header .site-header__bar {
+    padding: 0 16px !important;
+  }
+  .site-header .site-header__navlink {
+    padding-inline: 6px;
+  }
+}
+@media (max-width: 359px) {
+  .site-header .site-header__brand {
+    font-size: 16px !important;
+  }
+  .site-header .site-header__navlink {
+    padding-inline: 5px;
+  }
+  html .site-header .site-header__bar .site-header__join {
+    padding-inline: 12px;
   }
 }
 
@@ -2036,7 +2319,7 @@ html.chrome-scrolled .site-header__row:not([data-menu-open]) [data-header-search
   font-weight: 500;
   font-size: 26px;
   letter-spacing: normal;
-  color: var(--menu-tile-label, var(--surface));
+  color: var(--menu-tile-label, var(--content-primary));
 }
 /* text tile */
 .site-header__tile--text {
@@ -3137,8 +3420,16 @@ html[data-theme="dark"] .marketing-home .dock-search .ticker-search__panel butto
   background: var(--dock-search-surface);
   box-shadow: none;
 }
-.dock-search__field :is(input):hover {
+.dock-search__field :is(input):hover,
+/* Asleep (TapToActivateField), the input is inert and takes no hover itself. */
+.dock-search__field[data-field-active='false']:hover :is(input) {
   border-color: color-mix(in srgb, var(--brand-spark) 68%, var(--content-primary) 12%);
+}
+.dock-search__field[data-field-active='false'] {
+  cursor: text;
+}
+.dock-search__field[data-field-active='false']:focus-visible {
+  outline: none;
 }
 .dock-search__field :is(input):focus-visible {
   border-color: var(--brand-spark);
@@ -3210,17 +3501,6 @@ html.chrome-scrolled .dock-search {
 }
 
 @media (max-width: 767px) {
-  /* The big DockingSearch overlay is the search while it's showing, so this
-     in-flow row would be a redundant second search field at rest. Once it's
-     scrolled and faded away (below), there is otherwise no search left on
-     mobile — the desktop pill search and header search are both md:block —
-     so this row takes over as mobile's docked search. */
-  .marketing-home .site-header__inner > .mt-3 {
-    display: none;
-  }
-  html.chrome-scrolled .marketing-home .site-header__inner > .mt-3 {
-    display: block;
-  }
   .dock-search {
     --dock-search-motion-duration: 280ms;
     --dock-search-motion-easing: var(--motion-ease-soft);

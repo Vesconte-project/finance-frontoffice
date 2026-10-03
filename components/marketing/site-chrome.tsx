@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
-import HeaderSearch from '@/components/HeaderSearch'
 import HeaderBar from '@/components/marketing/HeaderBar'
 import AccountEntryLink from '@/components/AccountEntryLink'
 import { cn } from '@/lib/utils'
@@ -16,10 +15,8 @@ export const sharedHeaderMenuShellClass =
 
 export const sharedHeaderDesktopSearchClass = 'ml-auto w-full max-w-[520px] lg:max-w-[480px]'
 
-export const sharedHeaderMobileSearchClass = 'mx-auto w-full max-w-[680px]'
-
-export const sharedHeaderOffsetClass = 'pt-[100px] md:pt-[72px]'
-export const sharedHeaderSpacerClass = 'h-[100px] md:h-[72px]'
+export const sharedHeaderOffsetClass = 'pt-[72px]'
+export const sharedHeaderSpacerClass = 'h-[72px]'
 
 type PageLink = {
   openInNewTab?: boolean
@@ -181,10 +178,6 @@ export function SiteHeader({ activeHref }: { activeHref?: string }) {
     >
       <div className={cn(sharedHeaderInnerClass, 'site-header__inner')}>
         <HeaderBar isHome={isHome} />
-
-        <div className="mt-3 md:hidden">
-          <HeaderSearch className={sharedHeaderMobileSearchClass} />
-        </div>
       </div>
       <div className="site-header__backdrop" aria-hidden="true" />
     </header>

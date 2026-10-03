@@ -54,6 +54,10 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await expect(page.locator('.dock-search[data-reveal-ready="true"]')).toBeVisible()
     await page.waitForTimeout(1900)
     const input = page.locator('.dock-search__field input[role="combobox"]')
+    // The hero field sleeps until asked for (TapToActivateField); focusing
+    // its wrapper wakes it, as Tab would.
+    await page.locator('.dock-search__field').focus()
+    await expect(input).toBeFocused()
     await input.fill('alpha')
     await expect(page.getByRole('option')).toHaveCount(3)
     await expect(page.getByRole('option').first()).toBeVisible()

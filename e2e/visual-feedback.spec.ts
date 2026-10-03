@@ -31,7 +31,8 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await page.screenshot({ path: join(directory, `homepage-top-${colorScheme}.png`) })
 
     const heroInput = page.locator('.dock-search__field input')
-    await heroInput.focus()
+    // The hero field sleeps until asked for (TapToActivateField).
+    await page.locator('.dock-search__field').focus()
     await expect(heroInput).toBeFocused()
     await page.mouse.wheel(0, 1000)
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(120)
@@ -58,6 +59,7 @@ test('explicit dark theme keeps typed homepage search readable', async ({ page }
   await page.evaluate(() => { document.documentElement.dataset.theme = 'dark' })
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   const input = page.locator('.dock-search__field input')
+  await page.locator('.dock-search__field').focus()
   await input.fill('ASML')
   await expect(input).toHaveCSS('color', 'rgb(236, 230, 218)')
   await expect(input).toHaveCSS('background-color', 'rgb(23, 33, 48)')
