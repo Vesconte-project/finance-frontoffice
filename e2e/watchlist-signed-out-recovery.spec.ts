@@ -180,9 +180,9 @@ test('signed-out export opens its own prompt instead of a panel in the hero', as
   const heroBefore = await page.locator('[data-ticker-hero]').boundingBox()
   const exportButton = page.getByRole('button', { name: 'Download signal history CSV' })
   await exportButton.click()
-  const dialog = page.getByRole('dialog', { name: 'Export signal history' })
+  const dialog = page.getByRole('dialog', { name: 'Signal export is a Pro feature' })
   await expect(dialog).toBeVisible()
-  await expect(dialog).toContainText('Signal export is included with Pro.')
+  await expect(dialog).toContainText('signal history as a CSV is part of Pro.')
   // Signed out, the prompt opens without asking the protected route.
   expect(exportRequests).toEqual([])
   expect(await page.locator('[data-ticker-hero]').boundingBox()).toEqual(heroBefore)

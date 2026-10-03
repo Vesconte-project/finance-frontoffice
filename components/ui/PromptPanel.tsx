@@ -1,15 +1,35 @@
 import type { ReactNode } from 'react'
+import { Hourglass, Lock, Star, TriangleAlert, type LucideIcon } from 'lucide-react'
 import styles from './PromptPanel.module.css'
 
+/**
+ * What kind of moment the prompt is. Each status has its own signature —
+ * colour, glyph, constellation and motion — so it can be told apart at a
+ * glance, before any copy is read; the status label carries the same meaning
+ * in words, so colour is never the only cue.
+ *
+ * - `invite`: something an account unlocks. Ocre, a star, a connected field.
+ * - `locked`: a paid feature. Ocre, a lock, a quieter field.
+ * - `error`: something went wrong. The negative token, a warning glyph that
+ *   shakes once, and a field whose edges are broken.
+ * - `empty`: nothing is wrong, there is just nothing yet. Neutral grey, an
+ *   hourglass, and nodes that are not yet connected.
+ */
+export type PromptStatus = 'invite' | 'locked' | 'error' | 'empty'
+
+const GLYPHS: Record<PromptStatus, LucideIcon> = {
+  invite: Star,
+  locked: Lock,
+  error: TriangleAlert,
+  empty: Hourglass,
+}
+
 type PromptPanelProps = {
-  /** The ticker shown at the centre of the constellation. */
+  /** The ticker named beside the status glyph. */
   ticker: string
-  /**
-   * `unavailable` draws the constellation under construction — broken dashed
-   * edges and hollow nodes — for outcomes such as a failed or empty request.
-   */
-  tone?: 'default' | 'unavailable'
-  eyebrow: string
+  status: PromptStatus
+  /** Short category in words, shown as the status label: "Error", "Pro feature"… */
+  statusLabel: string
   title: ReactNode
   titleId: string
   description: ReactNode
@@ -21,9 +41,8 @@ type PromptPanelProps = {
 }
 
 /*
- * Decorative constellation in the homepage's language: the ticker as the
- * selected ocre node, unlabelled neighbours and thin edges. It implies no
- * relationship data — no neighbour is named.
+ * Decorative constellation in the homepage's language. It implies no
+ * relationship data — no neighbour is named — and changes with the status.
  */
 const CENTER = { x: 200, y: 64 }
 const NEIGHBOURS = [
@@ -43,56 +62,69 @@ const DUST = [
   [22, 24], [64, 120], [176, 120], [226, 12], [340, 18], [392, 86], [12, 58], [270, 70],
 ] as const
 
-/** Where an edge stops when the constellation is drawn as broken. */
+/** Edges begin outside the glyph so they read as leaving it. */
+const GLYPH_CLEARANCE = 30
+
+function edgeStart(to: { x: number; y: number }) {
+  const dx = to.x - CENTER.x
+  const dy = to.y - CENTER.y
+  const length = Math.hypot(dx, dy)
+  return { x: CENTER.x + (dx / length) * GLYPH_CLEARANCE, y: CENTER.y + (dy / length) * GLYPH_CLEARANCE }
+}
+
+/** Where an edge stops when the field is drawn broken. */
 function edgeEnd(from: { x: number; y: number }, to: { x: number; y: number }, index: number, broken: boolean) {
   if (!broken || index % 2 === 0) return to
-  const reach = 0.55
+  const reach = 0.5
   return { x: from.x + (to.x - from.x) * reach, y: from.y + (to.y - from.y) * reach }
 }
 
-function Constellation({ ticker, broken }: { ticker: string; broken: boolean }) {
+function Constellation({ status }: { status: PromptStatus }) {
+  const broken = status === 'error'
+  // Nothing connected yet: an empty prompt draws its nodes without edges.
+  const connected = status !== 'empty'
+
   return (
-    <svg
-      className={styles.constellation}
-      data-broken={broken ? 'true' : undefined}
-      viewBox="0 0 400 132"
-      preserveAspectRatio="xMidYMid slice"
-      aria-hidden="true"
-    >
+    <svg className={styles.constellation} viewBox="0 0 400 132" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       {DUST.map(([x, y], index) => (
         <circle key={`dust-${index}`} className={styles.dust} cx={x} cy={y} r={1} style={{ ['--i' as never]: index }} />
       ))}
-      {NEIGHBOURS.map((node, index) => {
-        const end = edgeEnd(CENTER, node, index, broken)
-        return (
-          <line
-            key={`edge-${index}`}
-            className={styles.edge}
-            x1={CENTER.x}
-            y1={CENTER.y}
-            x2={end.x}
-            y2={end.y}
-            pathLength={1}
-            style={{ ['--i' as never]: index }}
-          />
-        )
-      })}
-      {OUTER.map((node, index) => {
-        const from = NEIGHBOURS[node.from]
-        const end = edgeEnd(from, node, index + 1, broken)
-        return (
-          <line
-            key={`outer-edge-${index}`}
-            className={styles.edgeFaint}
-            x1={from.x}
-            y1={from.y}
-            x2={end.x}
-            y2={end.y}
-            pathLength={1}
-            style={{ ['--i' as never]: index + NEIGHBOURS.length }}
-          />
-        )
-      })}
+      {connected
+        ? NEIGHBOURS.map((node, index) => {
+            const start = edgeStart(node)
+            const end = edgeEnd(start, node, index, broken)
+            return (
+              <line
+                key={`edge-${index}`}
+                className={styles.edge}
+                x1={start.x}
+                y1={start.y}
+                x2={end.x}
+                y2={end.y}
+                pathLength={1}
+                style={{ ['--i' as never]: index }}
+              />
+            )
+          })
+        : null}
+      {connected
+        ? OUTER.map((node, index) => {
+            const from = NEIGHBOURS[node.from]
+            const end = edgeEnd(from, node, index + 1, broken)
+            return (
+              <line
+                key={`outer-edge-${index}`}
+                className={styles.edgeFaint}
+                x1={from.x}
+                y1={from.y}
+                x2={end.x}
+                y2={end.y}
+                pathLength={1}
+                style={{ ['--i' as never]: index + NEIGHBOURS.length }}
+              />
+            )
+          })
+        : null}
       {[...NEIGHBOURS, ...OUTER].map((node, index) => (
         <circle
           key={`node-${index}`}
@@ -103,22 +135,20 @@ function Constellation({ ticker, broken }: { ticker: string; broken: boolean }) 
           style={{ ['--i' as never]: index }}
         />
       ))}
-      {broken ? null : <circle className={styles.pulse} cx={CENTER.x} cy={CENTER.y} r={9} />}
-      <circle className={styles.center} cx={CENTER.x} cy={CENTER.y} r={8} />
-      <text className={styles.label} x={CENTER.x + 16} y={CENTER.y + 4}>{ticker}</text>
     </svg>
   )
 }
 
 /**
- * Content for an account or plan prompt inside `Dialog`: a constellation
- * header in the site's identity, then eyebrow, serif title, description,
- * numbered points and actions, revealed in sequence.
+ * Content for an account, plan or outcome prompt inside `Dialog`. The header
+ * shows the status at a glance — glyph, colour and field — beside the ticker;
+ * then the status label, a title that states the outcome, the reason, and the
+ * next step.
  */
 export default function PromptPanel({
   ticker,
-  tone = 'default',
-  eyebrow,
+  status,
+  statusLabel,
   title,
   titleId,
   description,
@@ -127,13 +157,23 @@ export default function PromptPanel({
   note,
   actions,
 }: PromptPanelProps) {
+  const Glyph = GLYPHS[status]
+
   return (
-    <div className={styles.prompt} data-tone={tone}>
+    <div className={styles.prompt} data-status={status}>
       <div className={styles.visual}>
-        <Constellation ticker={ticker} broken={tone === 'unavailable'} />
+        <Constellation status={status} />
+        <span className={styles.badge} aria-hidden="true">
+          <span className={styles.badgeRing} />
+          <Glyph size={20} strokeWidth={1.75} className={styles.glyph} />
+        </span>
+        <span className={styles.ticker} aria-hidden="true">{ticker}</span>
       </div>
       <div className={styles.body}>
-        <p className={styles.eyebrow}>{eyebrow}</p>
+        <p className={styles.status} data-prompt-status={status}>
+          <span className={styles.statusDot} aria-hidden="true" />
+          {statusLabel}
+        </p>
         <h2 id={titleId} className={styles.title}>{title}</h2>
         <p id={descriptionId} className={styles.description}>{description}</p>
         {points && points.length > 0 ? (

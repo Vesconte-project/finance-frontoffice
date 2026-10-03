@@ -161,7 +161,7 @@ test('a failed save or removal is shown in the shared dialog, never inline in th
   const source = readRepoFile('components/WatchlistButton.tsx')
 
   // The same modal as the account prompt, drawn as unavailable, with a retry.
-  assert.match(source, /tone="unavailable"/)
+  assert.match(source, /status="error"/)
   assert.match(source, /onClick=\{retry\}/)
   assert.match(source, /initialFocusRef=\{retryRef\}/)
 
@@ -197,6 +197,7 @@ test('no new dependency or design token is introduced; the modal is the shared p
     '@/components/ui/Dialog',
     '@/components/ui/PromptPanel',
     '@/lib/picks-access-rules',
+    '@/lib/utils',
     'lucide-react',
     'next/link',
     'react',

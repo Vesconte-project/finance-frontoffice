@@ -2,8 +2,9 @@
 
 import { useId, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Loader2, Star } from 'lucide-react'
+import { Loader2, RotateCcw, Star } from 'lucide-react'
 import { buttonClass } from '@/components/ui/Button'
+import { cn } from '@/lib/utils'
 import Dialog from '@/components/ui/Dialog'
 import PromptPanel from '@/components/ui/PromptPanel'
 import { PICK_VISIBLE_LIMITS } from '@/lib/picks-access-rules'
@@ -141,7 +142,8 @@ export default function WatchlistButton({
           <div id={recoveryId} data-watchlist-recovery="open">
             <PromptPanel
               ticker={ticker}
-              eyebrow="Watchlist · Free account"
+              status="invite"
+              statusLabel="Free account"
               title={`Save ${ticker} to your watchlist`}
               titleId={titleId}
               description={`${SIGNED_OUT_EXPLANATION} A free account gives you:`}
@@ -186,8 +188,8 @@ export default function WatchlistButton({
           <div data-watchlist-error="">
             <PromptPanel
               ticker={ticker}
-              tone="unavailable"
-              eyebrow="Watchlist"
+              status="error"
+              statusLabel="Error · not saved"
               title={`${ticker} wasn’t ${inWatchlist ? 'removed' : 'saved'}`}
               titleId={`${recoveryId}-error-title`}
               description={`${MUTATION_ERROR} Nothing changed in your watchlist.`}
@@ -198,8 +200,9 @@ export default function WatchlistButton({
                     ref={retryRef}
                     type="button"
                     onClick={retry}
-                    className={buttonClass({ variant: 'primary', size: 'md' })}
+                    className={cn(buttonClass({ variant: 'primary', size: 'md' }), 'gap-2')}
                   >
+                    <RotateCcw size={15} aria-hidden="true" />
                     Try again
                   </button>
                   <button type="button" onClick={() => setError(null)} className={buttonClass({ variant: 'ghost', size: 'md' })}>

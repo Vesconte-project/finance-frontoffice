@@ -1,11 +1,12 @@
 'use client'
 
 import { useId, useRef, useState, type RefObject } from 'react'
-import { Download, Loader2 } from 'lucide-react'
+import { Download, Loader2, RotateCcw } from 'lucide-react'
 import { buttonClass } from '@/components/ui/Button'
 import Dialog from '@/components/ui/Dialog'
 import PromptPanel from '@/components/ui/PromptPanel'
 import { trackEvent } from '@/lib/analytics'
+import { cn } from '@/lib/utils'
 
 const EXPORT_LABEL = 'Download signal history CSV'
 const EXPORT_ERROR = 'Couldn’t export signal history. Try again.'
@@ -175,12 +176,13 @@ export default function TickerExportButton({ ticker, signedIn }: { ticker: strin
           <div id={promptId} data-ticker-export-recovery="open">
             <PromptPanel
               ticker={symbol}
-              eyebrow="Pro · Signal export"
-              title="Export signal history"
+              status="locked"
+              statusLabel="Pro feature"
+              title="Signal export is a Pro feature"
               titleId={`${promptId}-title`}
               description={prompt.kind === 'sign-in'
-                ? 'Signal export is included with Pro. Sign in to check your access.'
-                : 'Signal export is included with Pro.'}
+                ? `Downloading ${symbol}’s signal history as a CSV is part of Pro. Sign in to check your access.`
+                : `Downloading ${symbol}’s signal history as a CSV is part of Pro.`}
               descriptionId={`${promptId}-description`}
               actions={(
                 <>
@@ -203,15 +205,15 @@ export default function TickerExportButton({ ticker, signedIn }: { ticker: strin
           <div id={promptId} data-ticker-export-problem={prompt.kind}>
             <PromptPanel
               ticker={symbol}
-              tone="unavailable"
-              eyebrow="Signal export"
+              status={prompt.kind === 'empty' ? 'empty' : 'error'}
+              statusLabel={prompt.kind === 'empty' ? 'Nothing yet' : 'Error · download failed'}
               title={prompt.kind === 'empty'
                 ? `No signal history for ${symbol} yet`
-                : 'Signal export isn’t available right now'}
+                : `${symbol}’s signal history didn’t download`}
               titleId={`${promptId}-title`}
               description={prompt.kind === 'empty'
                 ? 'There is nothing to download for this ticker at the moment. It will be here once its signal history exists.'
-                : `We couldn’t prepare ${symbol}’s signal history, so nothing was downloaded. Try again in a moment.`}
+                : 'We couldn’t prepare the file, so nothing was saved to your device. Try again in a moment.'}
               descriptionId={`${promptId}-description`}
               actions={prompt.kind === 'failed' ? (
                 <>
@@ -219,8 +221,9 @@ export default function TickerExportButton({ ticker, signedIn }: { ticker: strin
                     ref={primaryRef as RefObject<HTMLButtonElement>}
                     type="button"
                     onClick={retry}
-                    className={buttonClass({ variant: 'primary', size: 'md' })}
+                    className={cn(buttonClass({ variant: 'primary', size: 'md' }), 'gap-2')}
                   >
+                    <RotateCcw size={15} aria-hidden="true" />
                     Try again
                   </button>
                   <button type="button" onClick={closePrompt} className={buttonClass({ variant: 'ghost', size: 'md' })}>
