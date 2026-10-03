@@ -2,7 +2,7 @@
 
 import { useId, useRef, useState } from 'react'
 import Link from 'next/link'
-import { CircleAlert, Loader2, Star } from 'lucide-react'
+import { Loader2, Star } from 'lucide-react'
 import { buttonClass } from '@/components/ui/Button'
 import Dialog from '@/components/ui/Dialog'
 import PromptPanel from '@/components/ui/PromptPanel'
@@ -56,6 +56,7 @@ export default function WatchlistButton({
   const descriptionId = `${recoveryId}-description`
   const starRef = useRef<HTMLButtonElement>(null)
   const createAccountRef = useRef<HTMLAnchorElement>(null)
+  const retryRef = useRef<HTMLButtonElement>(null)
 
   // Closing returns focus to the star (handled by the dialog).
   const closeRecovery = () => setRecoveryOpen(false)
@@ -88,6 +89,11 @@ export default function WatchlistButton({
     }
   }
 
+  const retry = () => {
+    setError(null)
+    void onClick()
+  }
+
   const label = inWatchlist ? 'Remove from watchlist' : 'Add to watchlist'
 
   return (
@@ -117,8 +123,8 @@ export default function WatchlistButton({
         )}
       </button>
 
-      {/* Pending and success outcomes reach assistive technology here; the error
-          line below is its own polite region, so nothing is announced twice. */}
+      {/* Pending and success outcomes reach assistive technology here; a failure
+          opens a dialog that names and describes itself, so nothing is announced twice. */}
       <span className="sr-only" role="status" aria-live="polite">
         {announcement}
       </span>
@@ -168,15 +174,42 @@ export default function WatchlistButton({
         </Dialog>
       )}
 
-      {error && (
-        <span
-          data-watchlist-error=""
-          aria-live="polite"
-          className="signal-bearish text-caption inline-flex items-center gap-1.5"
+      {signedIn && (
+        <Dialog
+          open={error !== null}
+          onClose={() => setError(null)}
+          labelledBy={`${recoveryId}-error-title`}
+          describedBy={`${recoveryId}-error-description`}
+          initialFocusRef={retryRef}
+          returnFocusRef={starRef}
         >
-          <CircleAlert size={13} aria-hidden="true" className="shrink-0" />
-          {error}
-        </span>
+          <div data-watchlist-error="">
+            <PromptPanel
+              ticker={ticker}
+              tone="unavailable"
+              eyebrow="Watchlist"
+              title={`${ticker} wasn’t ${inWatchlist ? 'removed' : 'saved'}`}
+              titleId={`${recoveryId}-error-title`}
+              description={`${MUTATION_ERROR} Nothing changed in your watchlist.`}
+              descriptionId={`${recoveryId}-error-description`}
+              actions={(
+                <>
+                  <button
+                    ref={retryRef}
+                    type="button"
+                    onClick={retry}
+                    className={buttonClass({ variant: 'primary', size: 'md' })}
+                  >
+                    Try again
+                  </button>
+                  <button type="button" onClick={() => setError(null)} className={buttonClass({ variant: 'ghost', size: 'md' })}>
+                    Close
+                  </button>
+                </>
+              )}
+            />
+          </div>
+        </Dialog>
       )}
     </div>
   )

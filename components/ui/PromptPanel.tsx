@@ -4,6 +4,11 @@ import styles from './PromptPanel.module.css'
 type PromptPanelProps = {
   /** The ticker shown at the centre of the constellation. */
   ticker: string
+  /**
+   * `unavailable` draws the constellation under construction — broken dashed
+   * edges and hollow nodes — for outcomes such as a failed or empty request.
+   */
+  tone?: 'default' | 'unavailable'
   eyebrow: string
   title: ReactNode
   titleId: string
@@ -38,34 +43,51 @@ const DUST = [
   [22, 24], [64, 120], [176, 120], [226, 12], [340, 18], [392, 86], [12, 58], [270, 70],
 ] as const
 
-function Constellation({ ticker }: { ticker: string }) {
+/** Where an edge stops when the constellation is drawn as broken. */
+function edgeEnd(from: { x: number; y: number }, to: { x: number; y: number }, index: number, broken: boolean) {
+  if (!broken || index % 2 === 0) return to
+  const reach = 0.55
+  return { x: from.x + (to.x - from.x) * reach, y: from.y + (to.y - from.y) * reach }
+}
+
+function Constellation({ ticker, broken }: { ticker: string; broken: boolean }) {
   return (
-    <svg className={styles.constellation} viewBox="0 0 400 132" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <svg
+      className={styles.constellation}
+      data-broken={broken ? 'true' : undefined}
+      viewBox="0 0 400 132"
+      preserveAspectRatio="xMidYMid slice"
+      aria-hidden="true"
+    >
       {DUST.map(([x, y], index) => (
         <circle key={`dust-${index}`} className={styles.dust} cx={x} cy={y} r={1} style={{ ['--i' as never]: index }} />
       ))}
-      {NEIGHBOURS.map((node, index) => (
-        <line
-          key={`edge-${index}`}
-          className={styles.edge}
-          x1={CENTER.x}
-          y1={CENTER.y}
-          x2={node.x}
-          y2={node.y}
-          pathLength={1}
-          style={{ ['--i' as never]: index }}
-        />
-      ))}
+      {NEIGHBOURS.map((node, index) => {
+        const end = edgeEnd(CENTER, node, index, broken)
+        return (
+          <line
+            key={`edge-${index}`}
+            className={styles.edge}
+            x1={CENTER.x}
+            y1={CENTER.y}
+            x2={end.x}
+            y2={end.y}
+            pathLength={1}
+            style={{ ['--i' as never]: index }}
+          />
+        )
+      })}
       {OUTER.map((node, index) => {
         const from = NEIGHBOURS[node.from]
+        const end = edgeEnd(from, node, index + 1, broken)
         return (
           <line
             key={`outer-edge-${index}`}
             className={styles.edgeFaint}
             x1={from.x}
             y1={from.y}
-            x2={node.x}
-            y2={node.y}
+            x2={end.x}
+            y2={end.y}
             pathLength={1}
             style={{ ['--i' as never]: index + NEIGHBOURS.length }}
           />
@@ -81,7 +103,7 @@ function Constellation({ ticker }: { ticker: string }) {
           style={{ ['--i' as never]: index }}
         />
       ))}
-      <circle className={styles.pulse} cx={CENTER.x} cy={CENTER.y} r={9} />
+      {broken ? null : <circle className={styles.pulse} cx={CENTER.x} cy={CENTER.y} r={9} />}
       <circle className={styles.center} cx={CENTER.x} cy={CENTER.y} r={8} />
       <text className={styles.label} x={CENTER.x + 16} y={CENTER.y + 4}>{ticker}</text>
     </svg>
@@ -95,6 +117,7 @@ function Constellation({ ticker }: { ticker: string }) {
  */
 export default function PromptPanel({
   ticker,
+  tone = 'default',
   eyebrow,
   title,
   titleId,
@@ -105,9 +128,9 @@ export default function PromptPanel({
   actions,
 }: PromptPanelProps) {
   return (
-    <div className={styles.prompt}>
+    <div className={styles.prompt} data-tone={tone}>
       <div className={styles.visual}>
-        <Constellation ticker={ticker} />
+        <Constellation ticker={ticker} broken={tone === 'unavailable'} />
       </div>
       <div className={styles.body}>
         <p className={styles.eyebrow}>{eyebrow}</p>

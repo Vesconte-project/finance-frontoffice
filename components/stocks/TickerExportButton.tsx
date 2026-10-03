@@ -1,7 +1,7 @@
 'use client'
 
-import { useId, useRef, useState } from 'react'
-import { CircleAlert, Download, Loader2 } from 'lucide-react'
+import { useId, useRef, useState, type RefObject } from 'react'
+import { Download, Loader2 } from 'lucide-react'
 import { buttonClass } from '@/components/ui/Button'
 import Dialog from '@/components/ui/Dialog'
 import PromptPanel from '@/components/ui/PromptPanel'
@@ -10,10 +10,11 @@ import { trackEvent } from '@/lib/analytics'
 const EXPORT_LABEL = 'Download signal history CSV'
 const EXPORT_ERROR = 'Couldn’t export signal history. Try again.'
 
-type RecoveryState = {
-  kind: 'sign-in' | 'upgrade'
-  upgradeUrl: string
-}
+/** What the export dialog is showing: an access prompt or an outcome the reader must see. */
+type PromptState =
+  | { kind: 'sign-in' | 'upgrade'; upgradeUrl: string }
+  | { kind: 'empty' }
+  | { kind: 'failed' }
 
 function downloadFilename(disposition: string | null, ticker: string): string {
   const match = disposition?.match(/filename="?([^";]+)"?/i)
@@ -33,35 +34,59 @@ function safeUpgradeUrl(value: unknown): string {
   }
 }
 
-export default function TickerExportButton({ ticker }: { ticker: string }) {
+export default function TickerExportButton({ ticker, signedIn }: { ticker: string; signedIn: boolean }) {
+  const symbol = ticker.toUpperCase()
   const [pending, setPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [recovery, setRecovery] = useState<RecoveryState | null>(null)
+  const [prompt, setPrompt] = useState<PromptState | null>(null)
   const [announcement, setAnnouncement] = useState('')
-  const recoveryId = useId()
+  const promptId = useId()
   const buttonRef = useRef<HTMLButtonElement>(null)
-  const recoveryLinkRef = useRef<HTMLAnchorElement>(null)
+  const primaryRef = useRef<HTMLElement>(null)
 
   // Closing returns focus to the export button (handled by the dialog).
-  const closeRecovery = () => setRecovery(null)
+  const closePrompt = () => setPrompt(null)
+
+  const showAccessPrompt = (kind: 'sign-in' | 'upgrade', upgradeUrl: string) => {
+    setAnnouncement(kind === 'sign-in'
+      ? 'Sign in or choose Pro to export signal history.'
+      : 'A Pro plan is required to export signal history.')
+    setPrompt({ kind, upgradeUrl })
+    trackEvent('upgrade_prompt_shown', {
+      control: 'ticker_export',
+      surface: 'ticker_chrome',
+      reason: kind === 'sign-in' ? 'signed_out' : 'plan_required',
+      ticker: symbol,
+    })
+  }
+
+  const showFailure = (kind: 'empty' | 'failed') => {
+    setAnnouncement(kind === 'empty' ? `No signal history for ${symbol} yet.` : EXPORT_ERROR)
+    setPrompt({ kind })
+    trackEvent('error_shown', {
+      control: 'ticker_export',
+      surface: 'ticker_chrome',
+      reason: kind === 'empty' ? 'no_signal_history' : 'export_failed',
+      ticker: symbol,
+    })
+  }
 
   const exportSignals = async () => {
+    // Signed out: the prompt opens at once. The route sits behind auth
+    // middleware, which answers a signed-out API request with a bare 404, so
+    // asking it would only surface as a failure.
+    if (!signedIn) {
+      showAccessPrompt('sign-in', '/pricing')
+      return
+    }
+
     setPending(true)
-    setError(null)
-    setRecovery(null)
+    setPrompt(null)
     setAnnouncement('Preparing signal history CSV.')
 
     try {
       const response = await fetch(`/api/export-signals?ticker=${encodeURIComponent(ticker)}`)
       if (response.status === 401) {
-        setAnnouncement('Sign in or choose Pro to export signal history.')
-        setRecovery({ kind: 'sign-in', upgradeUrl: '/pricing' })
-        trackEvent('upgrade_prompt_shown', {
-          control: 'ticker_export',
-          surface: 'ticker_chrome',
-          reason: 'signed_out',
-          ticker: ticker.toUpperCase(),
-        })
+        showAccessPrompt('sign-in', '/pricing')
         return
       }
       if (response.status === 403) {
@@ -69,14 +94,12 @@ export default function TickerExportButton({ ticker }: { ticker: string }) {
         const upgradeUrl = payload && typeof payload === 'object'
           ? safeUpgradeUrl((payload as { upgradeUrl?: unknown }).upgradeUrl)
           : '/pricing'
-        setAnnouncement('A Pro plan is required to export signal history.')
-        setRecovery({ kind: 'upgrade', upgradeUrl })
-        trackEvent('upgrade_prompt_shown', {
-          control: 'ticker_export',
-          surface: 'ticker_chrome',
-          reason: 'plan_required',
-          ticker: ticker.toUpperCase(),
-        })
+        showAccessPrompt('upgrade', upgradeUrl)
+        return
+      }
+      if (response.status === 404 && response.headers.get('content-type')?.includes('application/json')) {
+        // The route's own answer when the ticker has no signal history.
+        showFailure('empty')
         return
       }
       if (!response.ok || !response.headers.get('content-type')?.includes('text/csv')) {
@@ -99,20 +122,19 @@ export default function TickerExportButton({ ticker }: { ticker: string }) {
         control: 'ticker_export',
         dataset: 'signal_history',
         format: 'csv',
-        ticker: ticker.toUpperCase(),
+        ticker: symbol,
         bytes: csv.size,
       })
     } catch {
-      setAnnouncement('')
-      setError(EXPORT_ERROR)
-      trackEvent('error_shown', {
-        control: 'ticker_export',
-        surface: 'ticker_chrome',
-        ticker: ticker.toUpperCase(),
-      })
+      showFailure('failed')
     } finally {
       setPending(false)
     }
+  }
+
+  const retry = () => {
+    setPrompt(null)
+    void exportSignals()
   }
 
   return (
@@ -121,15 +143,15 @@ export default function TickerExportButton({ ticker }: { ticker: string }) {
         ref={buttonRef}
         type="button"
         data-analytics-id="ticker_export"
-        data-analytics-ticker={ticker.toUpperCase()}
+        data-analytics-ticker={symbol}
         onClick={exportSignals}
         disabled={pending}
         aria-label={EXPORT_LABEL}
         title={EXPORT_LABEL}
         aria-busy={pending}
         aria-haspopup="dialog"
-        aria-expanded={recovery ? true : undefined}
-        aria-controls={recovery ? recoveryId : undefined}
+        aria-expanded={prompt ? true : undefined}
+        aria-controls={prompt ? promptId : undefined}
         className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-[var(--glass-border)] bg-[var(--glass-bg)] text-[var(--color-text-secondary)] transition-[border-color,color,transform] duration-150 hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--page-bg)] active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100 disabled:cursor-wait disabled:opacity-60"
       >
         {pending ? (
@@ -142,49 +164,83 @@ export default function TickerExportButton({ ticker }: { ticker: string }) {
       <span className="sr-only" role="status" aria-live="polite">{announcement}</span>
 
       <Dialog
-        open={recovery !== null}
-        onClose={closeRecovery}
-        labelledBy={`${recoveryId}-title`}
-        describedBy={`${recoveryId}-description`}
-        initialFocusRef={recoveryLinkRef}
+        open={prompt !== null}
+        onClose={closePrompt}
+        labelledBy={`${promptId}-title`}
+        describedBy={`${promptId}-description`}
+        initialFocusRef={primaryRef}
         returnFocusRef={buttonRef}
       >
-        {recovery ? (
-          <div id={recoveryId} data-ticker-export-recovery="open">
+        {prompt?.kind === 'sign-in' || prompt?.kind === 'upgrade' ? (
+          <div id={promptId} data-ticker-export-recovery="open">
             <PromptPanel
-              ticker={ticker.toUpperCase()}
+              ticker={symbol}
               eyebrow="Pro · Signal export"
               title="Export signal history"
-              titleId={`${recoveryId}-title`}
-              description={recovery.kind === 'sign-in'
+              titleId={`${promptId}-title`}
+              description={prompt.kind === 'sign-in'
                 ? 'Signal export is included with Pro. Sign in to check your access.'
                 : 'Signal export is included with Pro.'}
-              descriptionId={`${recoveryId}-description`}
+              descriptionId={`${promptId}-description`}
               actions={(
                 <>
                   <a
-                    ref={recoveryLinkRef}
-                    href={recovery.kind === 'sign-in' ? '/sign-in' : recovery.upgradeUrl}
+                    ref={primaryRef as RefObject<HTMLAnchorElement>}
+                    href={prompt.kind === 'sign-in' ? '/sign-in' : prompt.upgradeUrl}
                     className={buttonClass({ variant: 'primary', size: 'md' })}
                   >
-                    {recovery.kind === 'sign-in' ? 'Sign in' : 'Upgrade to Pro'}
+                    {prompt.kind === 'sign-in' ? 'Sign in' : 'Upgrade to Pro'}
                   </a>
-                  {recovery.kind === 'sign-in' ? (
-                    <a href={recovery.upgradeUrl} className={buttonClass({ variant: 'ghost', size: 'md' })}>View Pro</a>
+                  {prompt.kind === 'sign-in' ? (
+                    <a href={prompt.upgradeUrl} className={buttonClass({ variant: 'ghost', size: 'md' })}>View Pro</a>
                   ) : null}
                 </>
               )}
             />
           </div>
         ) : null}
+        {prompt?.kind === 'empty' || prompt?.kind === 'failed' ? (
+          <div id={promptId} data-ticker-export-problem={prompt.kind}>
+            <PromptPanel
+              ticker={symbol}
+              tone="unavailable"
+              eyebrow="Signal export"
+              title={prompt.kind === 'empty'
+                ? `No signal history for ${symbol} yet`
+                : 'Signal export isn’t available right now'}
+              titleId={`${promptId}-title`}
+              description={prompt.kind === 'empty'
+                ? 'There is nothing to download for this ticker at the moment. It will be here once its signal history exists.'
+                : `We couldn’t prepare ${symbol}’s signal history, so nothing was downloaded. Try again in a moment.`}
+              descriptionId={`${promptId}-description`}
+              actions={prompt.kind === 'failed' ? (
+                <>
+                  <button
+                    ref={primaryRef as RefObject<HTMLButtonElement>}
+                    type="button"
+                    onClick={retry}
+                    className={buttonClass({ variant: 'primary', size: 'md' })}
+                  >
+                    Try again
+                  </button>
+                  <button type="button" onClick={closePrompt} className={buttonClass({ variant: 'ghost', size: 'md' })}>
+                    Close
+                  </button>
+                </>
+              ) : (
+                <button
+                  ref={primaryRef as RefObject<HTMLButtonElement>}
+                  type="button"
+                  onClick={closePrompt}
+                  className={buttonClass({ variant: 'primary', size: 'md' })}
+                >
+                  Close
+                </button>
+              )}
+            />
+          </div>
+        ) : null}
       </Dialog>
-
-      {error ? (
-        <span aria-live="polite" className="signal-bearish text-caption inline-flex max-w-52 items-center gap-1.5">
-          <CircleAlert size={13} aria-hidden="true" className="shrink-0" />
-          {error}
-        </span>
-      ) : null}
     </div>
   )
 }

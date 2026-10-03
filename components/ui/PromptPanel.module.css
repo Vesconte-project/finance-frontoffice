@@ -197,6 +197,28 @@
   animation: fade-in var(--reveal) ease-out 520ms both;
 }
 
+/*
+ * Under construction: dashed, interrupted edges that fade in rather than draw,
+ * hollow neighbours and a dashed ring around the ticker. Nothing pulses.
+ */
+.constellation[data-broken='true'] .edge,
+.constellation[data-broken='true'] .edgeFaint {
+  stroke-dasharray: 0.035 0.03;
+  animation-name: fade-in;
+}
+
+.constellation[data-broken='true'] .node,
+.constellation[data-broken='true'] .nodeAccent {
+  fill: var(--surface);
+  stroke: color-mix(in srgb, var(--text) 45%, transparent);
+  stroke-width: 1;
+}
+
+.constellation[data-broken='true'] .center {
+  stroke-dasharray: 4 3;
+  stroke-width: 2;
+}
+
 @keyframes draw {
   from {
     stroke-dashoffset: 1;

@@ -128,7 +128,9 @@ test('outcomes are announced through polite live regions', () => {
   assert.match(source, /className="sr-only" role="status" aria-live="polite"/)
   assert.match(source, /setAnnouncement\(nextState \? SAVING_ANNOUNCEMENT : REMOVING_ANNOUNCEMENT\)/)
   assert.match(source, /setAnnouncement\(nextState \? SAVED_ANNOUNCEMENT : REMOVED_ANNOUNCEMENT\)/)
-  assert.match(source, /aria-live="polite"[\s\S]*signal-bearish/, 'the error line announces itself')
+  // A failure opens a dialog that names and describes itself with the approved copy.
+  assert.match(source, /open=\{error !== null\}/)
+  assert.match(source, /description=\{`\$\{MUTATION_ERROR\}/)
 
   // The control keeps an accurate name and programmatic pressed state.
   assert.match(source, /aria-label=\{label\}/)
@@ -155,18 +157,18 @@ test('the account prompt is a real modal: focus moves in, Escape closes, focus r
   assert.match(dialog, /runtime\.acquireLock\(\)/)
 })
 
-test('error presentation uses the existing semantic token and caption utility', () => {
+test('a failed save or removal is shown in the shared dialog, never inline in the hero', () => {
   const source = readRepoFile('components/WatchlistButton.tsx')
 
-  assert.match(source, /signal-bearish/)
-  assert.match(source, /text-caption/)
+  // The same modal as the account prompt, drawn as unavailable, with a retry.
+  assert.match(source, /tone="unavailable"/)
+  assert.match(source, /onClick=\{retry\}/)
+  assert.match(source, /initialFocusRef=\{retryRef\}/)
 
-  // The raw Tailwind red and the hardcoded caption size are gone.
+  // No inline error line pushes the hero apart, and no raw colour is used.
+  assert.doesNotMatch(source, /signal-bearish/)
   assert.doesNotMatch(source, /text-red-\d00/)
   assert.doesNotMatch(source, /text-\[12px\]/)
-
-  // Not conveyed by colour alone.
-  assert.match(source, /CircleAlert/)
 })
 
 test('the star geometry and the control rail are preserved', () => {

@@ -70,7 +70,7 @@ export default function StockTickerChrome({
           metadata={metadata}
           actions={(
             <>
-              <TickerExportButton ticker={resolved.ticker} />
+              <TickerExportButton ticker={resolved.ticker} signedIn={resolved.watchlist.signedIn} />
               <WatchlistButton
                 ticker={resolved.ticker}
                 initialInWatchlist={resolved.watchlist.initialInWatchlist}

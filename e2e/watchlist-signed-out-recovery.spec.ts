@@ -172,6 +172,10 @@ test.describe('signed-out watchlist account prompt', () => {
 })
 
 test('signed-out export opens its own prompt instead of a panel in the hero', async ({ page }) => {
+  const exportRequests: string[] = []
+  page.on('request', (request) => {
+    if (request.url().includes('/api/export-signals')) exportRequests.push(request.url())
+  })
   await openTickerPage(page)
   const heroBefore = await page.locator('[data-ticker-hero]').boundingBox()
   const exportButton = page.getByRole('button', { name: 'Download signal history CSV' })
@@ -179,6 +183,8 @@ test('signed-out export opens its own prompt instead of a panel in the hero', as
   const dialog = page.getByRole('dialog', { name: 'Export signal history' })
   await expect(dialog).toBeVisible()
   await expect(dialog).toContainText('Signal export is included with Pro.')
+  // Signed out, the prompt opens without asking the protected route.
+  expect(exportRequests).toEqual([])
   expect(await page.locator('[data-ticker-hero]').boundingBox()).toEqual(heroBefore)
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
