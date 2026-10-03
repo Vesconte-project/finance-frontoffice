@@ -1,7 +1,9 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { Suspense, use, useMemo, useRef, useState } from 'react'
+import { Maximize2 } from 'lucide-react'
 import SegmentedControl from '@/components/ui/SegmentedControl'
 import TemporalLineChart from '@/components/charts/TemporalLineChart'
 import type { OhlcPoint, PricePoint } from '@/lib/finance'
@@ -15,7 +17,11 @@ import {
 import { hasUsableMaterializedScorecard } from '@/lib/ticker-page-scorecard'
 import { cn } from '@/lib/utils'
 import styles from './StockOverviewClient.module.css'
+import expandedChartStyles from './ExpandedChart.module.css'
 import ScorecardDisc from './ScorecardDisc'
+
+// The expanded chart's code loads only when a reader opens it.
+const ExpandedChartDialog = dynamic(() => import('./ExpandedChartDialog'), { ssr: false })
 
 type SignalDirection = 'bullish' | 'neutral' | 'bearish'
 type ChartTimeframe = '1D' | '5D' | '1M' | '3M' | 'YTD' | '1Y' | '5Y' | '10Y' | 'ALL'
@@ -411,6 +417,10 @@ export default function StockOverviewClient({
   const [fullHistoryState, setFullHistoryState] = useState<FullHistoryState>('idle')
   const fullHistoryRequested = useRef(false)
   const [signalTimeframe, setSignalTimeframe] = useState<TechnicalTimeframe>('1D')
+  const [chartExpanded, setChartExpanded] = useState(false)
+  const expandButtonRef = useRef<HTMLButtonElement>(null)
+  // Never offer an empty expanded chart: it opens only over loaded backend OHLC.
+  const canExpandChart = historicalChartState === 'loaded' && ohlcData.length >= 2
   const scorecardMessage = scorecardReadinessMessage(scorecard)
 
   const chartHistory = (heroTimeframe === '10Y' || heroTimeframe === 'ALL') && fullHistoricalData
@@ -619,6 +629,16 @@ export default function StockOverviewClient({
                 state={fullHistoryState === 'error' ? 'error' : historicalChartState}
                 currency={currency}
               />
+              {chartExpanded ? (
+                <ExpandedChartDialog
+                  open
+                  onClose={() => setChartExpanded(false)}
+                  ticker={ticker}
+                  currency={currency}
+                  bars={ohlcData}
+                  returnFocusRef={expandButtonRef}
+                />
+              ) : null}
               {fullHistoryState === 'loading' ? <span className="sr-only" role="status">Loading full price history.</span> : null}
               {fullHistoryState === 'error' ? (
                 <p className={styles.chartStatus} role="status">Historical price data could not be loaded. Showing the longest available range.</p>
@@ -631,6 +651,20 @@ export default function StockOverviewClient({
                     <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>
                   ))}
                 </dl>
+              ) : null}
+              {canExpandChart ? (
+                <button
+                  ref={expandButtonRef}
+                  type="button"
+                  className={expandedChartStyles.expandButton}
+                  aria-haspopup="dialog"
+                  aria-label="Expand chart"
+                  data-expand-chart=""
+                  onClick={() => setChartExpanded(true)}
+                >
+                  <Maximize2 size={15} aria-hidden="true" />
+                  <span aria-hidden="true">Expand</span>
+                </button>
               ) : null}
               <div className={styles.chartFooterControl} data-chart-range="">
                 <SegmentedControl

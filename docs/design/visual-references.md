@@ -32,6 +32,10 @@ Study the rendered pattern, its responsive states, and its direct styling before
 
 `components/ui/Dialog.tsx` (2026-10-03) is the shared modal on the native `<dialog>` element: focus moves in on open, the browser contains focus and makes the page inert, Escape and a backdrop click close it, focus returns to the opening control, and the shared scroll runtime is locked while it is open. `e2e/watchlist-signed-out-recovery.spec.ts` verifies those behaviours on the signed-out watchlist and export prompts. There is still no drawer exemplar.
 
+## Expanded ticker chart — 2026-10-03
+
+`components/stocks/ExpandedChartDialog.tsx` and `ExpandedPriceCanvas.tsx` (PRD-74) are the repository's own Canvas 2D price chart, opened from the ticker hero's Expand control on the shared `Dialog`: full screen on phones, a large modal from 900px. It draws candles or a close line, volume, axes, a reading crosshair and the reader's Fibonacci and trend drawings straight from the backend OHLC rows. A bar without an open is drawn in the neutral colour, never assumed to be rising. Pinch, drag, wheel and keyboard move the view. The pure range, scale and level logic lives in `lib/expanded-chart.ts`. No chart library or third-party mark was added. Indicator controls and the 1D/5D ranges stay visible and answer with an explicit error until ENG-152 and ENG-153 supply the data. The founder's direction came from a clickable prototype with generated sample prices; no prototype code or data was copied.
+
 ## Expanding selector study — 2026-07-21
 
 The reusable expanding selector transforms mechanics from the references below into a Vesconte-specific analytical control. It carries no ticker, investment-horizon, URL, or routing semantics. No reference code, assets, branding, or layout was copied.
