@@ -193,6 +193,7 @@ test('no new dependency or design token is introduced; the modal is the shared p
   assert.deepEqual(imports.sort(), [
     '@/components/ui/Button',
     '@/components/ui/Dialog',
+    '@/components/ui/PromptPanel',
     '@/lib/picks-access-rules',
     'lucide-react',
     'next/link',

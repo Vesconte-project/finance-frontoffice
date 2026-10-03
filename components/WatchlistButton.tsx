@@ -2,9 +2,10 @@
 
 import { useId, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Check, CircleAlert, Loader2, Star } from 'lucide-react'
+import { CircleAlert, Loader2, Star } from 'lucide-react'
 import { buttonClass } from '@/components/ui/Button'
 import Dialog from '@/components/ui/Dialog'
+import PromptPanel from '@/components/ui/PromptPanel'
 import { PICK_VISIBLE_LIMITS } from '@/lib/picks-access-rules'
 
 /**
@@ -131,41 +132,38 @@ export default function WatchlistButton({
           initialFocusRef={createAccountRef}
           returnFocusRef={starRef}
         >
-          <div id={recoveryId} data-watchlist-recovery="open" className="flex flex-col gap-4 pr-8 text-left">
-            <h2 id={titleId} className="text-xl font-medium text-[var(--text)]">
-              Save {ticker} to your watchlist
-            </h2>
-            <p id={descriptionId} className="text-sm text-content-secondary">
-              {SIGNED_OUT_EXPLANATION} A free account gives you:
-            </p>
-            <ul className="flex flex-col gap-2.5 text-sm text-[var(--text)]">
-              {[
-                `A watchlist to keep ${ticker} and the other tickers you follow`,
-                `Where ${ticker} stands in each reading`,
-                `The full Picks rankings — ${PICK_VISIBLE_LIMITS.free} companies per reading instead of ${PICK_VISIBLE_LIMITS.anonymous}`,
-              ].map((benefit) => (
-                <li key={benefit} className="flex items-start gap-2.5">
-                  <Check size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-[var(--accent)]" />
-                  <span>{benefit}</span>
-                </li>
-              ))}
-            </ul>
-            <p className="text-caption text-content-muted">No card, no trial.</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <Link
-                ref={createAccountRef}
-                href="/sign-up"
-                className={buttonClass({ variant: 'primary', size: 'md' })}
-              >
-                {CREATE_ACCOUNT_LABEL}
-              </Link>
-              <Link
-                href="/sign-in"
-                className={buttonClass({ variant: 'ghost', size: 'md' })}
-              >
-                {SIGN_IN_LABEL}
-              </Link>
-            </div>
+          <div id={recoveryId} data-watchlist-recovery="open">
+            <PromptPanel
+              ticker={ticker}
+              eyebrow="Watchlist · Free account"
+              title={`Save ${ticker} to your watchlist`}
+              titleId={titleId}
+              description={`${SIGNED_OUT_EXPLANATION} A free account gives you:`}
+              descriptionId={descriptionId}
+              points={[
+                <>A watchlist to keep {ticker} and the other tickers you follow</>,
+                <>Where {ticker} stands in each reading</>,
+                <>
+                  The full Picks rankings — <strong>{PICK_VISIBLE_LIMITS.free}</strong> companies per reading instead of{' '}
+                  <strong>{PICK_VISIBLE_LIMITS.anonymous}</strong>
+                </>,
+              ]}
+              note="No card, no trial."
+              actions={(
+                <>
+                  <Link
+                    ref={createAccountRef}
+                    href="/sign-up"
+                    className={buttonClass({ variant: 'primary', size: 'md' })}
+                  >
+                    {CREATE_ACCOUNT_LABEL}
+                  </Link>
+                  <Link href="/sign-in" className={buttonClass({ variant: 'ghost', size: 'md' })}>
+                    {SIGN_IN_LABEL}
+                  </Link>
+                </>
+              )}
+            />
           </div>
         </Dialog>
       )}

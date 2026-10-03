@@ -1,56 +1,75 @@
 /*
  * A solid surface over a dimmed page, following the design system: no blur,
  * no glow. The panel fills the dialog box so a click outside it can only land
- * on the backdrop.
+ * on the backdrop. Content owns its own padding.
  */
 .dialog {
-  width: min(26rem, calc(100% - 32px));
+  width: min(27rem, calc(100% - 32px));
   max-height: calc(100dvh - 32px);
   margin: auto;
   padding: 0;
   overflow: auto;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--surface);
   color: var(--text);
   overscroll-behavior: contain;
 }
 
 .dialog::backdrop {
-  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
 }
 
+/* Enter: the page dims while the panel rises into place. */
 .dialog[open] {
-  animation: dialog-enter 180ms var(--motion-ease-standard, ease-out);
+  animation: dialog-enter var(--motion-xslow, 420ms) var(--motion-ease-soft, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .dialog[open]::backdrop {
-  animation: dialog-fade 180ms ease-out;
+  animation: dialog-fade var(--motion-slow, 280ms) ease-out;
+}
+
+/* Exit: a shorter, quieter reverse before the dialog closes. */
+.dialog[data-closing='true'] {
+  animation: dialog-exit 200ms var(--motion-ease-standard, ease-in) forwards;
+}
+
+.dialog[data-closing='true']::backdrop {
+  animation: dialog-unfade 200ms ease-in forwards;
 }
 
 .panel {
   position: relative;
-  padding: 24px;
 }
 
 .close {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  z-index: 2;
+  top: 10px;
+  right: 10px;
   display: inline-flex;
   width: 36px;
   height: 36px;
   align-items: center;
   justify-content: center;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
   color: var(--text-muted);
   cursor: pointer;
+  transition:
+    color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    transform var(--motion-fast) ease;
 }
 
 .close:hover {
+  border-color: var(--line);
   color: var(--text);
+}
+
+.close:active {
+  transform: scale(0.92);
 }
 
 .close:focus-visible {
@@ -60,6 +79,13 @@
 
 @keyframes dialog-enter {
   from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+}
+
+@keyframes dialog-exit {
+  to {
     opacity: 0;
     transform: translateY(8px) scale(0.98);
   }
@@ -71,9 +97,21 @@
   }
 }
 
+@keyframes dialog-unfade {
+  to {
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dialog[open],
-  .dialog[open]::backdrop {
+  .dialog[open]::backdrop,
+  .dialog[data-closing='true'],
+  .dialog[data-closing='true']::backdrop {
     animation: none;
+  }
+
+  .close {
+    transition: none;
   }
 }

@@ -108,6 +108,19 @@ test.describe('signed-out watchlist account prompt', () => {
     await expect(page.getByRole('dialog')).toHaveCount(1)
   })
 
+  test('reduced motion shows the finished prompt at once and closes without delay', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await openTickerPage(page)
+    await page.locator(STAR).click()
+    const dialog = prompt(page)
+    const animated = await dialog.evaluate((node) =>
+      [node, ...node.querySelectorAll('*')].some((element) => getComputedStyle(element).animationName !== 'none'),
+    )
+    expect(animated, 'an element still animates under reduced motion').toBe(false)
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0, { timeout: 100 })
+  })
+
   test('the page behind does not scroll while the prompt is open', async ({ page }) => {
     await openTickerPage(page)
     await page.locator(STAR).click()

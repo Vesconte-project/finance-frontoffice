@@ -1,0 +1,259 @@
+/*
+ * Account and plan prompts in the site's identity: a constellation header like
+ * the homepage network, a letter-spaced eyebrow, a Source Serif title and
+ * numbered points in Plex Mono. Entrance is sequenced — edges draw from the
+ * ticker node, neighbours appear, then the copy rises line by line — and the
+ * reduced-motion state is the finished picture.
+ */
+
+.prompt {
+  container-type: inline-size;
+  --reveal: var(--motion-slow, 280ms);
+  --ease: var(--motion-ease-soft, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+.visual {
+  position: relative;
+  height: 132px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+
+/* The field fades out towards the sides, like the homepage network at its margins. */
+.constellation {
+  display: block;
+  width: 100%;
+  height: 100%;
+  mask-image: linear-gradient(90deg, transparent 0, black 16%, black 84%, transparent 100%);
+}
+
+.dust {
+  fill: color-mix(in srgb, var(--text) 22%, transparent);
+  animation: fade-in var(--reveal) ease-out both;
+  animation-delay: calc(60ms + var(--i) * 20ms);
+}
+
+.edge,
+.edgeFaint {
+  fill: none;
+  stroke-width: 1;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: draw var(--motion-xslow, 420ms) var(--ease) both;
+  animation-delay: calc(120ms + var(--i) * 45ms);
+}
+
+.edge {
+  stroke: color-mix(in srgb, var(--text) 34%, transparent);
+}
+
+.edgeFaint {
+  stroke: color-mix(in srgb, var(--text) 18%, transparent);
+}
+
+.node,
+.nodeAccent {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: node-in var(--reveal) var(--ease) both;
+  animation-delay: calc(260ms + var(--i) * 40ms);
+}
+
+.node {
+  fill: color-mix(in srgb, var(--text) 70%, transparent);
+}
+
+.nodeAccent {
+  fill: var(--accent);
+}
+
+.center {
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 3;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: node-in var(--reveal) var(--ease) both;
+  animation-delay: 60ms;
+}
+
+/* One ring leaves the ticker as the prompt opens; it does not loop. */
+.pulse {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pulse 900ms var(--ease) 180ms both;
+}
+
+.label {
+  fill: var(--text);
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  animation: fade-in var(--reveal) ease-out 200ms both;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  padding: 20px 24px 24px;
+}
+
+.eyebrow,
+.title,
+.description {
+  animation: rise var(--reveal) var(--ease) both;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  animation-delay: 140ms;
+}
+
+.title {
+  margin: 8px 0 0;
+  padding-right: 24px;
+  color: var(--text);
+  font-family: var(--font-display), serif;
+  font-size: clamp(22px, 6cqi, 26px);
+  font-weight: 500;
+  line-height: 1.15;
+  animation-delay: 180ms;
+}
+
+.description {
+  margin: 10px 0 0;
+  color: var(--text-body, var(--text-muted));
+  font-size: 14px;
+  line-height: 1.5;
+  animation-delay: 220ms;
+}
+
+.points {
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.point {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+  align-items: baseline;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+  animation: rise var(--reveal) var(--ease) both;
+  animation-delay: calc(280ms + var(--i) * 60ms);
+}
+
+.index {
+  color: var(--text-muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+.point strong {
+  font-family: var(--font-mono), monospace;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  margin-top: 20px;
+  animation: rise var(--reveal) var(--ease) both;
+  animation-delay: calc(300ms + var(--i) * 60ms);
+}
+
+.actions > :first-child {
+  flex: 1 1 auto;
+}
+
+.note {
+  margin: 12px 0 0;
+  color: var(--text-muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  animation: fade-in var(--reveal) ease-out 520ms both;
+}
+
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes node-in {
+  from {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(3.2);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dust,
+  .edge,
+  .edgeFaint,
+  .node,
+  .nodeAccent,
+  .center,
+  .label,
+  .eyebrow,
+  .title,
+  .description,
+  .point,
+  .actions,
+  .note {
+    animation: none;
+  }
+
+  .pulse {
+    display: none;
+    animation: none;
+  }
+}

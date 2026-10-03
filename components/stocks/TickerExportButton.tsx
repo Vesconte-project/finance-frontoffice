@@ -4,6 +4,7 @@ import { useId, useRef, useState } from 'react'
 import { CircleAlert, Download, Loader2 } from 'lucide-react'
 import { buttonClass } from '@/components/ui/Button'
 import Dialog from '@/components/ui/Dialog'
+import PromptPanel from '@/components/ui/PromptPanel'
 import { trackEvent } from '@/lib/analytics'
 
 const EXPORT_LABEL = 'Download signal history CSV'
@@ -149,27 +150,31 @@ export default function TickerExportButton({ ticker }: { ticker: string }) {
         returnFocusRef={buttonRef}
       >
         {recovery ? (
-          <div id={recoveryId} data-ticker-export-recovery="open" className="flex flex-col gap-4 pr-8 text-left">
-            <h2 id={`${recoveryId}-title`} className="text-xl font-medium text-[var(--text)]">
-              Export signal history
-            </h2>
-            <p id={`${recoveryId}-description`} className="text-sm text-content-secondary">
-              {recovery.kind === 'sign-in'
+          <div id={recoveryId} data-ticker-export-recovery="open">
+            <PromptPanel
+              ticker={ticker.toUpperCase()}
+              eyebrow="Pro · Signal export"
+              title="Export signal history"
+              titleId={`${recoveryId}-title`}
+              description={recovery.kind === 'sign-in'
                 ? 'Signal export is included with Pro. Sign in to check your access.'
                 : 'Signal export is included with Pro.'}
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <a
-                ref={recoveryLinkRef}
-                href={recovery.kind === 'sign-in' ? '/sign-in' : recovery.upgradeUrl}
-                className={buttonClass({ variant: 'primary', size: 'md' })}
-              >
-                {recovery.kind === 'sign-in' ? 'Sign in' : 'Upgrade to Pro'}
-              </a>
-              {recovery.kind === 'sign-in' ? (
-                <a href={recovery.upgradeUrl} className={buttonClass({ variant: 'ghost', size: 'md' })}>View Pro</a>
-              ) : null}
-            </div>
+              descriptionId={`${recoveryId}-description`}
+              actions={(
+                <>
+                  <a
+                    ref={recoveryLinkRef}
+                    href={recovery.kind === 'sign-in' ? '/sign-in' : recovery.upgradeUrl}
+                    className={buttonClass({ variant: 'primary', size: 'md' })}
+                  >
+                    {recovery.kind === 'sign-in' ? 'Sign in' : 'Upgrade to Pro'}
+                  </a>
+                  {recovery.kind === 'sign-in' ? (
+                    <a href={recovery.upgradeUrl} className={buttonClass({ variant: 'ghost', size: 'md' })}>View Pro</a>
+                  ) : null}
+                </>
+              )}
+            />
           </div>
         ) : null}
       </Dialog>
