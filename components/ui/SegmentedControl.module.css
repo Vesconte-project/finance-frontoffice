@@ -63,10 +63,15 @@
   outline-offset: 1px;
 }
 
-/* Touch-first pointers get comfortable targets, whatever the screen size. */
+/*
+ * Touch-first pointers get 44px targets without making the track taller: the
+ * hit area extends invisibly above and below each option.
+ */
 @media (pointer: coarse) {
-  .option {
-    min-height: 44px;
+  .option::after {
+    position: absolute;
+    inset: -8px 0;
+    content: '';
   }
 }
 

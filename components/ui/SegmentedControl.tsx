@@ -111,7 +111,7 @@ export default function SegmentedControl<T extends string>({
     const stretchY = 1 - Math.min(0.12, speed / 5200)
     // Lifted, the drop swells past the track's edges.
     const scaleX = (1 + 0.08 * lift) * stretchX
-    const scaleY = (1 + 0.5 * lift) * stretchY
+    const scaleY = (1 + 0.7 * lift) * stretchY
     const magnification = 1 + MAGNIFICATION * lift
 
     drop.style.transform = `translate3d(${x}px, ${top}px, 0)`

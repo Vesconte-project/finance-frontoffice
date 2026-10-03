@@ -5,9 +5,8 @@
  *   2. when they do not fit, the metadata and actions give way first and move
  *      to the next line, then the ticker and price wrap together beneath the
  *      name — never the price alone;
- *   3. in a narrow block the name takes the whole first line, the quote shares
- *      the second with the actions, and the metadata closes the block;
- *   4. in a very narrow block the quote takes the second line on its own.
+ *   3. in a narrow block the name takes the whole first line, the ticker and
+ *      price the second, and the metadata shares the last with the actions.
  * The name is shortened only when it cannot fit the full line it is given.
  */
 
@@ -183,8 +182,8 @@
     grid-template-columns: var(--selected-node-column) minmax(0, 1fr) auto;
     grid-template-areas:
       'node name name'
-      '. quote actions'
-      '. meta meta';
+      '. quote quote'
+      '. meta actions';
     column-gap: 10px;
     row-gap: 4px;
     align-items: center;
@@ -214,6 +213,12 @@
     flex-shrink: 1;
   }
 
+  /* A long exchange name wraps beside the actions rather than pushing them out. */
+  .metadata {
+    min-width: 0;
+    white-space: normal;
+  }
+
   /*
    * An open watchlist or export recovery message is wider than the button it
    * opens beneath; give the actions their own line so the quote is never
@@ -230,16 +235,6 @@
   .identity:has([data-watchlist-recovery='open'], [data-ticker-export-recovery='open']) .actions {
     flex-direction: column;
     justify-self: start;
-  }
-}
-
-/* Very narrow block: the quote cannot share its line with the actions. */
-@container (width < 21rem) {
-  .identity {
-    grid-template-areas:
-      'node name name'
-      '. quote quote'
-      '. meta actions';
   }
 }
 

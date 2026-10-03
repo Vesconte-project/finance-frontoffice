@@ -129,11 +129,23 @@ test('reduced motion places the drop without animating', async ({ page }) => {
   expect(offset).toBeLessThan(1)
 })
 
-test('touch pointers get 44px targets', async ({ browser }) => {
+test('touch pointers get 44px targets without a taller track', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 820, height: 1180 }, hasTouch: true, isMobile: true })
   const page = await context.newPage()
   await openTicker(page)
-  const heights = await timeframe(page).getByRole('radio').evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect().height))
-  expect(Math.min(...heights)).toBeGreaterThanOrEqual(44)
+  const group = timeframe(page)
+  const result = await group.evaluate((root) => {
+    const buttons = [...root.querySelectorAll<HTMLElement>('[role="radio"]')]
+    // Each option answers a tap 22px above and below its centre: a 44px target.
+    const reachable = buttons.every((button) => {
+      const box = button.getBoundingClientRect()
+      const x = box.left + box.width / 2
+      const y = box.top + box.height / 2
+      return [y - 21, y + 21].every((probe) => button.contains(document.elementFromPoint(x, probe)))
+    })
+    return { reachable, trackHeight: root.getBoundingClientRect().height }
+  })
+  expect(result.reachable).toBe(true)
+  expect(result.trackHeight).toBeLessThan(40)
   await context.close()
 })
