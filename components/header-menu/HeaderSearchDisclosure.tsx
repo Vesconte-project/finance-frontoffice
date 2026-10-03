@@ -56,7 +56,8 @@ export function HeaderSearchField({
       aria-hidden={!open}
       inert={!open ? true : undefined}
     >
-      <HeaderSearch className="site-header__search-combobox" />
+      {/* Six rows fit between the bar and an open phone keyboard. */}
+      <HeaderSearch className="site-header__search-combobox" maxSuggestions={6} />
       <button type="button" className="site-header__search-cancel" onClick={onCancel}>
         Cancel
       </button>

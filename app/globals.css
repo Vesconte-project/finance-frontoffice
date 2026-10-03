@@ -1954,16 +1954,6 @@ html.chrome-scrolled .site-header__row:not([data-menu-open]) [data-header-search
     overflow: hidden;
   }
 }
-/* Small phones: brand, both triggers and Join/avatar share about 270px. The
-   chevrons give their width back; the expanded state still marks the trigger. */
-@media (max-width: 389px) {
-  .site-header__navlink {
-    padding-inline: 6px;
-  }
-  .site-nav__trigger .site-nav__chev {
-    display: none;
-  }
-}
 
 /* --- Compact header: one edge-to-edge bar -----------------------------------
    Below md the floating pill and the separate search row become a single
@@ -1999,7 +1989,7 @@ html.chrome-scrolled .site-header__row:not([data-menu-open]) [data-header-search
     display: flex;
     gap: 6px !important;
     min-height: 56px !important;
-    padding: 0 8px 0 16px !important;
+    padding: 0 20px !important;
   }
   .site-header .site-header__brand {
     padding-left: 0;
@@ -2010,11 +2000,20 @@ html.chrome-scrolled .site-header__row:not([data-menu-open]) [data-header-search
   }
   .site-header__navlink {
     min-height: 40px;
+    padding-inline: 8px;
   }
-  .site-header .site-header__join {
-    height: 34px;
+  /* The bar's own edges give the menus their room; the chevrons would take it
+     back. The expanded state still marks the open trigger. */
+  .site-header .site-nav__trigger .site-nav__chev {
+    display: none;
+  }
+  /* One height in every scroll state: the desktop pill shrinks Join as it
+     condenses, which on a bar that never condenses read as Join collapsing. */
+  html .site-header .site-header__bar .site-header__join {
+    height: 36px;
     margin-left: 4px;
-    padding-inline: 12px;
+    padding-inline: 14px;
+    transition: none;
   }
 
   .site-header__search-trigger {
@@ -2091,6 +2090,23 @@ html.chrome-scrolled .site-header__row:not([data-menu-open]) [data-header-search
     border-width: 0 0 1px;
     border-radius: 0;
   }
+  /* Phone rows carry the name and symbol only. Tracking already shows in the
+     row's icon, and the status chip, source label and exchange repeated it
+     across a line too narrow to hold them. */
+  .site-header__search-field .ticker-search__option {
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 12px;
+    min-height: 48px;
+    padding-block: 6px;
+  }
+  .site-header__search-field .ticker-search__option > div:first-child > span {
+    width: 32px;
+    height: 32px;
+  }
+  .site-header__search-field .ticker-search__option > div:nth-child(3),
+  .site-header__search-field .ticker-search__source {
+    display: none;
+  }
   .site-header__search-cancel {
     flex-shrink: 0;
     height: 40px;
@@ -2114,9 +2130,25 @@ html.chrome-scrolled .site-header__row:not([data-menu-open]) [data-header-search
     transition: none;
   }
 }
+/* Small phones: brand, search, both triggers and Join/avatar share what is
+   left after the bar's edges. */
+@media (max-width: 389px) {
+  .site-header .site-header__bar {
+    padding: 0 16px !important;
+  }
+  .site-header .site-header__navlink {
+    padding-inline: 6px;
+  }
+}
 @media (max-width: 359px) {
   .site-header .site-header__brand {
     font-size: 16px !important;
+  }
+  .site-header .site-header__navlink {
+    padding-inline: 5px;
+  }
+  html .site-header .site-header__bar .site-header__join {
+    padding-inline: 12px;
   }
 }
 

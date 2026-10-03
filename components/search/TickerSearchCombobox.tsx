@@ -745,6 +745,9 @@ export default function TickerSearchCombobox({
         aria-activedescendant={shouldShowDropdown ? activeDescendantId : undefined}
         aria-haspopup="listbox"
         aria-label={label ? undefined : placeholder}
+        // Browser form history offered past queries above the mobile keyboard,
+        // a second suggestion list competing with this one.
+        autoComplete="off"
         autoCapitalize="characters"
         autoCorrect="off"
         spellCheck={false}
