@@ -35,6 +35,45 @@ function thinTicks(ticks: XTick[], max: number): XTick[] {
   return ticks.filter((_, position) => position % step === 0)
 }
 
+type PlacedXLabel = { key: string; x: number; label: string }
+
+/**
+ * Positions date labels inside the plot and drops any that would collide. The
+ * first and last labels take priority, so the visible range is always named.
+ */
+function placeXLabels(
+  ticks: XTick[],
+  renderedPoints: Array<{ date: string; x: number }>,
+  plotLeft: number,
+  plotWidth: number,
+): PlacedXLabel[] {
+  // Approximate half-width of a 12px label; it keeps every label inside the plot.
+  const halfWidth = (label: string) => Math.min(plotWidth / 2, label.length * 3 + 2)
+  const placed = ticks.flatMap(({ index, label }) => {
+    const point = renderedPoints[index]
+    if (!point) return []
+    const half = halfWidth(label)
+    const x = Math.max(plotLeft + half, Math.min(plotLeft + plotWidth - half, point.x))
+    return [{ key: `${point.date}-${index}`, x, label, left: x - half, right: x + half }]
+  })
+  const minimumGap = 8
+  const kept: typeof placed = []
+  placed.forEach((candidate, position) => {
+    const previous = kept.at(-1)
+    if (!previous || candidate.left >= previous.right + minimumGap) {
+      kept.push(candidate)
+      return
+    }
+    // The last label replaces a colliding middle label, never the first one.
+    if (position === placed.length - 1 && kept.length > 1) {
+      kept.pop()
+      const beforeLast = kept.at(-1)
+      if (!beforeLast || candidate.left >= beforeLast.right + minimumGap) kept.push(candidate)
+    }
+  })
+  return kept.map(({ key, x, label }) => ({ key, x, label }))
+}
+
 function buildXTicks(dates: string[], maxTicks = 6): XTick[] {
   const total = dates.length
   if (total === 0) return []
@@ -134,8 +173,10 @@ export default function TemporalLineChart({
         }))
         const linePath = renderedPoints.map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(' ')
         const areaPath = `${linePath} L${renderedPoints.at(-1)?.x.toFixed(2)} ${(padding.top + innerHeight).toFixed(2)} L${renderedPoints[0]?.x.toFixed(2)} ${(padding.top + innerHeight).toFixed(2)} Z`
-        const xTickLimit = width < 420 ? 3 : width < 720 ? 4 : 6
+        // Each date label needs roughly 96px; fit as many as the plot width holds.
+        const xTickLimit = Math.max(2, Math.min(6, Math.floor(innerWidth / 96) + 1))
         const xTicks = buildXTicks(points.map((point) => point.date), xTickLimit)
+        const xLabels = placeXLabels(xTicks, renderedPoints, padding.left, innerWidth)
         const yTicks = Array.from({ length: 5 }, (_, index) => floor + ((ceiling - floor) / 4) * index)
         const hoverPoint = hoverIndex === null ? null : renderedPoints[hoverIndex] ?? null
         const tooltipLeft = hoverPoint ? Math.min(width - 156, Math.max(8, hoverPoint.x + 14)) : 0
@@ -169,13 +210,9 @@ export default function TemporalLineChart({
                 </>
               ) : null}
 
-              {xTicks.map(({ index, label }) => {
-                const point = renderedPoints[index]
-                if (!point) return null
-                const labelInset = width < 420 ? 28 : 34
-                const x = Math.max(padding.left + labelInset, Math.min(padding.left + innerWidth - labelInset, point.x))
-                return <text key={`${point.date}-${index}`} x={x} y={height - 4} textAnchor="middle" className={styles.axisLabel}>{label}</text>
-              })}
+              {xLabels.map(({ key, x, label }) => (
+                <text key={key} x={x} y={height - 4} textAnchor="middle" className={styles.axisLabel}>{label}</text>
+              ))}
 
               {yTicks.map((tick) => {
                 const y = padding.top + (1 - (tick - floor) / (ceiling - floor)) * innerHeight

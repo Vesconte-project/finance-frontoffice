@@ -24,19 +24,17 @@ export function StockTickerChromeFallback({
     <section className={styles.chrome} data-ticker-hero="" data-ticker-chrome="loading" aria-label={`${ticker} research`}>
       <TickerRelationshipFieldFallback accentColor={identityColor} />
       <div className={styles.content}>
-        <div className={styles.identityRow}>
-          <StockTickerIdentity
-            ticker={ticker}
-            displayName={ticker}
-            currency=""
-            price={null}
-            dailyMoveAmount={null}
-            dailyMovePercent={null}
-            identityColor={identityColor}
-            nameAsHeading={isOverview}
-            loading
-          />
-        </div>
+        <StockTickerIdentity
+          ticker={ticker}
+          displayName={ticker}
+          currency=""
+          price={null}
+          dailyMoveAmount={null}
+          dailyMovePercent={null}
+          identityColor={identityColor}
+          nameAsHeading={isOverview}
+          loading
+        />
         <div className={styles.navigation} data-ticker-navigation="" data-chrome-collision=""><StockResearchNav ticker={ticker} /></div>
       </div>
     </section>
@@ -60,29 +58,27 @@ export default function StockTickerChrome({
         <TickerRelationshipField ticker={resolved.ticker} accentColor={resolved.identityColor} relationships={relationships} />
       </Suspense>
       <div className={styles.content}>
-        <div className={styles.identityRow}>
-          <StockTickerIdentity
-            ticker={resolved.ticker}
-            displayName={resolved.displayName}
-            currency={resolved.currency}
-            price={resolved.price}
-            dailyMoveAmount={resolved.dailyMoveAmount}
-            dailyMovePercent={resolved.dailyMovePercent}
-            identityColor={resolved.identityColor}
-            nameAsHeading={isOverview}
-          />
-          <div className={styles.controlRail}>
-            {metadata ? <span className={styles.metadata}>{metadata}</span> : null}
-            <div className={styles.actionCluster}>
+        <StockTickerIdentity
+          ticker={resolved.ticker}
+          displayName={resolved.displayName}
+          currency={resolved.currency}
+          price={resolved.price}
+          dailyMoveAmount={resolved.dailyMoveAmount}
+          dailyMovePercent={resolved.dailyMovePercent}
+          identityColor={resolved.identityColor}
+          nameAsHeading={isOverview}
+          metadata={metadata}
+          actions={(
+            <>
               <TickerExportButton ticker={resolved.ticker} />
               <WatchlistButton
                 ticker={resolved.ticker}
                 initialInWatchlist={resolved.watchlist.initialInWatchlist}
                 signedIn={resolved.watchlist.signedIn}
               />
-            </div>
-          </div>
-        </div>
+            </>
+          )}
+        />
         <div className={styles.navigation} data-ticker-navigation="" data-chrome-collision=""><StockResearchNav ticker={resolved.ticker} /></div>
       </div>
     </section>

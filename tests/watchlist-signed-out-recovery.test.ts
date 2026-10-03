@@ -158,20 +158,19 @@ test('error presentation uses the existing semantic token and caption utility', 
 
 test('the star geometry and the control rail are preserved', () => {
   const source = readRepoFile('components/WatchlistButton.tsx')
-  const styles = readRepoFile('components/stocks/StockTickerChrome.module.css')
+  const styles = readRepoFile('components/stocks/StockTickerIdentity.module.css')
   const chrome = readRepoFile('components/stocks/StockTickerChrome.tsx')
 
   // R-3: the existing 36px control is not resized or redesigned.
   assert.match(source, /inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full/)
   assert.match(source, /fill-\[var\(--text-muted\)\] text-\[var\(--text-muted\)\]/)
 
-  // The only call site is unchanged.
-  assert.match(chrome, /<WatchlistButton/)
-  assert.match(chrome, /styles\.controlRail/)
+  // The only call site is unchanged: the chrome hands it to the identity's actions.
+  assert.match(chrome, /actions=\{\([\s\S]*<WatchlistButton/)
 
   // R-7: the chrome change is layout integration, scoped to the recovery state.
-  assert.match(styles, /\.identityRow:has\(\[data-watchlist-recovery='open'\]\)/)
-  assert.doesNotMatch(styles, /\.controlRail \{[^}]*(width|height|padding|font-size)/)
+  assert.match(styles, /\.identity:has\(\[data-watchlist-recovery='open'\]/)
+  assert.doesNotMatch(styles, /\.(rail|actions) \{[^}]*(width|height|padding|font-size)/)
 })
 
 test('no new dependency, primitive or design token is introduced', () => {

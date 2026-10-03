@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import LoadingPulse from '@/components/ui/LoadingPulse'
 import { formatMoney, formatSignedMoney } from '@/lib/currency'
 import { cn } from '@/lib/utils'
@@ -27,8 +28,17 @@ type StockTickerIdentityProps = {
   identityColor: string
   nameAsHeading?: boolean
   loading?: boolean
+  /** Asset type, exchange and currency line. */
+  metadata?: ReactNode
+  /** Export and watchlist controls. */
+  actions?: ReactNode
 }
 
+/**
+ * The ticker hero's identity block. Its layout follows the width the block is
+ * given, not the device: the name keeps priority, the ticker and price move as
+ * one unit, and the name is shortened only when it alone cannot fit its line.
+ */
 export default function StockTickerIdentity({
   ticker,
   displayName,
@@ -39,40 +49,54 @@ export default function StockTickerIdentity({
   identityColor,
   nameAsHeading = false,
   loading = false,
+  metadata,
+  actions,
 }: StockTickerIdentityProps) {
   const name = nameAsHeading
-    ? <h1 className={styles.name}>{displayName}</h1>
-    : <p className={styles.name}>{displayName}</p>
+    ? <h1 className={styles.name} title={displayName} data-ticker-name="">{displayName}</h1>
+    : <p className={styles.name} title={displayName} data-ticker-name="">{displayName}</p>
 
   return (
-    <div className={styles.identity}>
-      <span
-        className={styles.nodeRail}
-        data-selected-ticker-node=""
-        style={{ ['--selected-node-tone' as never]: identityColor }}
-        aria-hidden="true"
-      >
-        <span className={styles.node} data-selected-ticker-anchor="" />
-      </span>
-      <div className={styles.nameRow} data-ticker-identity="">
-        {name}
-        {loading ? (
-          <LoadingPulse label={`Loading ${ticker}`} size="compact" />
-        ) : (
-          <>
-            <span className={styles.tickerBadge}>{ticker}</span>
-            {isFiniteNumber(price) ? (
-              <div className={styles.quote}>
-                <strong className={styles.price}>{formatMoney(price, currency)}</strong>
-                {isFiniteNumber(dailyMoveAmount) && isFiniteNumber(dailyMovePercent) ? (
+    <div className={styles.frame}>
+      <div className={styles.identity}>
+        <span
+          className={styles.nodeRail}
+          data-selected-ticker-node=""
+          style={{ ['--selected-node-tone' as never]: identityColor }}
+          aria-hidden="true"
+        >
+          <span className={styles.node} data-selected-ticker-anchor="" />
+        </span>
+        <div className={styles.body}>
+          <div className={styles.main} data-ticker-identity="">
+            {name}
+            {loading ? (
+              <span className={styles.quote}>
+                <LoadingPulse label={`Loading ${ticker}`} size="compact" />
+              </span>
+            ) : (
+              <span className={styles.quote} data-ticker-quote="">
+                <span className={styles.quoteLead}>
+                  <span className={styles.tickerBadge} data-ticker-symbol="">{ticker}</span>
+                  {isFiniteNumber(price) ? (
+                    <strong className={styles.price} data-ticker-price="">{formatMoney(price, currency)}</strong>
+                  ) : null}
+                </span>
+                {isFiniteNumber(price) && isFiniteNumber(dailyMoveAmount) && isFiniteNumber(dailyMovePercent) ? (
                   <span className={cn(styles.delta, deltaClass(dailyMoveAmount))}>
                     {formatSignedMoney(dailyMoveAmount, currency)} ({formatCompactPercent(dailyMovePercent)})
                   </span>
                 ) : null}
-              </div>
-            ) : null}
-          </>
-        )}
+              </span>
+            )}
+          </div>
+          {metadata || actions ? (
+            <div className={styles.rail}>
+              {metadata ? <span className={styles.metadata} data-ticker-metadata="">{metadata}</span> : null}
+              {actions ? <div className={styles.actions} data-ticker-actions="">{actions}</div> : null}
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   )

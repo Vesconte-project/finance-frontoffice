@@ -11,6 +11,8 @@ type SegmentedControlProps<T extends string> = {
   className?: string
   /** Names this control in telemetry so segment changes are attributable. */
   analyticsId?: string
+  /** Fill the available width, sharing it equally between the options. */
+  fill?: boolean
 }
 
 /**
@@ -24,6 +26,7 @@ export default function SegmentedControl<T extends string>({
   ariaLabel,
   className,
   analyticsId,
+  fill = false,
 }: SegmentedControlProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [thumb, setThumb] = useState<{ left: number; width: number } | null>(null)
@@ -45,8 +48,14 @@ export default function SegmentedControl<T extends string>({
   }, [updateThumb, value, options])
 
   useEffect(() => {
-    window.addEventListener('resize', updateThumb)
-    return () => window.removeEventListener('resize', updateThumb)
+    const container = containerRef.current
+    if (!container || typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateThumb)
+      return () => window.removeEventListener('resize', updateThumb)
+    }
+    const observer = new ResizeObserver(updateThumb)
+    observer.observe(container)
+    return () => observer.disconnect()
   }, [updateThumb])
 
   return (
@@ -54,7 +63,7 @@ export default function SegmentedControl<T extends string>({
       ref={containerRef}
       role="tablist"
       aria-label={ariaLabel}
-      className={cn('glass relative inline-flex items-center gap-0.5 rounded-md p-1', className)}
+      className={cn('glass relative inline-flex items-center gap-0.5 rounded-md p-1', fill && 'flex w-full', className)}
     >
       {thumb ? (
         <span
@@ -77,7 +86,8 @@ export default function SegmentedControl<T extends string>({
             data-analytics-value={option}
             onClick={() => onChange(option)}
             className={cn(
-              'relative z-10 cursor-pointer rounded-md px-2.5 py-1 text-[12px] leading-none transition-[color,transform] duration-150 active:scale-90',
+              'relative z-10 cursor-pointer rounded-md py-1 text-[12px] leading-none transition-[color,transform] duration-150 active:scale-90',
+              fill ? 'min-w-0 flex-1 basis-0 px-0 text-center' : 'px-2.5',
               active
                 ? 'font-semibold text-[var(--color-accent)]'
                 : 'text-content-secondary hover:text-content-primary'

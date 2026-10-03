@@ -1,9 +1,38 @@
+/*
+ * The identity block adapts to its own inline size, never to a device class.
+ * Priorities, in order:
+ *   1. name, ticker and price share one line with the metadata and actions;
+ *   2. when they do not fit, the metadata and actions give way first and move
+ *      to the next line, then the ticker and price wrap together beneath the
+ *      name — never the price alone;
+ *   3. in a narrow block the name takes the whole first line, the quote shares
+ *      the second with the actions, and the metadata closes the block;
+ *   4. in a very narrow block the quote takes the second line on its own.
+ * The name is shortened only when it cannot fit the full line it is given.
+ */
+
+.frame {
+  container-type: inline-size;
+  min-width: 0;
+}
+
 .identity {
   --selected-node-column: 30px;
   --selected-node-size: 17px;
   display: grid;
   grid-template-columns: var(--selected-node-column) minmax(0, 1fr);
-  gap: 13px;
+  grid-template-areas: 'node body';
+  column-gap: 13px;
+  align-items: start;
+  min-width: 0;
+}
+
+.body {
+  display: flex;
+  flex-wrap: wrap;
+  grid-area: body;
+  gap: 8px 24px;
+  align-items: center;
   min-width: 0;
 }
 
@@ -11,10 +40,10 @@
   --selected-node-tone: var(--accent);
   position: relative;
   display: flex;
-  grid-column: 1;
-  grid-row: 1;
+  grid-area: node;
   justify-content: center;
-  padding-top: 2px;
+  align-self: start;
+  padding-top: 5px;
 }
 
 .node {
@@ -25,43 +54,49 @@
   border: 2px solid var(--selected-node-tone);
   border-radius: 50%;
   background: var(--page-bg);
-  box-shadow:
-    none;
+  box-shadow: none;
 }
 
-@keyframes selected-node-breathe {
-  0%, 100% {
-    box-shadow:
-      none;
-  }
-  50% {
-    box-shadow:
-      none;
-  }
-}
-
-.nameRow {
+.main {
   display: flex;
+  flex: 0 1 auto;
   flex-wrap: wrap;
-  grid-column: 2;
-  grid-row: 1;
-  gap: 10px;
+  gap: 4px 10px;
   align-items: center;
   min-width: 0;
 }
 
 .name {
   font-family: var(--font-display), serif;
+  flex: 0 1 auto;
   min-width: 0;
+  max-width: 100%;
   margin: 0;
   overflow: hidden;
   color: var(--color-text-primary);
-  max-width: min(62vw, 760px);
   font-size: 19px;
   font-weight: 500;
   line-height: 1.2;
   letter-spacing: normal;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quote {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  grid-area: quote;
+  gap: 2px 10px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+/* The ticker and its price are one unit: they wrap together or not at all. */
+.quoteLead {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
   white-space: nowrap;
 }
 
@@ -81,13 +116,6 @@
   white-space: nowrap;
 }
 
-.quote {
-  display: flex;
-  gap: 10px;
-  align-items: baseline;
-  white-space: nowrap;
-}
-
 .price {
   font-family: var(--font-mono), monospace;
   color: var(--color-text-primary);
@@ -102,6 +130,7 @@
   font-size: 13px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .deltaPositive {
@@ -116,22 +145,102 @@
   color: var(--color-neutral);
 }
 
-@media (max-width: 560px) {
+.rail {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 16px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.metadata {
+  grid-area: meta;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  grid-area: actions;
+  gap: 8px;
+  align-items: flex-start;
+  justify-self: end;
+}
+
+/*
+ * Narrow block: the name owns the first line. `display: contents` lets the
+ * quote, metadata and actions take their own grid areas.
+ */
+@container (width < 45rem) {
   .identity {
     --selected-node-column: 24px;
     --selected-node-size: 15px;
-    gap: 9px;
+    grid-template-columns: var(--selected-node-column) minmax(0, 1fr) auto;
+    grid-template-areas:
+      'node name name'
+      '. quote actions'
+      '. meta meta';
+    column-gap: 10px;
+    row-gap: 4px;
+    align-items: center;
   }
 
   .node {
     border-width: 3px;
   }
 
-  .name {
-    max-width: min(58vw, 290px);
-    font-size: 19px;
+  .nodeRail {
+    align-self: center;
+    padding-top: 0;
   }
 
+  .body,
+  .main,
+  .rail {
+    display: contents;
+  }
+
+  .name {
+    grid-area: name;
+    justify-self: start;
+  }
+
+  .quote {
+    flex-shrink: 1;
+  }
+
+  /*
+   * An open watchlist or export recovery message is wider than the button it
+   * opens beneath; give the actions their own line so the quote is never
+   * squeezed.
+   */
+  .identity:has([data-watchlist-recovery='open'], [data-ticker-export-recovery='open']) {
+    grid-template-areas:
+      'node name name'
+      '. quote quote'
+      '. actions actions'
+      '. meta meta';
+  }
+
+  .identity:has([data-watchlist-recovery='open'], [data-ticker-export-recovery='open']) .actions {
+    flex-direction: column;
+    justify-self: start;
+  }
+}
+
+/* Very narrow block: the quote cannot share its line with the actions. */
+@container (width < 21rem) {
+  .identity {
+    grid-template-areas:
+      'node name name'
+      '. quote quote'
+      '. meta actions';
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

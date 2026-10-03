@@ -3,8 +3,8 @@
  *
  * The Market Universe page fetches its atlas server-side, so a Playwright
  * page.route() mock cannot reach it. This serves the relationship endpoints
- * from repository-owned synthetic data and an explicitly empty Picks ranking
- * needed by the homepage smoke test. Browser QA needs no external backend
+ * from repository-owned synthetic data, an explicitly empty Picks ranking
+ * needed by the homepage smoke test, and three synthetic ticker pages. Browser QA needs no external backend
  * infrastructure or credentials.
  *
  * Every other path answers 503, which is what the app already sees when no
@@ -18,6 +18,12 @@ import {
   neighborhoodFixture,
   tickerIndexFixture,
 } from '../e2e/fixtures/market-atlas.mjs'
+import {
+  isFixtureTicker,
+  tickerHistoryFixture,
+  tickerOhlcFixture,
+  tickerSummaryFixture,
+} from '../e2e/fixtures/ticker-page.mjs'
 
 const HOST = '127.0.0.1'
 const PORT = Number(process.env.E2E_BACKEND_STUB_PORT || 3101)
@@ -87,6 +93,18 @@ const server = createServer((request, response) => {
       return
     }
     send(response, 200, payload)
+    return
+  }
+
+  // Synthetic ticker pages (QAS, QAM, QAL) for hero layout checks. Real symbols
+  // stay unavailable, as before.
+  const tickerRoute = path.match(/^\/tickers\/([^/]+)\/(summary|ohlc|history)$/)
+  if (tickerRoute && isFixtureTicker(decodeURIComponent(tickerRoute[1]))) {
+    const ticker = decodeURIComponent(tickerRoute[1])
+    const periodDays = url.searchParams.get('period_days')
+    if (tickerRoute[2] === 'summary') send(response, 200, tickerSummaryFixture(ticker))
+    else if (tickerRoute[2] === 'ohlc') send(response, 200, tickerOhlcFixture(ticker, periodDays))
+    else send(response, 200, tickerHistoryFixture(ticker, periodDays))
     return
   }
 
