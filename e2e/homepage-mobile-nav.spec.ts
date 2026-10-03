@@ -124,6 +124,33 @@ test('mobile menu panel closes on an outside tap and on Escape', async ({ page }
   await expect(today).toHaveAttribute('aria-expanded', 'false')
 })
 
+test('a tap outside the open menu only closes it and never reaches the page underneath', async ({ page }) => {
+  await stubBackends(page)
+  await page.goto('/faq', { waitUntil: 'load' })
+  await page.evaluate(() => document.fonts.ready)
+
+  // A page control that sits below the open panel on a 390x844 screen.
+  const toggles = page.locator('main button[aria-expanded]')
+  const index = await toggles.evaluateAll((nodes) =>
+    nodes.findIndex((node) => {
+      const rect = node.getBoundingClientRect()
+      return rect.top > 560 && rect.bottom < 820
+    })
+  )
+  expect(index).toBeGreaterThanOrEqual(0)
+  const target = toggles.nth(index)
+  const before = await target.getAttribute('aria-expanded')
+  const box = await target.boundingBox()
+
+  const today = page.getByRole('button', { name: 'Today', exact: true })
+  await today.click()
+  await expect(today).toHaveAttribute('aria-expanded', 'true')
+  await page.touchscreen.tap(box!.x + box!.width / 2, box!.y + box!.height / 2)
+
+  await expect(today).toHaveAttribute('aria-expanded', 'false')
+  await expect(target).toHaveAttribute('aria-expanded', before ?? 'false')
+})
+
 test('keyboard opening moves focus into the menu and Escape returns it', async ({ page }) => {
   await stubBackends(page)
   await page.goto('/faq', { waitUntil: 'load' })

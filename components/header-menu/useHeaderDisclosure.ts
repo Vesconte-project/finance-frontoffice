@@ -100,8 +100,30 @@ export function useHeaderDisclosure<T extends DisclosureMenu>({
     if (!openKey) return
     // pointerdown, not mousedown: iOS only synthesizes mouse events for
     // elements it considers clickable, so a tap on the dimmed page never closed.
+    // The close waits for the press to finish, though: closing on pointerdown
+    // lifted the backdrop before the click, so the same tap landed on whatever
+    // was underneath (the homepage constellation zoomed into a node). While the
+    // menu is still open the click hits the backdrop and is spent there. The
+    // timeout covers presses that never produce a click (iOS, cancelled taps).
+    let pendingClose: (() => void) | null = null
     const onDown = (e: PointerEvent) => {
-      if (!rowRef.current?.contains(e.target as Node)) close()
+      if (rowRef.current?.contains(e.target as Node) || pendingClose) return
+      const timer = window.setTimeout(() => finish(), 700)
+      const onClickAfter = (event: MouseEvent) => {
+        event.preventDefault()
+        finish()
+      }
+      const finish = () => {
+        window.clearTimeout(timer)
+        window.removeEventListener('click', onClickAfter, true)
+        pendingClose = null
+        close()
+      }
+      pendingClose = () => {
+        window.clearTimeout(timer)
+        window.removeEventListener('click', onClickAfter, true)
+      }
+      window.addEventListener('click', onClickAfter, true)
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
@@ -120,6 +142,7 @@ export function useHeaderDisclosure<T extends DisclosureMenu>({
     window.addEventListener('keydown', onKey)
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => {
+      pendingClose?.()
       window.removeEventListener('pointerdown', onDown)
       window.removeEventListener('keydown', onKey)
       window.removeEventListener('scroll', onScroll)
