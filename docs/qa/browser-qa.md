@@ -44,6 +44,7 @@ These are load-bearing. Each was learned from a failure that looked like an appl
 - Page and primary content load without uncaught errors, hydration warnings, failed essential resources, or unexpected console errors.
 - No horizontal overflow, clipped text, overlapping UI, broken max-width, unstable hover sizing, or unintended layout shift.
 - Inspect saved screenshots of each changed route and important state at representative viewport sizes; a passing overflow or geometry assertion does not establish a good composition. Check first-viewport hierarchy, element collisions, and usable space around the primary action.
+- For a component that must adapt to its width, follow `adaptive-layout-qa.md`: measure the before state, sweep every width against explicit rules, feed worst-case fixtures, then inspect screenshots and the states behind sign-in.
 - Alignment, hierarchy, line length, data formatting, image/canvas framing, and contrast remain coherent from small mobile to wide desktop.
 - Navigation and mobile menu open, close, trap/release focus appropriately, restore focus, and respond to Escape and outside interaction when intended.
 - All controls work with keyboard and have visible focus. Tab order follows the visual/task order; sticky content does not cover focus.
