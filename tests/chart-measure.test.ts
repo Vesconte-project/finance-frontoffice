@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { candleDirection } from '../lib/candles'
-import { formatSignedPercent, formatSpan, measureBetween, type MeasurePoint } from '../lib/chart-measure'
+import { formatSignedPercent, formatSpan, measureBetween, placeReading, type MeasurePoint } from '../lib/chart-measure'
 
 // Synthetic closes on consecutive weekdays (Thu, Fri, Mon, Tue).
 const points: MeasurePoint[] = [
@@ -56,4 +56,41 @@ test('a candle without an open is neutral, never assumed to be rising', () => {
   assert.equal(candleDirection(10, 9), 'down')
   assert.equal(candleDirection(null, 9), 'unknown')
   assert.equal(candleDirection(undefined, 9), 'unknown')
+})
+
+// A 360x240 chart with a 200x110 reading and buttons over the top-left corner.
+const bounds = { width: 360, height: 240 }
+const reading = { width: 200, height: 110 }
+const corner = { left: 0, top: 0, width: 102, height: 54 }
+const within = ({ left, top }: { left: number; top: number }) =>
+  left >= 0 && top >= 0 && left + reading.width <= bounds.width && top + reading.height <= bounds.height
+const coversPoint = ({ left, top }: { left: number; top: number }, point: { x: number; y: number }) =>
+  point.x >= left && point.x <= left + reading.width && point.y >= top && point.y <= top + reading.height
+
+test('the reading sits right of a day on the left, clear of the corner buttons', () => {
+  const point = { x: 20, y: 120 }
+  const at = placeReading(point, reading, bounds, corner)
+  assert.ok(within(at))
+  assert.ok(at.left > point.x)
+  assert.ok(at.left >= corner.width || at.top >= corner.height)
+})
+
+test('the reading flips left of a day near the right edge instead of leaving the chart', () => {
+  const point = { x: 330, y: 120 }
+  const at = placeReading(point, reading, bounds, corner)
+  assert.ok(within(at))
+  assert.ok(at.left + reading.width < point.x)
+})
+
+test('with no room beside the day, the reading goes above or below it, never over it', () => {
+  for (const point of [{ x: 180, y: 200 }, { x: 180, y: 30 }]) {
+    const at = placeReading(point, reading, bounds, corner)
+    assert.ok(within(at), JSON.stringify(at))
+    assert.ok(!coversPoint(at, point), JSON.stringify(at))
+  }
+})
+
+test('a reading too big for every side falls back to the farthest free corner', () => {
+  const at = placeReading({ x: 60, y: 200 }, { width: 300, height: 200 }, bounds, null)
+  assert.deepEqual(at, { left: 54, top: 6 })
 })

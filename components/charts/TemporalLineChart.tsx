@@ -1,10 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import ChartContainer from '@/components/charts/ChartContainer'
 import MeasureSummary, { describeMeasurement } from '@/components/charts/MeasureSummary'
 import { candleDirection, type CandleDirection } from '@/lib/candles'
-import { LONG_PRESS_MS, LONG_PRESS_SLOP_PX, measureBetween } from '@/lib/chart-measure'
+import { LONG_PRESS_MS, LONG_PRESS_SLOP_PX, measureBetween, placeReading } from '@/lib/chart-measure'
 import { formatMoney, formatSignedMoney } from '@/lib/currency'
 import { cn } from '@/lib/utils'
 import styles from './TemporalLineChart.module.css'
@@ -161,6 +161,7 @@ export default function TemporalLineChart({
   mode = 'line',
   measurable = false,
   onMeasureActiveChange,
+  reservedCorner,
 }: {
   points: TemporalLinePoint[]
   ariaLabel: string
@@ -175,6 +176,8 @@ export default function TemporalLineChart({
   measurable?: boolean
   /** Told when a measurement appears or clears, so nearby controls can step aside. */
   onMeasureActiveChange?: (active: boolean) => void
+  /** Top-left area that controls laid over the chart occupy; the reading avoids it. */
+  reservedCorner?: { width: number; height: number }
 }) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
   // A touch reading has no hover to end it, so it stays until a tap elsewhere.
@@ -184,6 +187,15 @@ export default function TemporalLineChart({
   const canvasRef = useRef<HTMLDivElement>(null)
   const gestureRef = useRef<MeasureGesture | null>(null)
   const measuringRef = useRef(false)
+  const [readingSize, setReadingSize] = useState({ width: 160, height: 100 })
+  const revealId = `reveal-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
+  // The reading's real size decides where it fits, measured before paint.
+  const measureReading = useCallback((element: HTMLDivElement | null) => {
+    if (!element) return
+    const width = element.offsetWidth
+    const height = element.offsetHeight
+    setReadingSize((current) => (current.width === width && current.height === height ? current : { width, height }))
+  }, [])
 
   const measureActive = measure !== null
   useEffect(() => {
@@ -261,8 +273,8 @@ export default function TemporalLineChart({
     gesture.active = true
     measuringRef.current = true
     setMeasuring(true)
-    setTouchReading(false)
-    setHoverIndex(null)
+    // The held day keeps its reading until the finger moves to another day.
+    setHoverIndex(gesture.startIndex)
     // A short buzz confirms the hold where the device supports it.
     if (!gesture.mouse) navigator.vibrate?.(12)
     setMeasure({ first: gesture.startIndex, second: gesture.startIndex })
@@ -285,6 +297,12 @@ export default function TemporalLineChart({
       return
     }
     setMeasure((current) => (current && current.first !== current.second ? current : null))
+    // A hold that never moved reads that one day, like a tap.
+    if (!measure || measure.first === measure.second) {
+      setHoverIndex(gesture.startIndex)
+      setTouchReading(!gesture.mouse)
+      return
+    }
     setTouchReading(false)
     setHoverIndex(null)
   }
@@ -325,10 +343,17 @@ export default function TemporalLineChart({
         const xTicks = buildXTicks(points.map((point) => point.date), xTickLimit)
         const xLabels = placeXLabels(xTicks, renderedPoints, padding.left, innerWidth)
         const yTicks = Array.from({ length: 5 }, (_, index) => floor + ((ceiling - floor) / 4) * index)
-        // The reading and the measurement never show at once.
-        const hoverPoint = hoverIndex === null || measure !== null ? null : renderedPoints[hoverIndex] ?? null
-        const tooltipLeft = hoverPoint ? Math.min(width - 156, Math.max(8, hoverPoint.x + 14)) : 0
-        const tooltipTop = hoverPoint ? Math.max(8, Math.min(height - (candles ? 140 : 100), hoverPoint.y - 82)) : 0
+        // The reading and a measured span never show at once.
+        const spanShown = measure !== null && measure.first !== measure.second
+        const hoverPoint = hoverIndex === null || spanShown ? null : renderedPoints[hoverIndex] ?? null
+        const readingAt = hoverPoint
+          ? placeReading(
+            hoverPoint,
+            readingSize,
+            { width, height },
+            reservedCorner ? { left: 0, top: 0, ...reservedCorner } : null,
+          )
+          : null
         const firstRenderedPoint = renderedPoints[0] ?? null
         const rangeBaseValue = firstRenderedPoint?.value ?? null
         const rangeChange = hoverPoint && rangeBaseValue !== null && rangeBaseValue !== 0
@@ -356,6 +381,12 @@ export default function TemporalLineChart({
             paths.bodies += `M${(x - bodyWidth / 2).toFixed(2)} ${top.toFixed(2)}h${bodyWidth.toFixed(2)}v${bodyHeight.toFixed(2)}h${(-bodyWidth).toFixed(2)}Z`
           })
         }
+
+        // The sweep starts wholly left of the plot and ends with its soft edge past the last candle.
+        const revealFeather = Math.min(120, innerWidth * 0.3)
+        const revealLeft = padding.left - 12
+        const revealWidth = innerWidth + 24 + revealFeather
+        const revealSolid = ((revealWidth - revealFeather) / revealWidth).toFixed(3)
 
         const measurement = measure ? measureBetween(renderedPoints, measure.first, measure.second) : null
         const measureLeft = measure ? renderedPoints[Math.min(measure.first, measure.second)] : null
@@ -437,12 +468,31 @@ export default function TemporalLineChart({
               ) : null}
 
               {candles ? (
-                (['up', 'down', 'unknown'] as const).map((direction) => (
-                  <g key={direction} className={styles[`candle_${direction}`]}>
-                    <path d={candlePaths[direction].wicks} className={styles.wick} />
-                    <path d={candlePaths[direction].bodies} className={styles.body} />
-                  </g>
-                ))
+                // Candles light up left to right behind a soft edge, as the line draws in.
+                <g key={`candles-${chartKey}`} mask={`url(#${revealId})`}>
+                  <defs>
+                    <linearGradient id={`${revealId}-edge`}>
+                      <stop offset={revealSolid} stopColor="#fff" />
+                      <stop offset="1" stopColor="#fff" stopOpacity="0" />
+                    </linearGradient>
+                    <mask id={revealId} maskUnits="userSpaceOnUse" x="0" y="0" width={width} height={height}>
+                      <rect
+                        className={styles.revealSweep}
+                        x={revealLeft}
+                        y="0"
+                        width={revealWidth}
+                        height={height}
+                        fill={`url(#${revealId}-edge)`}
+                      />
+                    </mask>
+                  </defs>
+                  {(['up', 'down', 'unknown'] as const).map((direction) => (
+                    <g key={direction} className={styles[`candle_${direction}`]}>
+                      <path d={candlePaths[direction].wicks} className={styles.wick} />
+                      <path d={candlePaths[direction].bodies} className={styles.body} />
+                    </g>
+                  ))}
+                </g>
               ) : (
                 <>
                   <path key={`area-${chartKey}`} className={styles.area} d={areaPath} />
@@ -541,7 +591,12 @@ export default function TemporalLineChart({
             </svg>
 
             {hoverPoint ? (
-              <div className={styles.tooltip} data-chart-tooltip="" style={{ left: tooltipLeft, top: tooltipTop }}>
+              <div
+                ref={measureReading}
+                className={styles.tooltip}
+                data-chart-tooltip=""
+                style={{ left: readingAt?.left ?? 0, top: readingAt?.top ?? 0 }}
+              >
                 <div className={styles.tooltipMeta}>{formatDate(hoverPoint.date)}</div>
                 {candles ? (
                   <dl className={styles.tooltipCandle}>

@@ -49,6 +49,16 @@ test.describe('desktop', () => {
     await expect(page.getByRole('button', { name: 'Show candles' })).toHaveAttribute('aria-pressed', 'false')
   })
 
+  test('candles sweep in from the left when the hero switches to them', async ({ page }) => {
+    const chart = await openTicker(page)
+    await page.getByRole('button', { name: 'Show candles' }).click()
+    await expect(chart).toHaveAttribute('data-chart-mode', 'candles')
+    const sweeps = await page.evaluate(() =>
+      document.getAnimations().filter((animation) => (animation as CSSAnimation).animationName?.includes('sweep-in')).length)
+    expect(sweeps).toBe(1)
+    await expect(chart.locator('g[mask]')).toHaveCount(1)
+  })
+
   test('a mouse drag on the hero measures between two days; Escape clears it', async ({ page }) => {
     const chart = await openTicker(page)
     const box = (await chart.locator('svg').boundingBox())!
@@ -140,6 +150,33 @@ test.describe('touch phone', () => {
     await page.touchscreen.tap(box.x + box.width * 0.5, box.y + box.height * 0.5)
     await expect(summary).toHaveCount(0)
     await expect(chart.locator('[data-chart-tooltip]')).toBeVisible()
+  })
+
+  test('a tap reading stays inside the chart and clear of the corner buttons', async ({ page }) => {
+    const chart = await openTicker(page)
+    await page.getByRole('button', { name: 'Show candles' }).click()
+    const box = (await chart.locator('svg').boundingBox())!
+    const buttons = (await page.getByRole('button', { name: 'Expand chart' }).locator('..').boundingBox())!
+    for (const fraction of [0.04, 0.5, 0.97]) {
+      await page.touchscreen.tap(box.x + box.width * fraction, box.y + box.height * 0.4)
+      const tooltip = chart.locator('[data-chart-tooltip]')
+      await expect(tooltip).toBeVisible()
+      await expect(tooltip).toHaveCSS('opacity', '1')
+      const card = (await tooltip.boundingBox())!
+      expect(card.x).toBeGreaterThanOrEqual(box.x)
+      expect(card.x + card.width).toBeLessThanOrEqual(box.x + box.width)
+      const clearOfButtons = card.x >= buttons.x + buttons.width || card.y >= buttons.y + buttons.height
+      expect(clearOfButtons).toBe(true)
+    }
+  })
+
+  test('a hold that never moves keeps reading that day after release', async ({ page }) => {
+    const chart = await openTicker(page)
+    const box = (await chart.locator('svg').boundingBox())!
+    const at = { x: box.x + box.width * 0.4, y: box.y + box.height * 0.5 }
+    await touchDrag(page, at, at, 700)
+    await expect(chart.locator('[data-chart-tooltip]')).toBeVisible()
+    await expect(chart.locator('[data-measure-summary]')).toHaveCount(0)
   })
 
   test('a quick drag still scrubs and does not measure', async ({ page }) => {

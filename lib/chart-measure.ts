@@ -64,3 +64,55 @@ export function formatSpan(measurement: Measurement): string {
   const sessions = `${measurement.sessions} ${measurement.sessions === 1 ? 'session' : 'sessions'}`
   return `${days} · ${sessions}`
 }
+
+export type Box = { left: number; top: number; width: number; height: number }
+
+const overlaps = (a: Box, b: Box) =>
+  a.left < b.left + b.width && b.left < a.left + a.width && a.top < b.top + b.height && b.top < a.top + a.height
+
+/**
+ * Puts the price reading beside the day it reads: to the right, the left,
+ * above or below, whichever first fits inside the chart without covering the
+ * point or the reserved corner. Failing all four, the free corner farthest
+ * from the point.
+ */
+export function placeReading(
+  point: { x: number; y: number },
+  size: { width: number; height: number },
+  bounds: { width: number; height: number },
+  reserved: Box | null,
+): { left: number; top: number } {
+  const gap = 14
+  const edge = 6
+  const clampLeft = (left: number) => Math.max(edge, Math.min(bounds.width - edge - size.width, left))
+  const clampTop = (top: number) => Math.max(edge, Math.min(bounds.height - edge - size.height, top))
+  const besideTop = clampTop(point.y - size.height * 0.6)
+  const candidates = [
+    { left: point.x + gap, top: besideTop },
+    { left: point.x - gap - size.width, top: besideTop },
+    { left: clampLeft(point.x - size.width / 2), top: point.y - gap - size.height },
+    { left: clampLeft(point.x - size.width / 2), top: point.y + gap },
+  ]
+  const target = { left: point.x - 10, top: point.y - 10, width: 20, height: 20 }
+  const fits = ({ left, top }: { left: number; top: number }) => {
+    const box = { left, top, width: size.width, height: size.height }
+    return left >= edge
+      && top >= edge
+      && left + size.width <= bounds.width - edge
+      && top + size.height <= bounds.height - edge
+      && !overlaps(box, target)
+      && !(reserved && overlaps(box, reserved))
+  }
+  const placed = candidates.find(fits)
+  if (placed) return placed
+  const corners = [
+    { left: edge, top: edge },
+    { left: bounds.width - edge - size.width, top: edge },
+    { left: edge, top: bounds.height - edge - size.height },
+    { left: bounds.width - edge - size.width, top: bounds.height - edge - size.height },
+  ].map(({ left, top }) => ({ left: Math.max(edge, left), top: Math.max(edge, top) }))
+  const free = corners.filter((corner) => !(reserved && overlaps({ ...corner, ...size }, reserved)))
+  const distance = ({ left, top }: { left: number; top: number }) =>
+    Math.hypot(left + size.width / 2 - point.x, top + size.height / 2 - point.y)
+  return (free.length ? free : corners).reduce((best, corner) => (distance(corner) > distance(best) ? corner : best))
+}

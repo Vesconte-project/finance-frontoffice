@@ -62,6 +62,7 @@
 
 .tooltip {
   position: absolute;
+  z-index: 3;
   min-width: 148px;
   opacity: 0;
   animation: fade-in 130ms ease forwards;
@@ -113,11 +114,27 @@
   to { stroke-dashoffset: 0; }
 }
 
+@keyframes sweep-in {
+  to { transform: translateX(0); }
+}
+
 @keyframes fade-in {
   to { opacity: 1; }
 }
 
+/* Moves the candle mask across the plot, on the line's timing. */
+.revealSweep {
+  transform: translateX(-100%);
+  transform-box: fill-box;
+  animation: sweep-in 780ms cubic-bezier(0.4, 0, 0.2, 1) 120ms forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .revealSweep {
+    transform: none;
+    animation: none;
+  }
+
   .line,
   .area,
   .tooltip {

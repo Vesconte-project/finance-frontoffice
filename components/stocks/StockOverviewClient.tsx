@@ -283,6 +283,9 @@ function Gauge({
   )
 }
 
+// The expand and candle buttons over the chart's top-left corner, with a margin.
+const HERO_TOOLS_CORNER = { width: 102, height: 54 }
+
 function HeroPriceChart({
   points,
   mode,
@@ -290,10 +293,12 @@ function HeroPriceChart({
   className,
   currency,
   onMeasureActiveChange,
+  reservedCorner,
 }: {
   points: TemporalLinePoint[]
   mode: 'line' | 'candles'
   onMeasureActiveChange: (active: boolean) => void
+  reservedCorner?: { width: number; height: number }
   state: HistoricalChartState
   className?: string
   currency: string
@@ -305,6 +310,7 @@ function HeroPriceChart({
       mode={mode}
       measurable
       onMeasureActiveChange={onMeasureActiveChange}
+      reservedCorner={reservedCorner}
       ariaLabel={mode === 'candles' ? 'Daily price candles' : 'Historical closing price'}
       valueFormat="currency"
       currency={currency}
@@ -656,6 +662,7 @@ export default function StockOverviewClient({
                 points={heroPoints}
                 mode={showCandles ? 'candles' : 'line'}
                 onMeasureActiveChange={setHeroMeasuring}
+                reservedCorner={canExpandChart ? HERO_TOOLS_CORNER : undefined}
                 state={fullHistoryState === 'error' ? 'error' : historicalChartState}
                 currency={currency}
               />
