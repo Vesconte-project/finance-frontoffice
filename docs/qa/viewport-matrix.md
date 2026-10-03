@@ -2,6 +2,8 @@
 
 These are representative QA sizes, not new CSS breakpoints. Test the exact target plus intermediate widths where layout modes change.
 
+Screenshots at these sizes judge composition. Layout correctness across every width is checked with a width sweep against explicit rules; see `adaptive-layout-qa.md`.
+
 | Class | Viewport | Primary checks |
 | --- | --- | --- |
 | Small mobile | 320 x 568 | Long words, controls, fixed chrome, horizontal overflow |
