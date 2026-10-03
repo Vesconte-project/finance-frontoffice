@@ -75,8 +75,8 @@ test.describe('live ticker architecture', () => {
     await expect(page.getByRole('heading', { name: 'Technicals', exact: true })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Fundamentals', exact: true })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Relationships', exact: true })).toBeVisible()
-    await expect(page.getByRole('tablist', { name: 'Chart timeframe' }).getByRole('tab', { name: '1M', exact: true })).toHaveAttribute('aria-selected', 'true')
-    await expect(page.getByRole('tablist', { name: 'Technical signals timeframe' }).getByRole('tab', { name: '1D', exact: true })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('radiogroup', { name: 'Chart timeframe' }).getByRole('radio', { name: '1M', exact: true })).toHaveAttribute('aria-checked', 'true')
+    await expect(page.getByRole('radiogroup', { name: 'Technical signals timeframe' }).getByRole('radio', { name: '1D', exact: true })).toHaveAttribute('aria-checked', 'true')
 
     const topOrder = await page.locator('[data-ticker-identity], [data-ticker-price], [data-ticker-navigation]').evaluateAll((nodes) =>
       Object.fromEntries(nodes.map((node) => [node.getAttribute('data-ticker-identity') !== null ? 'identity' : node.getAttribute('data-ticker-price') !== null ? 'price' : 'navigation', node.getBoundingClientRect().top + window.scrollY])),

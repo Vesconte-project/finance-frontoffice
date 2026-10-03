@@ -1,0 +1,378 @@
+/*
+ * Account, plan and outcome prompts in the site's identity: a constellation
+ * header like the homepage network, a status label, a Source Serif title and
+ * numbered points in Plex Mono.
+ *
+ * Each status has its own signature, chosen to be told apart before reading
+ * (colour, glyph shape, the state of the field and one motion), and always
+ * repeated in words by the status label:
+ *   invite — ocre, star, connected field, one ring leaves the glyph;
+ *   locked — ocre, lock, quieter field, the lock settles;
+ *   error  — negative token, warning glyph, broken red edges, one shake;
+ *   empty  — neutral grey, hourglass, unconnected nodes, the hourglass turns.
+ * Reduced motion shows each finished picture without movement.
+ */
+
+.prompt {
+  container-type: inline-size;
+  --reveal: var(--motion-slow, 280ms);
+  --ease: var(--motion-ease-soft, cubic-bezier(0.16, 1, 0.3, 1));
+  --tone: var(--accent);
+  --status-ink: var(--text-muted);
+  --edge-tone: var(--text);
+  --node-accent: var(--accent);
+}
+
+.prompt[data-status='error'] {
+  --tone: var(--down);
+  --status-ink: var(--down);
+  --edge-tone: var(--down);
+  --node-accent: var(--down);
+}
+
+.prompt[data-status='empty'] {
+  --tone: var(--text-muted);
+  --status-ink: var(--text-muted);
+  --node-accent: var(--text-muted);
+}
+
+.visual {
+  position: relative;
+  height: 132px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+
+/* An error tints the header itself, so the state reads from across the room. */
+.prompt[data-status='error'] .visual {
+  background: color-mix(in srgb, var(--down) 9%, var(--bg));
+  border-bottom-color: color-mix(in srgb, var(--down) 40%, var(--line));
+}
+
+/* The field fades out towards the sides, like the homepage network at its margins. */
+.constellation {
+  display: block;
+  width: 100%;
+  height: 100%;
+  mask-image: linear-gradient(90deg, transparent 0, black 16%, black 84%, transparent 100%);
+}
+
+.prompt[data-status='locked'] .constellation {
+  opacity: 0.55;
+}
+
+.dust {
+  fill: color-mix(in srgb, var(--text) 22%, transparent);
+  animation: fade-in var(--reveal) ease-out both;
+  animation-delay: calc(60ms + var(--i) * 20ms);
+}
+
+.edge,
+.edgeFaint {
+  fill: none;
+  stroke-width: 1;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: draw var(--motion-xslow, 420ms) var(--ease) both;
+  animation-delay: calc(160ms + var(--i) * 45ms);
+}
+
+.edge {
+  stroke: color-mix(in srgb, var(--edge-tone) 40%, transparent);
+}
+
+.edgeFaint {
+  stroke: color-mix(in srgb, var(--edge-tone) 20%, transparent);
+}
+
+.node,
+.nodeAccent {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: node-in var(--reveal) var(--ease) both;
+  animation-delay: calc(260ms + var(--i) * 40ms);
+}
+
+.node {
+  fill: color-mix(in srgb, var(--text) 70%, transparent);
+}
+
+.nodeAccent {
+  fill: var(--node-accent);
+}
+
+/* Not yet connected: hollow nodes that have nothing to join. */
+.prompt[data-status='empty'] .node,
+.prompt[data-status='empty'] .nodeAccent {
+  fill: var(--bg);
+  stroke: color-mix(in srgb, var(--text) 40%, transparent);
+  stroke-width: 1;
+}
+
+/* The status glyph sits where the ticker node would be. */
+.badge {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  display: inline-flex;
+  width: 48px;
+  height: 48px;
+  margin: -24px 0 0 -24px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--tone);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tone) 14%, var(--surface));
+  color: var(--tone);
+  animation: node-in var(--reveal) var(--ease) 60ms both;
+}
+
+.prompt[data-status='empty'] .badge {
+  border-style: dashed;
+  background: var(--surface);
+}
+
+.glyph {
+  display: block;
+}
+
+.badgeRing {
+  position: absolute;
+  inset: -2px;
+  border: 1.5px solid var(--tone);
+  border-radius: 50%;
+  opacity: 0;
+}
+
+.prompt[data-status='invite'] .badgeRing {
+  animation: pulse 900ms var(--ease) 220ms both;
+}
+
+.prompt[data-status='locked'] .glyph {
+  animation: settle 360ms var(--ease) 300ms both;
+}
+
+.prompt[data-status='error'] .badge {
+  animation:
+    node-in var(--reveal) var(--ease) 60ms both,
+    shake 380ms ease-in-out 360ms both;
+}
+
+.prompt[data-status='empty'] .glyph {
+  animation: turn 700ms var(--ease) 300ms both;
+}
+
+.ticker {
+  position: absolute;
+  top: 64px;
+  left: calc(50% + 34px);
+  transform: translateY(-50%);
+  color: var(--text);
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  animation: fade-in var(--reveal) ease-out 200ms both;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  padding: 20px 24px 24px;
+}
+
+.status,
+.title,
+.description {
+  animation: rise var(--reveal) var(--ease) both;
+}
+
+/* The status label: the category in words, with a dot in the status colour. */
+.status {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  align-self: flex-start;
+  margin: 0;
+  color: var(--status-ink);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  animation-delay: 140ms;
+}
+
+.statusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tone);
+}
+
+.title {
+  margin: 8px 0 0;
+  padding-right: 24px;
+  color: var(--text);
+  font-family: var(--font-display), serif;
+  font-size: clamp(22px, 6cqi, 26px);
+  font-weight: 500;
+  line-height: 1.15;
+  animation-delay: 180ms;
+}
+
+.description {
+  margin: 10px 0 0;
+  color: var(--text-body, var(--text-muted));
+  font-size: 14px;
+  line-height: 1.5;
+  animation-delay: 220ms;
+}
+
+.points {
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.point {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+  align-items: baseline;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+  animation: rise var(--reveal) var(--ease) both;
+  animation-delay: calc(280ms + var(--i) * 60ms);
+}
+
+.index {
+  color: var(--text-muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+.point strong {
+  font-family: var(--font-mono), monospace;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  margin-top: 20px;
+  animation: rise var(--reveal) var(--ease) both;
+  animation-delay: calc(300ms + var(--i) * 60ms);
+}
+
+.actions > :first-child {
+  flex: 1 1 auto;
+}
+
+.note {
+  margin: 12px 0 0;
+  color: var(--text-muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  animation: fade-in var(--reveal) ease-out 520ms both;
+}
+
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes node-in {
+  from {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(2.2);
+  }
+}
+
+@keyframes settle {
+  from {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes turn {
+  from {
+    transform: rotate(-180deg);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dust,
+  .edge,
+  .edgeFaint,
+  .node,
+  .nodeAccent,
+  .badge,
+  .badgeRing,
+  .glyph,
+  .ticker,
+  .status,
+  .title,
+  .description,
+  .point,
+  .actions,
+  .note,
+  .prompt[data-status] .badge,
+  .prompt[data-status] .badgeRing,
+  .prompt[data-status] .glyph {
+    animation: none;
+  }
+}

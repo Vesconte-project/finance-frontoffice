@@ -27,37 +27,7 @@
   max-width: 1280px;
   min-width: 0;
   margin-inline: auto;
-  padding-inline: 24px;
-}
-
-.identityRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 24px;
-  align-items: center;
-}
-
-.controlRail {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.metadata {
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  letter-spacing: 0.01em;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.actionCluster {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
+  padding-inline: clamp(16px, 4vw, 24px);
 }
 
 .navigation {
@@ -71,49 +41,7 @@
     border-radius: 6px;
   }
 
-  .content {
-    padding-inline: 16px;
-  }
-
-  .identityRow {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
-  }
-
-  .controlRail {
-    justify-content: space-between;
-  }
-
   .navigation {
     margin-top: 5px;
-  }
-}
-
-/*
- * Layout integration only — not a control-rail redesign.
- *
- * The signed-out watchlist recovery state is wider than the 36px star it opens
- * beneath. While the rail is the `auto` column of .identityRow, that width is
- * taken from the identity column, which at narrow viewports would squeeze the
- * ticker name and price the recovery state must never obscure. Below the width
- * where both fit side by side, the rail takes its own row instead.
- */
-@media (max-width: 720px) {
-  .identityRow:has([data-watchlist-recovery='open']),
-  .identityRow:has([data-ticker-export-recovery='open']) {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .identityRow:has([data-watchlist-recovery='open']) .controlRail,
-  .identityRow:has([data-ticker-export-recovery='open']) .controlRail {
-    justify-content: flex-start;
-  }
-}
-
-@media (max-width: 560px) {
-  .identityRow:has([data-watchlist-recovery='open']) .controlRail,
-  .identityRow:has([data-ticker-export-recovery='open']) .controlRail {
-    flex-direction: column;
-    align-items: flex-start;
   }
 }

@@ -1,9 +1,13 @@
 'use client'
 
-import { useEffect, useId, useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import Link from 'next/link'
-import { CircleAlert, Loader2, Star } from 'lucide-react'
+import { Loader2, RotateCcw, Star } from 'lucide-react'
 import { buttonClass } from '@/components/ui/Button'
+import { cn } from '@/lib/utils'
+import Dialog from '@/components/ui/Dialog'
+import PromptPanel from '@/components/ui/PromptPanel'
+import { PICK_VISIBLE_LIMITS } from '@/lib/picks-access-rules'
 
 /**
  * Founder-approved copy. Preserve verbatim — these strings are product scope,
@@ -49,25 +53,21 @@ export default function WatchlistButton({
   const [announcement, setAnnouncement] = useState('')
 
   const recoveryId = useId()
+  const titleId = `${recoveryId}-title`
+  const descriptionId = `${recoveryId}-description`
   const starRef = useRef<HTMLButtonElement>(null)
-  const signInRef = useRef<HTMLAnchorElement>(null)
+  const createAccountRef = useRef<HTMLAnchorElement>(null)
+  const retryRef = useRef<HTMLButtonElement>(null)
 
-  // Entering the recovery state offers focus to the primary action, so focus is
-  // never left on a control whose purpose has just changed.
-  useEffect(() => {
-    if (recoveryOpen) signInRef.current?.focus()
-  }, [recoveryOpen])
-
-  const closeRecovery = () => {
-    setRecoveryOpen(false)
-    starRef.current?.focus()
-  }
+  // Closing returns focus to the star (handled by the dialog).
+  const closeRecovery = () => setRecoveryOpen(false)
 
   const onClick = async () => {
     if (!signedIn) {
-      // No mutation is attempted while signed out. A single boolean cannot
-      // stack, so repeat activation toggles rather than accumulating states.
-      setRecoveryOpen((open) => !open)
+      // No mutation is attempted while signed out. The account prompt opens as
+      // a modal dialog; a single boolean cannot stack, and while the dialog is
+      // open the star is inert, so repeat activation cannot accumulate states.
+      setRecoveryOpen(true)
       return
     }
 
@@ -90,6 +90,11 @@ export default function WatchlistButton({
     }
   }
 
+  const retry = () => {
+    setError(null)
+    void onClick()
+  }
+
   const label = inWatchlist ? 'Remove from watchlist' : 'Add to watchlist'
 
   return (
@@ -103,6 +108,7 @@ export default function WatchlistButton({
         title={label}
         aria-pressed={inWatchlist}
         aria-busy={pending}
+        aria-haspopup={signedIn ? undefined : 'dialog'}
         aria-expanded={signedIn ? undefined : recoveryOpen}
         aria-controls={!signedIn && recoveryOpen ? recoveryId : undefined}
         className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-[var(--glass-border)] bg-[var(--glass-bg)] text-[var(--color-text-secondary)] transition-[border-color,color,transform] duration-150 hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] active:scale-90 disabled:opacity-60"
@@ -118,49 +124,95 @@ export default function WatchlistButton({
         )}
       </button>
 
-      {/* Pending and success outcomes reach assistive technology here; the error
-          line below is its own polite region, so nothing is announced twice. */}
+      {/* Pending and success outcomes reach assistive technology here; a failure
+          opens a dialog that names and describes itself, so nothing is announced twice. */}
       <span className="sr-only" role="status" aria-live="polite">
         {announcement}
       </span>
 
-      {!signedIn && recoveryOpen && (
-        <div
-          id={recoveryId}
-          data-watchlist-recovery="open"
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') {
-              event.stopPropagation()
-              closeRecovery()
-            }
-          }}
-          className="flex w-[min(16.5rem,100%)] flex-col gap-2 rounded-[var(--radius-lg)] border border-border bg-surface-elevated px-3 py-2.5 text-left"
+      {!signedIn && (
+        <Dialog
+          open={recoveryOpen}
+          onClose={closeRecovery}
+          labelledBy={titleId}
+          describedBy={descriptionId}
+          initialFocusRef={createAccountRef}
+          returnFocusRef={starRef}
         >
-          <p className="text-caption text-content-secondary">{SIGNED_OUT_EXPLANATION}</p>
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              ref={signInRef}
-              href="/sign-in"
-              className={buttonClass({ variant: 'primary', size: 'sm' })}
-            >
-              {SIGN_IN_LABEL}
-            </Link>
-            <Link href="/sign-up" className={buttonClass({ variant: 'ghost', size: 'sm' })}>
-              {CREATE_ACCOUNT_LABEL}
-            </Link>
+          <div id={recoveryId} data-watchlist-recovery="open">
+            <PromptPanel
+              ticker={ticker}
+              status="invite"
+              statusLabel="Free account"
+              title={`Save ${ticker} to your watchlist`}
+              titleId={titleId}
+              description={`${SIGNED_OUT_EXPLANATION} A free account gives you:`}
+              descriptionId={descriptionId}
+              points={[
+                <>A watchlist to keep {ticker} and the other tickers you follow</>,
+                <>Where {ticker} stands in each reading</>,
+                <>
+                  The full Picks rankings — <strong>{PICK_VISIBLE_LIMITS.free}</strong> companies per reading instead of{' '}
+                  <strong>{PICK_VISIBLE_LIMITS.anonymous}</strong>
+                </>,
+              ]}
+              note="No card, no trial."
+              actions={(
+                <>
+                  <Link
+                    ref={createAccountRef}
+                    href="/sign-up"
+                    className={buttonClass({ variant: 'primary', size: 'md' })}
+                  >
+                    {CREATE_ACCOUNT_LABEL}
+                  </Link>
+                  <Link href="/sign-in" className={buttonClass({ variant: 'ghost', size: 'md' })}>
+                    {SIGN_IN_LABEL}
+                  </Link>
+                </>
+              )}
+            />
           </div>
-        </div>
+        </Dialog>
       )}
 
-      {error && (
-        <span
-          data-watchlist-error=""
-          aria-live="polite"
-          className="signal-bearish text-caption inline-flex items-center gap-1.5"
+      {signedIn && (
+        <Dialog
+          open={error !== null}
+          onClose={() => setError(null)}
+          labelledBy={`${recoveryId}-error-title`}
+          describedBy={`${recoveryId}-error-description`}
+          initialFocusRef={retryRef}
+          returnFocusRef={starRef}
         >
-          <CircleAlert size={13} aria-hidden="true" className="shrink-0" />
-          {error}
-        </span>
+          <div data-watchlist-error="">
+            <PromptPanel
+              ticker={ticker}
+              status="error"
+              statusLabel="Error · not saved"
+              title={`${ticker} wasn’t ${inWatchlist ? 'removed' : 'saved'}`}
+              titleId={`${recoveryId}-error-title`}
+              description={`${MUTATION_ERROR} Nothing changed in your watchlist.`}
+              descriptionId={`${recoveryId}-error-description`}
+              actions={(
+                <>
+                  <button
+                    ref={retryRef}
+                    type="button"
+                    onClick={retry}
+                    className={cn(buttonClass({ variant: 'primary', size: 'md' }), 'gap-2')}
+                  >
+                    <RotateCcw size={15} aria-hidden="true" />
+                    Try again
+                  </button>
+                  <button type="button" onClick={() => setError(null)} className={buttonClass({ variant: 'ghost', size: 'md' })}>
+                    Close
+                  </button>
+                </>
+              )}
+            />
+          </div>
+        </Dialog>
       )}
     </div>
   )

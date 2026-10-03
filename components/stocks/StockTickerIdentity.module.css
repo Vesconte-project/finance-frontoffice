@@ -1,9 +1,30 @@
+/*
+ * The identity block adapts to its own inline size, never to a device class.
+ * Priorities, in order:
+ *   1. name, ticker and price share one line with the metadata and actions,
+ *      which keep to the right edge;
+ *   2. when they do not fit, the quote and the rail wrap beneath the name as
+ *      one line — the actions always sit beside the ticker and price, which
+ *      never separate;
+ *   3. in a narrow block the name owns the first line, the metadata condenses
+ *      beside the actions and the daily change tucks beneath the price;
+ *   4. only when the quote and the actions cannot share a line does the rail
+ *      move to a third.
+ * The name is shortened only when it cannot fit the full line it is given.
+ */
+
+.frame {
+  container-type: inline-size;
+  min-width: 0;
+}
+
 .identity {
   --selected-node-column: 30px;
   --selected-node-size: 17px;
   display: grid;
   grid-template-columns: var(--selected-node-column) minmax(0, 1fr);
-  gap: 13px;
+  column-gap: 13px;
+  align-items: start;
   min-width: 0;
 }
 
@@ -12,9 +33,9 @@
   position: relative;
   display: flex;
   grid-column: 1;
-  grid-row: 1;
   justify-content: center;
-  padding-top: 2px;
+  align-self: start;
+  padding-top: 5px;
 }
 
 .node {
@@ -25,43 +46,66 @@
   border: 2px solid var(--selected-node-tone);
   border-radius: 50%;
   background: var(--page-bg);
-  box-shadow:
-    none;
+  box-shadow: none;
 }
 
-@keyframes selected-node-breathe {
-  0%, 100% {
-    box-shadow:
-      none;
-  }
-  50% {
-    box-shadow:
-      none;
-  }
-}
-
-.nameRow {
+.body {
   display: flex;
   flex-wrap: wrap;
   grid-column: 2;
-  grid-row: 1;
-  gap: 10px;
+  gap: 4px 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+/* The name and the line join the body's flow directly. */
+.main {
+  display: contents;
+}
+
+/*
+ * The quote and the rail wrap beneath the name as one unit, so the actions
+ * always sit beside the ticker and price; the line fills to the right edge.
+ */
+.line {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 4px 10px;
   align-items: center;
   min-width: 0;
 }
 
 .name {
   font-family: var(--font-display), serif;
+  flex: 0 1 auto;
   min-width: 0;
+  max-width: 100%;
   margin: 0;
   overflow: hidden;
   color: var(--color-text-primary);
-  max-width: min(62vw, 760px);
   font-size: 19px;
   font-weight: 500;
   line-height: 1.2;
   letter-spacing: normal;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quote {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+/* The ticker and its price are one unit: they wrap together or not at all. */
+.quoteLead {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
   white-space: nowrap;
 }
 
@@ -81,17 +125,11 @@
   white-space: nowrap;
 }
 
-.quote {
-  display: flex;
-  gap: 10px;
-  align-items: baseline;
-  white-space: nowrap;
-}
-
 .price {
   font-family: var(--font-mono), monospace;
   color: var(--color-text-primary);
-  font-size: 20px;
+  /* Fluid with the block's width: 20px with room to spare, 17px when narrow. */
+  font-size: clamp(17px, 5.2cqi, 20px);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   letter-spacing: normal;
@@ -102,6 +140,7 @@
   font-size: 13px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .deltaPositive {
@@ -116,22 +155,111 @@
   color: var(--color-neutral);
 }
 
-@media (max-width: 560px) {
+/*
+ * The rail claims at least 8.5rem when deciding where to break, then grows to
+ * fill its line; its content keeps to the right edge.
+ */
+.rail {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex: 1 1 8.5rem;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.metadata {
+  display: flex;
+  min-width: 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+  text-align: right;
+}
+
+.metaKind,
+.metaExchange,
+.metaCurrency {
+  white-space: nowrap;
+}
+
+.metadata > * + *::before {
+  content: '\00b7';
+  margin-inline: 0.4em;
+}
+
+.actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+/*
+ * Narrow block: a smaller node, and the metadata condensed to two right-aligned
+ * lines — the exchange above, the asset type and currency below.
+ */
+@container (width < 45rem) {
   .identity {
-    --selected-node-column: 24px;
+    --selected-node-column: 22px;
     --selected-node-size: 15px;
-    gap: 9px;
+    column-gap: 8px;
   }
 
   .node {
     border-width: 3px;
   }
 
-  .name {
-    max-width: min(58vw, 290px);
-    font-size: 19px;
+  /* Exchange above; asset type and currency below, kept together. */
+  .metadata {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    font-size: 11px;
+    line-height: 1.2;
   }
 
+  .metaExchange {
+    grid-row: 1;
+    grid-column: 1 / -1;
+    justify-self: end;
+    white-space: normal;
+  }
+
+  .metaKind {
+    grid-row: 2;
+    grid-column: 2;
+  }
+
+  .metaCurrency {
+    grid-row: 2;
+    grid-column: 3;
+  }
+
+  .metaExchange::before {
+    content: none;
+  }
+
+  /*
+   * The quote claims only its ticker and price when deciding where to break,
+   * so the daily change tucks beneath the price instead of pushing the rail
+   * to another line; with room to spare it returns beside the price.
+   */
+  .quote {
+    flex: 1 1 0;
+    min-width: min-content;
+  }
+
+  /* The name owns the first line; the quote and rail share the second. */
+  .name {
+    flex-basis: 100%;
+  }
+
+  /* Spare width goes mostly to the rail, so the metadata wraps as little as possible. */
+  .rail {
+    flex-grow: 3;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -624,24 +624,23 @@ export default function StockOverviewClient({
                 <p className={styles.chartStatus} role="status">Historical price data could not be loaded. Showing the longest available range.</p>
               ) : null}
             </div>
-            <div className={styles.chartFooter}>
+            <div className={styles.chartFooter} data-chart-footer="">
               {referenceFacts.length > 0 ? (
-                <dl className={styles.referenceLine} aria-label="Market reference">
+                <dl className={styles.referenceLine} aria-label="Market reference" data-chart-facts="">
                   {referenceFacts.map((fact) => (
                     <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>
                   ))}
                 </dl>
               ) : null}
-              <div className={styles.chartFooterControl}>
-                <div className={styles.chartFooterControlInner}>
-                  <SegmentedControl
-                    options={HERO_TIMEFRAMES}
-                    value={heroTimeframe}
-                    onChange={selectHeroTimeframe}
-                    ariaLabel="Chart timeframe"
-                    analyticsId="ticker_hero_timeframe"
-                  />
-                </div>
+              <div className={styles.chartFooterControl} data-chart-range="">
+                <SegmentedControl
+                  options={HERO_TIMEFRAMES}
+                  value={heroTimeframe}
+                  onChange={selectHeroTimeframe}
+                  ariaLabel="Chart timeframe"
+                  analyticsId="ticker_hero_timeframe"
+                  fill
+                />
               </div>
             </div>
           </div>

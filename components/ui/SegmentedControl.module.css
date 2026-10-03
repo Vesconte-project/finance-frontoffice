@@ -1,0 +1,196 @@
+/*
+ * Liquid-glass segmented control.
+ *
+ * Scoped exception to the solid-surface rule in docs/design/design-system.md:
+ * translucency, blur and a specular rim are used only for the selection drop
+ * of selectors, never for panels or cards. The track itself stays solid.
+ */
+
+.control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.fill {
+  display: flex;
+  width: 100%;
+}
+
+.option {
+  position: relative;
+  z-index: 1;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  transition: color var(--motion-fast, 150ms) ease;
+}
+
+.fill .option {
+  flex: 1 1 0;
+  min-width: 0;
+  padding-inline: 0;
+}
+
+.option:hover {
+  color: var(--text);
+}
+
+.option[data-active='true'] {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/*
+ * Touch-first pointers get 44px targets without making the track taller: the
+ * hit area extends invisibly above and below each option.
+ */
+@media (pointer: coarse) {
+  .option::after {
+    position: absolute;
+    inset: -8px 0;
+    content: '';
+  }
+}
+
+/* The drop: positioned and shaped from script, drawn above the labels. */
+.drop {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  opacity: 0;
+  will-change: transform, width;
+}
+
+.drop[data-placed='true'] {
+  opacity: 1;
+}
+
+/* A capsule, so the drop reads as liquid rather than as a tile. */
+.pane,
+.lens,
+.rim {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  transform-origin: 50% 50%;
+}
+
+.pane {
+  background: color-mix(in srgb, var(--surface) 46%, transparent);
+  -webkit-backdrop-filter: blur(3px) saturate(1.6);
+  backdrop-filter: blur(3px) saturate(1.6);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 10%, transparent);
+  transition: box-shadow 220ms ease;
+}
+
+.lens {
+  overflow: hidden;
+}
+
+.strip {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.stripLabel {
+  position: absolute;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+}
+
+.stripLabel[data-active='true'] {
+  font-weight: 600;
+}
+
+/*
+ * Specular rim: a bright upper edge and a faint lower one, like curved glass.
+ * The ocre edge marks the selection without using ocre as small text.
+ */
+.rim {
+  border: 1px solid var(--accent);
+  background:
+    linear-gradient(180deg, var(--glass-lens-specular) 0%, transparent 42%),
+    linear-gradient(0deg, color-mix(in srgb, var(--text) 6%, transparent) 0%, transparent 30%);
+  box-shadow:
+    inset 0 1px 0 var(--glass-lens-specular),
+    inset 0 -1px 0 color-mix(in srgb, var(--text) 8%, transparent);
+  mix-blend-mode: normal;
+}
+
+/* Lifted while dragging: the drop floats above the track. */
+.control[data-dragging='true'] {
+  cursor: grabbing;
+}
+
+.control[data-dragging='true'] .pane {
+  background: color-mix(in srgb, var(--surface) 30%, transparent);
+  box-shadow:
+    0 6px 18px color-mix(in srgb, var(--text) 16%, transparent),
+    0 1px 3px color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+.control[data-dragging='true'] .stripLabel {
+  color: var(--text);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .pane,
+  .control[data-dragging='true'] .pane {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .rim {
+    border: 2px solid Highlight;
+    background: none;
+  }
+
+  .pane {
+    background: Canvas;
+  }
+
+  .stripLabel,
+  .stripLabel[data-active='true'] {
+    color: CanvasText;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .option,
+  .pane {
+    transition: none;
+  }
+}

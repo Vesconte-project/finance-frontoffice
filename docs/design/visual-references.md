@@ -30,7 +30,7 @@ Study the rendered pattern, its responsive states, and its direct styling before
 
 `components/marketing/HomeTickerStory.tsx` is retained as the repository's unmounted reference implementation of scroll-driven collapse/scatter choreography with FLIP-style source capture. It no longer supplies or owns homepage content: callers must provide real card data, and its authored mobile/desktop position tables intentionally cap the technique at five items. The homepage stopped mounting it because its former hardcoded financial values were fabricated; the motion mechanics remain useful without preserving those claims.
 
-There is not yet a repository-wide modal or drawer exemplar with a complete focus-management contract. Inspect current implementations for local context, but do not promote one to a shared pattern until focus entry, containment, Escape, backdrop behavior, and focus restoration are verified.
+`components/ui/Dialog.tsx` (2026-10-03) is the shared modal on the native `<dialog>` element: focus moves in on open, the browser contains focus and makes the page inert, Escape and a backdrop click close it, focus returns to the opening control, and the shared scroll runtime is locked while it is open. `e2e/watchlist-signed-out-recovery.spec.ts` verifies those behaviours on the signed-out watchlist and export prompts. There is still no drawer exemplar.
 
 ## Expanding selector study — 2026-07-21
 
@@ -80,3 +80,12 @@ The dedicated Relationships view extends the approved ticker selected-node langu
 | Decision owner |  |
 
 Do not add an external reference merely to justify a predetermined visual. State what was learned, what was rejected, and how the result remains specific to Vesconte.
+
+## Liquid-glass selector drop — 2026-10-03
+
+| Reference | Principle retained | Rejected or replaced |
+| --- | --- | --- |
+| iOS 26 segmented controls and tab bars, as described by the founder from use on a phone | Press-and-drag selection: the selection lifts as a drop of glass, magnifies what is beneath it, follows the finger and settles on the nearest option when released | Refraction of the backdrop through an SVG displacement filter (not supported by Safari's `backdrop-filter`), system tint and vibrancy colours, and any Apple assets or code |
+| `components/ui/ExpandingSelector.tsx` (2026-07-21 study above) | Pointer capture with a direction threshold, so vertical page scroll still wins; controlled commit owned by the parent | The reel layout, which stays specific to that selector |
+
+Vesconte transformation: the magnification is a second, clipped copy of the labels inside the drop, counter-scaled against the drop's own stretch so text grows uniformly and works the same in every engine. The drop's geometry, lift and stretch are driven by damped springs in script; commit goes through the option's own click so selection and telemetry match a tap. The track is a solid `--surface` capsule; only the drop is translucent. No external code or assets were copied.
