@@ -25,6 +25,7 @@ type Measurement = {
   rangeBelowFacts: boolean
   factsRightOfRange: boolean
   axisLabelsCollide: boolean
+  actionsOnOwnLine: boolean
 }
 
 async function measure(page: Page): Promise<Measurement> {
@@ -81,6 +82,9 @@ async function measure(page: Page): Promise<Measurement> {
       || label.right > chartBox.right + 0.5
       || axisLabels.slice(index + 1).some((other) => Math.min(label.right, other.right) - Math.max(label.left, other.left) > -4))
 
+    // The actions share a line with the name or the quote: the hero never needs a third line for them.
+    const actionsOnOwnLine = actions !== null && !sameLine(actions, name) && !sameLine(actions, quote)
+
     return {
       pageOverflow: document.documentElement.scrollWidth > viewport,
       nameTruncated,
@@ -92,6 +96,7 @@ async function measure(page: Page): Promise<Measurement> {
       rangeBelowFacts: !sameLine(range, facts) && range.top > facts.top,
       factsRightOfRange: sameLine(range, facts) && facts.left > range.left,
       axisLabelsCollide,
+      actionsOnOwnLine,
     }
   })
 }
@@ -120,6 +125,8 @@ for (const ticker of TICKERS) {
         result.rangeBelowFacts && 'timeframe control below the market facts',
         result.factsRightOfRange && 'market facts right of the timeframe control',
         result.axisLabelsCollide && 'chart date labels collide or leave the chart',
+        // Below 360px the actions may take a third line; from there they must not.
+        width >= 360 && result.actionsOnOwnLine && 'actions pushed to a line of their own',
       ].filter(Boolean)
       if (problems.length > 0) failures.push(`${width}px: ${problems.join('; ')}`)
     }

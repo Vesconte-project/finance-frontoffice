@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import LoadingPulse from '@/components/ui/LoadingPulse'
+import type { AssetMetadataParts } from '@/lib/asset-metadata'
 import { formatMoney, formatSignedMoney } from '@/lib/currency'
 import { cn } from '@/lib/utils'
 import styles from './StockTickerIdentity.module.css'
@@ -28,8 +29,8 @@ type StockTickerIdentityProps = {
   identityColor: string
   nameAsHeading?: boolean
   loading?: boolean
-  /** Asset type, exchange and currency line. */
-  metadata?: ReactNode
+  /** Asset type, exchange and currency. */
+  metadata?: AssetMetadataParts
   /** Export and watchlist controls. */
   actions?: ReactNode
 }
@@ -70,32 +71,45 @@ export default function StockTickerIdentity({
         <div className={styles.body}>
           <div className={styles.main} data-ticker-identity="">
             {name}
-            {loading ? (
-              <span className={styles.quote}>
-                <LoadingPulse label={`Loading ${ticker}`} size="compact" />
-              </span>
-            ) : (
-              <span className={styles.quote} data-ticker-quote="">
-                <span className={styles.quoteLead}>
-                  <span className={styles.tickerBadge} data-ticker-symbol="">{ticker}</span>
-                  {isFiniteNumber(price) ? (
-                    <strong className={styles.price} data-ticker-price="">{formatMoney(price, currency)}</strong>
+            {/* The quote and the rail travel as one line beneath the name. */}
+            <div className={styles.line}>
+              {loading ? (
+                <span className={styles.quote}>
+                  <LoadingPulse label={`Loading ${ticker}`} size="compact" />
+                </span>
+              ) : (
+                <span className={styles.quote} data-ticker-quote="">
+                  <span className={styles.quoteLead}>
+                    <span className={styles.tickerBadge} data-ticker-symbol="">{ticker}</span>
+                    {isFiniteNumber(price) ? (
+                      <strong className={styles.price} data-ticker-price="">{formatMoney(price, currency)}</strong>
+                    ) : null}
+                  </span>
+                  {isFiniteNumber(price) && isFiniteNumber(dailyMoveAmount) && isFiniteNumber(dailyMovePercent) ? (
+                    <span className={cn(styles.delta, deltaClass(dailyMoveAmount))}>
+                      {formatSignedMoney(dailyMoveAmount, currency)} ({formatCompactPercent(dailyMovePercent)})
+                    </span>
                   ) : null}
                 </span>
-                {isFiniteNumber(price) && isFiniteNumber(dailyMoveAmount) && isFiniteNumber(dailyMovePercent) ? (
-                  <span className={cn(styles.delta, deltaClass(dailyMoveAmount))}>
-                    {formatSignedMoney(dailyMoveAmount, currency)} ({formatCompactPercent(dailyMovePercent)})
-                  </span>
-                ) : null}
-              </span>
-            )}
-          </div>
-          {metadata || actions ? (
-            <div className={styles.rail}>
-              {metadata ? <span className={styles.metadata} data-ticker-metadata="">{metadata}</span> : null}
-              {actions ? <div className={styles.actions} data-ticker-actions="">{actions}</div> : null}
+              )}
+              {metadata || actions ? (
+                <div className={styles.rail}>
+                  {metadata ? (
+                    <span
+                      className={styles.metadata}
+                      title={[metadata.kind, metadata.exchange, metadata.currency].filter(Boolean).join(' · ')}
+                      data-ticker-metadata=""
+                    >
+                      <span className={styles.metaKind}>{metadata.kind}</span>
+                      {metadata.exchange ? <span className={styles.metaExchange}>{metadata.exchange}</span> : null}
+                      {metadata.currency ? <span className={styles.metaCurrency}>{metadata.currency}</span> : null}
+                    </span>
+                  ) : null}
+                  {actions ? <div className={styles.actions} data-ticker-actions="">{actions}</div> : null}
+                </div>
+              ) : null}
             </div>
-          ) : null}
+          </div>
         </div>
       </div>
     </div>

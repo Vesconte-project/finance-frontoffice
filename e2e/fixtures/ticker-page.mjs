@@ -16,6 +16,8 @@ const FIXTURE_TICKERS = {
     change: 12.3,
     changePercent: 0.97,
     marketCapText: '$812.4B',
+    // The longest exchange label the site renders.
+    exchange: 'NYQ',
   },
 }
 
@@ -64,7 +66,7 @@ export function tickerSummaryFixture(ticker) {
   const asOfDate = asOf.slice(0, 10)
   return {
     ticker,
-    asset: { assetType: 'equity', currency: 'USD', exchange: 'Nasdaq', exchangeMic: 'XNAS', region: 'US' },
+    asset: { assetType: 'equity', currency: 'USD', exchange: fixture.exchange ?? 'NASDAQ', exchangeMic: null, region: 'US' },
     quote: {
       ticker,
       name: fixture.name,

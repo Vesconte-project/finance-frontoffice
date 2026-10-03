@@ -169,7 +169,7 @@ test('the star geometry and the control rail are preserved', () => {
   assert.match(chrome, /actions=\{\([\s\S]*<WatchlistButton/)
 
   // R-7: the chrome change is layout integration, scoped to the recovery state.
-  assert.match(styles, /\.identity:has\(\[data-watchlist-recovery='open'\]/)
+  assert.match(styles, /\.body:has\(\[data-watchlist-recovery='open'\]/)
   assert.doesNotMatch(styles, /\.(rail|actions) \{[^}]*(width|height|padding|font-size)/)
 })
 

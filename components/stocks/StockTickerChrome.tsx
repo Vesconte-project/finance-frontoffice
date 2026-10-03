@@ -6,7 +6,7 @@ import TickerExportButton from '@/components/stocks/TickerExportButton'
 import StockTickerIdentity from '@/components/stocks/StockTickerIdentity'
 import TickerRelationshipField, { TickerRelationshipFieldFallback } from '@/components/stocks/TickerRelationshipField'
 import WatchlistButton from '@/components/WatchlistButton'
-import { assetMetadata } from '@/lib/asset-metadata'
+import { assetMetadataParts } from '@/lib/asset-metadata'
 import type { StockTickerChromeData } from '@/lib/stock-ticker-chrome'
 import { tickerIdentityColor } from '@/lib/ticker-identity-color'
 import styles from './StockTickerChrome.module.css'
@@ -50,7 +50,7 @@ export default function StockTickerChrome({
 }) {
   const resolved = use(data)
   const relationships = useMemo(() => Promise.resolve(resolved.relationships), [resolved.relationships])
-  const metadata = assetMetadata(resolved.assetBadgeLabel, resolved.exchange, resolved.currency)
+  const metadata = assetMetadataParts(resolved.assetBadgeLabel, resolved.exchange, resolved.currency)
 
   return (
     <section className={styles.chrome} data-ticker-hero="" data-ticker-chrome="ready" aria-label={`${resolved.ticker} research`}>

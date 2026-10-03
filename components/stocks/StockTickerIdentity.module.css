@@ -1,12 +1,15 @@
 /*
  * The identity block adapts to its own inline size, never to a device class.
  * Priorities, in order:
- *   1. name, ticker and price share one line with the metadata and actions;
- *   2. when they do not fit, the metadata and actions give way first and move
- *      to the next line, then the ticker and price wrap together beneath the
- *      name — never the price alone;
- *   3. in a narrow block the name takes the whole first line, the ticker and
- *      price the second, and the metadata shares the last with the actions.
+ *   1. name, ticker and price share one line with the metadata and actions,
+ *      which keep to the right edge;
+ *   2. when they do not fit, the quote and the rail wrap beneath the name as
+ *      one line — the actions always sit beside the ticker and price, which
+ *      never separate;
+ *   3. in a narrow block the name owns the first line, the metadata condenses
+ *      beside the actions and the daily change tucks beneath the price;
+ *   4. only when the quote and the actions cannot share a line does the rail
+ *      move to a third.
  * The name is shortened only when it cannot fit the full line it is given.
  */
 
@@ -20,18 +23,8 @@
   --selected-node-size: 17px;
   display: grid;
   grid-template-columns: var(--selected-node-column) minmax(0, 1fr);
-  grid-template-areas: 'node body';
   column-gap: 13px;
   align-items: start;
-  min-width: 0;
-}
-
-.body {
-  display: flex;
-  flex-wrap: wrap;
-  grid-area: body;
-  gap: 8px 24px;
-  align-items: center;
   min-width: 0;
 }
 
@@ -39,7 +32,7 @@
   --selected-node-tone: var(--accent);
   position: relative;
   display: flex;
-  grid-area: node;
+  grid-column: 1;
   justify-content: center;
   align-self: start;
   padding-top: 5px;
@@ -56,9 +49,27 @@
   box-shadow: none;
 }
 
-.main {
+.body {
   display: flex;
-  flex: 0 1 auto;
+  flex-wrap: wrap;
+  grid-column: 2;
+  gap: 4px 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+/* The name and the line join the body's flow directly. */
+.main {
+  display: contents;
+}
+
+/*
+ * The quote and the rail wrap beneath the name as one unit, so the actions
+ * always sit beside the ticker and price; the line fills to the right edge.
+ */
+.line {
+  display: flex;
+  flex: 1 1 auto;
   flex-wrap: wrap;
   gap: 4px 10px;
   align-items: center;
@@ -83,9 +94,8 @@
 
 .quote {
   display: flex;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   flex-wrap: wrap;
-  grid-area: quote;
   gap: 2px 10px;
   align-items: baseline;
   min-width: 0;
@@ -118,7 +128,8 @@
 .price {
   font-family: var(--font-mono), monospace;
   color: var(--color-text-primary);
-  font-size: 20px;
+  /* Fluid with the block's width: 20px with room to spare, 17px when narrow. */
+  font-size: clamp(17px, 5.2cqi, 20px);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   letter-spacing: normal;
@@ -144,97 +155,123 @@
   color: var(--color-neutral);
 }
 
+/*
+ * The rail claims at least 8.5rem when deciding where to break, then grows to
+ * fill its line; its content keeps to the right edge.
+ */
 .rail {
   position: relative;
   z-index: 2;
   display: flex;
-  flex: 0 0 auto;
-  gap: 16px;
+  flex: 1 1 8.5rem;
+  gap: 8px;
   align-items: center;
   justify-content: flex-end;
-  margin-left: auto;
 }
 
 .metadata {
-  grid-area: meta;
+  display: flex;
+  min-width: 0;
   color: var(--color-text-secondary);
   font-size: 12px;
+  line-height: 1.25;
   letter-spacing: 0.01em;
+  text-align: right;
+}
+
+.metaKind,
+.metaExchange,
+.metaCurrency {
   white-space: nowrap;
+}
+
+.metadata > * + *::before {
+  content: '\00b7';
+  margin-inline: 0.4em;
 }
 
 .actions {
   display: flex;
-  grid-area: actions;
+  flex: 0 0 auto;
   gap: 8px;
   align-items: flex-start;
-  justify-self: end;
 }
 
 /*
- * Narrow block: the name owns the first line. `display: contents` lets the
- * quote, metadata and actions take their own grid areas.
+ * An open watchlist or export recovery message is wider than the button it
+ * opens beneath; the rail takes its own line so the quote is never squeezed.
+ */
+.body:has([data-watchlist-recovery='open'], [data-ticker-export-recovery='open']) .rail {
+  flex-basis: 100%;
+  justify-content: flex-start;
+}
+
+.body:has([data-watchlist-recovery='open'], [data-ticker-export-recovery='open']) .actions {
+  flex-direction: column;
+}
+
+/*
+ * Narrow block: a smaller node, and the metadata condensed to two right-aligned
+ * lines — the exchange above, the asset type and currency below.
  */
 @container (width < 45rem) {
   .identity {
-    --selected-node-column: 24px;
+    --selected-node-column: 22px;
     --selected-node-size: 15px;
-    grid-template-columns: var(--selected-node-column) minmax(0, 1fr) auto;
-    grid-template-areas:
-      'node name name'
-      '. quote quote'
-      '. meta actions';
-    column-gap: 10px;
-    row-gap: 4px;
-    align-items: center;
+    column-gap: 8px;
   }
 
   .node {
     border-width: 3px;
   }
 
-  .nodeRail {
-    align-self: center;
-    padding-top: 0;
-  }
-
-  .body,
-  .main,
-  .rail {
-    display: contents;
-  }
-
-  .name {
-    grid-area: name;
-    justify-self: start;
-  }
-
-  .quote {
-    flex-shrink: 1;
-  }
-
-  /* A long exchange name wraps beside the actions rather than pushing them out. */
+  /* Exchange above; asset type and currency below, kept together. */
   .metadata {
-    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    font-size: 11px;
+    line-height: 1.2;
+  }
+
+  .metaExchange {
+    grid-row: 1;
+    grid-column: 1 / -1;
+    justify-self: end;
     white-space: normal;
   }
 
-  /*
-   * An open watchlist or export recovery message is wider than the button it
-   * opens beneath; give the actions their own line so the quote is never
-   * squeezed.
-   */
-  .identity:has([data-watchlist-recovery='open'], [data-ticker-export-recovery='open']) {
-    grid-template-areas:
-      'node name name'
-      '. quote quote'
-      '. actions actions'
-      '. meta meta';
+  .metaKind {
+    grid-row: 2;
+    grid-column: 2;
   }
 
-  .identity:has([data-watchlist-recovery='open'], [data-ticker-export-recovery='open']) .actions {
-    flex-direction: column;
-    justify-self: start;
+  .metaCurrency {
+    grid-row: 2;
+    grid-column: 3;
+  }
+
+  .metaExchange::before {
+    content: none;
+  }
+
+  /*
+   * The quote claims only its ticker and price when deciding where to break,
+   * so the daily change tucks beneath the price instead of pushing the rail
+   * to another line; with room to spare it returns beside the price.
+   */
+  .quote {
+    flex: 1 1 0;
+    min-width: min-content;
+  }
+
+  /* The name owns the first line; the quote and rail share the second. */
+  .name {
+    flex-basis: 100%;
+  }
+
+  /* Spare width goes mostly to the rail, so the metadata wraps as little as possible. */
+  .rail {
+    flex-grow: 3;
   }
 }
 
