@@ -1,6 +1,6 @@
 'use client'
 
-import type { Ref } from 'react'
+import { useEffect, useState, type Ref } from 'react'
 import { Search } from 'lucide-react'
 import HeaderSearch from '@/components/HeaderSearch'
 import HeaderMenuTrigger from '@/components/header-menu/HeaderMenuTrigger'
@@ -47,6 +47,7 @@ export function HeaderSearchField({
   fieldRef?: Ref<HTMLDivElement>
   onCancel: () => void
 }) {
+  const rows = useFittingSuggestionRows(open)
   return (
     <div
       id={id}
@@ -56,13 +57,42 @@ export function HeaderSearchField({
       aria-hidden={!open}
       inert={!open ? true : undefined}
     >
-      {/* Six rows fit between the bar and an open phone keyboard. */}
-      <HeaderSearch className="site-header__search-combobox" maxSuggestions={6} />
+      <HeaderSearch className="site-header__search-combobox" maxSuggestions={rows} />
       <button type="button" className="site-header__search-cancel" onClick={onCancel}>
         Cancel
       </button>
     </div>
   )
+}
+
+/* Matches the compact row in globals.css: 48px plus its 1px divider. */
+const ROW_HEIGHT = 49
+const BAR_HEIGHT = 56
+const PANEL_PADDING = 12
+const MIN_ROWS = 4
+// The combobox caps its list at 448px, which holds eight whole rows.
+const MAX_ROWS = 8
+
+/**
+ * As many suggestions as fit between the bar and the bottom of the visible
+ * viewport, which the on-screen keyboard shrinks — whole rows only, so none
+ * sits half-hidden at the keyboard's edge.
+ */
+function useFittingSuggestionRows(open: boolean) {
+  const [rows, setRows] = useState(8)
+  useEffect(() => {
+    if (!open) return
+    const viewport = window.visualViewport
+    const measure = () => {
+      const height = viewport?.height ?? window.innerHeight
+      const fit = Math.floor((height - BAR_HEIGHT - PANEL_PADDING) / ROW_HEIGHT)
+      setRows(Math.min(MAX_ROWS, Math.max(MIN_ROWS, fit)))
+    }
+    measure()
+    viewport?.addEventListener('resize', measure)
+    return () => viewport?.removeEventListener('resize', measure)
+  }, [open])
+  return rows
 }
 
 /** Measures where the field should grow from, then focuses it. */

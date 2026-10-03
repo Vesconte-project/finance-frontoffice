@@ -1953,6 +1953,12 @@ html.chrome-scrolled .site-header__row:not([data-menu-open]) [data-header-search
   html.has-header-menu {
     overflow: hidden;
   }
+  /* Below a phone panel the page stays in view, faded back, so the open menu
+     or search reads as sitting on the page rather than replacing it. */
+  :root .site-header .site-header__backdrop {
+    height: 100lvh;
+    background: color-mix(in srgb, var(--bg) 78%, transparent);
+  }
 }
 
 /* --- Compact header: one edge-to-edge bar -----------------------------------
