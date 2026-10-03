@@ -30,7 +30,7 @@ Study the rendered pattern, its responsive states, and its direct styling before
 
 `components/marketing/HomeTickerStory.tsx` is retained as the repository's unmounted reference implementation of scroll-driven collapse/scatter choreography with FLIP-style source capture. It no longer supplies or owns homepage content: callers must provide real card data, and its authored mobile/desktop position tables intentionally cap the technique at five items. The homepage stopped mounting it because its former hardcoded financial values were fabricated; the motion mechanics remain useful without preserving those claims.
 
-There is not yet a repository-wide modal or drawer exemplar with a complete focus-management contract. Inspect current implementations for local context, but do not promote one to a shared pattern until focus entry, containment, Escape, backdrop behavior, and focus restoration are verified.
+`components/ui/Dialog.tsx` (2026-10-03) is the shared modal on the native `<dialog>` element: focus moves in on open, the browser contains focus and makes the page inert, Escape and a backdrop click close it, focus returns to the opening control, and the shared scroll runtime is locked while it is open. `e2e/watchlist-signed-out-recovery.spec.ts` verifies those behaviours on the signed-out watchlist and export prompts. There is still no drawer exemplar.
 
 ## Expanding selector study — 2026-07-21
 

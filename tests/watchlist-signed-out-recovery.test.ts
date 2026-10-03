@@ -4,7 +4,9 @@ import path from 'node:path'
 import test from 'node:test'
 
 /**
- * Watchlist Save — Signed-out Recovery V1.
+ * Watchlist Save — Signed-out Recovery V1, revised 2026-10-03: the founder
+ * replaced the in-place recovery panel with a modal account prompt that says
+ * what a free account gives. Everything else in V1 stands.
  *
  * This component has no DOM-level coverage available: the repository's unit
  * runner is `node --test` over compiled TypeScript, with no renderer and no
@@ -52,7 +54,7 @@ test('a signed-out activation opens recovery and never touches the watchlist API
   const source = readRepoFile('components/WatchlistButton.tsx')
   const branch = signedOutBranch(source)
 
-  assert.match(branch, /setRecoveryOpen/, 'signed-out click opens the recovery state')
+  assert.match(branch, /setRecoveryOpen\(true\)/, 'signed-out click opens the account prompt')
   assert.match(branch, /\breturn\b/, 'signed-out click returns before any mutation')
   assert.doesNotMatch(branch, /callWatchlistApi|fetch\(/, 'no request may be attempted while signed out')
 
@@ -61,8 +63,7 @@ test('a signed-out activation opens recovery and never touches the watchlist API
 
   // A boolean cannot accumulate, so repeat activation cannot stack states.
   assert.match(source, /const \[recoveryOpen, setRecoveryOpen\] = useState\(false\)/)
-  assert.match(source, /setRecoveryOpen\(\(open\) => !open\)/)
-  assert.match(source, /\{!signedIn && recoveryOpen && \(/)
+  assert.match(source, /\{!signedIn && \(\s*<Dialog\s+open=\{recoveryOpen\}/)
 })
 
 test('both recovery actions resolve to the existing auth routes with no return-to plumbing', () => {
@@ -77,9 +78,12 @@ test('both recovery actions resolve to the existing auth routes with no return-t
   // No navigation is triggered by the click itself.
   assert.doesNotMatch(source, /useRouter|router\.(push|replace)|window\.location|redirect\(/)
 
-  // Sign in is primary; Create account is visually subordinate.
-  assert.match(source, /buttonClass\(\{ variant: 'primary', size: 'sm' \}\)/)
-  assert.match(source, /buttonClass\(\{ variant: 'ghost', size: 'sm' \}\)/)
+  // Creating an account is the primary action; signing in is subordinate.
+  assert.match(source, /href="\/sign-up"[\s\S]*?variant: 'primary'[\s\S]*?href="\/sign-in"[\s\S]*?variant: 'ghost'/)
+
+  // What the account gives is stated from the real entitlement, not a guess.
+  assert.match(source, /PICK_VISIBLE_LIMITS\.free/)
+  assert.match(source, /PICK_VISIBLE_LIMITS\.anonymous/)
 })
 
 test('the signed-in mutation path is semantically unchanged', () => {
@@ -130,16 +134,25 @@ test('outcomes are announced through polite live regions', () => {
   assert.match(source, /aria-label=\{label\}/)
   assert.match(source, /aria-pressed=\{inWatchlist\}/)
 
-  // The disclosure is exposed, and only where it exists.
+  // The dialog trigger is exposed, and only where it exists.
+  assert.match(source, /aria-haspopup=\{signedIn \? undefined : 'dialog'\}/)
   assert.match(source, /aria-expanded=\{signedIn \? undefined : recoveryOpen\}/)
 })
 
-test('the recovery state is keyboard escapable and offers focus sensibly', () => {
+test('the account prompt is a real modal: focus moves in, Escape closes, focus returns', () => {
   const source = readRepoFile('components/WatchlistButton.tsx')
+  const dialog = readRepoFile('components/ui/Dialog.tsx')
 
-  assert.match(source, /event\.key === 'Escape'/)
-  assert.match(source, /starRef\.current\?\.focus\(\)/, 'dismissal returns focus to the control')
-  assert.match(source, /if \(recoveryOpen\) signInRef\.current\?\.focus\(\)/)
+  assert.match(source, /initialFocusRef=\{createAccountRef\}/, 'opening offers focus to the primary action')
+  assert.match(source, /returnFocusRef=\{starRef\}/, 'dismissal returns focus to the star')
+  assert.match(source, /labelledBy=\{titleId\}/)
+
+  // The native modal dialog contains focus, makes the page inert and closes on Escape.
+  assert.match(dialog, /<dialog/)
+  assert.match(dialog, /\.showModal\(\)/)
+  assert.match(dialog, /returnFocusRef\?\.current\?\.focus\(\)/)
+  // The page behind does not scroll while it is open.
+  assert.match(dialog, /runtime\.acquireLock\(\)/)
 })
 
 test('error presentation uses the existing semantic token and caption utility', () => {
@@ -168,24 +181,26 @@ test('the star geometry and the control rail are preserved', () => {
   // The only call site is unchanged: the chrome hands it to the identity's actions.
   assert.match(chrome, /actions=\{\([\s\S]*<WatchlistButton/)
 
-  // R-7: the chrome change is layout integration, scoped to the recovery state.
-  assert.match(styles, /\.body:has\(\[data-watchlist-recovery='open'\]/)
+  // The prompt is a modal, so it never changes the hero's layout.
+  assert.doesNotMatch(styles, /data-watchlist-recovery/)
   assert.doesNotMatch(styles, /\.(rail|actions) \{[^}]*(width|height|padding|font-size)/)
 })
 
-test('no new dependency, primitive or design token is introduced', () => {
+test('no new dependency or design token is introduced; the modal is the shared primitive', () => {
   const source = readRepoFile('components/WatchlistButton.tsx')
 
   const imports = [...source.matchAll(/from '([^']+)'/g)].map((match) => match[1])
   assert.deepEqual(imports.sort(), [
     '@/components/ui/Button',
+    '@/components/ui/Dialog',
+    '@/lib/picks-access-rules',
     'lucide-react',
     'next/link',
     'react',
   ])
 
-  // No modal, dialog, drawer or overlay system.
-  assert.doesNotMatch(source, /Dialog|Modal|Drawer|createPortal|role="dialog"/)
+  // One modal primitive, no ad-hoc overlay, portal or drawer.
+  assert.doesNotMatch(source, /Modal|Drawer|createPortal|role="dialog"/)
 
   // No analytics (R-6): V1 adds none.
   assert.doesNotMatch(source, /analytics|trackEvent|gtag|plausible/i)

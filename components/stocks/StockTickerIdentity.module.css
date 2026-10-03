@@ -198,19 +198,6 @@
 }
 
 /*
- * An open watchlist or export recovery message is wider than the button it
- * opens beneath; the rail takes its own line so the quote is never squeezed.
- */
-.body:has([data-watchlist-recovery='open'], [data-ticker-export-recovery='open']) .rail {
-  flex-basis: 100%;
-  justify-content: flex-start;
-}
-
-.body:has([data-watchlist-recovery='open'], [data-ticker-export-recovery='open']) .actions {
-  flex-direction: column;
-}
-
-/*
  * Narrow block: a smaller node, and the metadata condensed to two right-aligned
  * lines — the exchange above, the asset type and currency below.
  */

@@ -1,98 +1,122 @@
 import { expect, test, type Page } from '@playwright/test'
 
 /**
- * Watchlist Save — Signed-out Recovery V1, checked in the browser.
+ * Watchlist Save — Signed-out Recovery V1 (revised 2026-10-03), checked in the
+ * browser: a signed-out star opens a modal account prompt.
  *
- * These run against an anonymous context, which is the state the feature
- * exists for. If the ticker chrome cannot render — the page depends on
- * finance-backend — the specs skip rather than assert on an empty shell.
+ * Runs against the synthetic ticker served by the fixture backend (see
+ * e2e/fixtures/ticker-page.mjs) in an anonymous context, which is the state the
+ * feature exists for.
  */
-const TICKER = 'AAPL'
+const TICKER = 'QAM'
 const TICKER_PATH = `/stocks/${TICKER}`
 
 const STAR = 'button[aria-label="Add to watchlist"], button[aria-label="Remove from watchlist"]'
-const RECOVERY = '[data-watchlist-recovery="open"]'
 
 async function openTickerPage(page: Page) {
   const response = await page.goto(TICKER_PATH)
   if (!response || response.status() >= 400) {
     test.skip(true, `ticker page unavailable (status ${response?.status() ?? 'none'})`)
   }
-  await page.waitForLoadState('networkidle')
+  await expect(page.locator('[data-ticker-chrome="ready"] [data-ticker-price]')).toBeVisible()
   if ((await page.locator(STAR).count()) === 0) {
     test.skip(true, 'watchlist control not rendered; backend coverage unavailable')
   }
 }
 
-test.describe('signed-out watchlist recovery', () => {
-  test('activation opens recovery in place, with both actions and no mutation', async ({ page }) => {
+function prompt(page: Page) {
+  return page.getByRole('dialog', { name: `Save ${TICKER} to your watchlist` })
+}
+
+test.describe('signed-out watchlist account prompt', () => {
+  test('activation opens the prompt with what an account gives, and no mutation', async ({ page }) => {
     const watchlistRequests: string[] = []
     page.on('request', (request) => {
-      if (request.url().includes('/api/watchlist')) {
-        watchlistRequests.push(`${request.method()} ${request.url()}`)
-      }
+      if (request.url().includes('/api/watchlist')) watchlistRequests.push(`${request.method()} ${request.url()}`)
     })
 
     await openTickerPage(page)
     const urlBeforeClick = page.url()
+    const heroBefore = await page.locator('[data-ticker-hero]').boundingBox()
 
-    await expect(page.locator(RECOVERY)).toHaveCount(0)
+    await expect(prompt(page)).toHaveCount(0)
     await page.locator(STAR).click()
 
-    const recovery = page.locator(RECOVERY)
-    await expect(recovery).toBeVisible()
-    await expect(recovery).toContainText('Sign in to save this ticker to your watchlist.')
+    const dialog = prompt(page)
+    await expect(dialog).toBeVisible()
+    await expect(dialog).toContainText('Sign in to save this ticker to your watchlist.')
+    await expect(dialog).toContainText(`A watchlist to keep ${TICKER}`)
+    await expect(dialog).toContainText(`Where ${TICKER} stands in each reading`)
+    await expect(dialog).toContainText('25 companies per reading instead of 5')
 
-    const signIn = recovery.getByRole('link', { name: 'Sign in', exact: true })
-    const createAccount = recovery.getByRole('link', { name: 'Create account', exact: true })
-    await expect(signIn).toHaveAttribute('href', '/sign-in')
+    const createAccount = dialog.getByRole('link', { name: 'Create account', exact: true })
+    const signIn = dialog.getByRole('link', { name: 'Sign in', exact: true })
     await expect(createAccount).toHaveAttribute('href', '/sign-up')
+    await expect(signIn).toHaveAttribute('href', '/sign-in')
 
-    // No automatic redirect: the click itself navigates nowhere.
+    // Opening offers focus to the primary action.
+    await expect(createAccount).toBeFocused()
+
+    // A modal: the hero keeps its layout underneath.
+    expect(await page.locator('[data-ticker-hero]').boundingBox()).toEqual(heroBefore)
+
+    // No automatic redirect, and no mutation while signed out.
     expect(page.url()).toBe(urlBeforeClick)
-
-    // No mutation is attempted while signed out.
     expect(watchlistRequests, `unexpected watchlist calls: ${watchlistRequests.join(', ')}`).toEqual([])
-
-    // Entering the state offers focus to the primary action.
-    await expect(signIn).toBeFocused()
   })
 
-  test('repeat activation never stacks recovery states', async ({ page }) => {
+  test('focus stays inside, Escape closes and focus returns to the star', async ({ page }) => {
     await openTickerPage(page)
     const star = page.locator(STAR)
-
-    for (let i = 0; i < 3; i += 1) {
-      await star.click()
-      await star.click()
-    }
-    await star.click()
-
-    await expect(page.locator(RECOVERY)).toHaveCount(1)
-  })
-
-  test('the recovery state is keyboard operable and escapable', async ({ page }) => {
-    await openTickerPage(page)
-    const star = page.locator(STAR)
-
     await star.focus()
     await page.keyboard.press('Enter')
-    await expect(page.locator(RECOVERY)).toBeVisible()
+    const dialog = prompt(page)
+    await expect(dialog).toBeVisible()
 
-    const signIn = page.locator(RECOVERY).getByRole('link', { name: 'Sign in', exact: true })
-    await expect(signIn).toBeFocused()
+    for (let i = 0; i < 6; i += 1) {
+      await page.keyboard.press('Tab')
+      // Focus may pass through the browser chrome between cycles, but never onto the page.
+      const insideOrNowhere = await page.evaluate(() => {
+        const active = document.activeElement
+        return !active || active === document.body || Boolean(active.closest('dialog'))
+      })
+      expect(insideOrNowhere).toBe(true)
+    }
 
-    // Reading order inside the state runs explanation, primary, secondary.
-    await page.keyboard.press('Tab')
-    await expect(
-      page.locator(RECOVERY).getByRole('link', { name: 'Create account', exact: true })
-    ).toBeFocused()
-
-    // Escapable by keyboard, without leaving the page.
     await page.keyboard.press('Escape')
-    await expect(page.locator(RECOVERY)).toHaveCount(0)
+    await expect(dialog).toHaveCount(0)
     await expect(star).toBeFocused()
     expect(page.url()).toContain(TICKER_PATH)
+  })
+
+  test('a click outside or on Close dismisses it', async ({ page }) => {
+    await openTickerPage(page)
+    const star = page.locator(STAR)
+
+    await star.click()
+    await expect(prompt(page)).toBeVisible()
+    await page.mouse.click(4, 4)
+    await expect(prompt(page)).toHaveCount(0)
+
+    await star.click()
+    await prompt(page).getByRole('button', { name: 'Close' }).click()
+    await expect(prompt(page)).toHaveCount(0)
+    await expect(star).toBeFocused()
+
+    // Repeat activation never stacks prompts.
+    await star.click()
+    await expect(page.getByRole('dialog')).toHaveCount(1)
+  })
+
+  test('the page behind does not scroll while the prompt is open', async ({ page }) => {
+    await openTickerPage(page)
+    await page.locator(STAR).click()
+    await expect(prompt(page)).toBeVisible()
+    const before = await page.evaluate(() => window.scrollY)
+    await page.mouse.move(10, 400)
+    await page.mouse.wheel(0, 800)
+    await page.waitForTimeout(400)
+    expect(await page.evaluate(() => window.scrollY)).toBe(before)
   })
 
   test('the control keeps its 36px geometry and announces state politely', async ({ page }) => {
@@ -108,47 +132,44 @@ test.describe('signed-out watchlist recovery', () => {
   })
 
   for (const viewport of [
-    { name: 'mobile', width: 320, height: 568 },
+    { name: 'small phone', width: 320, height: 568 },
     { name: 'phone', width: 390, height: 844 },
     { name: 'tablet', width: 768, height: 1024 },
     { name: 'laptop', width: 1366, height: 768 },
     { name: 'wide', width: 1920, height: 1080 },
   ]) {
-    test(`recovery fits the ticker chrome at ${viewport.name} (${viewport.width}px)`, async ({ page }) => {
+    test(`the prompt fits the screen at ${viewport.name} (${viewport.width}px)`, async ({ page }) => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height })
       await openTickerPage(page)
       await page.locator(STAR).click()
-      await expect(page.locator(RECOVERY)).toBeVisible()
+      const dialog = prompt(page)
+      await expect(dialog).toBeVisible()
 
-      // The page body must never scroll horizontally as a result.
-      const dimensions = await page.evaluate(() => ({
-        clientWidth: document.documentElement.clientWidth,
-        scrollWidth: document.documentElement.scrollWidth,
-      }))
-      expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1)
-
-      // The recovery state is not clipped by the chrome's overflow.
-      const clipped = await page.locator(RECOVERY).evaluate((node) => {
-        const panel = node.getBoundingClientRect()
-        const chrome = node.closest('[data-ticker-hero]')!.getBoundingClientRect()
-        return panel.bottom > chrome.bottom + 1 || panel.right > chrome.right + 1 || panel.left < chrome.left - 1
+      const fit = await dialog.evaluate((node) => {
+        const box = node.getBoundingClientRect()
+        return {
+          inside: box.left >= 0 && box.top >= 0 && box.right <= window.innerWidth && box.bottom <= window.innerHeight,
+          pageScrollsSideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+        }
       })
-      expect(clipped, 'recovery state is clipped by the ticker chrome').toBe(false)
-
-      // It must not obscure the ticker identity or the research navigation.
-      const overlaps = await page.locator(RECOVERY).evaluate((node) => {
-        const panel = node.getBoundingClientRect()
-        const hits = ['[data-selected-ticker-node]', '[data-ticker-navigation]']
-        return hits.some((selector) => {
-          const target = document.querySelector(selector)
-          if (!target) return false
-          const rect = target.getBoundingClientRect()
-          return !(panel.right <= rect.left || panel.left >= rect.right || panel.bottom <= rect.top || panel.top >= rect.bottom)
-        })
-      })
-      expect(overlaps, 'recovery state overlaps ticker identity or navigation').toBe(false)
+      expect(fit.inside, 'the prompt leaves the viewport').toBe(true)
+      expect(fit.pageScrollsSideways).toBe(false)
     })
   }
+})
+
+test('signed-out export opens its own prompt instead of a panel in the hero', async ({ page }) => {
+  await openTickerPage(page)
+  const heroBefore = await page.locator('[data-ticker-hero]').boundingBox()
+  const exportButton = page.getByRole('button', { name: 'Download signal history CSV' })
+  await exportButton.click()
+  const dialog = page.getByRole('dialog', { name: 'Export signal history' })
+  await expect(dialog).toBeVisible()
+  await expect(dialog).toContainText('Signal export is included with Pro.')
+  expect(await page.locator('[data-ticker-hero]').boundingBox()).toEqual(heroBefore)
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  await expect(exportButton).toBeFocused()
 })
 
 /**

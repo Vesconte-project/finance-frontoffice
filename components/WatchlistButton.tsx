@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useId, useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import Link from 'next/link'
-import { CircleAlert, Loader2, Star } from 'lucide-react'
+import { Check, CircleAlert, Loader2, Star } from 'lucide-react'
 import { buttonClass } from '@/components/ui/Button'
+import Dialog from '@/components/ui/Dialog'
+import { PICK_VISIBLE_LIMITS } from '@/lib/picks-access-rules'
 
 /**
  * Founder-approved copy. Preserve verbatim — these strings are product scope,
@@ -49,25 +51,20 @@ export default function WatchlistButton({
   const [announcement, setAnnouncement] = useState('')
 
   const recoveryId = useId()
+  const titleId = `${recoveryId}-title`
+  const descriptionId = `${recoveryId}-description`
   const starRef = useRef<HTMLButtonElement>(null)
-  const signInRef = useRef<HTMLAnchorElement>(null)
+  const createAccountRef = useRef<HTMLAnchorElement>(null)
 
-  // Entering the recovery state offers focus to the primary action, so focus is
-  // never left on a control whose purpose has just changed.
-  useEffect(() => {
-    if (recoveryOpen) signInRef.current?.focus()
-  }, [recoveryOpen])
-
-  const closeRecovery = () => {
-    setRecoveryOpen(false)
-    starRef.current?.focus()
-  }
+  // Closing returns focus to the star (handled by the dialog).
+  const closeRecovery = () => setRecoveryOpen(false)
 
   const onClick = async () => {
     if (!signedIn) {
-      // No mutation is attempted while signed out. A single boolean cannot
-      // stack, so repeat activation toggles rather than accumulating states.
-      setRecoveryOpen((open) => !open)
+      // No mutation is attempted while signed out. The account prompt opens as
+      // a modal dialog; a single boolean cannot stack, and while the dialog is
+      // open the star is inert, so repeat activation cannot accumulate states.
+      setRecoveryOpen(true)
       return
     }
 
@@ -103,6 +100,7 @@ export default function WatchlistButton({
         title={label}
         aria-pressed={inWatchlist}
         aria-busy={pending}
+        aria-haspopup={signedIn ? undefined : 'dialog'}
         aria-expanded={signedIn ? undefined : recoveryOpen}
         aria-controls={!signedIn && recoveryOpen ? recoveryId : undefined}
         className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-[var(--glass-border)] bg-[var(--glass-bg)] text-[var(--color-text-secondary)] transition-[border-color,color,transform] duration-150 hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] active:scale-90 disabled:opacity-60"
@@ -124,32 +122,52 @@ export default function WatchlistButton({
         {announcement}
       </span>
 
-      {!signedIn && recoveryOpen && (
-        <div
-          id={recoveryId}
-          data-watchlist-recovery="open"
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') {
-              event.stopPropagation()
-              closeRecovery()
-            }
-          }}
-          className="flex w-[min(16.5rem,100%)] flex-col gap-2 rounded-[var(--radius-lg)] border border-border bg-surface-elevated px-3 py-2.5 text-left"
+      {!signedIn && (
+        <Dialog
+          open={recoveryOpen}
+          onClose={closeRecovery}
+          labelledBy={titleId}
+          describedBy={descriptionId}
+          initialFocusRef={createAccountRef}
+          returnFocusRef={starRef}
         >
-          <p className="text-caption text-content-secondary">{SIGNED_OUT_EXPLANATION}</p>
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              ref={signInRef}
-              href="/sign-in"
-              className={buttonClass({ variant: 'primary', size: 'sm' })}
-            >
-              {SIGN_IN_LABEL}
-            </Link>
-            <Link href="/sign-up" className={buttonClass({ variant: 'ghost', size: 'sm' })}>
-              {CREATE_ACCOUNT_LABEL}
-            </Link>
+          <div id={recoveryId} data-watchlist-recovery="open" className="flex flex-col gap-4 pr-8 text-left">
+            <h2 id={titleId} className="text-xl font-medium text-[var(--text)]">
+              Save {ticker} to your watchlist
+            </h2>
+            <p id={descriptionId} className="text-sm text-content-secondary">
+              {SIGNED_OUT_EXPLANATION} A free account gives you:
+            </p>
+            <ul className="flex flex-col gap-2.5 text-sm text-[var(--text)]">
+              {[
+                `A watchlist to keep ${ticker} and the other tickers you follow`,
+                `Where ${ticker} stands in each reading`,
+                `The full Picks rankings — ${PICK_VISIBLE_LIMITS.free} companies per reading instead of ${PICK_VISIBLE_LIMITS.anonymous}`,
+              ].map((benefit) => (
+                <li key={benefit} className="flex items-start gap-2.5">
+                  <Check size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-[var(--accent)]" />
+                  <span>{benefit}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-caption text-content-muted">No card, no trial.</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                ref={createAccountRef}
+                href="/sign-up"
+                className={buttonClass({ variant: 'primary', size: 'md' })}
+              >
+                {CREATE_ACCOUNT_LABEL}
+              </Link>
+              <Link
+                href="/sign-in"
+                className={buttonClass({ variant: 'ghost', size: 'md' })}
+              >
+                {SIGN_IN_LABEL}
+              </Link>
+            </div>
           </div>
-        </div>
+        </Dialog>
       )}
 
       {error && (

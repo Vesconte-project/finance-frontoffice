@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useId, useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { CircleAlert, Download, Loader2 } from 'lucide-react'
 import { buttonClass } from '@/components/ui/Button'
+import Dialog from '@/components/ui/Dialog'
 import { trackEvent } from '@/lib/analytics'
 
 const EXPORT_LABEL = 'Download signal history CSV'
@@ -40,14 +41,8 @@ export default function TickerExportButton({ ticker }: { ticker: string }) {
   const buttonRef = useRef<HTMLButtonElement>(null)
   const recoveryLinkRef = useRef<HTMLAnchorElement>(null)
 
-  useEffect(() => {
-    if (recovery) recoveryLinkRef.current?.focus()
-  }, [recovery])
-
-  const closeRecovery = () => {
-    setRecovery(null)
-    buttonRef.current?.focus()
-  }
+  // Closing returns focus to the export button (handled by the dialog).
+  const closeRecovery = () => setRecovery(null)
 
   const exportSignals = async () => {
     setPending(true)
@@ -120,15 +115,7 @@ export default function TickerExportButton({ ticker }: { ticker: string }) {
   }
 
   return (
-    <div
-      className="relative flex flex-col items-start gap-1.5 md:items-end"
-      onKeyDown={(event) => {
-        if (recovery && event.key === 'Escape') {
-          event.stopPropagation()
-          closeRecovery()
-        }
-      }}
-    >
+    <div className="relative flex flex-col items-start gap-1.5 md:items-end">
       <button
         ref={buttonRef}
         type="button"
@@ -139,6 +126,7 @@ export default function TickerExportButton({ ticker }: { ticker: string }) {
         aria-label={EXPORT_LABEL}
         title={EXPORT_LABEL}
         aria-busy={pending}
+        aria-haspopup="dialog"
         aria-expanded={recovery ? true : undefined}
         aria-controls={recovery ? recoveryId : undefined}
         className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-[var(--glass-border)] bg-[var(--glass-bg)] text-[var(--color-text-secondary)] transition-[border-color,color,transform] duration-150 hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--page-bg)] active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100 disabled:cursor-wait disabled:opacity-60"
@@ -152,31 +140,39 @@ export default function TickerExportButton({ ticker }: { ticker: string }) {
 
       <span className="sr-only" role="status" aria-live="polite">{announcement}</span>
 
-      {recovery ? (
-        <div
-          id={recoveryId}
-          data-ticker-export-recovery="open"
-          className="flex w-[min(16.5rem,100%)] flex-col gap-2 rounded-[var(--radius-lg)] border border-border bg-surface-elevated px-3 py-2.5 text-left"
-        >
-          <p className="text-caption text-content-secondary">
-            {recovery.kind === 'sign-in'
-              ? 'Signal export is included with Pro. Sign in to check your access.'
-              : 'Signal export is included with Pro.'}
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <a
-              ref={recoveryLinkRef}
-              href={recovery.kind === 'sign-in' ? '/sign-in' : recovery.upgradeUrl}
-              className={buttonClass({ variant: 'primary', size: 'sm' })}
-            >
-              {recovery.kind === 'sign-in' ? 'Sign in' : 'Upgrade to Pro'}
-            </a>
-            {recovery.kind === 'sign-in' ? (
-              <a href={recovery.upgradeUrl} className={buttonClass({ variant: 'ghost', size: 'sm' })}>View Pro</a>
-            ) : null}
+      <Dialog
+        open={recovery !== null}
+        onClose={closeRecovery}
+        labelledBy={`${recoveryId}-title`}
+        describedBy={`${recoveryId}-description`}
+        initialFocusRef={recoveryLinkRef}
+        returnFocusRef={buttonRef}
+      >
+        {recovery ? (
+          <div id={recoveryId} data-ticker-export-recovery="open" className="flex flex-col gap-4 pr-8 text-left">
+            <h2 id={`${recoveryId}-title`} className="text-xl font-medium text-[var(--text)]">
+              Export signal history
+            </h2>
+            <p id={`${recoveryId}-description`} className="text-sm text-content-secondary">
+              {recovery.kind === 'sign-in'
+                ? 'Signal export is included with Pro. Sign in to check your access.'
+                : 'Signal export is included with Pro.'}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <a
+                ref={recoveryLinkRef}
+                href={recovery.kind === 'sign-in' ? '/sign-in' : recovery.upgradeUrl}
+                className={buttonClass({ variant: 'primary', size: 'md' })}
+              >
+                {recovery.kind === 'sign-in' ? 'Sign in' : 'Upgrade to Pro'}
+              </a>
+              {recovery.kind === 'sign-in' ? (
+                <a href={recovery.upgradeUrl} className={buttonClass({ variant: 'ghost', size: 'md' })}>View Pro</a>
+              ) : null}
+            </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </Dialog>
 
       {error ? (
         <span aria-live="polite" className="signal-bearish text-caption inline-flex max-w-52 items-center gap-1.5">

@@ -1,0 +1,79 @@
+/*
+ * A solid surface over a dimmed page, following the design system: no blur,
+ * no glow. The panel fills the dialog box so a click outside it can only land
+ * on the backdrop.
+ */
+.dialog {
+  width: min(26rem, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  overscroll-behavior: contain;
+}
+
+.dialog::backdrop {
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+}
+
+.dialog[open] {
+  animation: dialog-enter 180ms var(--motion-ease-standard, ease-out);
+}
+
+.dialog[open]::backdrop {
+  animation: dialog-fade 180ms ease-out;
+}
+
+.panel {
+  position: relative;
+  padding: 24px;
+}
+
+.close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.close:hover {
+  color: var(--text);
+}
+
+.close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+@keyframes dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes dialog-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog[open],
+  .dialog[open]::backdrop {
+    animation: none;
+  }
+}
