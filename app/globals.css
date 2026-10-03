@@ -1886,8 +1886,91 @@ html.chrome-scrolled .site-header__row:not([data-menu-open]) [data-header-search
     min-height: 170px;
   }
 }
+/* Compact: the same panel and the same menus, laid out as a vertical list. The
+   intro card leads; each destination is a full-width row. The panel scrolls
+   inside itself when a short screen cannot hold it, and the page underneath is
+   locked (useHeaderDisclosure) rather than scrolled. */
+.site-header__tile-chevron {
+  display: none;
+}
 @media (max-width: 767px) {
-  .site-header__dropdowns {
+  .site-header__row[data-menu-open] .site-header__dropdowns {
+    max-height: calc(100dvh - var(--site-header-rest-bar-height) - 36px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .site-header__dropgrid {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 2px 8px 8px;
+  }
+  .site-header__dropgrid .site-header__tile--text {
+    min-height: 0;
+    gap: 14px;
+    margin-bottom: 4px;
+    padding: 14px 12px;
+  }
+  .site-header__dropgrid .site-header__tile-blurb {
+    margin-top: 6px;
+  }
+  .site-header__dropgrid .site-header__tile:not(.site-header__tile--text) {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 52px;
+    padding: 0 12px;
+    border: 0;
+    border-top: 1px solid var(--line-soft);
+    border-radius: 0;
+    background: transparent;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color 120ms ease;
+  }
+  .site-header__dropgrid .site-header__tile:not(.site-header__tile--text)::after,
+  .site-header__dropgrid .site-header__tile-media {
+    display: none;
+  }
+  .site-header__dropgrid .site-header__tile:not(.site-header__tile--text):active {
+    background-color: var(--surface-soft);
+  }
+  .site-header__dropgrid .site-header__tile:not(.site-header__tile--text):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+  .site-header__dropgrid .site-header__tile-label {
+    font-size: 19px;
+    color: var(--text);
+  }
+  .site-header__tile-chevron {
+    display: block;
+    flex-shrink: 0;
+    color: var(--content-secondary);
+  }
+  .site-header__dropgrid .site-header__tile-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .site-header__dropgrid :is(.site-header__tile-view, .site-header__tile-signout) {
+    height: 44px;
+  }
+  /* The page underneath stays put while the panel covers it. */
+  html.has-header-menu {
+    overflow: hidden;
+  }
+  /* The docked mobile search row would sit under the open panel. */
+  html.has-header-menu .site-header .site-header__inner > div.mt-3 {
+    display: none;
+  }
+}
+/* Small phones: brand, both triggers and Join/avatar share about 270px. The
+   chevrons give their width back; the expanded state still marks the trigger. */
+@media (max-width: 389px) {
+  .site-header__navlink {
+    padding-inline: 6px;
+  }
+  .site-nav__trigger .site-nav__chev {
     display: none;
   }
 }
@@ -2036,7 +2119,7 @@ html.chrome-scrolled .site-header__row:not([data-menu-open]) [data-header-search
   font-weight: 500;
   font-size: 26px;
   letter-spacing: normal;
-  color: var(--menu-tile-label, var(--surface));
+  color: var(--menu-tile-label, var(--content-primary));
 }
 /* text tile */
 .site-header__tile--text {

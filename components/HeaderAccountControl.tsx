@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useAuth, useUser } from '@clerk/nextjs'
 import { ChevronDown } from 'lucide-react'
+import HeaderMenuTrigger from '@/components/header-menu/HeaderMenuTrigger'
 
 const joinClassName =
   'site-header__join inline-flex items-center justify-center rounded-md bg-[var(--btn-primary-bg)] px-4 font-medium text-[var(--btn-primary-fg)] transition duration-200'
@@ -18,10 +19,12 @@ const joinClassName =
  */
 export default function HeaderAccountControl({
   accountOpen,
+  controls,
   onToggleAccount,
 }: {
   accountOpen: boolean
-  onToggleAccount: () => void
+  controls: string
+  onToggleAccount: (trigger: HTMLButtonElement, viaKeyboard: boolean) => void
 }) {
   const { isLoaded, isSignedIn } = useAuth()
   const { user } = useUser()
@@ -49,24 +52,11 @@ export default function HeaderAccountControl({
   const initial = (user?.firstName ?? label).trim().charAt(0).toUpperCase()
 
   return (
-    <button
-      type="button"
-      aria-expanded={accountOpen}
-      aria-haspopup="menu"
-      aria-label={`Account menu for ${label}`}
-      // Same reason as the other triggers: focusing on mousedown widens the
-      // condensed row and moves the button out from under the cursor before
-      // mouseup, so the click never lands.
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={(event) => {
-        // `detail` counts clicks, so it is 0 for keyboard activation. A keyboard
-        // user keeps focus here; a pointer user must not, because suppressing
-        // the mousedown focus above makes the browser treat any focus that lands
-        // afterwards as keyboard-driven, so :focus-visible stays lit after the
-        // menu closes — and :focus-within also holds the condensed row open.
-        if (event.detail > 0) event.currentTarget.blur()
-        onToggleAccount()
-      }}
+    <HeaderMenuTrigger
+      expanded={accountOpen}
+      controls={controls}
+      label={`Account menu for ${label}`}
+      onToggle={onToggleAccount}
       className="site-header__account"
     >
       <span className="site-header__account-avatar" aria-hidden="true">
@@ -78,6 +68,6 @@ export default function HeaderAccountControl({
         )}
       </span>
       <ChevronDown className="site-nav__chev size-3.5" aria-hidden="true" />
-    </button>
+    </HeaderMenuTrigger>
   )
 }

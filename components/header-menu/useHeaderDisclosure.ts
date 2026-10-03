@@ -1,0 +1,130 @@
+'use client'
+
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import { usePathname } from 'next/navigation'
+import { useScrollRuntime } from '@/components/motion/ScrollRuntime'
+
+/* Matches the panel's own max-height transition, so the last menu stays mounted
+   while it collapses. */
+const CLOSE_UNMOUNT_MS = 440
+const COMPACT_QUERY = '(max-width: 767px)'
+const FOCUSABLE = 'a[href], button:not([disabled])'
+
+type DisclosureMenu = { key: string }
+
+/**
+ * State and dismissal rules for the header's expanding menus.
+ *
+ * One menu is open at a time. It closes on an outside press, Escape, a route
+ * change, or real scrolling. On compact screens the open panel fills most of
+ * the viewport, so the page underneath is locked through the shared scroll
+ * runtime instead of being closed by the first touch scroll.
+ */
+export function useHeaderDisclosure<T extends DisclosureMenu>({
+  menus,
+  rowRef,
+  panelRef,
+}: {
+  menus: T[]
+  rowRef: RefObject<HTMLElement | null>
+  panelRef: RefObject<HTMLElement | null>
+}) {
+  const { runtime } = useScrollRuntime()
+  const pathname = usePathname()
+  const [openKey, setOpenKey] = useState<string | null>(null)
+  const [displayed, setDisplayed] = useState<T | null>(null)
+  const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const returnFocus = useRef<HTMLElement | null>(null)
+  const focusPanelOnOpen = useRef(false)
+
+  const close = useCallback((options?: { restoreFocus?: boolean }) => {
+    setOpenKey(null)
+    if (options?.restoreFocus) returnFocus.current?.focus()
+    returnFocus.current = null
+  }, [])
+
+  const toggle = useCallback(
+    (key: string, trigger: HTMLElement, viaKeyboard: boolean) => {
+      if (openKey === key) {
+        close({ restoreFocus: viaKeyboard })
+        return
+      }
+      if (clearTimer.current) clearTimeout(clearTimer.current)
+      returnFocus.current = trigger
+      focusPanelOnOpen.current = viaKeyboard
+      setDisplayed(menus.find((m) => m.key === key) ?? null)
+      setOpenKey(key)
+    },
+    [close, menus, openKey]
+  )
+
+  // Keep the last menu mounted through the close transition.
+  useEffect(() => {
+    if (!openKey && displayed) {
+      clearTimer.current = setTimeout(() => setDisplayed(null), CLOSE_UNMOUNT_MS)
+    }
+    return () => {
+      if (clearTimer.current) clearTimeout(clearTimer.current)
+    }
+  }, [openKey, displayed])
+
+  // A keyboard user lands on the first destination; a pointer user keeps
+  // their place and is not shown a focus ring they did not ask for.
+  useEffect(() => {
+    if (!openKey || !focusPanelOnOpen.current) return
+    focusPanelOnOpen.current = false
+    panelRef.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus()
+  }, [openKey, displayed, panelRef])
+
+  // Any navigation, including one started outside the header, closes it.
+  const [lastPathname, setLastPathname] = useState(pathname)
+  if (lastPathname !== pathname) {
+    setLastPathname(pathname)
+    setOpenKey(null)
+  }
+
+  // Page dim, and the compact-screen scroll lock.
+  useEffect(() => {
+    const root = document.documentElement
+    root.classList.toggle('has-header-menu', !!openKey)
+    if (!openKey) return
+    const release = window.matchMedia(COMPACT_QUERY).matches ? runtime.acquireLock() : null
+    return () => {
+      root.classList.remove('has-header-menu')
+      release?.()
+    }
+  }, [openKey, runtime])
+
+  // Close on outside press / Escape / real scroll.
+  useEffect(() => {
+    if (!openKey) return
+    // pointerdown, not mousedown: iOS only synthesizes mouse events for
+    // elements it considers clickable, so a tap on the dimmed page never closed.
+    const onDown = (e: PointerEvent) => {
+      if (!rowRef.current?.contains(e.target as Node)) close()
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      close({ restoreFocus: !!rowRef.current?.contains(document.activeElement) })
+    }
+    // Close on real scrolling, not on any scroll event. Lenis drives the page
+    // through window.scrollTo inside a continuous rAF, so opening the menu —
+    // which resizes the header and can trigger a Lenis resize — lands a
+    // zero-delta scroll event on the frame right after opening. Closing on that
+    // is what made the first click only expand the bar.
+    const openedAt = window.scrollY
+    const onScroll = () => {
+      if (Math.abs(window.scrollY - openedAt) > 24) close()
+    }
+    window.addEventListener('pointerdown', onDown)
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('pointerdown', onDown)
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('scroll', onScroll)
+    }
+  }, [openKey, rowRef, close])
+
+  return { openKey, displayed, toggle, close }
+}
