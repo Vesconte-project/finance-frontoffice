@@ -76,7 +76,7 @@ export default async function RelationshipsPage({
 
   if (!researchResult) return <ResearchUnavailable ticker={ticker} />
   if (relationship126.failed && relationship252.failed) {
-    return <EmptyState title="Relationships are temporarily unavailable" description="The canonical relationship data could not be loaded from finance-backend." action={<RetryButton>Retry</RetryButton>} />
+    return <EmptyState title="Relationships are temporarily unavailable" description="The relationship data could not be loaded right now." action={<RetryButton>Retry</RetryButton>} />
   }
 
   const relationshipsByWindow = { 126: relationship126.data, 252: relationship252.data } as Record<RelationshipWindow, TickerRelationships>
@@ -109,7 +109,7 @@ export default async function RelationshipsPage({
             <h2 id="relationship-method-heading" className="text-section-title text-content-primary">How to read relationships</h2>
             <a href={`/stocks/${ticker}/methodology#relationships`} className="action-link text-caption">Methodology →</a>
           </div>
-          <p className="mt-2 max-w-3xl text-body-sm text-content-secondary">These are observed associations returned by finance-backend. An association does not establish causality, influence, prediction, or a business relationship.</p>
+          <p className="mt-2 max-w-3xl text-body-sm text-content-secondary">These are observed associations. An association does not establish causality, influence, prediction, or a business relationship.</p>
           <div className="mt-4 flex min-w-0 flex-col gap-2 text-caption text-content-muted sm:flex-row sm:flex-wrap sm:gap-x-5">
             <span className="min-w-0 break-words [overflow-wrap:anywhere]">Coverage: {researchResult.coverageLabel}</span>
           </div>

@@ -103,7 +103,7 @@ export default function StockValuationResearch({
       </div>
       {covered.length === 0 ? (
         <p className={styles.multiplePending}>
-          {observations.pe?.reason ?? 'No canonical multiples are available for this symbol.'}
+          Valuation multiples for {data.ticker} are not available yet.
         </p>
       ) : null}
 

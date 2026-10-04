@@ -1,0 +1,85 @@
+.frame {
+  container: research-chart / inline-size;
+  width: 100%;
+  margin: 0;
+  min-width: 0;
+}
+
+.plot {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+/* The compact drawing is for narrow charts; the wide one takes over at 32.5rem. */
+.plot[data-chart-variant='wide'] {
+  display: none;
+}
+
+@container research-chart (width >= 32.5rem) {
+  .plot[data-chart-variant='wide'] {
+    display: block;
+  }
+
+  .plot[data-chart-variant='compact'] {
+    display: none;
+  }
+}
+
+.drawing {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.drawing * {
+  vector-effect: non-scaling-stroke;
+}
+
+.labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.label {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  color: var(--text-small);
+  white-space: nowrap;
+}
+
+.label[data-strong='true'] {
+  font-family: var(--font-body);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.label[data-tone='up'] {
+  color: var(--up-ink, var(--up));
+}
+
+.label[data-tone='down'] {
+  color: var(--down);
+}
+
+.label[data-tone='muted'] {
+  color: var(--text-muted);
+}
+
+/* Ochre text is reserved for large labels (small ochre text misses contrast). */
+.label[data-tone='accent'] {
+  font-weight: 600;
+  color: color-mix(in srgb, var(--accent) 70%, var(--text));
+}
+
+@container research-chart (width >= 32.5rem) {
+  .label {
+    font-size: 0.8125rem;
+  }
+}

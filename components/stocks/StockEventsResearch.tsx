@@ -192,7 +192,7 @@ export default function StockEventsResearch({
 
       <EventCalendar month={month} selectedDay={selectedDay} category={category}
         events={calendar.events} scope="ticker" basePath={`/stocks/${encodeURIComponent(data.ticker)}/events`}
-        available={calendar.available} reason={calendar.reason}
+        available={calendar.available} reason={calendar.available ? null : 'The event calendar is unavailable for this symbol right now.'}
         unavailableDomains={calendar.unavailableDomains} truncated={calendar.truncated} />
 
       {!isFund ? <EarningsHistory data={data} /> : null}
@@ -200,7 +200,7 @@ export default function StockEventsResearch({
       <Calendar title="Past" entries={past} />
 
       {entries.length === 0 ? (
-        <p className={styles.note}>{events?.reason ?? disclosures?.reason ?? 'No events are recorded for this symbol.'}</p>
+        <p className={styles.note}>No events are recorded for this symbol yet.</p>
       ) : null}
 
       <ResearchAdPlacement />

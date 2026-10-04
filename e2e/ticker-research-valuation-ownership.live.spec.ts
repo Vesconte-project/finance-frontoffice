@@ -48,7 +48,7 @@ test.describe('ticker valuation and ownership Phase 2 slice', () => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/stocks/AAPL/ownership')
     await expect(page.getByRole('heading', { name: 'Ownership & Capital', exact: true })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Ownership breakdown', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Who owns the shares', exact: true })).toBeVisible()
     await expect(page.getByText('Enterprise value', { exact: true })).toBeVisible()
     await expect(page.getByText('Market cap', { exact: true }).first()).toBeVisible()
     const researchNav = page.getByRole('navigation', { name: 'Ticker research' })
@@ -63,7 +63,7 @@ test.describe('ticker valuation and ownership Phase 2 slice', () => {
 
     await page.goto('/stocks/QQQ/ownership')
     await expect(page.getByRole('heading', { name: 'Fund Structure', exact: true })).toBeVisible()
-    await expect(page.getByText(/no corporate ownership model applied/)).toBeVisible()
+    await expect(page.getByText(/company measures such as insider ownership/)).toBeVisible()
     await expect(page.getByText('Insider', { exact: true })).toHaveCount(0)
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, 'phase2-ownership-qqq-fund-structure')

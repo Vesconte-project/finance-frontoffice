@@ -428,7 +428,7 @@ export default async function TickerPage({
       <div className="space-y-4">
         <EmptyState
           title="Ticker data is temporarily unavailable"
-          description="The frontend could not load the canonical summary from finance-backend for this ticker."
+          description="The summary for this ticker could not be loaded right now."
           action={<RetryButton>Retry</RetryButton>}
         />
       </div>

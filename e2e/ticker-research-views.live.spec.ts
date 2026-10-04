@@ -182,7 +182,7 @@ test.describe('ticker research views Phase 2 slice', () => {
     await page.setViewportSize({ width: 1366, height: 768 })
     await page.goto('/stocks/0005.HK/profile')
     await expect(page.getByRole('heading', { name: /Company Profile|Fund Profile/ })).toBeVisible()
-    await expect(page.getByText(/Partial coverage|Data pending/).first()).toBeVisible()
+    await expect(page.getByText(/Partial coverage|Being built/).first()).toBeVisible()
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, 'phase2-0005-partial-profile-desktop')
     expect(runtimeWarnings).toEqual([])

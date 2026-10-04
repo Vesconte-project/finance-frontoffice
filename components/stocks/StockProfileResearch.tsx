@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import ResearchViewShell, { ResearchAdPlacement } from '@/components/stocks/ResearchViewShell'
+import BeingBuilt from '@/components/stocks/research/BeingBuilt'
 import type { StockResearchData } from '@/lib/stock-research'
 import styles from './ResearchViews.module.css'
 
@@ -19,13 +20,9 @@ function FactValue({ label, value }: { label: string; value: string }) {
   return <a href={website} target="_blank" rel="noreferrer">{value}</a>
 }
 
+/** A profile block whose data is not there yet; `children` names what will appear. */
 function DataPending({ children }: { children: ReactNode }) {
-  return (
-    <div className={styles.pending}>
-      <span>Data pending</span>
-      <strong>{children}</strong>
-    </div>
-  )
+  return <BeingBuilt>{children} will appear here.</BeingBuilt>
 }
 
 export default function StockProfileResearch({ data }: { data: StockResearchData }) {
@@ -41,10 +38,9 @@ export default function StockProfileResearch({ data }: { data: StockResearchData
           {data.description ? (
             <p className={styles.description}>{data.description}</p>
           ) : (
-            <div className={styles.descriptionPending}>
-              <span className={styles.statusLabel}>Partial coverage</span>
-              <p>{isFund ? 'Fund mandate and objective' : 'Business description'} · Data pending</p>
-            </div>
+            <BeingBuilt label={isFund ? 'Fund mandate and objective' : 'Business description'}>
+              {isFund ? 'What the fund invests in and why' : 'What the company does'} will appear here.
+            </BeingBuilt>
           )}
         </div>
         <aside aria-label={`${profileTitle} facts`}>
@@ -73,7 +69,7 @@ export default function StockProfileResearch({ data }: { data: StockResearchData
             <article className={styles.profileChapter}>
               <div>
                 <h3>Holdings</h3>
-                <p>{data.fundamentals.holdings.length ? `${data.fundamentals.holdings.length} covered` : 'Data pending'}</p>
+                {data.fundamentals.holdings.length ? <p>{`${data.fundamentals.holdings.length} covered`}</p> : null}
               </div>
               <div className={styles.profileChapterContent}>
                 {data.fundamentals.holdings.length > 0 ? (
@@ -91,7 +87,7 @@ export default function StockProfileResearch({ data }: { data: StockResearchData
             <article className={styles.profileChapter}>
               <div>
                 <h3>Sector exposure</h3>
-                <p>{data.fundamentals.sectorWeights.length ? `${data.fundamentals.sectorWeights.length} sectors` : 'Data pending'}</p>
+                {data.fundamentals.sectorWeights.length ? <p>{`${data.fundamentals.sectorWeights.length} sectors`}</p> : null}
               </div>
               <div className={styles.profileChapterContent}>
                 {data.fundamentals.sectorWeights.length > 0 ? (
