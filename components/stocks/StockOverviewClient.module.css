@@ -1798,10 +1798,12 @@
 }
 
 .snapshotScorecard {
+  /* A small disc with the grade beside it, at every width (PRD-78). */
   display: grid;
-  justify-items: center;
-  gap: 4px;
-  text-align: center;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  text-align: left;
 }
 
 .overviewScorecardDisc {
@@ -1810,7 +1812,7 @@
 
 .snapshotSummary {
   display: grid;
-  justify-items: center;
+  justify-items: start;
   gap: 4px;
 }
 
@@ -2353,15 +2355,6 @@
     gap: 9px;
   }
 
-  .snapshotScorecard {
-    grid-template-columns: 1fr;
-    gap: 2px;
-    text-align: center;
-  }
-
-  .snapshotSummary {
-    justify-items: center;
-  }
 
   .snapshotInterpretation,
   .interpretationRow {
@@ -2691,4 +2684,56 @@
   display: block;
   height: 100%;
   background: var(--text);
+}
+
+/* ---- Score dimensions as text (PRD-78) ---- */
+
+.axisList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.axisChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: 500 0.8125rem var(--font-body), sans-serif;
+  cursor: pointer;
+}
+
+.axisChip strong {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  color: var(--text-body);
+}
+
+.axisChip[aria-pressed='true'] {
+  border-color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--text);
+}
+
+.axisChip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+  .axisChip {
+    min-height: 44px;
+  }
+}
+
+.axisSwatch {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border: 1px solid var(--text-muted);
+  border-radius: 2px;
 }

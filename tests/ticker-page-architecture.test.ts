@@ -306,9 +306,14 @@ test('the Overview follows the accepted ticker Spec (PRD-78): order, Being built
   // Signals do not mix with Technicals; the model signal stays beside the chart.
   assert.doesNotMatch(overview, /Signal & events|Catalysts/)
   assert.match(overview, /Key readings · \$\{signalTimeframe\}/)
-  // The disc picks an axis; its meaning waits for ENG-155 / ENG-157.
+  // A small disc with the grade beside it; the axis names are page text, one
+  // button per axis (the slices answer to pointers). Meaning waits for ENG-155 / ENG-157.
   assert.match(overview, /onSelectAxis=/)
-  assert.match(disc, /role: 'button'/)
+  assert.match(overview, /showLabels=\{false\}/)
+  assert.match(overview, /slicesFocusable=\{false\}/)
+  assert.match(overview, /data-axis-list/)
+  assert.match(overview, /aria-pressed=\{selectedAxis === axis\.key\}/)
+  assert.match(disc, /slicesFocusable/)
   assert.match(disc, /onKeyDown/)
   // Events are fetched without blocking the page and drawn only in the expanded chart.
   assert.match(page, /chartEventsPromise/)

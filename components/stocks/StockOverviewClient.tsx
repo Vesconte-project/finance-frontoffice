@@ -17,7 +17,7 @@ import {
   type TechnicalTimeframe,
 } from '@/lib/technicalSignals'
 import type { EventMarker } from '@/lib/event-markers'
-import type { ScorecardAxis } from '@/lib/scorecard-types'
+import { SCORECARD_AXIS_LABELS, SCORECARD_AXIS_ORDER, scoreColor, type ScorecardAxis } from '@/lib/scorecard-types'
 import BeingBuilt, { BeingBuiltBadge } from '@/components/stocks/research/BeingBuilt'
 import ResearchChapter, { ChapterCard } from '@/components/stocks/research/ResearchChapter'
 import { hasUsableMaterializedScorecard } from '@/lib/ticker-page-scorecard'
@@ -495,6 +495,13 @@ export default function StockOverviewClient({
   const visibleFundamentalGroups = orderedFundamentalGroups.slice(0, 6)
   const availableScorecardAxes = scorecard.axes.filter((axis) => axis.available && axis.score !== null).length
   const selectedAxisData = selectedAxis ? scorecard.axes.find((axis) => axis.key === selectedAxis) ?? null : null
+  const orderedAxes = SCORECARD_AXIS_ORDER.map((key) => scorecard.axes.find((axis) => axis.key === key) ?? {
+    key,
+    label: SCORECARD_AXIS_LABELS[key],
+    score: null,
+    available: false,
+  })
+  const toggleAxis = (key: ScorecardAxis['key']) => setSelectedAxis((current) => (current === key ? null : key))
 
   const selectHeroTimeframe = (timeframe: ChartTimeframe) => {
     const needsFullHistory = timeframe === '10Y' || timeframe === 'ALL'
@@ -802,17 +809,39 @@ export default function StockOverviewClient({
                 <div className={styles.snapshotScorecard}>
                   <ScorecardDisc
                     scorecard={scorecard}
-                    size={184}
+                    size={132}
                     compact
                     className={styles.overviewScorecardDisc}
                     selectedAxis={selectedAxis}
-                    onSelectAxis={(key) => setSelectedAxis((current) => (current === key ? null : key))}
+                    onSelectAxis={toggleAxis}
+                    showLabels={false}
+                    slicesFocusable={false}
                   />
                   <div className={styles.snapshotSummary}>
                     <span>Research score</span>
                     <strong>{scorecardMessage ?? scorecard.overall.label}</strong>
                     <p>{availableScorecardAxes} of {scorecard.axes.length} dimensions observed</p>
                   </div>
+                </div>
+                {/* The axis names as page text: always readable, one button per axis. */}
+                <div className={styles.axisList} role="group" aria-label="Score dimensions" data-axis-list="">
+                  {orderedAxes.map((axis) => {
+                    const scored = axis.available && axis.score !== null
+                    return (
+                      <button
+                        key={axis.key}
+                        type="button"
+                        className={styles.axisChip}
+                        aria-pressed={selectedAxis === axis.key}
+                        data-scorecard-axis={axis.key}
+                        onClick={() => toggleAxis(axis.key)}
+                      >
+                        <span className={styles.axisSwatch} style={{ background: scored ? scoreColor(axis.score) : 'transparent' }} aria-hidden="true" />
+                        <span>{axis.label}</span>
+                        <strong>{scored ? Math.round(axis.score as number) : '–'}</strong>
+                      </button>
+                    )
+                  })}
                 </div>
                 {selectedAxisData ? (
                   <div className={styles.axisCard} data-axis-card={selectedAxisData.key}>
