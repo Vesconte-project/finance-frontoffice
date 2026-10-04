@@ -1,9 +1,11 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { Suspense, use, useMemo, useRef, useState } from 'react'
+import { ChartCandlestick, ChartLine, Maximize2 } from 'lucide-react'
 import SegmentedControl from '@/components/ui/SegmentedControl'
-import TemporalLineChart from '@/components/charts/TemporalLineChart'
+import TemporalLineChart, { type TemporalLinePoint } from '@/components/charts/TemporalLineChart'
 import type { OhlcPoint, PricePoint } from '@/lib/finance'
 import type { Scorecard } from '@/lib/scorecard-types'
 import type { ReadingVerdict } from '@/lib/ticker-readings'
@@ -15,7 +17,11 @@ import {
 import { hasUsableMaterializedScorecard } from '@/lib/ticker-page-scorecard'
 import { cn } from '@/lib/utils'
 import styles from './StockOverviewClient.module.css'
+import expandedChartStyles from './ExpandedChart.module.css'
 import ScorecardDisc from './ScorecardDisc'
+
+// The expanded chart's code loads only when a reader opens it.
+const ExpandedChartDialog = dynamic(() => import('./ExpandedChartDialog'), { ssr: false })
 
 type SignalDirection = 'bullish' | 'neutral' | 'bearish'
 type ChartTimeframe = '1D' | '5D' | '1M' | '3M' | 'YTD' | '1Y' | '5Y' | '10Y' | 'ALL'
@@ -188,7 +194,7 @@ function startDateForHeroTimeframe(timeframe: ChartTimeframe, latestDate: Date):
   return latestDate.getTime() - 3650 * 24 * 60 * 60 * 1000
 }
 
-function filterChartData(data: PricePoint[], timeframe: ChartTimeframe): PricePoint[] {
+function filterChartData<T extends { date: string }>(data: T[], timeframe: ChartTimeframe): T[] {
   if (timeframe === 'ALL') return data
   if (data.length <= 2) return data
   if (timeframe === '1D') return data.slice(-2)
@@ -277,13 +283,22 @@ function Gauge({
   )
 }
 
+// The expand and candle buttons over the chart's top-left corner, with a margin.
+const HERO_TOOLS_CORNER = { width: 102, height: 54 }
+
 function HeroPriceChart({
-  data,
+  points,
+  mode,
   state,
   className,
   currency,
+  onMeasureActiveChange,
+  reservedCorner,
 }: {
-  data: PricePoint[]
+  points: TemporalLinePoint[]
+  mode: 'line' | 'candles'
+  onMeasureActiveChange: (active: boolean) => void
+  reservedCorner?: { width: number; height: number }
   state: HistoricalChartState
   className?: string
   currency: string
@@ -291,8 +306,12 @@ function HeroPriceChart({
   return (
     <TemporalLineChart
       className={cn(styles.heroChart, className)}
-      points={data.map((point) => ({ date: point.date, value: point.close }))}
-      ariaLabel="Historical closing price"
+      points={points}
+      mode={mode}
+      measurable
+      onMeasureActiveChange={onMeasureActiveChange}
+      reservedCorner={reservedCorner}
+      ariaLabel={mode === 'candles' ? 'Daily price candles' : 'Historical closing price'}
       valueFormat="currency"
       currency={currency}
       showRangeChange
@@ -411,6 +430,14 @@ export default function StockOverviewClient({
   const [fullHistoryState, setFullHistoryState] = useState<FullHistoryState>('idle')
   const fullHistoryRequested = useRef(false)
   const [signalTimeframe, setSignalTimeframe] = useState<TechnicalTimeframe>('1D')
+  const [chartExpanded, setChartExpanded] = useState(false)
+  // Line or candles, shared by the hero and the expanded chart for this visit.
+  const [chartKind, setChartKind] = useState<'line' | 'candles'>('line')
+  // The corner buttons step aside while a measurement is on the chart.
+  const [heroMeasuring, setHeroMeasuring] = useState(false)
+  const expandButtonRef = useRef<HTMLButtonElement>(null)
+  // Never offer an empty expanded chart: it opens only over loaded backend OHLC.
+  const canExpandChart = historicalChartState === 'loaded' && ohlcData.length >= 2
   const scorecardMessage = scorecardReadinessMessage(scorecard)
 
   const chartHistory = (heroTimeframe === '10Y' || heroTimeframe === 'ALL') && fullHistoricalData
@@ -420,6 +447,23 @@ export default function StockOverviewClient({
     () => filterChartData(chartHistory, heroTimeframe),
     [chartHistory, heroTimeframe],
   )
+  const showCandles = chartKind === 'candles' && canExpandChart
+  const heroPoints = useMemo<TemporalLinePoint[]>(
+    () => showCandles
+      ? filterChartData(ohlcData, heroTimeframe).map((bar) => ({
+        date: bar.date,
+        value: bar.close,
+        open: bar.open,
+        high: bar.high,
+        low: bar.low,
+      }))
+      : filteredChartData.map((point) => ({ date: point.date, value: point.close })),
+    [showCandles, ohlcData, heroTimeframe, filteredChartData],
+  )
+  // Candles exist only for the loaded OHLC window; say so when "ALL" reaches further back.
+  const candlesFrom = showCandles && heroTimeframe === 'ALL' && ohlcData[0] && chartHistory[0] && chartHistory[0].date < ohlcData[0].date
+    ? ohlcData[0].date
+    : null
   const technicalSummary = useMemo(
     () => buildTechnicalSummary(ohlcData, signalTimeframe),
     [ohlcData, signalTimeframe]
@@ -615,10 +659,55 @@ export default function StockOverviewClient({
             <h2 className="sr-only">Quick Read</h2>
             <div className={styles.heroChartWrap} aria-busy={fullHistoryState === 'loading'}>
               <HeroPriceChart
-                data={filteredChartData}
+                points={heroPoints}
+                mode={showCandles ? 'candles' : 'line'}
+                onMeasureActiveChange={setHeroMeasuring}
+                reservedCorner={canExpandChart ? HERO_TOOLS_CORNER : undefined}
                 state={fullHistoryState === 'error' ? 'error' : historicalChartState}
                 currency={currency}
               />
+              {canExpandChart ? (
+                <div className={expandedChartStyles.heroTools} hidden={heroMeasuring}>
+                  <button
+                    ref={expandButtonRef}
+                    type="button"
+                    className={expandedChartStyles.heroToolButton}
+                    aria-haspopup="dialog"
+                    aria-label="Expand chart"
+                    data-expand-chart=""
+                    onClick={() => setChartExpanded(true)}
+                  >
+                    <Maximize2 size={16} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className={expandedChartStyles.heroToolButton}
+                    aria-pressed={showCandles}
+                    aria-label={showCandles ? 'Show line' : 'Show candles'}
+                    data-chart-kind-toggle=""
+                    onClick={() => setChartKind((kind) => (kind === 'candles' ? 'line' : 'candles'))}
+                  >
+                    {showCandles ? <ChartLine size={16} aria-hidden="true" /> : <ChartCandlestick size={16} aria-hidden="true" />}
+                  </button>
+                </div>
+              ) : null}
+              {candlesFrom ? (
+                <p className={styles.chartStatus} role="status" data-candles-from="">
+                  Candles from {new Date(`${candlesFrom}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}.
+                </p>
+              ) : null}
+              {chartExpanded ? (
+                <ExpandedChartDialog
+                  open
+                  onClose={() => setChartExpanded(false)}
+                  ticker={ticker}
+                  currency={currency}
+                  bars={ohlcData}
+                  kind={chartKind}
+                  onKindChange={setChartKind}
+                  returnFocusRef={expandButtonRef}
+                />
+              ) : null}
               {fullHistoryState === 'loading' ? <span className="sr-only" role="status">Loading full price history.</span> : null}
               {fullHistoryState === 'error' ? (
                 <p className={styles.chartStatus} role="status">Historical price data could not be loaded. Showing the longest available range.</p>

@@ -1,0 +1,54 @@
+/* Solid surface, like the chart tooltip: no blur, no glow. */
+.summary {
+  display: grid;
+  gap: 2px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.change {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.change span {
+  font-size: 13px;
+}
+
+.meta {
+  color: var(--text-muted);
+}
+
+.up {
+  color: var(--up-ink, var(--up));
+}
+
+.down {
+  color: var(--down);
+}
+
+.flat {
+  color: var(--text);
+}
+
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  color: var(--text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.inline .change {
+  font-size: 13px;
+}
