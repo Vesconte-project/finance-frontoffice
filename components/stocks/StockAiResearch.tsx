@@ -41,7 +41,7 @@ export default async function StockAiResearch({ data }: { data: StockResearchDat
               <input id="ai-question" type="text" disabled placeholder={`Ask about ${data.ticker}`} aria-describedby="ai-question-state" />
               <button type="button" disabled aria-disabled="true">Ask</button>
             </div>
-            <p id="ai-question-state" className={styles.disabledNote}>Integration pending</p>
+            <p id="ai-question-state" className={styles.disabledNote}>Being built</p>
           </div>
           <div className={styles.suggestions} aria-label="Suggested questions">
             <span>Suggested questions</span>

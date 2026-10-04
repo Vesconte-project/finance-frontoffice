@@ -40,6 +40,25 @@ Study the rendered pattern, its responsive states, and its direct styling before
 
 PRD-76 adds a candle icon beside the hero's expand icon. `TemporalLineChart` draws candles from the OHLC fields on its points when `mode="candles"`, and the choice is shared with the expanded chart for the visit. With `measurable`, a mouse drag, or a touch held still for `LONG_PRESS_MS` and then dragged, measures between two days. The expanded chart uses Shift and drag, because a plain drag pans. Both charts snap to each day's close and show the shared `components/charts/MeasureSummary.tsx`: the change and percentage in the up/down roles, days and sessions, and both dates. The arithmetic is in `lib/chart-measure.ts`, and the neutral rule for a candle with no open is in `lib/candles.ts`. Charts that do not opt in, such as the valuation history, are unchanged. Switching to candles reveals them left to right behind a soft-edged mask, on the line's draw-in timing, and shows them at once under reduced motion. `placeReading` puts the price reading beside, above or below the day it reads, inside the chart and clear of the hero's corner buttons.
 
+## Ticker research chapters — 2026-10-04
+
+`components/stocks/research/` (PRD-78, phase 1) holds the shared pieces the ticker tabs are rebuilt on, from the founder-accepted Spec *Página de ticker — leitura em camadas V1*:
+
+- `ResearchChapter`: label, chart and the detail beside it.
+  - The layout follows the chapter's own width through container queries.
+  - From 56rem the detail sits beside the chart and stays in view.
+  - From 30rem the detail cards form a grid under the chart; narrower than that, they stack.
+  - `band` alternates `--bg` and `--surface-soft` without rules.
+- `LeadStat`: the chapter's single large number.
+- `ChapterCard`: a detail card for the side column.
+- `ChartFrame` / `ChartPlot` / `ChartLabel`:
+  - A chart can have a wide and a compact drawing; the compact one shows while the frame is narrower than 32.5rem.
+  - The SVG stretches with the frame and keeps its stroke width.
+  - Names and numbers are page text placed over the drawing by percentage, so they never scale. Stacked labels use `stackLabels` and `plotUnits` in `lib/chart-labels.ts`.
+- `BeingBuilt`: the final place of a block whose data has not arrived. It shows the label, one sentence for the reader and the "Being built" badge; never a value, a dash or sample data.
+
+The direction came from a clickable prototype with a fictional company and fictional numbers. No prototype code or data was copied. `tests/ticker-reader-copy.test.ts` keeps internal language ("canonical", "contract", "payload", "finance-backend", "Pending integration", "Data pending") out of every visible string on the ticker page.
+
 ## Expanding selector study — 2026-07-21
 
 The reusable expanding selector transforms mechanics from the references below into a Vesconte-specific analytical control. It carries no ticker, investment-horizon, URL, or routing semantics. No reference code, assets, branding, or layout was copied.

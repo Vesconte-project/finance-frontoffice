@@ -1,0 +1,181 @@
+/* Research chapter: label, chart, and the detail beside it.
+   The layout follows the chapter's own width (container queries), so the same
+   chapter reads correctly in a phone, a foldable, a tablet, a laptop or a wide
+   window without device breakpoints. */
+
+.chapter {
+  container: research-chapter / inline-size;
+  position: relative;
+  /* Size containment gives the chapter no intrinsic width; it always takes the
+     width it is offered, even inside a shrink-to-fit parent. */
+  width: 100%;
+  scroll-margin-top: calc(var(--ticker-header-offset, 72px) + 1rem);
+}
+
+/* Alternate chapters sit on a slightly lifted surface that runs to the edges of
+   the window. The clip keeps the band from widening the page. */
+.chapter[data-band='true'] {
+  background: var(--surface-soft);
+  box-shadow: 0 0 0 100vmax var(--surface-soft);
+  clip-path: inset(0 -100vmax);
+}
+
+.frame {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding-block: 2.75rem;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  min-width: 0;
+}
+
+.label {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 1.25rem + 1.6cqi, 2.375rem);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  color: var(--text);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.grid {
+  --chapter-side: 18.75rem;
+  display: grid;
+  gap: 1.75rem;
+  min-width: 0;
+}
+
+.main {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.aside {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  min-width: 0;
+}
+
+/* Medium widths (tablet portrait, a narrow laptop window): the chart keeps the
+   full width and the detail cards sit side by side underneath it. */
+@container research-chapter (width >= 30rem) {
+  .frame {
+    padding-block: 3.25rem;
+  }
+
+  .aside {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  }
+}
+
+/* Wide: chart on the left, detail on the right, kept in view while reading. */
+@container research-chapter (width >= 56rem) {
+  .grid[data-has-aside='true'] {
+    grid-template-columns: minmax(0, 1fr) var(--chapter-side);
+    column-gap: 2.5rem;
+  }
+
+  .aside {
+    grid-template-columns: minmax(0, 1fr);
+    position: sticky;
+    top: calc(var(--ticker-header-offset, 72px) + 1rem);
+    align-self: start;
+  }
+}
+
+@container research-chapter (width >= 72rem) {
+  .grid[data-has-aside='true'] {
+    --chapter-side: 21.25rem;
+    column-gap: 3.5rem;
+  }
+}
+
+/* ---- Lead number ---- */
+
+.lead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+  min-width: 0;
+}
+
+.leadValue {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(1.875rem, 1.5rem + 2.2cqi, 2.75rem);
+  line-height: 1.05;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.leadValue[data-tone='up'] {
+  color: var(--up-ink, var(--up));
+}
+
+.leadValue[data-tone='down'] {
+  color: var(--down);
+}
+
+.leadContext {
+  max-width: 22rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--text-body);
+}
+
+/* ---- Detail card ---- */
+
+.card {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 1.125rem 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.cardHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+  padding-bottom: 0.625rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.cardTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.cardMeta {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-small);
+}

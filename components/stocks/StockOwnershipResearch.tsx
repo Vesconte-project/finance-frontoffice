@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import ResearchViewShell, { ResearchAdPlacement } from '@/components/stocks/ResearchViewShell'
+import BeingBuilt, { BeingBuiltBadge } from '@/components/stocks/research/BeingBuilt'
+import ResearchChapter from '@/components/stocks/research/ResearchChapter'
 import {
   currentResearchSnapshot,
   formatResearchDate,
@@ -8,6 +10,11 @@ import {
 } from '@/lib/research-evidence'
 import type { StockResearchData } from '@/lib/stock-research'
 import styles from './StockOwnershipResearch.module.css'
+
+/** A formatted figure, or a plain statement that it is missing — never a dash. */
+function Figure({ value }: { value: string }) {
+  return value === '—' || !value.trim() ? <span className={styles.missing}>Not available</span> : <>{value}</>
+}
 
 function CurrentSnapshot({ data }: { data: StockResearchData }) {
   const snapshot = currentResearchSnapshot(data)
@@ -23,7 +30,7 @@ function CurrentSnapshot({ data }: { data: StockResearchData }) {
       {fields.map((field) => (
         <div className={styles.snapshotItem} key={field.label}>
           <span>{field.label}</span>
-          <strong>{field.value}</strong>
+          <strong><Figure value={field.value} /></strong>
         </div>
       ))}
     </section>
@@ -31,76 +38,59 @@ function CurrentSnapshot({ data }: { data: StockResearchData }) {
 }
 
 function EquityOwnership({ data }: { data: StockResearchData }) {
+  const snapshot = currentResearchSnapshot(data)
   return (
     <>
-      <section className={styles.hero} aria-labelledby="ownership-breakdown">
-        <div className={styles.ownershipCanvas}>
-          <div className={styles.moduleHeader}>
-            <h2 id="ownership-breakdown">Ownership breakdown</h2>
-            <span>Pending integration</span>
-          </div>
-          <div className={styles.breakdownFrame}>
-            <div className={styles.ringPlaceholder} role="img" aria-label="Ownership categories pending integration">
-              <div><strong>Ownership data</strong><span>Pending integration</span></div>
-            </div>
-            <dl className={styles.legend}>
-              {['Institutional', 'Insider', 'Retail / other', 'Free float'].map((label) => (
-                <div className={styles.legendRow} key={label}>
-                  <dt>{label}</dt>
-                  <dd>Data pending</dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        </div>
-        <aside className={styles.ownershipAside} aria-label="Ownership context">
-          <div>
-            <div className={styles.moduleHeader}><h2>Concentration</h2><span>Future data</span></div>
-            <dl className={styles.asideRows}>
-              <div><dt>Top holders</dt><dd className={styles.pendingValue}>Pending integration</dd></div>
-              <div><dt>Largest holder</dt><dd className={styles.pendingValue}>Pending integration</dd></div>
-              <div><dt>Free float</dt><dd className={styles.pendingValue}>Pending integration</dd></div>
-            </dl>
-          </div>
-        </aside>
-      </section>
+      <ResearchChapter
+        id="who-owns"
+        label="Who owns the shares"
+        aside={<BeingBuilt label="Largest holders">The largest holders in each group, their stakes and how they changed in a year are being added.</BeingBuilt>}
+      >
+        <BeingBuilt size="chart">How the shares split between funds, pensions, insiders and individual investors is being added.</BeingBuilt>
+      </ResearchChapter>
 
-      <section className={styles.capitalSection} aria-labelledby="capital-structure">
-        <div className={styles.capitalIntro}>
-          <div>
-            <h2 id="capital-structure">Capital structure</h2>
-            <p>How market value relates to debt, cash and enterprise value.</p>
-          </div>
-          <div className={styles.bridgeFormula} aria-label="Enterprise value bridge">
-            <div className={styles.bridgeTerm} data-known="true"><small>Market cap</small><strong>{formatResearchMoney(currentResearchSnapshot(data).marketCap, currentResearchSnapshot(data).currency)}</strong></div>
+      <ResearchChapter
+        id="insiders"
+        label="Insiders, last 90 days"
+        band
+        aside={<BeingBuilt label="Each trade">Who traded, how much, and whether the sale was planned are being added.</BeingBuilt>}
+      >
+        <BeingBuilt size="chart">What insiders sold and bought, marked on the share price, is being added.</BeingBuilt>
+      </ResearchChapter>
+
+      <ResearchChapter
+        id="buybacks"
+        label="Buybacks"
+        aside={<BeingBuilt label="Shares then and now">How many shares were bought back, issued to staff and left today is being added.</BeingBuilt>}
+      >
+        <BeingBuilt size="chart">What the company spent on buybacks each year, and what those shares are worth now, is being added.</BeingBuilt>
+      </ResearchChapter>
+
+      <ResearchChapter
+        id="price-pays-for"
+        label="What the price pays for"
+        band
+        aside={<BeingBuilt label="Backed by profits or a bet on growth">How much of the price today’s profits support, and how much depends on growth, is being added.</BeingBuilt>}
+      >
+        <div className={styles.bridgeFormula} aria-label="From market value to enterprise value">
+          <div className={styles.bridgeTerm} data-known="true"><small>Market cap</small><strong><Figure value={formatResearchMoney(snapshot.marketCap, snapshot.currency)} /></strong></div>
+          <div className={styles.bridgeStep}>
             <span className={styles.bridgeOperator} aria-hidden="true">+</span>
-            <div className={styles.bridgeTerm}><small>Debt</small><strong>Data pending</strong></div>
+            <div className={styles.bridgeTerm}><small>Debt</small><BeingBuiltBadge /></div>
+          </div>
+          <div className={styles.bridgeStep}>
             <span className={styles.bridgeOperator} aria-hidden="true">−</span>
-            <div className={styles.bridgeTerm}><small>Cash</small><strong>Data pending</strong></div>
+            <div className={styles.bridgeTerm}><small>Cash</small><BeingBuiltBadge /></div>
+          </div>
+          <div className={styles.bridgeStep}>
             <span className={styles.bridgeOperator} aria-hidden="true">=</span>
-            <div className={styles.bridgeTerm}><small>Enterprise value</small><strong>Data pending</strong></div>
+            <div className={styles.bridgeTerm}><small>Enterprise value</small><BeingBuiltBadge /></div>
           </div>
         </div>
-      </section>
-
-      <section className={styles.detailGrid} aria-label="Ownership and capital detail">
-        <div className={styles.detailModule}>
-          <h2>Shares outstanding</h2>
-          <p>Current shares are available; the historical path is not yet supplied.</p>
-          <div className={styles.placeholderTimeline} role="img" aria-label="Shares outstanding history pending integration">
-            <strong>Shares history</strong><span>Pending integration</span>
-          </div>
-        </div>
-        <div className={styles.detailModule}>
-          <h2>Capital changes</h2>
-          <p>Issuance, buybacks and dilution require a dated capital-actions series.</p>
-          <dl className={styles.detailRows}>
-            <div><dt>Issuance history</dt><dd className={styles.pendingValue}>Pending integration</dd></div>
-            <div><dt>Buybacks</dt><dd className={styles.pendingValue}>Pending integration</dd></div>
-            <div><dt>Dilution</dt><dd className={styles.pendingValue}>Pending integration</dd></div>
-          </dl>
-        </div>
-      </section>
+        <BeingBuilt label="How the price got here" size="chart">
+          The share price split, year by year, into what profits support and what is a bet on growth, with what changed each period, is being added.
+        </BeingBuilt>
+      </ResearchChapter>
     </>
   )
 }
@@ -108,44 +98,18 @@ function EquityOwnership({ data }: { data: StockResearchData }) {
 function FundStructure() {
   return (
     <>
-      <section className={styles.fundStructure} aria-labelledby="fund-structure">
-        <div className={styles.module}>
-          <div className={styles.moduleHeader}><h2 id="fund-structure">Fund structure</h2><span>Preview</span></div>
-          <div className={styles.fundFrame} role="img" aria-label="Fund structure pending integration">
-            <strong>Issuer, asset base and creation / redemption structure</strong>
-            <span>Pending integration · no corporate ownership model applied</span>
-          </div>
-        </div>
-        <div className={styles.ownershipAside}>
-          <div>
-            <div className={styles.moduleHeader}><h2>Fund context</h2><span>Future data</span></div>
-            <dl className={styles.asideRows}>
-              <div><dt>Issuer</dt><dd className={styles.pendingValue}>Pending integration</dd></div>
-              <div><dt>AUM</dt><dd className={styles.pendingValue}>Pending integration</dd></div>
-              <div><dt>Holder concentration</dt><dd className={styles.pendingValue}>Pending integration</dd></div>
-            </dl>
-          </div>
-          <p className={styles.pendingNote}>Fund structure uses fund-specific fields and does not infer insider ownership, corporate debt or dilution.</p>
-        </div>
-      </section>
+      <ResearchChapter
+        id="fund-structure"
+        label="Fund structure"
+        aside={<BeingBuilt label="Fund context">Issuer, assets under management and holder concentration are being added.</BeingBuilt>}
+      >
+        <BeingBuilt size="chart">The issuer, the assets the fund holds and how its units are created and redeemed are being added.</BeingBuilt>
+        <p className={styles.note}>Funds are read with fund figures; company measures such as insider ownership, corporate debt and dilution are not applied to them.</p>
+      </ResearchChapter>
 
-      <section className={styles.detailGrid} aria-label="Fund structure detail">
-        <div className={styles.detailModule}>
-          <h2>Shares outstanding</h2>
-          <p>Current shares are shown in the snapshot above.</p>
-          <dl className={styles.detailRows}>
-            <div><dt>Creation / redemption</dt><dd className={styles.pendingValue}>Pending integration</dd></div>
-            <div><dt>Shares history</dt><dd className={styles.pendingValue}>Pending integration</dd></div>
-          </dl>
-        </div>
-        <div className={styles.detailModule}>
-          <h2>Holder concentration</h2>
-          <p>Holder data will appear when the fund-specific ownership contract is available.</p>
-          <div className={styles.placeholderTimeline} role="img" aria-label="Fund holder concentration pending integration">
-            <strong>Concentration view</strong><span>Pending integration</span>
-          </div>
-        </div>
-      </section>
+      <ResearchChapter id="fund-units" label="Units over time" band>
+        <BeingBuilt size="chart">Today’s units are in the snapshot above; how they changed through creations and redemptions is being added.</BeingBuilt>
+      </ResearchChapter>
     </>
   )
 }
@@ -161,10 +125,10 @@ export default function StockOwnershipResearch({ data }: { data: StockResearchDa
         <section className={styles.methodology} aria-labelledby="ownership-methodology">
           <div>
             <h2 id="ownership-methodology">Methodology</h2>
-            <p>Ownership and capital fields require dated, asset-aware backend evidence.</p>
+            <p>Every figure here shows where it comes from and the date it refers to.</p>
           </div>
           <div>
-            <p>Percentages, holder rankings, bridge terms and capital changes will remain unavailable until the canonical contract supplies source and as-of metadata.</p>
+            <p>Ownership percentages, holder rankings, debt, cash and capital changes appear only when they come from a dated source. Nothing is estimated in the meantime.</p>
             <Link href={`/stocks/${data.ticker}/methodology`}>Open methodology →</Link>
           </div>
         </section>

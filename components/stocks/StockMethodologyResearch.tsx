@@ -26,7 +26,7 @@ export default function StockMethodologyResearch({ data }: { data: StockResearch
             <div className={styles.sectionLabel}>01</div><div>
               <h2>Score, signal and technical read</h2>
               <div className={styles.definitionList}>
-                <div><strong>Score</strong><p>The canonical scorecard summary, built from the product’s defined evidence axes.</p></div>
+                <div><strong>Score</strong><p>The Vesconte scorecard summary, built from its defined evidence axes.</p></div>
                 <div><strong>Signal</strong><p>A model state reported for an asset, with the date and horizon supplied by the product data.</p></div>
                 <div><strong>Technical read</strong><p>Market evidence derived from available price history, including Summary, Oscillators and Moving Averages.</p></div>
               </div>
@@ -36,11 +36,11 @@ export default function StockMethodologyResearch({ data }: { data: StockResearch
           <section id="data" className={styles.methodSection}>
             <div className={styles.sectionLabel}>02</div><div>
               <h2>Data and timestamps</h2>
-              <p className={styles.sectionCopy}>Product data is requested server-side from finance-backend. The frontend presents the fields and periods returned by those contracts.</p>
+              <p className={styles.sectionCopy}>Data comes from the Vesconte research service. The page shows the fields and periods it returns, as they are.</p>
               <dl className={styles.factList}>
-                <div><dt>Source</dt><dd>finance-backend</dd></div>
-                <div><dt>As of</dt><dd>Shown when supplied by the payload</dd></div>
-                <div><dt>Frequency</dt><dd>Follows the field or series contract</dd></div>
+                <div><dt>Source</dt><dd>Vesconte research data</dd></div>
+                <div><dt>As of</dt><dd>Shown when the source dates the figure</dd></div>
+                <div><dt>Frequency</dt><dd>Follows each field or series</dd></div>
                 <div><dt>Missing data</dt><dd>Kept as a coverage state, never filled from another source</dd></div>
               </dl>
             </div>
@@ -52,6 +52,7 @@ export default function StockMethodologyResearch({ data }: { data: StockResearch
               <div className={styles.statusList}>
                 <div><strong>Available</strong><span>Usable fields are present.</span></div>
                 <div><strong>Partial coverage</strong><span>Some fields or periods are missing.</span></div>
+                <div><strong>Being built</strong><span>The block is in its final place; its data is being added.</span></div>
                 <div><strong>Preview</strong><span>The final geometry is reserved for a future capability.</span></div>
                 <div><strong>Unavailable</strong><span>No safe data is available for this view.</span></div>
                 <div><strong>Plan required</strong><span>The capability requires an eligible account or plan.</span></div>

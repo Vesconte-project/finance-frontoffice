@@ -29,7 +29,7 @@ test.describe('ticker AI Research and Methodology preview', () => {
     await expect(page.getByRole('heading', { name: 'AI Research', exact: true })).toBeVisible()
     await expect(page.getByText('Capability preview', { exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Ask', exact: true })).toBeDisabled()
-    await expect(page.getByText('Integration pending', { exact: true })).toBeVisible()
+    await expect(page.getByText('Being built', { exact: true })).toBeVisible()
     await expect(page.getByText(/Plan required|Pro access/, { exact: true })).toBeVisible()
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, 'phase2-ai-research-aapl-desktop')

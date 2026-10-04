@@ -4,6 +4,7 @@ import ResearchViewShell, { ResearchAdPlacement } from '@/components/stocks/Rese
 import { buildTechnicalSummary, type TechnicalGaugeData, type TechnicalIndicatorRow } from '@/lib/technicalSignals'
 import type { OhlcPoint } from '@/lib/ohlc-data'
 import type { SignalResearchData } from '@/lib/signal-research'
+import BeingBuilt from '@/components/stocks/research/BeingBuilt'
 import styles from './StockSignalsResearch.module.css'
 
 const RANGE_DAYS = { '1M': 31, '3M': 93, '1Y': 366, '5Y': 1826 } as const
@@ -135,7 +136,7 @@ function TechnicalTrack({
       <div className={styles.trackHeader}>
         <h3 id={`technical-${title.toLowerCase().replace(/[^a-z]+/g, '-')}`}>{title}</h3>
         <span className={available ? `${styles.action} ${gauge.verdictAction === 'Buy' ? styles.bullish : gauge.verdictAction === 'Sell' ? styles.bearish : styles.neutral}` : styles.pending}>
-          {available ? gauge.verdict : 'Pending integration'}
+          {available ? gauge.verdict : 'Not enough price history'}
         </span>
       </div>
       <div className={styles.scale} aria-hidden="true" style={{ '--technical-position': `${available ? gauge.position : 50}%` } as CSSProperties}>
@@ -158,7 +159,7 @@ function TechnicalTrack({
             </div>
           ))}
         </dl>
-        {rows.length === 0 ? <span className={styles.pending}>Pending integration</span> : null}
+        {rows.length === 0 ? <span className={styles.pending}>No indicator readings for this window.</span> : null}
       </details>
     </section>
   )
@@ -263,7 +264,7 @@ export default function StockSignalsResearch({ data, family }: { data: SignalRes
           <div className={styles.technicalSummary}>
             <div className={styles.overallRead}>
               <span className={styles.sectionLabel}>Overall Technical Read</span>
-              <strong>{available ? technical.gauges.summary.verdict : 'Pending integration'}</strong>
+              <strong>{available ? technical.gauges.summary.verdict : 'Not enough price history'}</strong>
               <span>Existing Overview aggregation, using the selected technical window.</span>
             </div>
             <dl className={styles.metricList}>
@@ -309,12 +310,11 @@ export default function StockSignalsResearch({ data, family }: { data: SignalRes
         <section className={styles.historySection} aria-labelledby="regime-history-heading">
           <div className={styles.sectionHeader}>
             <div>
-              <span className={styles.sectionLabel}>Canonical state changes</span>
+              <span className={styles.sectionLabel}>State changes</span>
               <h2 className={styles.sectionTitle} id="regime-history-heading">Regime History</h2>
             </div>
-            <span className={styles.pending}>Pending integration</span>
           </div>
-          <div className={styles.pendingLine}><strong>Regime transitions</strong><span className={styles.pending}>No canonical regime-history contract is connected.</span></div>
+          <BeingBuilt label="Regime transitions">When the market regime for this stock changed, and for how long each lasted, is being added.</BeingBuilt>
         </section>
 
         <SignalHistory data={data} />
@@ -328,7 +328,7 @@ export default function StockSignalsResearch({ data, family }: { data: SignalRes
             <Link href={`/stocks/${research.ticker}/methodology`} className={styles.methodLink}>Open methodology →</Link>
           </div>
           <p>Summary, Oscillators and Moving Averages reuse the existing OHLC-derived implementation used by the Overview. Signal observations are shown as supplied after server-side shape and date validation. No probability, accuracy, performance or regime conclusion is calculated here.</p>
-          <div className={styles.methodMeta}><span>Coverage · {research.coverageLabel}</span><span>Source · finance-backend through existing helpers</span></div>
+          <div className={styles.methodMeta}><span>Coverage · {research.coverageLabel}</span><span>Source · Vesconte research data</span></div>
         </section>
 
         <ResearchAdPlacement />

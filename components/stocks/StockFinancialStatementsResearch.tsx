@@ -220,7 +220,7 @@ export default function StockFinancialStatementsResearch({
         ))
       ) : (
         <p className={styles.statementProvenance}>
-          {statements.income?.reason ?? 'Canonical statement data is unavailable for this symbol.'}
+          Financial statements for this symbol are not available yet.
         </p>
       )}
 

@@ -71,7 +71,7 @@ test.describe('ticker Signals & Events Phase 2 slice', () => {
     await page.goto('/stocks/0005.HK/signals')
     await expectResearchContext(page, 'Signals')
     await expect(page.locator('h1')).toHaveText('Signals & Indicators')
-    await expect(page.getByText(/Unavailable|Partial coverage|Pending integration/).first()).toBeVisible()
+    await expect(page.getByText(/Unavailable|Partial coverage|Not enough price history|Being built/).first()).toBeVisible()
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, 'phase2-signals-partial-equity')
 

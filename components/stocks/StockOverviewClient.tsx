@@ -160,7 +160,7 @@ function regimeTone(direction: SignalDirection | null): 'bullish' | 'bearish' | 
 
 function scorecardReadinessMessage(scorecard: Scorecard): string | null {
   if (hasUsableMaterializedScorecard(scorecard)) return null
-  if (scorecard.readiness === 'pending_build') return 'Data pending'
+  if (scorecard.readiness === 'pending_build') return 'Being built'
   if (scorecard.readiness === 'unavailable_missing_inputs') return 'Partial coverage'
   return 'Unavailable'
 }
@@ -401,7 +401,7 @@ function RelatedAssetsContent({
           </div>
         </div>
       ) : (
-        <div className={styles.inlineDataState}><span>Relationships</span><strong>Data pending</strong></div>
+        <div className={styles.inlineDataState}><span>Relationships</span><strong>Not available yet</strong></div>
       )}
     </article>
   )
@@ -545,7 +545,7 @@ export default function StockOverviewClient({
     },
     {
       label: `Technical · ${signalTimeframe}`,
-      value: hasTechnicalData ? technicalSummary.gauges.summary.verdict : 'Data pending',
+      value: hasTechnicalData ? technicalSummary.gauges.summary.verdict : 'Not enough price history',
       detail: hasTechnicalData ? `${Math.round(technicalSummary.gauges.summary.position)} / 100` : null,
     },
   ]
@@ -581,7 +581,7 @@ export default function StockOverviewClient({
             </div>
           ) : (
             <div className={styles.technicalGaugeGrid}>
-              {technicalGauges.map(({ key, label }) => <div key={key} className={styles.gaugeDataPending}><span>{label}</span><strong>Data pending</strong></div>)}
+              {technicalGauges.map(({ key, label }) => <div key={key} className={styles.gaugeDataPending}><span>{label}</span><strong>Not enough price history</strong></div>)}
             </div>
           )}
           <Link href={`/stocks/${ticker}/indicators`} className={styles.inlineArrow}>Indicator details →</Link>
@@ -601,8 +601,8 @@ export default function StockOverviewClient({
             <div className={styles.inlineDataState}><span>Model signal</span><strong>Unavailable</strong></div>
           )}
           <div className={styles.contextLines}>
-            <div><span>Earnings</span><strong>{nextEarnings?.date ? formatDate(nextEarnings.date, { month: 'short', day: 'numeric' }) : 'Data pending'}</strong></div>
-            <div><span>Catalysts</span><strong>Data pending</strong></div>
+            <div><span>Earnings</span><strong>{nextEarnings?.date ? formatDate(nextEarnings.date, { month: 'short', day: 'numeric' }) : 'Not available yet'}</strong></div>
+            <div><span>Catalysts</span><strong>Being built</strong></div>
           </div>
           <div className={styles.contextualLinks}><Link href={`/stocks/${ticker}/signals`}>Signal history →</Link><Link href={`/stocks/${ticker}/events`}>Earnings & events →</Link></div>
         </div>
@@ -635,7 +635,7 @@ export default function StockOverviewClient({
           ) : null}
         </div>
       ) : (
-        <div className={styles.inlineDataState}><span>Fundamentals</span><strong>Data pending</strong></div>
+        <div className={styles.inlineDataState}><span>Fundamentals</span><strong>Not available yet</strong></div>
       )}
       <div className={styles.contextualLinks}>
         <Link href={`/stocks/${ticker}/financials`}>Financial statements →</Link>
