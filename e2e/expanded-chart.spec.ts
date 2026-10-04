@@ -21,6 +21,9 @@ const VIEWPORTS = [
  * Page exceptions count from the first load. Console errors count from the
  * moment the chart opens: before that, the dev server replays the ticker
  * page's own server logs for optional datasets the fixture backend omits.
+ * A prefetch of a signed-in page that Clerk sends to its hosted sign-in (CI
+ * runs a real Clerk development app) fails cross-origin; that is navigation,
+ * not the chart, so it is left out.
  */
 function trackErrors(page: Page): { errors: string[]; watchConsole: () => void } {
   const errors: string[] = []
@@ -29,7 +32,13 @@ function trackErrors(page: Page): { errors: string[]; watchConsole: () => void }
     errors,
     watchConsole: () => {
       page.on('console', (message) => {
-        if (message.type() === 'error') errors.push(message.text())
+        if (message.type() !== 'error') return
+        const text = message.text()
+        const source = message.location().url
+        const crossOriginLoad = source !== '' && new URL(source).origin !== new URL(page.url()).origin
+        const blockedPrefetch = text.includes('?_rsc=') && text.includes('blocked by CORS policy')
+        if (crossOriginLoad || blockedPrefetch) return
+        errors.push(text)
       })
     },
   }
@@ -48,6 +57,8 @@ async function openExpandedChart(page: Page, watchConsole?: () => void) {
   await expand.click()
   const dialog = page.getByRole('dialog', { name: TICKER })
   await expect(dialog).toBeVisible()
+  // The dialog rises 16px into place; measure it once it has settled.
+  await dialog.evaluate((element) => Promise.all(element.getAnimations().map((animation) => animation.finished)))
   return { dialog, expand }
 }
 
