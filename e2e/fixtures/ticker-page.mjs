@@ -111,3 +111,48 @@ export function tickerSummaryFixture(ticker) {
     componentMissingInputs: [],
   }
 }
+
+/**
+ * Company events for the expanded chart's Events layer. Invented, deterministic,
+ * and only for QAS: quarterly results and dividends over three years, two events
+ * a day apart (they must stack), and a results date that was revised (the later
+ * revision must win). QAM and QAL report no events.
+ */
+export function tickerEventsFixture(ticker) {
+  const rows = []
+  if (ticker === 'QAS') {
+    const day = (offset) => new Date(LAST_DATE - offset * DAY_MS).toISOString().slice(0, 10)
+    for (let quarter = 0; quarter < 12; quarter += 1) {
+      const offset = 68 + quarter * 91
+      rows.push({
+        domain: 'earningsEvents', eventId: `qas-earnings-${quarter}`, symbol: 'QAS', eventType: 'earnings',
+        title: `QAS quarterly results (fixture ${12 - quarter})`, classification: 'scheduled',
+        occursAt: day(offset), occursAtRole: 'event_date', knownAt: `${day(offset + 30)}T00:00:00Z`,
+        source: 'fixture', primarySource: 'fixture', sourceMetadata: null, dataQualityFlags: null, confidence: null,
+      })
+      rows.push({
+        domain: 'corporateActions', eventId: `qas-dividend-${quarter}`, symbol: 'QAS', eventType: 'cash_dividend',
+        title: 'QAS quarterly dividend (fixture)', classification: 'declared',
+        occursAt: day(offset + 1), occursAtRole: 'ex_date', knownAt: `${day(offset + 20)}T00:00:00Z`,
+        source: 'fixture', primarySource: 'fixture', sourceMetadata: null, dataQualityFlags: null, confidence: null,
+      })
+    }
+    // An earlier, superseded date for the latest results.
+    rows.push({
+      domain: 'earningsEvents', eventId: 'qas-earnings-0', symbol: 'QAS', eventType: 'earnings',
+      title: 'QAS quarterly results (fixture 12)', classification: 'scheduled',
+      occursAt: day(75), occursAtRole: 'event_date', knownAt: `${day(120)}T00:00:00Z`,
+      source: 'fixture', primarySource: 'fixture', sourceMetadata: null, dataQualityFlags: null, confidence: null,
+    })
+    rows.push({
+      domain: 'investorEvents', eventId: 'qas-meeting', symbol: 'QAS', eventType: 'shareholder_meeting',
+      title: 'QAS annual shareholder meeting (fixture)', classification: 'scheduled',
+      occursAt: day(150), occursAtRole: 'event_date', knownAt: `${day(200)}T00:00:00Z`,
+      source: 'fixture', primarySource: 'fixture', sourceMetadata: null, dataQualityFlags: null, confidence: null,
+    })
+  }
+  return {
+    available: true, reason: null, symbol: ticker, count: rows.length,
+    snapshotMode: 'latest', isPointInTime: false, startDate: null, endDate: null, unavailableDomains: [], rows,
+  }
+}

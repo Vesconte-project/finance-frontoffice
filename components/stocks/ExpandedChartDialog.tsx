@@ -6,9 +6,11 @@ import Dialog from '@/components/ui/Dialog'
 import SegmentedControl from '@/components/ui/SegmentedControl'
 import { measureBetween } from '@/lib/chart-measure'
 import { formatMoney, formatSignedMoney } from '@/lib/currency'
+import { EVENT_CATEGORY_LABEL, markerBarIndex, type EventMarker } from '@/lib/event-markers'
 import {
   INTRADAY_RANGES,
   availableRanges,
+  panView,
   summarizeVisible,
   viewForRange,
   type ChartView,
@@ -19,6 +21,7 @@ import { cn } from '@/lib/utils'
 import ExpandedPriceCanvas, {
   type ChartAnchor,
   type ChartDrawing,
+  type ChartEvent,
   type ChartKind,
   type ChartMeasure,
   type DrawingTool,
@@ -56,7 +59,7 @@ function formatDate(date: string): string {
   return DATE_FORMAT.format(new Date(`${date}T00:00:00Z`))
 }
 
-type ExpandedChartDialogProps = {
+export type ExpandedChartDialogProps = {
   open: boolean
   onClose: () => void
   ticker: string
@@ -66,6 +69,8 @@ type ExpandedChartDialogProps = {
   kind: ChartKind
   onKindChange: (kind: ChartKind) => void
   returnFocusRef: RefObject<HTMLElement | null>
+  /** Company events for the Events layer; `null` when they could not be loaded. */
+  events?: readonly EventMarker[] | null
 }
 
 /**
@@ -76,7 +81,7 @@ type ExpandedChartDialogProps = {
  * series and intraday ranges are listed but answer with an explicit error
  * until the backend supplies them (ENG-152, ENG-153); nothing is approximated.
  */
-export default function ExpandedChartDialog({ open, onClose, ticker, currency, bars, kind, onKindChange, returnFocusRef }: ExpandedChartDialogProps) {
+export default function ExpandedChartDialog({ open, onClose, ticker, currency, bars, kind, onKindChange, returnFocusRef, events = [] }: ExpandedChartDialogProps) {
   const ranges = useMemo(() => availableRanges(bars), [bars])
   const [range, setRange] = useState<ExpandedChartRange>('1Y')
   const [viewRequest, setViewRequest] = useState(() => ({ view: viewForRange(bars, '1Y'), id: 0 }))
@@ -92,6 +97,23 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
   const [summary, setSummary] = useState('')
   const [announcement, setAnnouncement] = useState('')
   const canvasFocusRef = useRef<HTMLCanvasElement | null>(null)
+  const [showEvents, setShowEvents] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState<string | null>(null)
+  const currentViewRef = useRef<ChartView>(viewRequest.view)
+  // Each event on its trading day; events outside the loaded prices are left out.
+  const placedEvents = useMemo(() => {
+    const dates = bars.map((item) => item.date)
+    return (events ?? []).flatMap((event) => {
+      const index = markerBarIndex(dates, event.date)
+      return index === null ? [] : [{ ...event, index }]
+    })
+  }, [bars, events])
+  const chartEvents = useMemo<ChartEvent[]>(
+    () => placedEvents.map(({ id, index, category }) => ({ id, index, category })),
+    [placedEvents],
+  )
+  const selectedPosition = placedEvents.findIndex((event) => event.id === selectedEvent)
+  const selected = selectedPosition >= 0 ? placedEvents[selectedPosition] : null
   const closes = useMemo(() => bars.map((bar) => ({ date: bar.date, value: bar.close })), [bars])
   const measurement = measure ? measureBetween(closes, measure.first, measure.second) : null
   const formatChange = (value: number) => formatSignedMoney(value, currency)
@@ -127,6 +149,7 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
   }, [])
 
   const onViewChange = useCallback((view: ChartView) => {
+    currentViewRef.current = view
     if (summaryTimer.current !== null) window.clearTimeout(summaryTimer.current)
     summaryTimer.current = window.setTimeout(() => {
       const facts = summarizeVisible(bars, view)
@@ -174,6 +197,32 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
       body: 'There is one price per day, so this range stays blocked rather than showing an approximation.',
       reference: 'ENG-153',
     })
+  }
+
+  // Choosing an event from the card brings it into view if it is off screen.
+  const selectEventAt = (position: number) => {
+    const event = placedEvents[position]
+    if (!event) return
+    setSelectedEvent(event.id)
+    const view = currentViewRef.current
+    if (event.index < view.from + 0.5 || event.index > view.to - 0.5) {
+      setViewRequest((current) => ({ view: panView(view, event.index - (view.from + view.to) / 2, bars.length), id: current.id + 1 }))
+    }
+  }
+
+  const toggleEvents = () => {
+    if (events === null) {
+      setStatus({ kind: 'error', title: 'Events could not be loaded.', body: 'The company events for this chart are unavailable right now, so none are marked.', reference: 'ENG-156' })
+      return
+    }
+    const next = !showEvents
+    setShowEvents(next)
+    if (next && !selected && placedEvents.length) {
+      // Start from the latest event inside the current view, or the latest one.
+      const view = currentViewRef.current
+      const inView = placedEvents.map((event, position) => ({ event, position })).filter(({ event }) => event.index >= view.from && event.index <= view.to)
+      selectEventAt((inView.at(-1) ?? { position: placedEvents.length - 1 }).position)
+    }
   }
 
   const handleClose = () => {
@@ -236,6 +285,10 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
             onInspect={setInspected}
             onViewChange={onViewChange}
             onReset={() => requestRange(range)}
+            events={chartEvents}
+            showEvents={showEvents}
+            selectedEvent={selectedEvent}
+            onSelectEvent={setSelectedEvent}
             ariaLabel={`${ticker} daily price chart. Use plus and minus to zoom and the arrow keys to move.`}
             describedBy="expanded-chart-summary"
           />
@@ -248,6 +301,29 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
           <p id="expanded-chart-summary" className="sr-only" aria-live="polite">{summary}</p>
           <p className="sr-only" aria-live="polite">{announcement}</p>
         </div>
+
+        {showEvents ? (
+          <div className={styles.eventCard} data-event-card="" aria-live="polite">
+            {selected ? (
+              <>
+                <div className={styles.eventText}>
+                  <p className={styles.eventMeta}>
+                    <span className={styles.eventCategory} data-category={selected.category}>{EVENT_CATEGORY_LABEL[selected.category]}</span>
+                    <time dateTime={selected.date}>{formatDate(selected.date)}</time>
+                  </p>
+                  <p className={styles.eventTitle}>{selected.title}</p>
+                </div>
+                <div className={styles.eventNav}>
+                  <button type="button" className={styles.tool} onClick={() => selectEventAt(selectedPosition - 1)} disabled={selectedPosition <= 0} aria-label="Previous event">←</button>
+                  <span className={styles.eventCount}>{selectedPosition + 1} / {placedEvents.length}</span>
+                  <button type="button" className={styles.tool} onClick={() => selectEventAt(selectedPosition + 1)} disabled={selectedPosition >= placedEvents.length - 1} aria-label="Next event">→</button>
+                </div>
+              </>
+            ) : (
+              <p className={styles.eventTitle}>No company events are recorded for these prices.</p>
+            )}
+          </div>
+        ) : null}
 
         <div className={styles.controls}>
           <div className={styles.rangeGroup} role="group" aria-label="Chart range">
@@ -302,6 +378,16 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
             onClick={() => setShowVolume((value) => !value)}
           >
             <span className={styles.toolDot} aria-hidden="true" />Volume
+          </button>
+          <button
+            type="button"
+            className={cn(styles.tool, events === null && styles.unavailableTool)}
+            aria-pressed={events === null ? undefined : showEvents}
+            aria-label={events === null ? 'Events, not available right now' : undefined}
+            data-events-toggle=""
+            onClick={toggleEvents}
+          >
+            <span className={styles.toolDot} aria-hidden="true" />Events
           </button>
           <button type="button" className={cn(styles.tool, styles.drawTool)} aria-pressed={drawTool === 'fibonacci'} onClick={() => chooseDrawTool('fibonacci')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M3 5h18M3 10h18M3 14h18M3 19h18" /></svg>

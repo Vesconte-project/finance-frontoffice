@@ -12,7 +12,7 @@ import {
 } from '@/lib/backend-request-log'
 import { BackendDataError } from '@/lib/backend'
 import { getViewerAccess } from '@/lib/billing'
-import { getTickerReadingsPayload } from '@/lib/canonical-research'
+import { getTickerEvents, getTickerReadingsPayload } from '@/lib/canonical-research'
 import { currencyForTicker, formatCompactMoney, formatMoney } from '@/lib/currency'
 import {
   getOhlcData,
@@ -41,6 +41,7 @@ import {
 } from '@/lib/ticker-data'
 import { scorecardFromTickerSummary } from '@/lib/ticker-page-scorecard'
 import { canonicalTickerStats } from '@/lib/ticker-page-stats'
+import { buildEventMarkers, type EventMarker } from '@/lib/event-markers'
 import { resolveStockAsset } from '@/lib/stock-asset-kind'
 import {
   parseTickerReadings,
@@ -439,6 +440,17 @@ export default async function TickerPage({
   const readingVerdictsPromise = runWithBackendRequestLogContext(requestLogContext, () =>
     loadReadingVerdicts(requestLogContext, ticker)
   )
+  // Company events for the expanded chart's Events layer. Not awaited: the page
+  // renders without them and the chart reads them when it opens. `null` means
+  // they could not be loaded; an empty list means none are recorded.
+  const chartEventsPromise = runWithBackendRequestLogContext(requestLogContext, () =>
+    loadOptionalStockDataset<EventMarker[] | null>(requestLogContext, `/tickers/${ticker}/events`, null, async () => {
+      const today = new Date().toISOString().slice(0, 10)
+      const start = new Date(Date.now() - 3650 * 86_400_000).toISOString().slice(0, 10)
+      const payload = await getTickerEvents(ticker, { startDate: start, endDate: today, latestOnly: true, limit: 200 })
+      return payload.available && Array.isArray(payload.rows) ? buildEventMarkers(payload.rows, today) : []
+    })
+  )
   const [ohlcResult, recentSignals, latestScreenerRows, fundamentals] = await runWithBackendRequestLogContext(
     requestLogContext,
     () =>
@@ -641,8 +653,8 @@ export default async function TickerPage({
           time: tickerSummary.nextEarnings.earningsTime,
           fiscalPeriod: tickerSummary.nextEarnings.fiscalPeriod,
         } : null}
-        volatility30d={marketStats?.vol30dPct ?? null}
         relatedAssets={relatedAssetsPromise}
+        chartEvents={chartEventsPromise}
         regimeSignals={recentSignals.map((signal) => ({
           signal_date: signal.signal_date,
           direction: signal.direction,

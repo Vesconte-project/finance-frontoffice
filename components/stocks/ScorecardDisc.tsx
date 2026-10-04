@@ -13,6 +13,9 @@ type ScorecardDiscProps = {
   mini?: boolean
   compact?: boolean
   className?: string
+  /** Makes each slice a button that picks its axis (keyboard and pointer). */
+  onSelectAxis?: (key: ScorecardAxis['key']) => void
+  selectedAxis?: ScorecardAxis['key'] | null
 }
 
 type Point = {
@@ -61,7 +64,10 @@ export default function ScorecardDisc({
   mini = false,
   compact = false,
   className,
+  onSelectAxis,
+  selectedAxis = null,
 }: ScorecardDiscProps) {
+  const interactive = Boolean(onSelectAxis) && !mini
   const resolvedSize = size ?? (mini ? 40 : compact ? 260 : 360)
   const viewBoxSize = 240
   const center = viewBoxSize / 2
@@ -83,7 +89,7 @@ export default function ScorecardDisc({
       className={cn('shrink-0', className)}
       style={{ width: resolvedSize, height: resolvedSize }}
       aria-label={`Scorecard ${grade}, ${scorecard.overall.label}`}
-      role="img"
+      role={interactive ? 'group' : 'img'}
     >
       <svg viewBox={`0 0 ${viewBoxSize} ${viewBoxSize}`} width={resolvedSize} height={resolvedSize} className="block overflow-visible">
         <style>
@@ -100,6 +106,9 @@ export default function ScorecardDisc({
             @media (prefers-reduced-motion: reduce) {
               .scorecard-disc-slice { animation: none; }
             }
+            .scorecard-disc-axis { cursor: pointer; outline: none; }
+            .scorecard-disc-axis:focus-visible .scorecard-disc-hit { stroke: var(--accent); stroke-width: 2.5; }
+            .scorecard-disc-axis[aria-pressed='true'] .scorecard-disc-hit { stroke: var(--text); stroke-width: 1.5; stroke-dasharray: 3 3; }
           `}
         </style>
 
@@ -136,8 +145,35 @@ export default function ScorecardDisc({
           const labelPoint = polarToCartesian(center, labelRadius, midAngle)
           const missingMark = polarToCartesian(center, radius * 0.62, midAngle)
 
+          const select = () => onSelectAxis?.(key)
+          const axisButton = interactive
+            ? {
+                className: 'scorecard-disc-axis',
+                role: 'button',
+                tabIndex: 0,
+                'aria-pressed': selectedAxis === key,
+                'aria-label': available ? `${axis.label}, ${Math.round(score)} of 100` : `${axis.label}, not scored`,
+                'data-scorecard-axis': key,
+                onClick: select,
+                onKeyDown: (event: { key: string; preventDefault: () => void }) => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return
+                  event.preventDefault()
+                  select()
+                },
+              }
+            : {}
+
           return (
-            <g key={key}>
+            <g key={key} {...axisButton}>
+              {interactive ? (
+                // The whole slice is the target, however small the score.
+                <path
+                  className="scorecard-disc-hit"
+                  d={wedgePath(center, outerRadius, startAngle, endAngle)}
+                  fill="transparent"
+                  stroke="none"
+                />
+              ) : null}
               <path
                 className="scorecard-disc-slice"
                 d={wedgePath(center, radius, startAngle, endAngle)}

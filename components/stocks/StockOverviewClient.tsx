@@ -11,14 +11,21 @@ import type { Scorecard } from '@/lib/scorecard-types'
 import type { ReadingVerdict } from '@/lib/ticker-readings'
 import {
   buildTechnicalSummary,
+  distanceFromAverage,
   type TechnicalAction,
+  type TechnicalGaugeData,
   type TechnicalTimeframe,
 } from '@/lib/technicalSignals'
+import type { EventMarker } from '@/lib/event-markers'
+import type { ScorecardAxis } from '@/lib/scorecard-types'
+import BeingBuilt, { BeingBuiltBadge } from '@/components/stocks/research/BeingBuilt'
+import ResearchChapter, { ChapterCard } from '@/components/stocks/research/ResearchChapter'
 import { hasUsableMaterializedScorecard } from '@/lib/ticker-page-scorecard'
 import { cn } from '@/lib/utils'
 import styles from './StockOverviewClient.module.css'
 import expandedChartStyles from './ExpandedChart.module.css'
 import ScorecardDisc from './ScorecardDisc'
+import type { ExpandedChartDialogProps } from './ExpandedChartDialog'
 
 // The expanded chart's code loads only when a reader opens it.
 const ExpandedChartDialog = dynamic(() => import('./ExpandedChartDialog'), { ssr: false })
@@ -101,8 +108,9 @@ type StockOverviewClientProps = {
   holdings: OverviewHolding[]
   sectorWeights: OverviewSectorWeight[]
   nextEarnings: OverviewEarnings | null
-  volatility30d: number | null
   relatedAssets: Promise<OverviewRelatedAsset[]>
+  /** Company events for the expanded chart; resolves to null when unavailable. */
+  chartEvents: Promise<EventMarker[] | null>
   regimeSignals: OverviewRegimePoint[]
   scorecard: Scorecard
   /** Built on the server per viewer tier; empty when unavailable. */
@@ -150,12 +158,6 @@ function regimeCopy(direction: SignalDirection | null): string {
   if (direction === 'bullish') return 'Bullish regime'
   if (direction === 'bearish') return 'Bearish regime'
   return 'Neutral regime'
-}
-
-function regimeTone(direction: SignalDirection | null): 'bullish' | 'bearish' | 'neutral' {
-  if (direction === 'bullish') return 'bullish'
-  if (direction === 'bearish') return 'bearish'
-  return 'neutral'
 }
 
 function scorecardReadinessMessage(scorecard: Scorecard): string | null {
@@ -218,69 +220,6 @@ function gaugeArcPath(cx: number, cy: number, r: number, startDeg: number, endDe
   const end = toPoint(endDeg)
   const largeArc = endDeg - startDeg > 180 ? 1 : 0
   return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`
-}
-
-function Gauge({
-  title,
-  position,
-  verdict,
-  verdictAction,
-  counts,
-}: {
-  title: string
-  position: number
-  verdict: string
-  verdictAction: TechnicalAction
-  counts: {
-    buy: number
-    neutral: number
-    sell: number
-  }
-}) {
-  const clamped = Math.max(0, Math.min(100, position))
-  const needleAngle = (clamped / 100) * 180 - 90
-  const toneClass =
-    verdictAction === 'Buy'
-      ? styles.gaugePanelBuy
-      : verdictAction === 'Sell'
-        ? styles.gaugePanelSell
-        : styles.gaugePanelNeutral
-
-  return (
-    <div className={cn(styles.gaugeItem, toneClass)}>
-      <svg viewBox="0 0 120 70" className={styles.gaugeDial} aria-hidden="true">
-        <path d={gaugeArcPath(60, 62, 46, -90, 90)} className={styles.gaugeArcTrack} />
-        <path d={gaugeArcPath(60, 62, 46, -90, -34)} className={styles.gaugeArcSell} />
-        <path d={gaugeArcPath(60, 62, 46, -30, 30)} className={styles.gaugeArcNeutral} />
-        <path d={gaugeArcPath(60, 62, 46, 34, 90)} className={styles.gaugeArcBuy} />
-        <g className={styles.gaugeNeedle} style={{ transform: `rotate(${needleAngle}deg)` }}>
-          <path d="M 57.8 62 L 60 24.5 L 62.2 62 Z" />
-        </g>
-        <circle cx={60} cy={62} r={5.5} className={styles.gaugeHub} />
-        <circle cx={60} cy={62} r={2.2} className={styles.gaugeHubCore} />
-      </svg>
-
-      <div className={styles.gaugeInfo}>
-        <div className={styles.gaugeLabel}>{title}</div>
-        <div className={cn(styles.gaugeVerdict, actionTone(verdictAction))}>{verdict}</div>
-      </div>
-
-      <div className={styles.gaugeRight}>
-        <div className={styles.gaugeScore}>{Math.round(clamped)}</div>
-        <div className={styles.gaugeCounts}>
-          <span>
-            <span className={styles.gaugeCountDotSell} /> {counts.sell}
-          </span>
-          <span>
-            <span className={styles.gaugeCountDotNeutral} /> {counts.neutral}
-          </span>
-          <span>
-            <span className={styles.gaugeCountDotBuy} /> {counts.buy}
-          </span>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 // The expand and candle buttons over the chart's top-left corner, with a margin.
@@ -390,6 +329,11 @@ function RelatedAssetsContent({
                 <span className={styles.relationshipMagnitude}>
                   <strong>{formatRelationshipStrength(asset.strength)}</strong>
                   <span>Strength</span>
+                  {asset.strength !== null && Number.isFinite(asset.strength) ? (
+                    <span className={styles.strengthBar} aria-hidden="true" data-strength-bar="">
+                      <span style={{ width: `${Math.max(0, Math.min(1, Math.abs(asset.strength))) * 100}%` }} />
+                    </span>
+                  ) : null}
                 </span>
                 <span className={styles.relatedSemantics}>
                   <span>{asset.relation}</span>
@@ -407,6 +351,73 @@ function RelatedAssetsContent({
   )
 }
 
+/** Sell, neutral and buy counts in words, for the split bar and its rows. */
+function countsLabel(counts: TechnicalGaugeData['counts']): string {
+  return `${counts.sell} sell · ${counts.neutral} neutral · ${counts.buy} buy`
+}
+
+/** The technical summary: a dial, the verdict with its position, and every indicator's vote. */
+function TechnicalSummaryPanel({ gauge }: { gauge: TechnicalGaugeData }) {
+  const clamped = Math.max(0, Math.min(100, gauge.position))
+  const needleAngle = (clamped / 100) * 180 - 90
+  const total = gauge.counts.sell + gauge.counts.neutral + gauge.counts.buy
+  const share = (count: number) => (total ? `${(count / total) * 100}%` : '0%')
+  return (
+    <div className={styles.technicalSummary} data-technical-summary="">
+      <svg viewBox="0 0 120 70" className={styles.technicalDial} role="img" aria-label={`${gauge.verdict}, ${Math.round(clamped)} of 100`}>
+        <path d={gaugeArcPath(60, 62, 46, -90, 90)} className={styles.gaugeArcTrack} />
+        <path d={gaugeArcPath(60, 62, 46, -90, -34)} className={styles.gaugeArcSell} />
+        <path d={gaugeArcPath(60, 62, 46, -30, 30)} className={styles.gaugeArcNeutral} />
+        <path d={gaugeArcPath(60, 62, 46, 34, 90)} className={styles.gaugeArcBuy} />
+        <g className={styles.gaugeNeedle} style={{ transform: `rotate(${needleAngle}deg)` }}>
+          <path d="M 57.8 62 L 60 24.5 L 62.2 62 Z" />
+        </g>
+        <circle cx={60} cy={62} r={5.5} className={styles.gaugeHub} />
+        <circle cx={60} cy={62} r={2.2} className={styles.gaugeHubCore} />
+      </svg>
+      <div className={styles.technicalVerdict}>
+        <span className={styles.technicalCaption}>All {total} indicators</span>
+        <p>
+          <strong className={actionTone(gauge.verdictAction)}>{gauge.verdict}</strong>
+          <span>{Math.round(clamped)}/100</span>
+        </p>
+        <div className={styles.technicalSplit} aria-hidden="true">
+          <span data-vote="sell" style={{ width: share(gauge.counts.sell) }} />
+          <span data-vote="neutral" style={{ width: share(gauge.counts.neutral) }} />
+          <span data-vote="buy" style={{ width: share(gauge.counts.buy) }} />
+        </div>
+        <p className={styles.technicalCounts}>{countsLabel(gauge.counts)}</p>
+      </div>
+    </div>
+  )
+}
+
+/** One family of indicators (oscillators, moving averages) as a compact row. */
+function TechnicalRow({ label, gauge }: { label: string; gauge: TechnicalGaugeData }) {
+  const clamped = Math.max(0, Math.min(100, gauge.position))
+  return (
+    <div className={styles.technicalRow} data-technical-row="">
+      <span className={styles.technicalRowLabel}>{label}</span>
+      <span className={styles.technicalTrack} aria-hidden="true">
+        <span className={styles.technicalMarker} style={{ left: `${clamped}%` }} />
+      </span>
+      <strong className={cn(styles.technicalRowVerdict, actionTone(gauge.verdictAction))}>{gauge.verdict}</strong>
+      <span className={styles.technicalRowCounts} aria-label={countsLabel(gauge.counts)}>
+        {gauge.counts.sell} · {gauge.counts.neutral} · {gauge.counts.buy}
+      </span>
+    </div>
+  )
+}
+
+/** The expanded chart, with the company events once they have arrived. */
+function ExpandedChartWithEvents({
+  eventsPromise,
+  ...props
+}: Omit<ExpandedChartDialogProps, 'events'> & { eventsPromise: Promise<EventMarker[] | null> }) {
+  const events = use(eventsPromise)
+  return <ExpandedChartDialog {...props} events={events} />
+}
+
 export default function StockOverviewClient({
   ticker,
   currency,
@@ -420,8 +431,8 @@ export default function StockOverviewClient({
   holdings,
   sectorWeights,
   nextEarnings,
-  volatility30d,
   relatedAssets: relatedAssetsPromise,
+  chartEvents,
   scorecard,
   readingVerdicts,
 }: StockOverviewClientProps) {
@@ -430,6 +441,7 @@ export default function StockOverviewClient({
   const [fullHistoryState, setFullHistoryState] = useState<FullHistoryState>('idle')
   const fullHistoryRequested = useRef(false)
   const [signalTimeframe, setSignalTimeframe] = useState<TechnicalTimeframe>('1D')
+  const [selectedAxis, setSelectedAxis] = useState<ScorecardAxis['key'] | null>(null)
   const [chartExpanded, setChartExpanded] = useState(false)
   // Line or candles, shared by the hero and the expanded chart for this visit.
   const [chartKind, setChartKind] = useState<'line' | 'candles'>('line')
@@ -471,13 +483,6 @@ export default function StockOverviewClient({
   const hasTechnicalData =
     ohlcData.length >= 30 &&
     [...technicalSummary.oscillatorRows, ...technicalSummary.movingAverageRows].some((row) => row.value !== '—')
-  const regimeClass =
-    regimeTone(latestSignal?.direction ?? null) === 'bullish'
-      ? styles.regimeBullish
-      : regimeTone(latestSignal?.direction ?? null) === 'bearish'
-        ? styles.regimeBearish
-        : styles.regimeNeutral
-
   const technicalGauges = [
     { key: 'summary', label: 'Summary', gauge: technicalSummary.gauges.summary },
     { key: 'oscillators', label: 'Oscillators', gauge: technicalSummary.gauges.oscillators },
@@ -489,6 +494,7 @@ export default function StockOverviewClient({
     : fundamentalGroups
   const visibleFundamentalGroups = orderedFundamentalGroups.slice(0, 6)
   const availableScorecardAxes = scorecard.axes.filter((axis) => axis.available && axis.score !== null).length
+  const selectedAxisData = selectedAxis ? scorecard.axes.find((axis) => axis.key === selectedAxis) ?? null : null
 
   const selectHeroTimeframe = (timeframe: ChartTimeframe) => {
     const needsFullHistory = timeframe === '10Y' || timeframe === 'ALL'
@@ -557,92 +563,135 @@ export default function StockOverviewClient({
     nextEarningsReference && nextEarningsReference !== '—'
       ? { label: 'Next earnings', value: nextEarningsReference }
       : null,
-    volatility30d !== null && Number.isFinite(volatility30d)
-      ? { label: '30D volatility', value: `${volatility30d.toFixed(1)}%` }
-      : null,
   ].filter((fact): fact is OverviewStat => fact !== null)
 
-  const timingSection = (
-    <article id="signals" className={styles.editorialChapter} aria-labelledby="timing-heading">
-      <div className={styles.chapterHeader}>
-        <div>
-          <h2 id="timing-heading" className={styles.chapterTitle}>Technicals</h2>
-          <p className={styles.chapterDescription}>Summary, oscillators, and moving averages for the selected timeframe.</p>
-        </div>
-        <SegmentedControl options={SIGNAL_TIMEFRAMES} value={signalTimeframe} onChange={setSignalTimeframe} ariaLabel="Technical signals timeframe" analyticsId="ticker_signals_timeframe" />
-      </div>
-      <div className={styles.timingEditorialGrid}>
-        <div className={styles.technicalRead}>
-          {hasTechnicalData ? (
-            <div className={styles.technicalGaugeGrid}>
-              {technicalGauges.map(({ key, label, gauge }) => (
-                <Gauge key={key} title={label} position={gauge.position} verdict={gauge.verdict} verdictAction={gauge.verdictAction} counts={gauge.counts} />
-              ))}
-            </div>
-          ) : (
-            <div className={styles.technicalGaugeGrid}>
-              {technicalGauges.map(({ key, label }) => <div key={key} className={styles.gaugeDataPending}><span>{label}</span><strong>Not enough price history</strong></div>)}
-            </div>
-          )}
-          <Link href={`/stocks/${ticker}/indicators`} className={styles.inlineArrow}>Indicator details →</Link>
-        </div>
-        <div className={styles.modelContextEditorial}>
-          <h3 className={styles.contextTitle}>Signal & events</h3>
-          {latestSignal ? (
-            <>
-              <div className={styles.modelSignalHeader}><strong>{regimeCopy(latestSignal.direction)}</strong><span className={cn(styles.regimeBadge, regimeClass)}>{latestSignal.direction}</span></div>
-              <dl className={styles.modelSignalInline}>
-                <div><dt>Conviction</dt><dd>{formatConviction(latestSignal.conviction)}</dd></div>
-                <div><dt>Horizon</dt><dd>{latestSignal.horizon === null ? '—' : `${latestSignal.horizon} sessions`}</dd></div>
-                <div><dt>Signal date</dt><dd>{formatDate(latestSignal.signalDate, { month: 'short', day: 'numeric' })}</dd></div>
-              </dl>
-            </>
-          ) : (
-            <div className={styles.inlineDataState}><span>Model signal</span><strong>Unavailable</strong></div>
-          )}
-          <div className={styles.contextLines}>
-            <div><span>Earnings</span><strong>{nextEarnings?.date ? formatDate(nextEarnings.date, { month: 'short', day: 'numeric' }) : 'Not available yet'}</strong></div>
-            <div><span>Catalysts</span><strong>Being built</strong></div>
-          </div>
-          <div className={styles.contextualLinks}><Link href={`/stocks/${ticker}/signals`}>Signal history →</Link><Link href={`/stocks/${ticker}/events`}>Earnings & events →</Link></div>
-        </div>
-      </div>
-    </article>
-  )
+  const summaryGauge = technicalSummary.gauges.summary
+  const readings = technicalSummary.readings
+  const periodUnit = signalTimeframe === '1D' ? 'day' : signalTimeframe === '1W' ? 'week' : 'month'
+  const keyReadings = [
+    { label: 'RSI (14)', value: readings.rsi14 === null ? null : readings.rsi14.toFixed(0), tone: undefined },
+    ...([50, 200] as const).map((period) => {
+      const distance = distanceFromAverage(readings.close, period === 50 ? readings.sma50 : readings.sma200)
+      return {
+        label: `vs ${period}-${periodUnit} average`,
+        value: distance === null ? null : `${distance > 0 ? '+' : distance < 0 ? '−' : ''}${Math.abs(distance).toFixed(1)}%`,
+        tone: distance === null || distance === 0 ? undefined : distance > 0 ? 'up' : 'down',
+      }
+    }),
+    {
+      label: 'MACD',
+      value: readings.macd === null || readings.macdSignal === null
+        ? null
+        : readings.macd > readings.macdSignal ? 'above signal' : readings.macd < readings.macdSignal ? 'below signal' : 'on signal',
+      tone: readings.macd === null || readings.macdSignal === null || readings.macd === readings.macdSignal
+        ? undefined
+        : readings.macd > readings.macdSignal ? 'up' : 'down',
+    },
+  ]
 
-  const fundamentalsSection = (
-    <article id="fundamentals" className={styles.editorialChapter} aria-labelledby="fundamentals-heading">
-      <div className={styles.chapterHeader}>
-        <div>
-          <h2 id="fundamentals-heading" className={styles.chapterTitle}>Fundamentals</h2>
-          <p className={styles.chapterDescription}>A compact read of the latest {isFund ? 'fund composition and exposures' : 'company financial evidence'}.</p>
-        </div>
-        <Link href={`/stocks/${ticker}/fundamentals`} className={styles.inlineArrow}>Full fundamentals →</Link>
-      </div>
-      {visibleFundamentalGroups.length > 0 ? (
-        <div className={styles.fundamentalEvidenceGrid}>
-          {visibleFundamentalGroups.map((group) => (
-            <section key={group.key}>
-              <h3>{group.label}</h3>
-              {group.rows.slice(0, 3).map((row, index) => <div key={row.label} className={index === 0 ? styles.primaryFundamental : undefined}><span>{row.label}</span><strong>{row.value}</strong></div>)}
-            </section>
+  const timingSection = (
+    <ResearchChapter
+      id="signals"
+      label="Technicals"
+      actions={(
+        <SegmentedControl
+          options={SIGNAL_TIMEFRAMES}
+          value={signalTimeframe}
+          onChange={setSignalTimeframe}
+          ariaLabel="Technical timeframe"
+          analyticsId="ticker_technical_timeframe"
+        />
+      )}
+      aside={(
+        <ChapterCard title={`Key readings · ${signalTimeframe}`}>
+          <dl className={styles.keyReadings} data-key-readings="">
+            {keyReadings.map((reading) => (
+              <div key={reading.label}>
+                <dt>{reading.label}</dt>
+                <dd data-tone={reading.tone}>{reading.value ?? 'Not enough history'}</dd>
+              </div>
+            ))}
+          </dl>
+          <Link href={`/stocks/${ticker}/signals`} className={styles.inlineArrow}>Indicator details →</Link>
+        </ChapterCard>
+      )}
+    >
+      {hasTechnicalData ? (
+        <div className={styles.technicalBoard} data-technical-board="">
+          <TechnicalSummaryPanel gauge={summaryGauge} />
+          {technicalGauges.slice(1).map(({ key, label, gauge }) => (
+            <TechnicalRow key={key} label={label} gauge={gauge} />
           ))}
-          {isFund && holdings.length > 0 ? (
-            <section><h3>Holdings</h3><div><span>Covered holdings</span><strong>{holdings.length}</strong></div></section>
-          ) : null}
-          {isFund && sectorWeights.length > 0 ? (
-            <section><h3>Exposures</h3><div><span>Covered sectors</span><strong>{sectorWeights.length}</strong></div></section>
-          ) : null}
         </div>
       ) : (
-        <div className={styles.inlineDataState}><span>Fundamentals</span><strong>Not available yet</strong></div>
+        <div className={styles.inlineDataState}><span>Technicals</span><strong>Not enough price history</strong></div>
       )}
+    </ResearchChapter>
+  )
+
+  const sinceSection = (
+    <ResearchChapter id="since-last-visit" label="Since your last visit" band>
+      <BeingBuilt size="inline">
+        What changed for {ticker} since you last looked — results, its standing in each reading, insider trades and how it moved against its sector — is being added.
+      </BeingBuilt>
+    </ResearchChapter>
+  )
+
+  const questionsSection = (
+    <ResearchChapter id="questions" label="Questions worth asking" band>
+      <BeingBuilt>
+        The questions a careful reader would ask about {ticker} right now, each with its evidence and the other side, are being added.
+      </BeingBuilt>
+    </ResearchChapter>
+  )
+
+  const allFundamentalRows = visibleFundamentalGroups.flatMap((group) => group.rows)
+  const fundamentalValue = (pattern: RegExp) => allFundamentalRows.find((row) => pattern.test(row.label))?.value ?? null
+  const fundamentalCards = isFund
+    ? [
+        { key: 'holdings', label: 'Holdings', value: holdings.length ? String(holdings.length) : null, context: 'holdings covered' },
+        { key: 'exposures', label: 'Sector exposure', value: sectorWeights.length ? String(sectorWeights.length) : null, context: 'sectors covered' },
+      ]
+    : [
+        { key: 'revenue', label: 'Revenue', value: fundamentalValue(/^(total\s+)?(revenue|sales)\b/i), context: 'latest reported' },
+        { key: 'operating-margin', label: 'Operating margin', value: fundamentalValue(/operating\s+margin/i), context: 'operating profit per dollar of sales' },
+        { key: 'net-cash', label: 'Net cash', value: fundamentalValue(/^net\s+cash\b/i), context: 'cash minus debt' },
+      ]
+
+  const fundamentalsSection = (
+    <ResearchChapter
+      id="fundamentals"
+      label="Fundamentals"
+      actions={<Link href={`/stocks/${ticker}/fundamentals`} className={styles.inlineArrow}>Full fundamentals →</Link>}
+    >
+      <div className={styles.fundamentalCards} data-fundamental-cards="">
+        {fundamentalCards.map((card) => (
+          <div key={card.key} className={styles.fundamentalCard} data-fundamental-card={card.key}>
+            <div className={styles.fundamentalHead}>
+              <h3>{card.label}</h3>
+              {card.value ? null : <BeingBuiltBadge />}
+            </div>
+            {card.value ? (
+              <p className={styles.fundamentalValue}>
+                <strong>{card.value}</strong>
+                <span>{card.context}</span>
+              </p>
+            ) : null}
+            <p className={styles.fundamentalNote}>
+              {card.value ? <><BeingBuiltBadge />{' '}</> : null}
+              {card.value
+                ? isFund ? 'How this changed over time is being added.' : 'Ten years of history is being added.'
+                : isFund ? `The ${card.label.toLowerCase()} and how it changed over time are being added.` : `The latest ${card.label.toLowerCase()} and ten years of its history are being added.`}
+            </p>
+          </div>
+        ))}
+      </div>
       <div className={styles.contextualLinks}>
         <Link href={`/stocks/${ticker}/financials`}>Financial statements →</Link>
         <Link href={`/stocks/${ticker}/valuation`}>Valuation history →</Link>
         <Link href={`/stocks/${ticker}/ownership`}>Ownership & capital →</Link>
       </div>
-    </article>
+    </ResearchChapter>
   )
 
   const relationshipsSection = (
@@ -697,16 +746,19 @@ export default function StockOverviewClient({
                 </p>
               ) : null}
               {chartExpanded ? (
-                <ExpandedChartDialog
-                  open
-                  onClose={() => setChartExpanded(false)}
-                  ticker={ticker}
-                  currency={currency}
-                  bars={ohlcData}
-                  kind={chartKind}
-                  onKindChange={setChartKind}
-                  returnFocusRef={expandButtonRef}
-                />
+                <Suspense fallback={null}>
+                  <ExpandedChartWithEvents
+                    eventsPromise={chartEvents}
+                    open
+                    onClose={() => setChartExpanded(false)}
+                    ticker={ticker}
+                    currency={currency}
+                    bars={ohlcData}
+                    kind={chartKind}
+                    onKindChange={setChartKind}
+                    returnFocusRef={expandButtonRef}
+                  />
+                </Suspense>
               ) : null}
               {fullHistoryState === 'loading' ? <span className="sr-only" role="status">Loading full price history.</span> : null}
               {fullHistoryState === 'error' ? (
@@ -746,16 +798,34 @@ export default function StockOverviewClient({
                 </div>
               </div>
             ) : (
-              <Link href={`/stocks/${ticker}/methodology`} className={styles.snapshotGradeLink} aria-label="Open score breakdown">
+              <div className={styles.snapshotGradeBlock}>
                 <div className={styles.snapshotScorecard}>
-                  <ScorecardDisc scorecard={scorecard} size={184} compact className={styles.overviewScorecardDisc} />
+                  <ScorecardDisc
+                    scorecard={scorecard}
+                    size={184}
+                    compact
+                    className={styles.overviewScorecardDisc}
+                    selectedAxis={selectedAxis}
+                    onSelectAxis={(key) => setSelectedAxis((current) => (current === key ? null : key))}
+                  />
                   <div className={styles.snapshotSummary}>
                     <span>Research score</span>
                     <strong>{scorecardMessage ?? scorecard.overall.label}</strong>
                     <p>{availableScorecardAxes} of {scorecard.axes.length} dimensions observed</p>
                   </div>
                 </div>
-              </Link>
+                {selectedAxisData ? (
+                  <div className={styles.axisCard} data-axis-card={selectedAxisData.key}>
+                    <div className={styles.axisCardHead}>
+                      <h3>{selectedAxisData.label}</h3>
+                      <span>{selectedAxisData.available && selectedAxisData.score !== null ? `${Math.round(selectedAxisData.score)}/100` : 'Not scored'}</span>
+                      <button type="button" className={styles.axisCardClose} aria-label={`Close ${selectedAxisData.label}`} onClick={() => setSelectedAxis(null)}>×</button>
+                    </div>
+                    <BeingBuilt size="inline">What this score means, and the three measures behind it, are being added.</BeingBuilt>
+                  </div>
+                ) : null}
+                <Link href={`/stocks/${ticker}/methodology`} className={styles.inlineArrow}>How the score works →</Link>
+              </div>
             )}
             <dl className={styles.snapshotVerdicts} aria-label="Current research snapshot">
               {researchVerdicts.map((verdict) => (
@@ -797,12 +867,10 @@ export default function StockOverviewClient({
       </section>
 
       <div className={styles.editorialSequence}>
-        <div className={cn(styles.editorialSlot, styles.timingSlot)}>
-          {timingSection}
-        </div>
-        <div className={cn(styles.editorialSlot, styles.fundamentalsSlot)}>
-          {fundamentalsSection}
-        </div>
+        {sinceSection}
+        {timingSection}
+        {questionsSection}
+        {fundamentalsSection}
         <div className={cn(styles.editorialSlot, styles.relationshipsSlot)}>
           {relationshipsSection}
         </div>

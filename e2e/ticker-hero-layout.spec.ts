@@ -114,6 +114,8 @@ for (const ticker of TICKERS) {
     for (let width = MIN_WIDTH; width <= MAX_WIDTH; width += STEP) {
       await page.setViewportSize({ width, height: 900 })
       await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+      // The chart re-measures itself after a resize; read it once it has drawn.
+      await expect(page.locator('[data-temporal-line-chart] svg')).toBeVisible()
       const result = await measure(page)
       const problems = [
         result.pageOverflow && 'page scrolls horizontally',
