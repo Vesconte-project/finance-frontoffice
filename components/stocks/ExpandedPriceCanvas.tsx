@@ -13,6 +13,7 @@ import {
   zoomView,
   type ChartView,
 } from '@/lib/expanded-chart'
+import { stackMarkerLevels, type EventMarkerCategory } from '@/lib/event-markers'
 import type { OhlcPoint } from '@/lib/ohlc-data'
 import styles from './ExpandedChart.module.css'
 
@@ -22,6 +23,8 @@ export type ChartAnchor = { index: number; price: number }
 export type ChartDrawing = { tool: DrawingTool; first: ChartAnchor; second: ChartAnchor }
 /** Two bar indices a reader measures between, in the order picked. */
 export type ChartMeasure = { first: number; second: number }
+/** A company event on the chart, already placed on its trading day. */
+export type ChartEvent = { id: string; index: number; category: EventMarkerCategory }
 
 type Palette = { up: string; down: string; accent: string; text: string; muted: string; line: string; surface: string; font: string }
 
@@ -71,11 +74,21 @@ type ExpandedPriceCanvasProps = {
   onViewChange: (view: ChartView) => void
   /** Double tap or double click: return to the selected range. */
   onReset: () => void
+  /** The Events layer: drawn only while `showEvents` is on. */
+  events?: readonly ChartEvent[]
+  showEvents?: boolean
+  selectedEvent?: string | null
+  onSelectEvent?: (id: string) => void
   ariaLabel: string
   describedBy: string
 }
 
 const AXIS_HEIGHT = 24
+/** Event markers: radius, the step between stacked markers, and the tap reach. */
+const EVENT_RADIUS = 5
+const EVENT_STEP = 15
+const EVENT_HIT = 14
+const NO_EVENTS: readonly ChartEvent[] = []
 const TAP_SLOP = 6
 const DOUBLE_TAP_MS = 320
 
@@ -133,6 +146,10 @@ export default function ExpandedPriceCanvas({
   onInspect,
   onViewChange,
   onReset,
+  events = NO_EVENTS,
+  showEvents = false,
+  selectedEvent = null,
+  onSelectEvent,
   ariaLabel,
   describedBy,
 }: ExpandedPriceCanvasProps) {
@@ -146,11 +163,13 @@ export default function ExpandedPriceCanvas({
   const lastTapRef = useRef(0)
   const inspectedRef = useRef<number | null>(null)
   const paletteRef = useRef<Palette | null>(null)
+  /** Where each visible event marker was last drawn, for taps. */
+  const markersRef = useRef<Array<{ id: string; x: number; y: number }>>([])
 
   // Latest props for the imperative draw and input handlers.
-  const propsRef = useRef({ bars, currency, kind, showVolume, drawTool, drawings, pending, measure, onPick, onMeasure, onInspect, onViewChange, onReset })
+  const propsRef = useRef({ bars, currency, kind, showVolume, drawTool, drawings, pending, measure, onPick, onMeasure, onInspect, onViewChange, onReset, events, showEvents, selectedEvent, onSelectEvent })
   useLayoutEffect(() => {
-    propsRef.current = { bars, currency, kind, showVolume, drawTool, drawings, pending, measure, onPick, onMeasure, onInspect, onViewChange, onReset }
+    propsRef.current = { bars, currency, kind, showVolume, drawTool, drawings, pending, measure, onPick, onMeasure, onInspect, onViewChange, onReset, events, showEvents, selectedEvent, onSelectEvent }
   })
 
   const draw = useCallback(() => {
@@ -421,6 +440,50 @@ export default function ExpandedPriceCanvas({
       ctx.arc(xOf(pick.index), yOf(pick.price), 5, 0, Math.PI * 2)
       ctx.fill()
     }
+
+    // Events layer: one marker per event above its day's close. Markers closer
+    // than a tap apart stack upwards on one stem, so none hides another.
+    const placedMarkers: Array<{ id: string; x: number; y: number }> = []
+    const { events: marks, showEvents: eventsOn, selectedEvent: chosen } = propsRef.current
+    if (eventsOn && marks.length) {
+      const visible = marks.filter((mark) => mark.index >= geometry.first && mark.index <= geometry.last)
+      const xs = visible.map((mark) => xOf(mark.index))
+      const levels = stackMarkerLevels(xs, EVENT_STEP)
+      const colour = (category: EventMarkerCategory) =>
+        category === 'earnings' ? palette.accent : category === 'dividends' ? palette.up : palette.muted
+      visible.forEach((mark, i) => {
+        const x = xs[i]
+        const base = yOf(data[mark.index].close)
+        const y = Math.max(geometry.priceTop + EVENT_RADIUS + 2, base - 16 - levels[i] * EVENT_STEP)
+        const selected = mark.id === chosen
+        if (selected) {
+          ctx.strokeStyle = palette.text
+          ctx.setLineDash([3, 3])
+          ctx.beginPath()
+          ctx.moveTo(crisp(x), 0)
+          ctx.lineTo(crisp(x), mainBottom)
+          ctx.stroke()
+          ctx.setLineDash([])
+        }
+        ctx.strokeStyle = colour(mark.category)
+        ctx.globalAlpha = 0.7
+        ctx.beginPath()
+        ctx.moveTo(crisp(x), base)
+        ctx.lineTo(crisp(x), y)
+        ctx.stroke()
+        ctx.globalAlpha = 1
+        ctx.fillStyle = colour(mark.category)
+        ctx.strokeStyle = selected ? palette.text : palette.surface
+        ctx.lineWidth = selected ? 2.5 : 1.5
+        ctx.beginPath()
+        ctx.arc(x, y, selected ? EVENT_RADIUS + 2 : EVENT_RADIUS, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.stroke()
+        ctx.lineWidth = 1
+        placedMarkers.push({ id: mark.id, x, y })
+      })
+    }
+    markersRef.current = placedMarkers
     ctx.restore()
 
     // Axes
@@ -518,7 +581,7 @@ export default function ExpandedPriceCanvas({
 
   useEffect(() => {
     schedule()
-  }, [bars, currency, kind, showVolume, drawings, pending, measure, schedule])
+  }, [bars, currency, kind, showVolume, drawings, pending, measure, events, showEvents, selectedEvent, schedule])
 
   useEffect(() => {
     if (!drawTool) return
@@ -565,6 +628,18 @@ export default function ExpandedPriceCanvas({
       const price = geometry.max - ((point.y - geometry.priceTop) / (geometry.priceBottom - geometry.priceTop)) * (geometry.max - geometry.min)
       pick({ index, price })
       return
+    }
+    const { showEvents: eventsOn, onSelectEvent: selectEvent } = propsRef.current
+    if (eventsOn && selectEvent) {
+      let nearest: { id: string; distance: number } | null = null
+      for (const marker of markersRef.current) {
+        const distance = Math.hypot(marker.x - point.x, marker.y - point.y)
+        if (distance <= EVENT_HIT && (!nearest || distance < nearest.distance)) nearest = { id: marker.id, distance }
+      }
+      if (nearest) {
+        selectEvent(nearest.id)
+        return
+      }
     }
     if (propsRef.current.measure) {
       // A tap on the chart clears a finished measurement.

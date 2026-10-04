@@ -84,8 +84,8 @@ test('ticker navigation exposes a stable horizontal Research hierarchy', () => {
   assert.match(relationshipField, /gsap\.to\(focus/)
   assert.doesNotMatch(relationshipField, /ScrollTrigger|Lenis/)
   assert.doesNotMatch(relationshipFieldStyles, /circle at 3% 8%/)
-  assert.match(overview, />Technicals</)
-  assert.match(overview, />Fundamentals</)
+  assert.match(overview, /label="Technicals"/)
+  assert.match(overview, /label="Fundamentals"/)
   assert.match(overview, />Relationships</)
   assert.match(overview, /label: 'Summary'/)
   assert.match(overview, /label: 'Oscillators'/)
@@ -287,4 +287,39 @@ test('frontoffice runtime contains no direct Yahoo or Supabase client path', () 
   assert.doesNotMatch(source, /@supabase\/supabase-js|createClient\s*\([^)]*SUPABASE/s)
   assert.doesNotMatch(source, /NEXT_PUBLIC_SUPABASE|SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE/)
   assert.doesNotMatch(source, /query[12]\.finance\.yahoo\.com|searchYahoo|YahooSearch/)
+})
+
+test('the Overview follows the accepted ticker Spec (PRD-78): order, Being built blocks and the Events layer', () => {
+  const overview = readRepoFile('components/stocks/StockOverviewClient.tsx')
+  const page = readRepoFile('app/(app)/stocks/[ticker]/page.tsx')
+  const dialog = readRepoFile('components/stocks/ExpandedChartDialog.tsx')
+  const disc = readRepoFile('components/stocks/ScorecardDisc.tsx')
+
+  // Under the chart: market cap and next earnings only.
+  assert.doesNotMatch(overview, /30D volatility|volatility30d/)
+  // Chapter order below the hero.
+  const order = ['{sinceSection}', '{timingSection}', '{questionsSection}', '{fundamentalsSection}', '{relationshipsSection}'].map((token) => overview.indexOf(token))
+  assert.ok(order.every((index) => index > 0), 'every chapter is rendered')
+  assert.deepEqual([...order].sort((a, b) => a - b), order, 'chapters follow the Spec order')
+  assert.match(overview, /label="Since your last visit"/)
+  assert.match(overview, /label="Questions worth asking"/)
+  // Signals do not mix with Technicals; the model signal stays beside the chart.
+  assert.doesNotMatch(overview, /Signal & events|Catalysts/)
+  assert.match(overview, /Key readings · \$\{signalTimeframe\}/)
+  // A small disc with the grade beside it; the axis names are page text, one
+  // button per axis (the slices answer to pointers). Meaning waits for ENG-155 / ENG-157.
+  assert.match(overview, /onSelectAxis=/)
+  assert.match(overview, /showLabels=\{false\}/)
+  assert.match(overview, /slicesFocusable=\{false\}/)
+  assert.match(overview, /data-axis-list/)
+  assert.match(overview, /aria-pressed=\{selectedAxis === axis\.key\}/)
+  assert.match(disc, /slicesFocusable/)
+  assert.match(disc, /onKeyDown/)
+  // Events are fetched without blocking the page and drawn only in the expanded chart.
+  assert.match(page, /chartEventsPromise/)
+  assert.doesNotMatch(page, /await chartEventsPromise/)
+  assert.match(dialog, /data-events-toggle/)
+  assert.match(dialog, /useState\(false\)[\s\S]*setShowEvents|const \[showEvents, setShowEvents\] = useState\(false\)/)
+  // Values are never derived here: net cash only when the summary supplies it.
+  assert.doesNotMatch(overview, /cash\s*-\s*debt|totalCash\s*-/i)
 })

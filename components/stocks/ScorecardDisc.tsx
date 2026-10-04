@@ -13,6 +13,19 @@ type ScorecardDiscProps = {
   mini?: boolean
   compact?: boolean
   className?: string
+  /** Makes each slice a button that picks its axis (keyboard and pointer). */
+  onSelectAxis?: (key: ScorecardAxis['key']) => void
+  selectedAxis?: ScorecardAxis['key'] | null
+  /**
+   * Draw the axis names and the centre label inside the disc. Off when the page
+   * shows them as text beside a small disc, where drawn text would be too small.
+   */
+  showLabels?: boolean
+  /**
+   * Slices reachable by keyboard. Off when the same choices are offered as
+   * buttons elsewhere, so each choice is one tab stop.
+   */
+  slicesFocusable?: boolean
 }
 
 type Point = {
@@ -61,7 +74,12 @@ export default function ScorecardDisc({
   mini = false,
   compact = false,
   className,
+  onSelectAxis,
+  selectedAxis = null,
+  showLabels: showLabelsProp,
+  slicesFocusable = true,
 }: ScorecardDiscProps) {
+  const interactive = Boolean(onSelectAxis) && !mini
   const resolvedSize = size ?? (mini ? 40 : compact ? 260 : 360)
   const viewBoxSize = 240
   const center = viewBoxSize / 2
@@ -74,7 +92,7 @@ export default function ScorecardDisc({
   const overallScore = scorecard.overall.score
   const overallColor = overallScore === null ? 'var(--text-muted)' : scoreColor(overallScore)
   const grade = scorecard.overall.grade || '–'
-  const showLabels = !mini
+  const showLabels = showLabelsProp ?? !mini
   const showRings = !mini
   const fontScale = resolvedSize / viewBoxSize
 
@@ -83,7 +101,7 @@ export default function ScorecardDisc({
       className={cn('shrink-0', className)}
       style={{ width: resolvedSize, height: resolvedSize }}
       aria-label={`Scorecard ${grade}, ${scorecard.overall.label}`}
-      role="img"
+      role={interactive && slicesFocusable ? 'group' : 'img'}
     >
       <svg viewBox={`0 0 ${viewBoxSize} ${viewBoxSize}`} width={resolvedSize} height={resolvedSize} className="block overflow-visible">
         <style>
@@ -100,6 +118,9 @@ export default function ScorecardDisc({
             @media (prefers-reduced-motion: reduce) {
               .scorecard-disc-slice { animation: none; }
             }
+            .scorecard-disc-axis { cursor: pointer; outline: none; }
+            .scorecard-disc-axis:focus-visible .scorecard-disc-hit { stroke: var(--accent); stroke-width: 2.5; }
+            .scorecard-disc-axis[data-selected='true'] .scorecard-disc-hit { stroke: var(--text); stroke-width: 1.5; stroke-dasharray: 3 3; }
           `}
         </style>
 
@@ -136,8 +157,36 @@ export default function ScorecardDisc({
           const labelPoint = polarToCartesian(center, labelRadius, midAngle)
           const missingMark = polarToCartesian(center, radius * 0.62, midAngle)
 
+          const select = () => onSelectAxis?.(key)
+          const axisButton = interactive
+            ? {
+                className: 'scorecard-disc-axis',
+                role: slicesFocusable ? 'button' : undefined,
+                tabIndex: slicesFocusable ? 0 : -1,
+                'data-selected': selectedAxis === key ? 'true' : undefined,
+                'aria-pressed': slicesFocusable ? selectedAxis === key : undefined,
+                'aria-label': slicesFocusable ? (available ? `${axis.label}, ${Math.round(score)} of 100` : `${axis.label}, not scored`) : undefined,
+                'data-scorecard-axis': key,
+                onClick: select,
+                onKeyDown: (event: { key: string; preventDefault: () => void }) => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return
+                  event.preventDefault()
+                  select()
+                },
+              }
+            : {}
+
           return (
-            <g key={key}>
+            <g key={key} {...axisButton}>
+              {interactive ? (
+                // The whole slice is the target, however small the score.
+                <path
+                  className="scorecard-disc-hit"
+                  d={wedgePath(center, outerRadius, startAngle, endAngle)}
+                  fill="transparent"
+                  stroke="none"
+                />
+              ) : null}
               <path
                 className="scorecard-disc-slice"
                 d={wedgePath(center, radius, startAngle, endAngle)}
@@ -203,7 +252,7 @@ export default function ScorecardDisc({
         >
           {grade}
         </text>
-        {!mini ? (
+        {showLabels ? (
           <text
             x={center}
             y={center + 23}

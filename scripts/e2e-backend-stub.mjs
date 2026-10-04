@@ -20,6 +20,7 @@ import {
 } from '../e2e/fixtures/market-atlas.mjs'
 import {
   isFixtureTicker,
+  tickerEventsFixture,
   tickerHistoryFixture,
   tickerOhlcFixture,
   tickerSummaryFixture,
@@ -98,6 +99,12 @@ const server = createServer((request, response) => {
 
   // Synthetic ticker pages (QAS, QAM, QAL) for hero layout checks. Real symbols
   // stay unavailable, as before.
+  const eventsRoute = path.match(/^\/tickers\/([^/]+)\/events$/)
+  if (eventsRoute && isFixtureTicker(decodeURIComponent(eventsRoute[1]))) {
+    send(response, 200, tickerEventsFixture(decodeURIComponent(eventsRoute[1])))
+    return
+  }
+
   const tickerRoute = path.match(/^\/tickers\/([^/]+)\/(summary|ohlc|history)$/)
   if (tickerRoute && isFixtureTicker(decodeURIComponent(tickerRoute[1]))) {
     const ticker = decodeURIComponent(tickerRoute[1])

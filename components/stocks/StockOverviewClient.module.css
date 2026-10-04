@@ -1798,10 +1798,12 @@
 }
 
 .snapshotScorecard {
+  /* A small disc with the grade beside it, at every width (PRD-78). */
   display: grid;
-  justify-items: center;
-  gap: 4px;
-  text-align: center;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  text-align: left;
 }
 
 .overviewScorecardDisc {
@@ -1810,7 +1812,7 @@
 
 .snapshotSummary {
   display: grid;
-  justify-items: center;
+  justify-items: start;
   gap: 4px;
 }
 
@@ -2000,8 +2002,13 @@
 .editorialSequence {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: clamp(44px, 6vw, 76px);
+  /* Research chapters carry their own spacing (components/stocks/research). */
+  gap: 0;
   margin-top: 24px;
+}
+
+.relationshipsSlot {
+  padding-top: clamp(44px, 6vw, 64px);
 }
 
 .editorialSlot {
@@ -2285,9 +2292,6 @@
     grid-template-columns: minmax(0, 1fr) 220px;
   }
 
-  .editorialSequence {
-    gap: 52px;
-  }
 
   .timingEditorialGrid {
     grid-template-columns: 1fr;
@@ -2351,15 +2355,6 @@
     gap: 9px;
   }
 
-  .snapshotScorecard {
-    grid-template-columns: 1fr;
-    gap: 2px;
-    text-align: center;
-  }
-
-  .snapshotSummary {
-    justify-items: center;
-  }
 
   .snapshotInterpretation,
   .interpretationRow {
@@ -2379,4 +2374,366 @@
   .technicalEvidenceRows > div {
     grid-template-columns: 94px minmax(50px, 1fr) auto;
   }
+}
+
+/* ---- Research score: picked axis (PRD-78) ---- */
+
+.snapshotGradeBlock {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.axisCard {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.axisCardHead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.axisCardHead h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.axisCardHead span {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--text-body);
+}
+
+.axisCardClose {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  margin-left: auto;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.axisCardClose:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---- Technicals (PRD-78) ---- */
+
+.technicalBoard {
+  display: grid;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.technicalSummary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.technicalDial {
+  width: 168px;
+  max-width: 100%;
+  height: auto;
+  flex: none;
+}
+
+.technicalVerdict {
+  display: grid;
+  gap: 6px;
+  min-width: min(100%, 15rem);
+  flex: 1 1 15rem;
+}
+
+.technicalCaption {
+  font-size: 0.8125rem;
+  color: var(--text-body);
+}
+
+.technicalVerdict > p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0;
+}
+
+.technicalVerdict > p strong {
+  font-family: var(--font-display);
+  font-size: clamp(1.625rem, 1.3rem + 1vw, 2rem);
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+.technicalVerdict > p span {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--text-body);
+}
+
+.technicalSplit {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+}
+
+.technicalSplit span {
+  min-width: 0;
+  height: 100%;
+}
+
+.technicalSplit [data-vote='sell'] { background: var(--down); }
+.technicalSplit [data-vote='neutral'] { background: var(--line-strong); }
+.technicalSplit [data-vote='buy'] { background: var(--up); }
+
+.technicalCounts {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--text-body);
+}
+
+.technicalRow {
+  display: grid;
+  grid-template-columns: minmax(7.5rem, auto) minmax(4rem, 1fr) auto auto;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.technicalRow:last-child {
+  border-bottom: 0;
+}
+
+.technicalRowLabel {
+  font-size: 0.9375rem;
+  color: var(--text);
+}
+
+.technicalTrack {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--down) 0 33%, var(--line-strong) 33% 67%, var(--up) 67% 100%);
+}
+
+.technicalMarker {
+  position: absolute;
+  top: 50%;
+  width: 4px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--text);
+  transform: translate(-50%, -50%);
+}
+
+.technicalRowVerdict {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.technicalRowCounts {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--text-body);
+  white-space: nowrap;
+}
+
+@container research-chapter (width < 30rem) {
+  .technicalRow {
+    grid-template-columns: 1fr auto;
+  }
+
+  .technicalTrack {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+.keyReadings {
+  display: grid;
+  margin: 0;
+}
+
+.keyReadings > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.keyReadings dt {
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+.keyReadings dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--text-body);
+  text-align: right;
+}
+
+.keyReadings dd[data-tone='up'] { color: var(--up-ink, var(--up)); }
+.keyReadings dd[data-tone='down'] { color: var(--down); }
+
+/* ---- Fundamentals summary (PRD-78) ---- */
+
+.fundamentalCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 16px;
+}
+
+.fundamentalCard {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.fundamentalHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+}
+
+.fundamentalNote {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-body);
+}
+
+.fundamentalCard h3 {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--text-body);
+}
+
+.fundamentalValue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0;
+  min-height: 2.5rem;
+}
+
+.fundamentalValue strong {
+  font-family: var(--font-mono);
+  font-size: 1.75rem;
+  font-weight: 400;
+  color: var(--text);
+}
+
+.fundamentalValue span {
+  font-size: 0.8125rem;
+  color: var(--text-body);
+}
+
+/* ---- Relationship strength (PRD-78) ---- */
+
+.strengthBar {
+  display: block;
+  width: 64px;
+  height: 4px;
+  margin-top: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line-soft);
+}
+
+.strengthBar span {
+  display: block;
+  height: 100%;
+  background: var(--text);
+}
+
+/* ---- Score dimensions as text (PRD-78) ---- */
+
+.axisList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.axisChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: 500 0.8125rem var(--font-body), sans-serif;
+  cursor: pointer;
+}
+
+.axisChip strong {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  color: var(--text-body);
+}
+
+.axisChip[aria-pressed='true'] {
+  border-color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--text);
+}
+
+.axisChip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+  .axisChip {
+    min-height: 44px;
+  }
+}
+
+.axisSwatch {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border: 1px solid var(--text-muted);
+  border-radius: 2px;
 }

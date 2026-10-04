@@ -59,6 +59,25 @@ PRD-76 adds a candle icon beside the hero's expand icon. `TemporalLineChart` dra
 
 The direction came from a clickable prototype with a fictional company and fictional numbers. No prototype code or data was copied. `tests/ticker-reader-copy.test.ts` keeps internal language ("canonical", "contract", "payload", "finance-backend", "Pending integration", "Data pending") out of every visible string on the ticker page.
 
+## Ticker Overview and the Events layer — 2026-10-04
+
+PRD-78 phase 2 rebuilds the Overview on the research chapters, in the Spec's order: Since your last visit, Technicals, Questions worth asking, Fundamentals and Relationships.
+
+- **Hero:** Market cap and Next earnings sit under the chart; 30-day volatility is gone.
+- **Score disc:**
+  - Each slice is a button, by pointer and by keyboard, with the whole slice as its target.
+  - Picking a slice opens the axis card. Its meaning and measures wait for ENG-155 and ENG-157.
+- **Technicals:**
+  - The summary shows a dial, the verdict with its position, and the votes as a split bar and in words.
+  - Oscillators and Moving averages each take a compact row.
+  - A Key readings card shows RSI (14), the distance to the 50- and 200-period averages, and MACD against its signal. They come from the existing OHLC calculations (`readings` in `buildTechnicalSummary`); nothing new is calculated.
+- **Events layer:** a toggle in the expanded chart, off by default.
+  - `lib/event-markers.ts` builds one marker per company event from the bitemporal events read model. The event id is its identity, so a revision moves the date instead of doubling it.
+  - Each marker lands on the event's trading day.
+  - Markers closer than a tap stack on one stem.
+  - A tap on a marker, or the previous/next buttons, opens the card: what it was and when. No effect on the price is inferred.
+  - The events are fetched without blocking the page, and the chart reads them when it opens.
+
 ## Expanding selector study — 2026-07-21
 
 The reusable expanding selector transforms mechanics from the references below into a Vesconte-specific analytical control. It carries no ticker, investment-horizon, URL, or routing semantics. No reference code, assets, branding, or layout was copied.

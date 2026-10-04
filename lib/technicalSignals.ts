@@ -37,7 +37,20 @@ export type TechnicalSummary = {
   }
   oscillatorRows: TechnicalIndicatorRow[]
   movingAverageRows: TechnicalIndicatorRow[]
+  /** The few readings shown on their own, as numbers (null without enough bars). */
+  readings: TechnicalReadings
 }
+
+export type TechnicalReadings = {
+  close: number | null
+  rsi14: number | null
+  sma50: number | null
+  sma200: number | null
+  macd: number | null
+  macdSignal: number | null
+}
+
+export { distanceFromAverage } from './technical-readings'
 
 function toBar(p: OhlcPoint): Bar {
   // Quando high/low faltam (histórico pré-2020), usa close como proxy.
@@ -545,5 +558,13 @@ export function buildTechnicalSummary(data: OhlcPoint[], timeframe: TechnicalTim
     },
     oscillatorRows,
     movingAverageRows,
+    readings: {
+      close: currentPrice,
+      rsi14,
+      sma50: sma(closes, 50),
+      sma200: sma(closes, 200),
+      macd: macdValue.macd,
+      macdSignal: macdValue.signal,
+    },
   }
 }
