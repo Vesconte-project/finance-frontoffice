@@ -1,90 +1,7 @@
 .page {
-  --ownership-line: color-mix(in srgb, var(--color-border) 82%, transparent);
   display: grid;
   min-width: 0;
   padding-bottom: 24px;
-}
-
-.snapshotStrip {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
-  border-block: 1px solid var(--ownership-line);
-}
-
-.snapshotItem {
-  min-width: 0;
-  padding: 15px 16px;
-  box-shadow: 1px 0 0 var(--ownership-line);
-}
-
-.snapshotItem > span,
-.bridgeTerm small {
-  display: block;
-  color: var(--color-text-muted);
-  font-size: 0.6875rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.snapshotItem strong {
-  display: block;
-  margin-top: 7px;
-  overflow: hidden;
-  color: var(--color-text-primary);
-  font-family: var(--font-mono);
-  font-size: 0.875rem;
-  font-variant-numeric: tabular-nums;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Market cap + debt − cash = enterprise value, read left to right and wrapping
-   as a whole when the chapter is narrow. */
-.bridgeFormula {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: 0.5rem 0.75rem;
-  min-width: 0;
-}
-
-/* An operator always travels with the term after it. */
-.bridgeStep {
-  display: flex;
-  align-items: end;
-  gap: 0.75rem;
-  min-width: 0;
-}
-
-.bridgeTerm {
-  display: grid;
-  gap: 0.375rem;
-  min-width: 6.5rem;
-  padding: 0.625rem 0;
-  border-bottom: 2px solid var(--ownership-line);
-}
-
-.bridgeTerm[data-known='true'] {
-  border-bottom-color: var(--color-accent);
-}
-
-.bridgeTerm strong {
-  color: var(--color-text-primary);
-  font-family: var(--font-mono);
-  font-size: 0.875rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.bridgeOperator {
-  padding-bottom: 0.75rem;
-  color: var(--color-text-muted);
-  font-size: 1rem;
-}
-
-.missing {
-  font-family: var(--font-body);
-  font-weight: 400;
-  color: var(--text-body);
 }
 
 .note {
@@ -95,45 +12,8 @@
   line-height: 1.5;
 }
 
-.methodology {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
-  gap: 12px 30px;
-  padding-top: 18px;
-  border-top: 1px solid var(--ownership-line);
-}
-
-.methodology h2 {
-  margin: 0;
-  font-size: 1rem;
-}
-
-.methodology p {
-  margin: 6px 0 0;
-  color: var(--color-text-muted);
-  font-size: 0.8125rem;
-  line-height: 1.5;
-}
-
-.methodology a {
-  display: inline-block;
-  margin-top: 8px;
-  color: var(--color-text-primary);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  text-decoration: underline;
-  text-decoration-color: var(--color-accent);
-  text-underline-offset: 3px;
-}
-
-.methodology a:hover,
-.methodology a:focus-visible {
-  text-decoration-thickness: 2px;
-}
-
-/* ---- Buybacks: each reported execution ---- */
-
-.chartNote {
+.chartNote,
+.cardNote {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -144,59 +24,11 @@
   color: var(--text-small);
 }
 
-.executions {
+/* ---- Buybacks: the lead names the two bars directly ---- */
+
+.buybackLegend {
   display: grid;
-  gap: 0;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.executions li {
-  display: grid;
-  gap: 0.375rem;
-  padding: 0.625rem 0;
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.executions li:last-child {
-  border-bottom: 0;
-}
-
-.executionDate {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.executions dl {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 1rem;
-  margin: 0;
-}
-
-.executions dl div {
-  display: flex;
-  gap: 0.375rem;
-  align-items: baseline;
-}
-
-.executions dt {
-  font-size: 0.75rem;
-  color: var(--text-small);
-}
-
-.executions dd {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 0.8125rem;
-  color: var(--text);
-}
-
-.buybackLead {
-  min-width: 0;
+  gap: 0.125rem;
 }
 
 .legendSpent,
@@ -232,4 +64,64 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.375rem;
+}
+
+/* ---- Shares in 2016 → today ---- */
+
+.shareBalance {
+  display: grid;
+  margin: 0;
+}
+
+.shareBalance > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 2.25rem;
+  padding: 0.375rem 0;
+}
+
+.shareBalance > div[data-share-row='today'] {
+  border-top: 1px solid var(--line);
+}
+
+.shareBalance dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+.shareBalance dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.shareBalance dd[data-tone='up'] {
+  color: var(--up-ink, var(--up));
+}
+
+.shareSwatch {
+  width: 0.625rem;
+  height: 0.625rem;
+  flex: none;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--text) 38%, transparent);
+}
+
+.shareSwatch[data-row='bought'] {
+  background: var(--up-ink, var(--up));
+}
+
+.shareSwatch[data-row='issued'] {
+  background: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.shareSwatch[data-row='today'] {
+  background: var(--accent);
 }

@@ -47,12 +47,19 @@
 .axisLabel,
 .axisValue {
   fill: var(--color-text-muted);
+  font-family: var(--font-mono), monospace;
   font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
 
 .axisValue {
   font-size: 12px;
-  font-variant-numeric: tabular-nums;
+}
+
+/* Compact drawing: fewer marks, bigger labels. */
+[data-chart-variant='compact'] .axisLabel,
+[data-chart-variant='compact'] .axisValue {
+  font-size: 13px;
 }
 
 .crosshair,

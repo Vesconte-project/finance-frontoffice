@@ -49,6 +49,19 @@ test('branches that are not reported are fixed-size outlines, never a difference
   assert.ok(flow.links.filter((link) => !link.pending).every((link) => isReportedNode(link.from) && isReportedNode(link.to)))
 })
 
+test('the wide flow shows what the cost of sales and the operating costs are made of', () => {
+  const flow = wideFlow(values)
+  const nodes = byId(flow)
+  for (const [parent, parts] of [['costOfSales', 'costOfSalesParts'], ['operatingCosts', 'operatingCostsParts']] as const) {
+    const node = nodes.get(parts)
+    assert.ok(node, `${parts} is drawn in the wide flow`)
+    assert.equal(node!.pending, true)
+    assert.ok(node!.x > nodes.get(parent)!.x, `${parts} sits right of ${parent}`)
+    assert.ok(node!.y + node!.height <= nodes.get(parent)!.y, `${parts} sits above ${parent}`)
+    assert.ok(flow.links.some((link) => link.from === parent && link.to === parts && link.pending))
+  }
+})
+
 test('a loss or a missing year keeps a thin line rather than a negative band', () => {
   const nodes = byId(wideFlow({ revenue: 400, grossProfit: null, operatingIncome: -20, netIncome: -35 }))
   assert.equal(nodes.get('grossProfit')!.height, 2)

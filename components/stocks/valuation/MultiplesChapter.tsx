@@ -40,7 +40,7 @@ export default function MultiplesChapter({
         <BeingBuilt size="inline">{chosen.label} today, its usual range and its median are being added.</BeingBuilt>
       )}
       aside={(
-        <ChapterCard title="All four" meta="today">
+        <ChapterCard title="All four" meta="10-yr range">
           <ul className={styles.multipleList} aria-label="Valuation multiples">
             {VALUATION_MULTIPLES.map((multiple) => {
               const today = series[multiple.key].at(-1) ?? null

@@ -31,9 +31,9 @@ import styles from './ExpandedChart.module.css'
 
 type Indicator = 'moving-averages' | 'bollinger' | 'rsi'
 
-type Status =
-  | { kind: 'info'; title: string; body: string }
-  | { kind: 'error'; title: string; body: string; reference: string }
+// Errors name no ticket: the gaps behind them (ENG-152 indicators, ENG-153
+// intraday prices, ENG-156 events) are recorded for the team, not the reader.
+type Status = { kind: 'info' | 'error'; title: string; body: string }
 
 const KIND_OPTIONS = ['Candles', 'Line'] as const
 type KindLabel = (typeof KIND_OPTIONS)[number]
@@ -189,7 +189,6 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
       kind: 'error',
       title: indicator.missing,
       body: `${indicator.about} The data for this indicator does not reach the site yet, so nothing is drawn rather than an approximation.`,
-      reference: 'ENG-152',
     })
   }
 
@@ -198,7 +197,6 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
       kind: 'error',
       title: `Intraday prices are missing for ${label}.`,
       body: 'There is one price per day, so this range stays blocked rather than showing an approximation.',
-      reference: 'ENG-153',
     })
   }
 
@@ -215,17 +213,12 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
 
   const toggleEvents = () => {
     if (events === null) {
-      setStatus({ kind: 'error', title: 'Events could not be loaded.', body: 'The company events for this chart are unavailable right now, so none are marked.', reference: 'ENG-156' })
+      setStatus({ kind: 'error', title: 'Events could not be loaded.', body: 'The company events for this chart are unavailable right now, so none are marked.' })
       return
     }
-    const next = !showEvents
-    setShowEvents(next)
-    if (next && !selected && placedEvents.length) {
-      // Start from the latest event inside the current view, or the latest one.
-      const view = currentViewRef.current
-      const inView = placedEvents.map((event, position) => ({ event, position })).filter(({ event }) => event.index >= view.from && event.index <= view.to)
-      selectEventAt((inView.at(-1) ?? { position: placedEvents.length - 1 }).position)
-    }
+    // Turning the layer on marks the events; a card opens only for the one the reader picks.
+    setShowEvents((value) => !value)
+    setSelectedEvent(null)
   }
 
   const handleClose = () => {
@@ -320,6 +313,7 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
                     </span>
                   </p>
                   <p className={styles.eventTitle}>{selected.title}</p>
+                  <p className={styles.eventPending} data-event-sentence=""><BeingBuiltBadge /> A sentence on what each event said is being added.</p>
                 </div>
                 <div className={styles.eventNav}>
                   <button type="button" className={styles.tool} onClick={() => selectEventAt(selectedPosition - 1)} disabled={selectedPosition <= 0} aria-label="Previous event">←</button>
@@ -327,6 +321,13 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
                   <button type="button" className={styles.tool} onClick={() => selectEventAt(selectedPosition + 1)} disabled={selectedPosition >= placedEvents.length - 1} aria-label="Next event">→</button>
                 </div>
               </>
+            ) : placedEvents.length > 0 ? (
+              // Nothing picked yet: the markers are on the chart, and the arrows reach them by keyboard.
+              <div className={styles.eventNav}>
+                <span className={styles.eventCount}>{placedEvents.length} {placedEvents.length === 1 ? 'event' : 'events'}</span>
+                <button type="button" className={styles.tool} onClick={() => selectEventAt(0)} aria-label="First event">←</button>
+                <button type="button" className={styles.tool} onClick={() => selectEventAt(placedEvents.length - 1)} aria-label="Latest event">→</button>
+              </div>
             ) : (
               <p className={styles.eventTitle}>No company events are recorded for these prices.</p>
             )}
@@ -371,7 +372,6 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
           >
             <div>
               <strong>{status.title}</strong> {status.body}
-              {status.kind === 'error' ? <span className={styles.reference}> ({status.reference})</span> : null}
             </div>
             {!drawTool ? (
               <button type="button" className={styles.statusClose} onClick={() => setStatus(null)}>OK</button>

@@ -39,10 +39,12 @@ export default function PriceAssumesChapter({ ticker }: { ticker: string }) {
               <BeingBuiltBadge />
               <button type="button" className={styles.stepButton} aria-label={`Raise ${step.label.toLowerCase()}`} onClick={() => setAsked(true)}>+</button>
             </div>
-            <span className={styles.stepReferences}>{step.references}: being added.</span>
+            <span className={styles.stepReferences}><BeingBuiltBadge /> {step.references} are being added.</span>
           </div>
         ))}
       </div>
+      {/* Spec PRD-78: one line on the method, written by the backend with the model (ENG-165). */}
+      <p className={styles.chartNote} data-method-line=""><BeingBuiltBadge /> How the value per share is worked out is being added.</p>
       <p className={styles.stepMessage} role="status" data-step-message="">
         {asked ? 'Your assumptions can’t be used yet: the value per share is being added, and nothing is calculated in the meantime.' : ''}
       </p>

@@ -86,19 +86,20 @@ test('ticker navigation exposes a stable horizontal Research hierarchy', () => {
   assert.doesNotMatch(relationshipFieldStyles, /circle at 3% 8%/)
   assert.match(overview, /label="Technicals"/)
   assert.match(overview, /label="Fundamentals"/)
-  assert.match(overview, />Relationships</)
+  assert.match(overview, /label="Relationships"/)
   assert.match(overview, /label: 'Summary'/)
   assert.match(overview, /label: 'Oscillators'/)
   assert.match(overview, /label: 'Moving averages'/)
   assert.match(overview, /data-overview-grade/)
   assert.match(overview, /ScorecardDisc/)
   assert.match(overview, /Current research snapshot/)
-  assert.match(overview, /data-relationship-topology/)
-  assert.match(overview, /formatRelationshipStrength/)
-  assert.match(overview, /formatConfidence/)
+  // Relationships (Spec PRD-78): ticker, name, "Moves with it", strength as a bar, today's change; no confidence, no dashes.
+  assert.match(overview, /Moves with it/)
+  assert.match(overview, /data-strength-bar/)
+  assert.doesNotMatch(overview, /Confidence|formatConfidence|data-relationship-topology/)
   assert.doesNotMatch(overview, /relationship-orbit-preview|GradeRing/)
   assert.doesNotMatch(overview, /navigationSlot|watchlistSlot/)
-  assert.match(overview, /orderedFundamentalGroups\.slice\(0, 6\)/)
+  assert.match(overview, /data-fundamental-cards/)
   assert.doesNotMatch(overview, /snapshotAxes|snapshotAxisLabels|Why this grade\?|Shared across perspectives|Canonical grade/)
   assert.doesNotMatch(overview, /Is now a good moment|Is the business attractive|What is moving with it|What shapes this asset/)
   assert.doesNotMatch(overview, /Continue researching|Go deeper|Lens score/)
@@ -284,15 +285,28 @@ test('the Overview follows the accepted ticker Spec (PRD-78): order, Being built
   // Signals do not mix with Technicals; the model signal stays beside the chart.
   assert.doesNotMatch(overview, /Signal & events|Catalysts/)
   assert.match(overview, /Key readings · \$\{signalTimeframe\}/)
-  // A small disc with the grade beside it; the axis names are page text, one
-  // button per axis (the slices answer to pointers). Meaning waits for ENG-155 / ENG-157.
+  // The disc's slices are its buttons (keyboard and pointer), with the axis names
+  // written around it as page text; no chips duplicate them (Spec: "não duplicar
+  // com chips"). Meaning waits for ENG-155 / ENG-157.
   assert.match(overview, /onSelectAxis=/)
-  assert.match(overview, /showLabels=\{false\}/)
-  assert.match(overview, /slicesFocusable=\{false\}/)
-  assert.match(overview, /data-axis-list/)
-  assert.match(overview, /aria-pressed=\{selectedAxis === axis\.key\}/)
-  assert.match(disc, /slicesFocusable/)
+  assert.match(overview, /textLabels/)
+  assert.doesNotMatch(overview, /slicesFocusable=\{false\}|data-axis-list|axisChip/)
+  assert.match(disc, /slicesFocusable = true/)
   assert.match(disc, /onKeyDown/)
+  assert.doesNotMatch(disc, />\s*–\s*</, 'no dash in a slice without a score')
+  // Only what the Spec places beside the chart: the score and the two verdict lines.
+  assert.doesNotMatch(overview, /readingVerdicts|How the score works|regime'/)
+  // The hero lays out by its own width: a 300px detail column (340px when wide).
+  const overviewStyles = readRepoFile('components/stocks/StockOverviewClient.module.css')
+  assert.match(overviewStyles, /@container overview-lead \(min-width: 56rem\)[\s\S]*18\.75rem/)
+  assert.match(overviewStyles, /@container overview-lead \(min-width: 72rem\)[\s\S]*21\.25rem/)
+  assert.match(overviewStyles, /@container hero-chart \(max-width: 519px\)/)
+  assert.doesNotMatch(overviewStyles, /wrap-reverse/)
+  // Fundamentals cards: reported revenue bars from the same series as the tab; serif numbers.
+  assert.match(page, /annualSeries\(income\.rows, 'revenue'\)/)
+  assert.match(overview, /MiniBars/)
+  assert.match(overviewStyles, /\.fundamentalValue strong \{[^}]*font-display/)
+  assert.doesNotMatch(overview, /Financial statements →|Valuation history →|Ownership & capital →/)
   // Events are fetched without blocking the page and drawn only in the expanded chart.
   assert.match(page, /chartEventsPromise/)
   assert.doesNotMatch(page, /await chartEventsPromise/)
@@ -322,6 +336,11 @@ test('Fundamentals and Financials follow the accepted ticker Spec (PRD-78, phase
   // Growth is the backend's (ENG-170): the "% growth" view is Being built.
   assert.match(revenue, /'% growth'/)
   assert.doesNotMatch(revenue, /Math\.pow|\*\* \(1 \//)
+  // Operating margin: the card is "Since {year}" and the net margin is the chapter's footer.
+  assert.match(fundamentals, /`Since \$\{sinceYear\}`/)
+  assert.match(fundamentals, /data-net-margin/)
+  assert.doesNotMatch(fundamentals, /What moved the margin|title="Net margin"/)
+  assert.match(fundamentals, /Ownership & Capital →/)
   // Dividends are reported payments from corporate actions.
   assert.match(fundamentalsPage, /getTickerCorporateActions/)
   assert.match(fundamentalsPage, /dividendHistory/)
@@ -333,6 +352,8 @@ test('Fundamentals and Financials follow the accepted ticker Spec (PRD-78, phase
   assert.match(flowStyles, /@container sales-flow \(width >= 56\.25rem\)/)
   assert.doesNotMatch(flowStyles, /flex-direction: column[^}]*data-flow-variant|writing-mode/)
   assert.match(flow, /label="Biggest changes"/)
+  // The narrow flow's sales bar is named.
+  assert.match(flow, /narrowBarLabel/)
   assert.match(financialsPage, /incomeSeries/)
   // The statement tables and the history by plan were removed (founder, 2026-10-04).
   assert.doesNotMatch(financialsPage, /cutStatementHistory|tierFor|searchParams/)
@@ -387,17 +408,33 @@ test('Business and Ownership & Capital follow the accepted ticker Spec (PRD-78, 
   assert.ok(business.indexOf('label="How the business works"') < business.indexOf('label="What it depends on"'))
 
   // Ownership chapters in the Spec's order, with the reported buybacks.
-  const chapters = ['id="who-owns"', 'id="insiders"', '<BuybacksChapter', 'id="price-pays-for"'].map((token) => ownership.indexOf(token))
+  const chapters = ['id="who-owns"', 'id="insiders"', '<BuybacksChapter', '<PricePaysForChapter', '<PriceHistoryChapter'].map((token) => ownership.indexOf(token))
   assert.ok(chapters.every((index) => index > 0))
   assert.deepEqual([...chapters].sort((a, b) => a - b), chapters)
-  assert.match(ownership, /label="Buybacks since 2016"/)
+  assert.match(ownership, /`Buybacks since \$\{SINCE_YEAR\}`/)
   assert.match(ownershipPage, /getTickerEquityCapitalEvents/)
   assert.match(ownershipPage, /buybackExecutions/)
   // Years add up the reported executions and value them at today's price
-  // (decision 4); the share count then and now waits on ENG-167.
+  // (decision 4), every year from 2016; never across currencies.
   assert.match(capital, /export function buybackSummary/)
-  assert.match(ownershipPage, /buybackSummary/)
-  assert.match(ownership, /label="Shares then and now"/)
+  assert.match(ownershipPage, /buybackSummary\(buybacks, [^)]*fromYear: SINCE_YEAR/)
+  assert.match(ownershipPage, /singleCurrency/)
+  // Founder, 2026-10-05: no snapshot strip (it repeated the market cap), no
+  // list of each buyback, one legend; the share balance shows what is reported.
+  assert.doesNotMatch(ownership, /CurrentSnapshot|snapshotStrip|Each buyback|Not available/)
+  assert.match(ownership, /Bought back/)
+  assert.match(ownership, /Shares today/)
+  // What the price pays for is a horizontal flow; How the price got here is its
+  // own chapter with Years | Quarters and no Play.
+  const story = readRepoFile('components/stocks/ownership/PriceStoryChapters.tsx')
+  const storyStyles = readRepoFile('components/stocks/ownership/Ownership.module.css')
+  assert.match(story, /id="price-pays-for"/)
+  assert.match(story, /id="price-got-here"/)
+  assert.match(story, /\['Years', 'Quarters'\]/)
+  assert.doesNotMatch(story, /Play|setInterval/)
+  assert.match(storyStyles, /\.paysFlow \{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\) 1\.25rem\) minmax\(0, 1fr\)/)
+  assert.doesNotMatch(storyStyles, /writing-mode|flex-direction: column[^}]*paysFlow/)
+  assert.doesNotMatch(story, /bridgeFormula|Enterprise value/)
 })
 
 test('conformance with the accepted ticker Spec (PRD-78): the items the review found', () => {

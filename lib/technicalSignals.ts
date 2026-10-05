@@ -135,8 +135,8 @@ function actionFromScore(score: number): TechnicalAction {
 }
 
 function gaugeLabelFromAction(action: TechnicalAction, score: number): string {
-  if (action === 'Buy') return score >= 0.58 ? 'Strong Buy' : 'Buy'
-  if (action === 'Sell') return score <= -0.58 ? 'Strong Sell' : 'Sell'
+  if (action === 'Buy') return score >= 0.58 ? 'Strong buy' : 'Buy'
+  if (action === 'Sell') return score <= -0.58 ? 'Strong sell' : 'Sell'
   return 'Neutral'
 }
 

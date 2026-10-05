@@ -4,8 +4,8 @@ import styles from './PairedBars.module.css'
 
 export type PairedBar = {
   key: string
-  /** First bar of the pair (e.g. what was spent). */
-  first: number
+  /** First bar of the pair (e.g. what was spent); null leaves the period empty. */
+  first: number | null
   /** Second bar of the pair (e.g. what it is worth now); null draws nothing. */
   second: number | null
   /** Written above the pair. */
@@ -31,7 +31,7 @@ function Plot({
   const top = bracket ? 52 : 30
   const bottom = 28
   const side = 4
-  const high = Math.max(1e-9, ...pairs.flatMap((pair) => [pair.first, pair.second ?? 0]))
+  const high = Math.max(1e-9, ...pairs.flatMap((pair) => [pair.first ?? 0, pair.second ?? 0]))
   const plotHeight = box.height - top - bottom
   const zeroY = box.height - bottom
   const slot = (box.width - side * 2) / Math.max(1, pairs.length)
@@ -59,7 +59,7 @@ function Plot({
       labels={(
         <>
           {pairs.map((pair, index) => (pair.label && written.has(index) ? (
-            <ChartLabel key={`m-${pair.key}`} box={box} x={xFor(index)} anchor={anchorFor(index)} y={y(Math.max(pair.first, pair.second ?? 0)) - 4} baseline="end" tone="up">
+            <ChartLabel key={`m-${pair.key}`} box={box} x={xFor(index)} anchor={anchorFor(index)} y={y(Math.max(pair.first ?? 0, pair.second ?? 0)) - 4} baseline="end" tone="up">
               {pair.label}
             </ChartLabel>
           ) : null))}
@@ -77,7 +77,9 @@ function Plot({
       <line className={styles.zero} x1={0} x2={box.width} y1={zeroY} y2={zeroY} />
       {pairs.map((pair, index) => (
         <g key={pair.key}>
-          <rect className={styles.first} x={centre(index) - barWidth - 1} y={y(pair.first)} width={barWidth} height={Math.max(0.5, zeroY - y(pair.first))} />
+          {pair.first !== null ? (
+            <rect className={styles.first} x={centre(index) - barWidth - 1} y={y(pair.first)} width={barWidth} height={Math.max(0.5, zeroY - y(pair.first))} />
+          ) : null}
           {pair.second !== null ? (
             <rect className={styles.second} x={centre(index) + 1} y={y(pair.second)} width={barWidth} height={Math.max(0.5, zeroY - y(pair.second))} />
           ) : null}

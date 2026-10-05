@@ -197,8 +197,9 @@ function NarrowFlow({
 
   return (
     <div className={styles.narrow} data-flow-variant="narrow">
-      {/* Sales is the bar the four parts leave from; its amount is written on
-          the sales bar above the flow. */}
+      {/* Sales is the bar the four parts leave from, named above it; its
+          amount is written on the sales bar above the flow. */}
+      <span className={styles.narrowBarLabel} aria-hidden="true">{NODE_LABEL.sales}</span>
       <button
         type="button"
         className={styles.narrowBar}
