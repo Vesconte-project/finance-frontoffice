@@ -245,7 +245,7 @@ test('canonical research views use shared ticker-scoped backend contracts', () =
   assert.match(eventsPage, /getTickerDisclosures/)
   assert.match(valuationPage, /getTickerMarketMetrics/)
   assert.match(overview, /TemporalLineChart/)
-  assert.match(valuation, /TemporalLineChart/)
+  assert.match(valuation, /MultiplesChapter/)
   assert.doesNotMatch(valuation, /observationRow/)
   assert.match(temporalChart, /data-temporal-line-chart/)
   assert.match(temporalChart, /showRangeChange/)
@@ -337,4 +337,31 @@ test('Fundamentals and Financials follow the accepted ticker Spec (PRD-78, phase
   // Nothing is derived from two reported values: no subtraction between line
   // items, no ratio and no growth in the reading layer.
   assert.doesNotMatch(reading, /\.value\s*[-/]\s*[\w.]+\.value|growth\s*=|yoy/i)
+})
+
+test('Valuation follows the accepted ticker Spec (PRD-78, phase 4): reported multiples, the rest being built', () => {
+  const valuation = readRepoFile('components/stocks/StockValuationResearch.tsx')
+  const multiples = readRepoFile('components/stocks/valuation/MultiplesChapter.tsx')
+  const assumes = readRepoFile('components/stocks/valuation/PriceAssumesChapter.tsx')
+  const reading = readRepoFile('lib/valuation-reading.ts')
+  const page = readRepoFile('app/(app)/stocks/[ticker]/valuation/page.tsx')
+
+  // Chapters in the Spec's order.
+  const order = ['<MultiplesChapter', 'id="peers"', '<PriceAssumesChapter', 'id="analysts"'].map((token) => valuation.indexOf(token))
+  assert.ok(order.every((index) => index > 0), 'every Valuation chapter is rendered')
+  assert.deepEqual([...order].sort((a, b) => a - b), order)
+  assert.match(multiples, /label="Multiples, last 10 years"/)
+  assert.match(multiples, /title="All four"/)
+  assert.match(assumes, /label="What the price assumes"/)
+  assert.match(valuation, /label="Against its peers"/)
+  assert.match(valuation, /label="What analysts expect"/)
+  // The four multiples of "All four", from market metrics.
+  for (const metric of ['trailing_pe', 'price_to_sales', 'price_to_free_cash_flow', 'enterprise_value_to_ebitda']) assert.match(reading, new RegExp(metric))
+  assert.doesNotMatch(reading, /price_to_book/)
+  assert.match(page, /getTickerMarketMetrics/)
+  // No statistic or model value is computed here: no median, percentile or
+  // discounting; the stepper answers with an explicit message.
+  assert.doesNotMatch(reading, /function \w*(median|percentile|quantile|band|discount)/i)
+  assert.doesNotMatch(assumes, /Math\.pow|\w \*\* \w/)
+  assert.match(assumes, /role="status"/)
 })

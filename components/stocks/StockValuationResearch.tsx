@@ -1,112 +1,55 @@
-import TemporalLineChart from '@/components/charts/TemporalLineChart'
 import ResearchViewShell, { ResearchAdPlacement } from '@/components/stocks/ResearchViewShell'
-import type { MarketMetricObservation, MarketMetricsPayload } from '@/lib/canonical-research'
-import { formatResearchDate } from '@/lib/research-evidence'
+import BeingBuilt from '@/components/stocks/research/BeingBuilt'
+import ResearchChapter from '@/components/stocks/research/ResearchChapter'
+import MultiplesChapter from '@/components/stocks/valuation/MultiplesChapter'
+import PriceAssumesChapter from '@/components/stocks/valuation/PriceAssumesChapter'
+import styles from '@/components/stocks/valuation/Valuation.module.css'
 import type { StockResearchData } from '@/lib/stock-research'
-import styles from './StockValuationResearch.module.css'
+import type { MultipleKey, MultiplePoint } from '@/lib/valuation-reading'
 
-export type ValuationMetric = 'pe' | 'ps' | 'pb' | 'pfcf' | 'ev-ebitda'
-
-export const VALUATION_METRICS: Array<{ key: ValuationMetric; label: string; caption: string }> = [
-  { key: 'pe', label: 'P/E', caption: 'Price against earnings' },
-  { key: 'ps', label: 'P/S', caption: 'Price against revenue' },
-  { key: 'pb', label: 'P/B', caption: 'Price against book value' },
-  { key: 'pfcf', label: 'P/FCF', caption: 'Price against free cash flow' },
-  { key: 'ev-ebitda', label: 'EV/EBITDA', caption: 'Enterprise value against EBITDA' },
-]
-
-export type ValuationBundle = Record<ValuationMetric, MarketMetricsPayload | null>
-
-function formatMultiple(value: number): string {
-  return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value)}x`
-}
-
-type ValuationSeries = {
-  key: ValuationMetric
-  label: string
-  caption: string
-  points: Array<{ date: string; value: number; key: string; tooltipMeta: string }>
-  latest: MarketMetricObservation
-}
-
-function readSeries(
-  metric: { key: ValuationMetric; label: string; caption: string },
-  payload: MarketMetricsPayload | null,
-): ValuationSeries | null {
-  const rows = (payload?.available ? payload.rows : [])
-    .filter((row): row is MarketMetricObservation & { value: number } => row.value !== null && Number.isFinite(row.value))
-  if (rows.length === 0) return null
-
-  const ordered = [...rows].sort((left, right) => left.observationDate.localeCompare(right.observationDate))
-  return {
-    key: metric.key,
-    label: metric.label,
-    caption: metric.caption,
-    points: ordered.map((row) => ({
-      date: row.observationDate,
-      value: row.value,
-      key: `${row.observationDate}:${row.knownAt}`,
-      tooltipMeta: `Known ${formatResearchDate(row.knownAt)}`,
-    })),
-    latest: ordered[ordered.length - 1],
-  }
-}
-
+/**
+ * Valuation, in the Spec's order: multiples, peers, what the price assumes and
+ * what analysts expect. Only reported multiples are drawn; peers, sector,
+ * the valuation model and analyst consensus are being built (ENG-89, ENG-91,
+ * ENG-165, ENG-166).
+ */
 export default function StockValuationResearch({
   data,
-  observations,
+  series,
 }: {
   data: StockResearchData
-  observations: ValuationBundle
+  series: Record<MultipleKey, MultiplePoint[]>
 }) {
-  // Every multiple this view covers, whether or not the contract answers for
-  // it. Dropping the unanswered ones made four of the five vanish with no
-  // account of where they went; the reader cannot tell a multiple we do not
-  // track from one we track and have nothing for.
-  const multiples = VALUATION_METRICS.map((metric) => ({
-    metric,
-    series: readSeries(metric, observations[metric.key]),
-  }))
-  const covered = multiples.filter((entry) => entry.series !== null)
-
+  const isFund = data.kind === 'fund'
   return (
-    // No page header, and no metric tabs. Every multiple this contract answers
-    // for is on the page at once: switching between them was a page load to
-    // find out whether the next one had any observations at all, and a metric
-    // with none is simply absent here rather than an empty frame.
-    <ResearchViewShell data={data} title="Valuation History" showHeader={false}>
-      <div className={styles.grid}>
-        {multiples.map(({ metric, series }) => (
-          <section className={styles.multiple} key={metric.key} data-covered={series !== null || undefined}>
-            <div className={styles.multipleHead}>
-              <div>
-                <h2>{metric.label}</h2>
-                <p>{metric.caption}</p>
-              </div>
-              {series ? <strong>{formatMultiple(series.latest.value as number)}</strong> : null}
-            </div>
-            {series ? (
-              <TemporalLineChart
-                className={styles.multipleChart}
-                points={series.points}
-                ariaLabel={`${metric.label} observations for ${data.ticker}`}
-                valueFormat="multiple"
-              />
-            ) : (
-              // Plain English, and no figure of any kind. The reader is told
-              // this is tracked and empty, not handed a dash where a number
-              // goes.
-              <p className={styles.multiplePending}>Not covered for {data.ticker} yet</p>
-            )}
-          </section>
-        ))}
+    <ResearchViewShell data={data} title="Valuation" showHeader={false}>
+      <div className={styles.chapters} data-valuation="">
+        <MultiplesChapter series={series} ticker={data.ticker} />
+        {isFund ? null : (
+          <>
+            <ResearchChapter
+              id="peers"
+              label="Against its peers"
+              band
+              aside={<BeingBuilt label="The chosen peer">A peer’s P/E, its expected growth and how it sits against the trend are being added.</BeingBuilt>}
+            >
+              <BeingBuilt size="chart">
+                {data.ticker}’s P/E against expected growth over three years, beside its peers and their trend, is being added.
+              </BeingBuilt>
+            </ResearchChapter>
+            <PriceAssumesChapter ticker={data.ticker} />
+            <ResearchChapter
+              id="analysts"
+              label="What analysts expect"
+              band
+              lead={<BeingBuilt size="inline">The median price target, and how far it is from the price, is being added.</BeingBuilt>}
+              aside={<BeingBuilt label="Recommendations">How many analysts say buy, hold or sell, and how the median target moved in 90 days, are being added.</BeingBuilt>}
+            >
+              <BeingBuilt size="chart">The range of price targets, from the lowest to the highest, with the price and the median, is being added.</BeingBuilt>
+            </ResearchChapter>
+          </>
+        )}
       </div>
-      {covered.length === 0 ? (
-        <p className={styles.multiplePending}>
-          Valuation multiples for {data.ticker} are not available yet.
-        </p>
-      ) : null}
-
       <ResearchAdPlacement />
     </ResearchViewShell>
   )

@@ -24,6 +24,7 @@ import {
   tickerEventsFixture,
   tickerFinancialStatementsFixture,
   tickerHistoryFixture,
+  tickerMarketMetricsFixture,
   tickerOhlcFixture,
   tickerSummaryFixture,
 } from '../e2e/fixtures/ticker-page.mjs'
@@ -110,6 +111,12 @@ const server = createServer((request, response) => {
   const statementsRoute = path.match(/^\/tickers\/([^/]+)\/financial-statements$/)
   if (statementsRoute && isFixtureTicker(decodeURIComponent(statementsRoute[1]))) {
     send(response, 200, tickerFinancialStatementsFixture(decodeURIComponent(statementsRoute[1]), url.searchParams.get('statementType')))
+    return
+  }
+
+  const metricsRoute = path.match(/^\/tickers\/([^/]+)\/market-metrics$/)
+  if (metricsRoute && isFixtureTicker(decodeURIComponent(metricsRoute[1]))) {
+    send(response, 200, tickerMarketMetricsFixture(decodeURIComponent(metricsRoute[1]), url.searchParams.get('metric')))
     return
   }
 

@@ -1,0 +1,23 @@
+.frame {
+  max-width: 52rem;
+}
+
+.line {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.peak {
+  fill: var(--surface);
+  stroke: var(--text);
+  stroke-width: 1.5;
+}
+
+.latest {
+  fill: var(--accent);
+  stroke: var(--surface);
+  stroke-width: 1.5;
+}

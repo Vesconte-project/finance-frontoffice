@@ -47,6 +47,18 @@ Status: Phase 2 first vertical slice implemented for visual review.
 - `StockResearchNav` owns keyboard-operable horizontal navigation, active-destination visibility, local-state links, compact disclosures, Escape/outside close, and mobile scrolling.
 - `ResearchViews.module.css` supplies document-flow chapters, metric rows, statement controls, table behavior, zoom-safe layouts, and reduced-motion handling.
 
+## Valuation (PRD-78, phase 4)
+
+- Chapters, in the Spec's order: Multiples, last 10 years; Against its peers; What the price assumes; What analysts expect.
+- **Multiples:**
+  - The chart draws the reported observations of the chosen multiple from `/tickers/:ticker/market-metrics`, one value per day (the latest revision wins).
+  - The highest observation and today's value are written on the line.
+  - The "All four" card lists P/E, P/S, P/FCF and EV/EBITDA with today's value; a row switches the chart. P/B is no longer shown: the Spec's card has four multiples.
+  - The usual band, the median, ten years of history and the sector are Being built (ENG-89, ENG-91). No statistic is computed in the frontend.
+- **Peers, what the price assumes and analysts** are Being built (ENG-91, ENG-165, ENG-166).
+  - The two "What the price assumes" steps are in place. They answer with an explicit message and compute nothing.
+- The section below describes the earlier slice and is kept as history.
+
 ## Valuation History and Ownership & Capital slice
 
 Status: implemented. Valuation combines summary/profile context with canonical `/tickers/:ticker/market-metrics` observations; the currently populated historical multiple is trailing P/E. Ownership evidence remains limited to market cap, shares outstanding, currency, and reporting period. Other historical multiples, ownership composition, holders, capital changes, debt, cash, and enterprise-value terms remain intentional integration states recorded in the same Notion index and in REQ-012 (Linear ENG-89).
