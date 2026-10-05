@@ -68,15 +68,17 @@ test.describe('live ticker architecture', () => {
     await expect(page.getByRole('button', { name: /Perspective/ })).toHaveCount(0)
     await expect(page.getByRole('radiogroup', { name: 'Investment perspective' })).toHaveCount(0)
 
-    const finalGrade = page.getByRole('complementary', { name: 'Final grade' })
-    await expect(finalGrade).toBeVisible()
-    await expect(finalGrade.getByRole('img', { name: /^Scorecard / })).toBeVisible()
-    await expect(page.getByRole('region', { name: 'Current research snapshot' })).toBeVisible()
+    // Beside the chart: the score disc (its slices are the axis buttons) and the two verdict lines.
+    const researchScore = page.getByRole('complementary', { name: 'Research score and verdicts' })
+    await expect(researchScore).toBeVisible()
+    await expect(researchScore.getByRole('group', { name: /^Scorecard/ })).toBeVisible()
+    await expect(page.locator('dl[aria-label="Current research snapshot"]')).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Technicals', exact: true })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Fundamentals', exact: true })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Relationships', exact: true })).toBeVisible()
-    await expect(page.getByRole('radiogroup', { name: 'Chart timeframe' }).getByRole('radio', { name: '1M', exact: true })).toHaveAttribute('aria-checked', 'true')
-    await expect(page.getByRole('radiogroup', { name: 'Technical signals timeframe' }).getByRole('radio', { name: '1D', exact: true })).toHaveAttribute('aria-checked', 'true')
+    // Spec PRD-78: the hero opens on 1Y; the Technicals on 1D.
+    await expect(page.getByRole('radiogroup', { name: 'Chart timeframe' }).getByRole('radio', { name: '1Y', exact: true })).toHaveAttribute('aria-checked', 'true')
+    await expect(page.getByRole('radiogroup', { name: 'Technical timeframe' }).getByRole('radio', { name: '1D', exact: true })).toHaveAttribute('aria-checked', 'true')
 
     const topOrder = await page.locator('[data-ticker-identity], [data-ticker-price], [data-ticker-navigation]').evaluateAll((nodes) =>
       Object.fromEntries(nodes.map((node) => [node.getAttribute('data-ticker-identity') !== null ? 'identity' : node.getAttribute('data-ticker-price') !== null ? 'price' : 'navigation', node.getBoundingClientRect().top + window.scrollY])),
@@ -168,14 +170,14 @@ test.describe('live ticker architecture', () => {
     await page.goto('/stocks/0005.HK')
     await expect(page.getByText('0005.HK', { exact: true }).first()).toBeVisible()
     await expect(page.locator('[data-selected-ticker-node]')).toHaveAttribute('data-tone', 'brand')
-    const researchSnapshot = page.getByRole('region', { name: 'Current research snapshot' })
+    const researchSnapshot = page.locator('dl[aria-label="Current research snapshot"]')
     await expect(researchSnapshot.getByText('Model signal', { exact: true })).toBeVisible()
     await expect(researchSnapshot.getByText('Unavailable', { exact: true })).toBeVisible()
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, '0005-partial-equity-desktop')
   })
 
-  test('Relationships keeps the universe and company discovery across viewports', async ({ page }, testInfo) => {
+  test('Relationships keeps the universe and its inspector across viewports', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/stocks/AAPL/relationships')
     await expect(page.locator('[data-relationship-evidence] canvas')).toBeVisible()
@@ -187,7 +189,7 @@ test.describe('live ticker architecture', () => {
     await expect(page.locator('[data-relationship-evidence] canvas')).toBeVisible()
     await expect(page.locator('[data-relationship-node]').first()).toBeVisible()
     await expect(page.locator('[data-ticker-chrome] [data-ticker-relationship-field] canvas')).toBeVisible()
-    await expect(page.locator('[data-relationship-card]').first()).toBeVisible()
+    await expect(page.locator('[data-company-name]')).toBeVisible()
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, 'aapl-relationships-mobile')
   })

@@ -41,11 +41,10 @@ test.describe('Phase 3 relationship evidence', () => {
     await page.goto('/stocks/AAPL/relationships?layer=market&window=252')
 
     await expect(page.locator('[data-relationship-evidence]')).toBeVisible()
-    await expect(page.getByText('Confidence', { exact: true }).first()).toBeVisible()
-    await expect(page.getByText('Confidence = clearer', { exact: true })).toBeVisible()
     await expect(page.locator('[data-relationship-evidence] canvas')).toBeVisible()
-    await expect(page.locator('#relationship-map-guide')).toBeVisible()
     await expect(page.locator('[data-company-name]')).toBeVisible()
+    // Spec PRD-78 global rules: no loose legend, no summary sentence, no footnote.
+    await expect(page.getByText(/Strength = closer|Confidence = clearer|How to read relationships/)).toHaveCount(0)
     await expect(page.locator('[data-company-ticker]')).toBeVisible()
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, 'aapl-relationships-market-desktop')
@@ -71,29 +70,32 @@ test.describe('Phase 3 relationship evidence', () => {
       await node.click()
       await expect(node).toHaveAttribute('aria-pressed', 'true')
       expect(page.url()).toBe(routeBeforeSelection)
-      await expect(page.locator('[data-relationship-evidence] aside').getByRole('link', { name: /^Explore / })).toBeVisible()
+      // The inspector is the chapter's detail column, beside the map.
+      await expect(page.locator('[data-research-chapter="related-companies"] [data-chapter-aside]').getByRole('link', { name: /^Explore / })).toBeVisible()
     }
 
-    const windowSelector = page.getByRole('radiogroup', { name: 'Evidence window' })
-    await windowSelector.getByRole('radio', { name: '126', exact: true }).click()
+    const windowSelector = page.getByRole('radiogroup', { name: 'Trading days measured' })
+    await windowSelector.getByRole('radio', { name: '126 days', exact: true }).click()
     await expect(page).toHaveURL(/window=126/)
-    await expect(windowSelector.getByRole('radio', { name: '126', exact: true })).toHaveAttribute('aria-checked', 'true')
+    await expect(windowSelector.getByRole('radio', { name: '126 days', exact: true })).toHaveAttribute('aria-checked', 'true')
     await expect(page.locator('[data-ticker-research-loading]')).toHaveCount(0)
   })
 
-  test('AAPL keeps a touch-first universe and company discovery cards on mobile', async ({ page }, testInfo) => {
+  test('AAPL keeps a touch-first universe and its inspector on mobile', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/stocks/AAPL/relationships?window=252')
     await expect(page.locator('[data-relationship-evidence] canvas')).toBeVisible()
     await expect(page.locator('[data-relationship-node]').first()).toBeVisible()
-    await expect(page.locator('[data-relationship-card]').first()).toBeVisible()
+    // The map is the list of companies: no cards repeat it.
+    await expect(page.locator('[data-relationship-card]')).toHaveCount(0)
+    await expect(page.locator('[data-company-name]')).toBeVisible()
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, 'aapl-relationships-mobile')
 
     await page.setViewportSize({ width: 320, height: 568 })
     await page.reload()
     await expect(page.locator('[data-relationship-evidence] canvas')).toBeVisible()
-    await expect(page.locator('[data-relationship-card]').first()).toBeVisible()
+    await expect(page.locator('[data-company-name]')).toBeVisible()
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, 'aapl-relationships-320')
   })
@@ -103,8 +105,9 @@ test.describe('Phase 3 relationship evidence', () => {
     await page.goto('/stocks/PFE/relationships?layer=leadLag&window=252')
 
     await expect(page.locator('[data-relationship-evidence]')).toBeVisible()
-    await expect(page.getByText('Overlaid paths use separate vertical scales.', { exact: false })).toBeVisible()
-    await expect(page.locator('svg[aria-label*="separate vertical scales"]')).toBeVisible()
+    // Both lines start at 100 on one scale, each named at its end with its return.
+    await expect(page.locator('svg[aria-label*="both starting at 100"]')).toBeVisible()
+    await expect(page.getByText('Overlaid paths use separate vertical scales.', { exact: false })).toHaveCount(0)
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, 'pfe-relationships-independent-price-lanes')
   })
@@ -112,12 +115,15 @@ test.describe('Phase 3 relationship evidence', () => {
   test('fund and partial equity states stay compact and asset-aware', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/stocks/QQQ/relationships')
-    await expect(page.getByText('Partial coverage', { exact: true }).last()).toBeVisible()
+    // The map, the chapter's Being built block, or the retry state when the data
+    // cannot be read — never internal wording.
+    await expect(page.locator('[data-research-chapter="related-companies"]').or(page.getByRole('button', { name: 'Retry' }))).toBeVisible()
+    await expect(page.getByText(/relationship endpoint|Dataset /)).toHaveCount(0)
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, 'qqq-relationships-partial')
 
     await page.goto('/stocks/0005.HK/relationships')
-    await expect(page.getByText(/Partial coverage|Dataset as of/).first()).toBeVisible()
+    await expect(page.locator('[data-research-chapter="related-companies"]').or(page.getByRole('button', { name: 'Retry' }))).toBeVisible()
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, '0005-relationships-partial')
   })

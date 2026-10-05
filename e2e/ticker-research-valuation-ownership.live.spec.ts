@@ -38,8 +38,15 @@ test.describe('ticker valuation and ownership Phase 2 slice', () => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/stocks/AAPL/ownership')
     await expect(page.getByRole('heading', { name: 'Who owns the shares', exact: true })).toBeVisible()
-    await expect(page.getByText('Enterprise value', { exact: true })).toBeVisible()
-    await expect(page.getByText('Market cap', { exact: true }).first()).toBeVisible()
+    // Spec PRD-78 order; What the price pays for is a horizontal flow and How
+    // the price got here its own chapter with Years | Quarters (no Play).
+    const chapters = await page.locator('[data-research-chapter]').evaluateAll((nodes) => nodes.map((node) => node.id))
+    expect(chapters).toEqual(['who-owns', 'insiders', 'buybacks', 'price-pays-for', 'price-got-here'])
+    await expect(page.locator('[data-pays-flow]')).toBeVisible()
+    await expect(page.getByRole('radiogroup', { name: 'Price by' }).getByRole('radio', { name: 'Quarters', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Play/ })).toHaveCount(0)
+    // The snapshot strip that repeated the market cap is gone.
+    await expect(page.getByRole('region', { name: 'Current capital snapshot' })).toHaveCount(0)
     const researchNav = page.getByRole('navigation', { name: 'Ticker research' })
     await expect(researchNav.getByRole('link', { name: 'Ownership & Capital', exact: true })).toHaveAttribute('aria-current', 'page')
     await expect(researchNav.getByRole('button')).toHaveCount(0)

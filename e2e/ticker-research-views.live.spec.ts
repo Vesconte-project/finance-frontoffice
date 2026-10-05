@@ -61,7 +61,8 @@ test.describe('ticker research views Phase 2 slice', () => {
     const identityBeforeNavigation = await tickerChrome.locator('[data-ticker-identity]').textContent()
     const priceBeforeNavigation = await tickerChrome.locator('[data-ticker-price]').textContent()
     await researchNav.getByRole('link', { name: 'Fundamentals', exact: true }).click()
-    await expect(page.getByRole('heading', { name: 'Fundamentals', exact: true })).toBeVisible()
+    // The tab has no page header: its first chapter is Revenue.
+    await expect(page.getByRole('heading', { name: 'Revenue', exact: true })).toBeVisible()
     expect(await tickerChrome.locator('[data-ticker-identity]').textContent()).toBe(identityBeforeNavigation)
     expect(await tickerChrome.locator('[data-ticker-price]').textContent()).toBe(priceBeforeNavigation)
     await researchNav.getByRole('link', { name: 'Business', exact: true }).click()
@@ -92,7 +93,7 @@ test.describe('ticker research views Phase 2 slice', () => {
     await expect(loading).toBeVisible()
     const pulse = loading.locator('[data-loading-pulse]')
     await expect(pulse).toBeVisible()
-    await expect(pulse).toHaveAttribute('aria-label', 'Loading Financial Statements')
+    await expect(pulse).toHaveAttribute('aria-label', 'Loading Financials')
     await expect(pulse.locator('i')).toHaveCount(7)
     await expect(pulse.locator('i').first()).toHaveCSS('animation-name', /loading-point-phase/)
     await expect(loading).toHaveText('')
