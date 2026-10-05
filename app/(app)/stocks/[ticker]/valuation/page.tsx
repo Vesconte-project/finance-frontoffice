@@ -1,37 +1,28 @@
-import StockValuationResearch, {
-  VALUATION_METRICS,
-  type ValuationBundle,
-  type ValuationMetric,
-} from '@/components/stocks/StockValuationResearch'
+import StockValuationResearch from '@/components/stocks/StockValuationResearch'
 import ResearchUnavailable from '@/components/stocks/ResearchUnavailable'
 import { getTickerMarketMetrics } from '@/lib/canonical-research'
 import { getStockResearchData } from '@/lib/stock-research'
-
-const MARKET_METRICS: Record<ValuationMetric, string> = {
-  pe: 'trailing_pe',
-  ps: 'price_to_sales',
-  pb: 'price_to_book',
-  pfcf: 'price_to_free_cash_flow',
-  'ev-ebitda': 'enterprise_value_to_ebitda',
-}
+import { VALUATION_MULTIPLES, multipleSeries, type MultipleKey, type MultiplePoint } from '@/lib/valuation-reading'
 
 export default async function ValuationPage({ params }: { params: Promise<{ ticker: string }> }) {
   const { ticker: rawTicker } = await params
   const ticker = rawTicker.toUpperCase()
-  // Every multiple at once. The `?metric=` tab is gone, and `?period=` with it:
-  // it was parsed, threaded through every link and never sent anywhere, because
-  // `getTickerMarketMetrics` has no period argument.
+  // The four multiples of the Spec's "All four", every observation the read
+  // model holds for each (up to its 1000-row cap), one value per day.
   const [data, ...payloads] = await Promise.all([
     getStockResearchData(ticker).catch(() => null),
-    ...VALUATION_METRICS.map((metric) => getTickerMarketMetrics(ticker, {
-      metric: MARKET_METRICS[metric.key],
+    ...VALUATION_MULTIPLES.map((multiple) => getTickerMarketMetrics(ticker, {
+      metric: multiple.metric,
       latestOnly: false,
-      limit: 250,
+      limit: 1000,
     }).catch(() => null)),
   ])
   if (!data) return <ResearchUnavailable ticker={ticker} />
-  const observations = Object.fromEntries(
-    VALUATION_METRICS.map((metric, index) => [metric.key, payloads[index]]),
-  ) as ValuationBundle
-  return <StockValuationResearch data={data} observations={observations} />
+  const series = Object.fromEntries(
+    VALUATION_MULTIPLES.map((multiple, index) => {
+      const payload = payloads[index]
+      return [multiple.key, payload?.available ? multipleSeries(payload.rows) : []]
+    }),
+  ) as Record<MultipleKey, MultiplePoint[]>
+  return <StockValuationResearch data={data} series={series} />
 }

@@ -274,3 +274,31 @@ export function tickerLatestFundamentalsFixture(ticker) {
     asOf: '2025-11-01',
   }))
 }
+
+/**
+ * Valuation multiples from market metrics. Invented. QAS reports three years of
+ * weekly P/E and ten weeks of P/S; QAM ten weeks of P/E; QAL none. Rows come
+ * newest first, as the read model orders them, with one day revised.
+ */
+export function tickerMarketMetricsFixture(ticker, metric) {
+  const plans = {
+    QAS: { trailing_pe: { weeks: 156, base: 24, swing: 6 }, price_to_sales: { weeks: 10, base: 6.4, swing: 0.6 } },
+    QAM: { trailing_pe: { weeks: 10, base: 31, swing: 4 } },
+  }
+  const plan = plans[ticker]?.[metric]
+  const rows = []
+  if (plan) {
+    for (let week = 0; week < plan.weeks; week += 1) {
+      const date = new Date(LAST_DATE - week * 7 * DAY_MS).toISOString().slice(0, 10)
+      const value = Number((plan.base + plan.swing * Math.sin(week / 9) + (week % 5) * 0.15).toFixed(2))
+      rows.push({
+        symbol: ticker, metric, value, currency: null, observationDate: date,
+        knownAt: `${date}T21:00:00Z`, source: 'fixture', sourceUpdatedAt: null, ingestedAt: null,
+        methodologyVersion: 'fixture', dataQualityFlags: {},
+      })
+    }
+    // An earlier, superseded reading of the latest day: the later one must win.
+    if (rows.length) rows.push({ ...rows[0], value: rows[0].value - 3, knownAt: `${rows[0].observationDate}T12:00:00Z` })
+  }
+  return { available: true, reason: rows.length ? null : 'no_market_metric_observations', symbol: ticker, count: rows.length, rows }
+}

@@ -93,6 +93,16 @@ PRD-78 phase 3. Founder rule for these tabs (2026-10-04): only values the backen
   - Below 900px: three columns. Sales is a bar; then its four parts (› where they open); then the children of the open part.
   - The year and Amount / % of sales use the liquid-glass segmented control.
 
+## Ticker Valuation — 2026-10-05
+
+PRD-78 phase 4. Same rule as phase 3: only reported values.
+
+- `ReportedLine` draws a reported series over time, with time across and the value scale spanning the series.
+  - The highest observation and today's value are written on the line, as page text.
+  - Axis names are years when the span covers more than two years, months otherwise, thinned so they never collide.
+- "All four" is a list of row buttons, 44px tall; the chosen row is outlined.
+- The "What the price assumes" steps are round −/+ buttons, 44px. Until ENG-165 lands they answer in a status line.
+
 ## Expanding selector study — 2026-07-21
 
 The reusable expanding selector transforms mechanics from the references below into a Vesconte-specific analytical control. It carries no ticker, investment-horizon, URL, or routing semantics. No reference code, assets, branding, or layout was copied.

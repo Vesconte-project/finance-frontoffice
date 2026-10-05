@@ -1,0 +1,153 @@
+/* Valuation: the pieces between the research chapters and their charts. */
+
+.chapters {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+}
+
+.leadNote,
+.chartNote,
+.cardNote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-small);
+}
+
+/* ---- "All four": one row per multiple; a row switches the chart ---- */
+
+.multipleList {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.multipleList li + li {
+  border-top: 1px solid var(--line-soft);
+}
+
+.multipleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.5rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.multipleRow:hover {
+  background: var(--surface-soft);
+}
+
+.multipleRow[aria-pressed='true'] {
+  border-color: var(--line-strong);
+  background: var(--surface-soft);
+}
+
+.multipleRow:focus-visible,
+.stepButton:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.multipleName {
+  display: grid;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.multipleName strong {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.multipleName span {
+  font-size: 0.75rem;
+  color: var(--text-small);
+}
+
+.multipleValue {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9375rem;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+/* ---- What the price assumes: two steps with − / + ---- */
+
+.assumptions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 1.25rem 2rem;
+  padding: 1.25rem;
+  border: 1px dashed var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface-soft);
+}
+
+.step {
+  display: grid;
+  gap: 0.625rem;
+  min-width: 0;
+}
+
+.stepLabel {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.stepButton {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.stepButton:hover {
+  border-color: var(--text-small);
+}
+
+.stepReferences {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-small);
+}
+
+.stepMessage {
+  min-height: 1.25rem;
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--text-body);
+}
