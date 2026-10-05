@@ -147,6 +147,7 @@ test('touch pointers get 44px targets without a taller track', async ({ browser 
     return { reachable, trackHeight: root.getBoundingClientRect().height }
   })
   expect(result.reachable).toBe(true)
-  expect(result.trackHeight).toBeLessThan(40)
+  // The ticker page's options are 32px (Spec PRD-78); the 44px target extends past the track.
+  expect(result.trackHeight).toBeLessThan(44)
   await context.close()
 })

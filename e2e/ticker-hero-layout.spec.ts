@@ -22,7 +22,7 @@ type Measurement = {
   overlaps: string[]
   rangeVisible: boolean
   rangeScrolls: boolean
-  rangeBelowFacts: boolean
+  rangeAboveFacts: boolean
   factsRightOfRange: boolean
   axisLabelsCollide: boolean
   actionsOnOwnLine: boolean
@@ -93,7 +93,8 @@ async function measure(page: Page): Promise<Measurement> {
       overlaps,
       rangeVisible: range.left >= -0.5 && range.right <= viewport + 0.5,
       rangeScrolls: rangeElement.scrollWidth > rangeElement.clientWidth + 1 || rangeButtonsOverflow,
-      rangeBelowFacts: !sameLine(range, facts) && range.top > facts.top,
+      // Spec PRD-78: chart, facts, then periods; on one line the periods sit right of the facts.
+      rangeAboveFacts: !sameLine(range, facts) && range.top < facts.top,
       factsRightOfRange: sameLine(range, facts) && facts.left > range.left,
       axisLabelsCollide,
       actionsOnOwnLine,
@@ -124,7 +125,7 @@ for (const ticker of TICKERS) {
         result.overlaps.length > 0 && `overlap ${result.overlaps.join(', ')}`,
         !result.rangeVisible && 'timeframe control outside the viewport',
         result.rangeScrolls && 'timeframe control needs scrolling',
-        result.rangeBelowFacts && 'timeframe control below the market facts',
+        result.rangeAboveFacts && 'timeframe control above the market facts',
         result.factsRightOfRange && 'market facts right of the timeframe control',
         result.axisLabelsCollide && 'chart date labels collide or leave the chart',
         // Below 360px the actions may take a third line; from there they must not.
