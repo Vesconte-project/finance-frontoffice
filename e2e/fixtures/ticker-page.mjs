@@ -302,3 +302,36 @@ export function tickerMarketMetricsFixture(ticker, metric) {
   }
   return { available: true, reason: rows.length ? null : 'no_market_metric_observations', symbol: ticker, count: rows.length, rows }
 }
+
+/**
+ * Equity capital events. Invented. QAS reports quarterly buyback executions
+ * since 2019 and one shelf registration with an executed amount, which is not
+ * a buyback and must be left out. QAM and QAL report none.
+ */
+export function tickerEquityCapitalEventsFixture(ticker) {
+  const rows = []
+  if (ticker === 'QAS') {
+    for (let year = 2019; year <= 2026; year += 1) {
+      for (const [start, end] of [['01-01', '03-31'], ['04-01', '06-30'], ['07-01', '09-30'], ['10-01', '12-31']]) {
+        const periodEnd = `${year}-${end}`
+        if (periodEnd > '2026-09-30') continue
+        const averagePrice = Number((150 + (year - 2019) * 22 + Number(end.slice(0, 2)) * 0.8).toFixed(2))
+        const shares = Math.round((22e6 - (year - 2019) * 1.2e6))
+        rows.push({
+          eventId: `qas-buyback-${periodEnd}`, eventFamily: 'capital_return', eventType: 'share_repurchase', eventSubtype: 'open_market',
+          programName: null, announcementDate: null, filingDate: null, effectiveDate: null,
+          periodStart: `${year}-${start}`, periodEnd, amountExecuted: Math.round(shares * averagePrice),
+          shareCountExecuted: shares, averagePrice, currency: 'USD', knownAt: `${periodEnd}T00:00:00Z`, source: 'fixture',
+        })
+      }
+    }
+    rows.push({
+      eventId: 'qas-shelf-2024', eventFamily: 'capital_raise', eventType: 'shelf_registration', eventSubtype: null,
+      programName: null, announcementDate: '2024-02-01', filingDate: '2024-02-01', effectiveDate: null,
+      periodStart: null, periodEnd: null, amountExecuted: 3e9, shareCountExecuted: null, averagePrice: null,
+      currency: 'USD', knownAt: '2024-02-01T00:00:00Z', source: 'fixture',
+    })
+  }
+  rows.reverse()
+  return { available: true, reason: rows.length ? null : 'no_equity_capital_event_observations', symbol: ticker, count: rows.length, rows }
+}

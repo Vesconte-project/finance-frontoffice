@@ -33,7 +33,7 @@ test('ticker navigation exposes a stable horizontal Research hierarchy', () => {
   const relationshipField = readRepoFile('components/stocks/TickerRelationshipField.tsx')
   const relationshipFieldStyles = readRepoFile('components/stocks/TickerRelationshipField.module.css')
 
-  for (const label of ['Overview', 'Fundamentals', 'Financials', 'Valuation', 'Signals', 'Events', 'Relationships', 'Profile', 'Ownership & Capital', 'AI Research', 'Methodology']) assert.match(navigation, new RegExp(`label: '${label.replace(/[&]/g, '\\&')}'`))
+  for (const label of ['Overview', 'Fundamentals', 'Financials', 'Valuation', 'Signals', 'Events', 'Relationships', 'Business', 'Ownership & Capital', 'AI Research', 'Methodology']) assert.match(navigation, new RegExp(`label: '${label.replace(/[&]/g, '\\&')}'`))
   assert.doesNotMatch(navigation, /subitems|stockResearchMoreItems|Income Statement|Balance Sheet|Cash Flow|Signal History|Indicator Details/)
   assert.doesNotMatch(navigation, /label: 'Lens'/)
   assert.doesNotMatch(navigationComponent, /button|menu|More|chevron|ArrowDown|Escape|useSearchParams/)
@@ -177,7 +177,9 @@ test('legacy ticker detail routes resolve to stable research destinations', () =
     assert.match(source, /permanentRedirect/)
     assert.ok(source.includes(anchor), `${file} should redirect to ${anchor}`)
   }
-  assert.match(readRepoFile('app/(app)/stocks/[ticker]/profile/page.tsx'), /StockProfileResearch/)
+  // Profile was renamed Business (Spec PRD-78); the old path redirects.
+  assert.match(readRepoFile('app/(app)/stocks/[ticker]/profile/page.tsx'), /permanentRedirect\(`\/stocks\/\$\{ticker\.toUpperCase\(\)\}\/business`\)/)
+  assert.match(readRepoFile('app/(app)/stocks/[ticker]/business/page.tsx'), /StockBusinessResearch/)
   assert.match(readRepoFile('app/(app)/stocks/[ticker]/fundamentals/page.tsx'), /StockFundamentalsResearch/)
   assert.match(readRepoFile('app/(app)/stocks/[ticker]/financials/page.tsx'), /StockFinancialsResearch/)
 })
@@ -186,7 +188,7 @@ test('Phase 2 research views preserve local state and do not simulate statement 
   const navigation = readRepoFile('components/stocks/StockResearchNav.tsx')
   const tabs = readRepoFile('components/stocks/StockTabsAuto.tsx')
   const shell = readRepoFile('components/stocks/ResearchViewShell.tsx')
-  const profile = readRepoFile('components/stocks/StockProfileResearch.tsx')
+  const business = readRepoFile('components/stocks/StockBusinessResearch.tsx')
   const fundamentals = readRepoFile('components/stocks/StockFundamentalsResearch.tsx')
   const researchLoadingView = readRepoFile('components/stocks/TickerResearchLoading.tsx')
   const navConfig = readRepoFile('components/stocks/stock-nav-config.ts')
@@ -205,8 +207,9 @@ test('Phase 2 research views preserve local state and do not simulate statement 
   assert.match(tabs, /StockTickerChromeFallback/)
   assert.match(tabs, /Suspense/)
   assert.doesNotMatch(shell, /Research breadcrumb|assetContext/)
-  assert.match(profile, /Fund Profile/)
-  assert.match(profile, /Company Profile/)
+  assert.match(business, /label="How the business works"/)
+  assert.match(business, /label="What it depends on"/)
+  assert.match(business, /label="What the fund holds"/)
   assert.match(fundamentals, /FundChapters/)
   assert.doesNotMatch(fundamentals, /Math\.random|mock|fake/i)
   assert.doesNotMatch(fundamentals, /Data pending|trendPlaceholder/)
@@ -364,4 +367,32 @@ test('Valuation follows the accepted ticker Spec (PRD-78, phase 4): reported mul
   assert.doesNotMatch(reading, /function \w*(median|percentile|quantile|band|discount)/i)
   assert.doesNotMatch(assumes, /Math\.pow|\w \*\* \w/)
   assert.match(assumes, /role="status"/)
+})
+
+test('Business and Ownership & Capital follow the accepted ticker Spec (PRD-78, phase 5)', () => {
+  const nav = readRepoFile('components/stocks/stock-nav-config.ts')
+  const business = readRepoFile('components/stocks/StockBusinessResearch.tsx')
+  const ownership = readRepoFile('components/stocks/StockOwnershipResearch.tsx')
+  const ownershipPage = readRepoFile('app/(app)/stocks/[ticker]/ownership/page.tsx')
+  const capital = readRepoFile('lib/capital-reading.ts')
+
+  // The tab order of the Spec, with Business where Profile was.
+  const order = ['Overview', 'Fundamentals', 'Financials', 'Valuation', 'Signals', 'Events', 'Relationships', 'Business', 'Ownership & Capital', 'AI Research', 'Methodology']
+    .map((label) => nav.indexOf(`label: '${label}'`))
+  assert.ok(order.every((index) => index > 0))
+  assert.deepEqual([...order].sort((a, b) => a - b), order)
+  assert.doesNotMatch(nav, /label: 'Profile'/)
+
+  // Business: how the business works, then what it depends on.
+  assert.ok(business.indexOf('label="How the business works"') < business.indexOf('label="What it depends on"'))
+
+  // Ownership chapters in the Spec's order, with the reported buybacks.
+  const chapters = ['id="who-owns"', 'id="insiders"', '<BuybacksChapter', 'id="price-pays-for"'].map((token) => ownership.indexOf(token))
+  assert.ok(chapters.every((index) => index > 0))
+  assert.deepEqual([...chapters].sort((a, b) => a - b), chapters)
+  assert.match(ownership, /label="Buybacks since 2016"/)
+  assert.match(ownershipPage, /getTickerEquityCapitalEvents/)
+  assert.match(ownershipPage, /buybackExecutions/)
+  // Executions are listed as reported; nothing is summed or valued at today's price.
+  assert.doesNotMatch(capital, /reduce\(|\+=|price\s*\*/)
 })

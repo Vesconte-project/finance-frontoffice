@@ -32,8 +32,8 @@ test.describe('ticker research views Phase 2 slice', () => {
   test('equity profile and horizontal Research navigation keep stable URLs', async ({ page }, testInfo) => {
     const runtimeWarnings = watchForReactRuntimeWarnings(page)
     await page.setViewportSize({ width: 1440, height: 900 })
-    await page.goto('/stocks/AAPL/profile')
-    await expect(page.getByRole('heading', { name: 'Company Profile', exact: true })).toBeVisible()
+    await page.goto('/stocks/AAPL/business')
+    await expect(page.getByRole('heading', { name: 'How the business works', exact: true })).toBeVisible()
     const tickerChrome = page.locator('[data-ticker-chrome="ready"]')
     await expect(tickerChrome).toBeVisible()
     await expect(tickerChrome.locator('[data-ticker-identity]')).toContainText('AAPL')
@@ -47,7 +47,7 @@ test.describe('ticker research views Phase 2 slice', () => {
 
     const researchNav = page.getByRole('navigation', { name: 'Ticker research' })
     await expect(researchNav).toBeVisible()
-    await expect(researchNav.getByRole('link', { name: 'Profile', exact: true })).toHaveAttribute('aria-current', 'page')
+    await expect(researchNav.getByRole('link', { name: 'Business', exact: true })).toHaveAttribute('aria-current', 'page')
     await expect(researchNav.locator('[data-active="true"]')).toHaveCount(1)
     await expect(researchNav.getByRole('link', { name: 'Fundamentals', exact: true })).toHaveAttribute('href', '/stocks/AAPL/fundamentals')
     await expect(researchNav.getByText(/Perspective|Company & fund|Market evidence/)).toHaveCount(0)
@@ -64,8 +64,8 @@ test.describe('ticker research views Phase 2 slice', () => {
     await expect(page.getByRole('heading', { name: 'Fundamentals', exact: true })).toBeVisible()
     expect(await tickerChrome.locator('[data-ticker-identity]').textContent()).toBe(identityBeforeNavigation)
     expect(await tickerChrome.locator('[data-ticker-price]').textContent()).toBe(priceBeforeNavigation)
-    await researchNav.getByRole('link', { name: 'Profile', exact: true }).click()
-    await expect(page.getByRole('heading', { name: 'Company Profile', exact: true })).toBeVisible()
+    await researchNav.getByRole('link', { name: 'Business', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'How the business works', exact: true })).toBeVisible()
 
     await page.setViewportSize({ width: 390, height: 844 })
     const ownershipLink = researchNav.getByRole('link', { name: 'Ownership & Capital', exact: true })
@@ -78,7 +78,7 @@ test.describe('ticker research views Phase 2 slice', () => {
     await capture(page, testInfo, 'phase2-research-nav-horizontal-mobile')
 
     await page.setViewportSize({ width: 320, height: 568 })
-    await expect(researchNav.getByRole('link', { name: 'Profile', exact: true })).toBeInViewport()
+    await expect(researchNav.getByRole('link', { name: 'Business', exact: true })).toBeInViewport()
     await expectNoHorizontalOverflow(page)
     expect(runtimeWarnings).toEqual([])
   })
@@ -153,15 +153,16 @@ test.describe('ticker research views Phase 2 slice', () => {
   test('ETF and partial equity use intentional asset-aware research states', async ({ page }, testInfo) => {
     const runtimeWarnings = watchForReactRuntimeWarnings(page)
     await page.setViewportSize({ width: 390, height: 844 })
-    await page.goto('/stocks/QQQ/profile')
-    await expect(page.getByRole('heading', { name: 'Fund Profile', exact: true })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Portfolio structure', exact: true })).toBeVisible()
+    await page.goto('/stocks/QQQ/business')
+    await expect(page.getByRole('heading', { name: 'What the fund holds', exact: true })).toBeVisible()
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, 'phase2-qqq-fund-profile-mobile')
 
     await page.setViewportSize({ width: 1366, height: 768 })
+    // The old Profile path lands on Business.
     await page.goto('/stocks/0005.HK/profile')
-    await expect(page.getByRole('heading', { name: /Company Profile|Fund Profile/ })).toBeVisible()
+    await expect(page).toHaveURL(/\/stocks\/0005\.HK\/business$/)
+    await expect(page.getByRole('heading', { name: /How the business works|What the fund holds/ })).toBeVisible()
     await expect(page.getByText(/Partial coverage|Being built/).first()).toBeVisible()
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, 'phase2-0005-partial-profile-desktop')

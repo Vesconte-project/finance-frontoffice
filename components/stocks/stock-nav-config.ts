@@ -7,7 +7,7 @@ export type StockResearchNavKey =
   | 'signals'
   | 'events'
   | 'relationships'
-  | 'profile'
+  | 'business'
   | 'ownership'
   | 'ai-research'
   | 'methodology'
@@ -35,7 +35,7 @@ export const stockResearchPrimaryItems: readonly StockResearchLink[] = [
   { key: 'signals', label: 'Signals', loadingTitle: 'Signals & Indicators', slug: 'signals' },
   { key: 'events', label: 'Events', loadingTitle: '', slug: 'events' },
   { key: 'relationships', label: 'Relationships', slug: 'relationships' },
-  { key: 'profile', label: 'Profile', slug: 'profile' },
+  { key: 'business', label: 'Business', loadingTitle: '', slug: 'business' },
   { key: 'ownership', label: 'Ownership & Capital', slug: 'ownership' },
   { key: 'ai-research', label: 'AI Research', slug: 'ai-research' },
   { key: 'methodology', label: 'Methodology', slug: 'methodology' },
@@ -60,7 +60,8 @@ export function stockResearchKeyFromPath(pathname: string): StockResearchNavKey 
   if (segment === 'valuation') return 'valuation'
   if (['signals', 'signal-history', 'indicators', 'performance'].includes(segment)) return 'signals'
   if (segment === 'events') return 'events'
-  if (segment === 'profile') return 'profile'
+  // Profile was renamed Business (Spec PRD-78); the old path still lands here.
+  if (segment === 'business' || segment === 'profile') return 'business'
   if (segment === 'ownership') return 'ownership'
   if (segment === 'ai-research') return 'ai-research'
   if (segment === 'methodology') return 'methodology'

@@ -21,6 +21,7 @@ import {
 import {
   isFixtureTicker,
   tickerCorporateActionsFixture,
+  tickerEquityCapitalEventsFixture,
   tickerEventsFixture,
   tickerFinancialStatementsFixture,
   tickerHistoryFixture,
@@ -117,6 +118,12 @@ const server = createServer((request, response) => {
   const metricsRoute = path.match(/^\/tickers\/([^/]+)\/market-metrics$/)
   if (metricsRoute && isFixtureTicker(decodeURIComponent(metricsRoute[1]))) {
     send(response, 200, tickerMarketMetricsFixture(decodeURIComponent(metricsRoute[1]), url.searchParams.get('metric')))
+    return
+  }
+
+  const capitalRoute = path.match(/^\/tickers\/([^/]+)\/equity-capital-events$/)
+  if (capitalRoute && isFixtureTicker(decodeURIComponent(capitalRoute[1]))) {
+    send(response, 200, tickerEquityCapitalEventsFixture(decodeURIComponent(capitalRoute[1])))
     return
   }
 

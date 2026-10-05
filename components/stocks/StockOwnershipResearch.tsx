@@ -1,7 +1,10 @@
 import Link from 'next/link'
 import ResearchViewShell, { ResearchAdPlacement } from '@/components/stocks/ResearchViewShell'
 import BeingBuilt, { BeingBuiltBadge } from '@/components/stocks/research/BeingBuilt'
-import ResearchChapter from '@/components/stocks/research/ResearchChapter'
+import ReportedBars from '@/components/stocks/research/ReportedBars'
+import ResearchChapter, { ChapterCard } from '@/components/stocks/research/ResearchChapter'
+import type { BuybackExecution } from '@/lib/capital-reading'
+import { formatChartMoney, formatCompactMoney, formatMoney } from '@/lib/currency'
 import {
   currentResearchSnapshot,
   formatResearchDate,
@@ -37,7 +40,80 @@ function CurrentSnapshot({ data }: { data: StockResearchData }) {
   )
 }
 
-function EquityOwnership({ data }: { data: StockResearchData }) {
+const dayFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+
+function formatDay(value: string): string {
+  return dayFormat.format(Date.parse(`${value}T00:00:00Z`))
+}
+
+const shareCount = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 })
+
+/**
+ * Buybacks since 2016: each execution the capital-events read model reports,
+ * as it was reported. Totals per year, what the shares are worth today and the
+ * share count then and now are being built (ENG-167); nothing is summed here.
+ */
+function BuybacksChapter({ buybacks, currency }: { buybacks: BuybackExecution[]; currency: string }) {
+  const withAmount = buybacks.filter((execution) => execution.amount !== null)
+  const seenYears = new Set<string>()
+  const newestFirst = [...buybacks].reverse()
+  return (
+    <ResearchChapter
+      id="buybacks"
+      label="Buybacks since 2016"
+      lead={<BeingBuilt size="inline">What the company has spent on buybacks since 2016, and what those shares are worth today, is being added.</BeingBuilt>}
+      aside={(
+        <>
+          {buybacks.length > 0 ? (
+            <ChapterCard title="Each buyback" meta={`${buybacks.length} reported`}>
+              <ol className={styles.executions} data-buyback-list="">
+                {newestFirst.slice(0, 8).map((execution) => (
+                  <li key={execution.id}>
+                    <span className={styles.executionDate}>
+                      {execution.periodStart ? `${formatDay(execution.periodStart)} – ` : ''}{formatDay(execution.date)}
+                    </span>
+                    <dl>
+                      {execution.amount !== null ? <div><dt>Spent</dt><dd>{formatCompactMoney(execution.amount, execution.currency ?? currency)}</dd></div> : null}
+                      {execution.shares !== null ? <div><dt>Shares</dt><dd>{shareCount.format(execution.shares)}</dd></div> : null}
+                      {execution.averagePrice !== null ? <div><dt>Average price</dt><dd>{formatMoney(execution.averagePrice, execution.currency ?? currency)}</dd></div> : null}
+                    </dl>
+                  </li>
+                ))}
+              </ol>
+            </ChapterCard>
+          ) : null}
+          <BeingBuilt label="Shares then and now">How many shares were bought back, issued to staff and left today, and how much more of the company each share owns, is being added.</BeingBuilt>
+        </>
+      )}
+    >
+      {withAmount.length > 0 ? (
+        <>
+          <ReportedBars
+            ariaLabel={`Amount spent on each reported buyback, ${formatDay(withAmount[0].date)} to ${formatDay(withAmount.at(-1)!.date)}`}
+            values={{ wide: withAmount.length <= 12 ? 'all' : 'ends', compact: 'ends' }}
+            bars={withAmount.map((execution) => {
+              const year = execution.date.slice(0, 4)
+              const firstOfYear = !seenYears.has(year)
+              seenYears.add(year)
+              return {
+                key: execution.id,
+                value: execution.amount as number,
+                valueLabel: formatChartMoney(execution.amount, execution.currency ?? currency),
+                axisLabel: firstOfYear ? year : null,
+                axisShort: firstOfYear ? `'${year.slice(-2)}` : null,
+              }
+            })}
+          />
+          <p className={styles.chartNote}><BeingBuiltBadge /> Spending by year, and what those shares are worth at today’s price, is being added.</p>
+        </>
+      ) : (
+        <BeingBuilt size="chart">What the company spent on buybacks each year, and what those shares are worth now, is being added.</BeingBuilt>
+      )}
+    </ResearchChapter>
+  )
+}
+
+function EquityOwnership({ data, buybacks }: { data: StockResearchData; buybacks: BuybackExecution[] }) {
   const snapshot = currentResearchSnapshot(data)
   return (
     <>
@@ -58,13 +134,7 @@ function EquityOwnership({ data }: { data: StockResearchData }) {
         <BeingBuilt size="chart">What insiders sold and bought, marked on the share price, is being added.</BeingBuilt>
       </ResearchChapter>
 
-      <ResearchChapter
-        id="buybacks"
-        label="Buybacks"
-        aside={<BeingBuilt label="Shares then and now">How many shares were bought back, issued to staff and left today is being added.</BeingBuilt>}
-      >
-        <BeingBuilt size="chart">What the company spent on buybacks each year, and what those shares are worth now, is being added.</BeingBuilt>
-      </ResearchChapter>
+      <BuybacksChapter buybacks={buybacks} currency={snapshot.currency || data.currency} />
 
       <ResearchChapter
         id="price-pays-for"
@@ -114,14 +184,14 @@ function FundStructure() {
   )
 }
 
-export default function StockOwnershipResearch({ data }: { data: StockResearchData }) {
+export default function StockOwnershipResearch({ data, buybacks }: { data: StockResearchData; buybacks: BuybackExecution[] }) {
   const isFund = data.kind === 'fund'
 
   return (
     <ResearchViewShell data={data} title={isFund ? 'Fund Structure' : 'Ownership & Capital'}>
       <div className={styles.page}>
         <CurrentSnapshot data={data} />
-        {isFund ? <FundStructure /> : <EquityOwnership data={data} />}
+        {isFund ? <FundStructure /> : <EquityOwnership data={data} buybacks={buybacks} />}
         <section className={styles.methodology} aria-labelledby="ownership-methodology">
           <div>
             <h2 id="ownership-methodology">Methodology</h2>

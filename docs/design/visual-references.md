@@ -103,6 +103,18 @@ PRD-78 phase 4. Same rule as phase 3: only reported values.
 - "All four" is a list of row buttons, 44px tall; the chosen row is outlined.
 - The "What the price assumes" steps are round −/+ buttons, 44px. Until ENG-165 lands they answer in a status line.
 
+## Ticker Business and buybacks — 2026-10-05
+
+PRD-78 phase 5.
+
+- **Business:**
+  - Profile becomes Business on the research chapters, keeping the Spec's tab order.
+  - The company's own description leads "How the business works" as page text, up to 44rem wide. The facts sit in the side card.
+  - The buys → makes → pays map and "What it depends on" keep their final places with the Being built block.
+- **Buybacks:**
+  - Each reported execution is a bar (`ReportedBars`), with years named at their first execution. The first and last amounts are written on the chart.
+  - The side card lists the latest eight executions: the period, then spent, shares and average price.
+
 ## Expanding selector study — 2026-07-21
 
 The reusable expanding selector transforms mechanics from the references below into a Vesconte-specific analytical control. It carries no ticker, investment-horizon, URL, or routing semantics. No reference code, assets, branding, or layout was copied.

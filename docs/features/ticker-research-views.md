@@ -11,11 +11,19 @@ Status: Phase 2 first vertical slice implemented for visual review.
 
 ## First vertical slice
 
-### Company Profile / Fund Profile
+### Business (PRD-78, phase 5; formerly Profile)
 
-- Company Profile prioritizes the business description, then profile facts and secondary identifiers.
-- Fund Profile replaces company language with holdings, sector exposure, distributions, and risk.
-- Missing descriptive or identifier fields use a compact `Data pending` state without fabricated copy.
+- `/stocks/:ticker/business`; the old `/profile` path redirects permanently.
+- **Companies** have two chapters:
+  - **How the business works:** the reported description, with the company facts and identifiers beside it. The map of what the company buys, makes and sells is Being built (ENG-160, ENG-163).
+  - **What it depends on:** Being built.
+- **Funds** have three chapters: What the fund holds (description, holdings, fund facts), Sector exposure, and Distributions and risk.
+
+### Ownership & Capital buybacks (PRD-78, phase 5)
+
+- "Buybacks since 2016" shows each buyback execution that `/tickers/:ticker/equity-capital-events` reports: the amount spent as bars, and the period, amount, shares and average price in the card.
+- **How a buyback is recognised:** by a repurchase/buyback naming in its type, family, subtype or program, with an executed amount or share count. The vocabulary is undocumented, and production coverage is ENG-156.
+- **Being built (ENG-167):** totals per year, the value today, and the share count then and now. Nothing is summed or valued in the frontend.
 
 ### Fundamentals (PRD-78, phase 3)
 

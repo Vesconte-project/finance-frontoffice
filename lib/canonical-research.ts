@@ -54,6 +54,29 @@ export type CorporateActionsPayload = CanonicalAvailability & {
   rows: CorporateActionRow[]
 }
 
+export type EquityCapitalEventRow = {
+  eventId: string | null
+  eventFamily: string | null
+  eventType: string | null
+  eventSubtype: string | null
+  programName: string | null
+  announcementDate: string | null
+  filingDate: string | null
+  effectiveDate: string | null
+  periodStart: string | null
+  periodEnd: string | null
+  amountExecuted: number | null
+  shareCountExecuted: number | null
+  averagePrice: number | null
+  currency: string | null
+  knownAt: string | null
+  source: string | null
+}
+
+export type EquityCapitalEventsPayload = CanonicalAvailability & {
+  rows: EquityCapitalEventRow[]
+}
+
 export type MarketMetricObservation = {
   symbol: string
   metric: string
@@ -167,6 +190,20 @@ export async function getTickerCorporateActions(
       limit: options.limit ?? 200,
     })}`,
     { context: `ticker.corporate-actions.${ticker}` },
+  )
+}
+
+export async function getTickerEquityCapitalEvents(
+  tickerRaw: string,
+  options: { limit?: number } = {},
+): Promise<EquityCapitalEventsPayload> {
+  const ticker = normalizedTicker(tickerRaw)
+  return fetchBackendJson<EquityCapitalEventsPayload>(
+    `/tickers/${encodeURIComponent(ticker)}/equity-capital-events${queryString({
+      latestOnly: true,
+      limit: options.limit ?? 500,
+    })}`,
+    { context: `ticker.equity-capital-events.${ticker}` },
   )
 }
 
