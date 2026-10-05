@@ -1,0 +1,131 @@
+/* Signals: the model's signals on the price (Spec PRD-78, global rules). */
+
+.timelineFrame {
+  max-width: 52rem;
+}
+
+.gridLine {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.area {
+  fill: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.line {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.75;
+  stroke-linejoin: round;
+}
+
+.markers {
+  position: absolute;
+  inset: 0;
+}
+
+/* A dot the reader can pick: 12px drawn, 28px to touch. */
+.marker {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.marker::before {
+  position: absolute;
+  inset: 8px;
+  border: 2px solid var(--surface);
+  border-radius: 999px;
+  background: var(--text-muted);
+  content: '';
+}
+
+.marker[data-direction='bullish']::before {
+  background: var(--up);
+}
+
+.marker[data-direction='bearish']::before {
+  background: var(--down);
+}
+
+.marker[aria-pressed='true']::before {
+  inset: 6px;
+  box-shadow: 0 0 0 2px var(--text);
+}
+
+.marker:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+}
+
+.signalCard {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.signalDirection {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-family: var(--font-display), serif;
+  font-size: 1.75rem;
+  line-height: 1.1;
+  color: var(--text);
+}
+
+.signalDot {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 999px;
+  background: var(--text-muted);
+}
+
+.signalCard[data-direction='bullish'] .signalDirection {
+  color: var(--up-ink, var(--up));
+}
+
+.signalCard[data-direction='bullish'] .signalDot {
+  background: var(--up);
+}
+
+.signalCard[data-direction='bearish'] .signalDirection {
+  color: var(--down);
+}
+
+.signalCard[data-direction='bearish'] .signalDot {
+  background: var(--down);
+}
+
+.signalFacts {
+  display: grid;
+  margin: 0;
+}
+
+.signalFacts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--line-soft);
+}
+
+.signalFacts dt {
+  font-size: 0.875rem;
+  color: var(--text-small);
+}
+
+.signalFacts dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}

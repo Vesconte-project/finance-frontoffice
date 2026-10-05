@@ -49,7 +49,7 @@ export default function EventCalendar({ month, selectedDay, category, events, sc
       <div className={styles.toolbar}>
         <div>
           <h2>{monthTitle}</h2>
-          <p>{events.length} {events.length === 1 ? 'event' : 'events'} in this view</p>
+          {scope === 'global' ? <p>{events.length} {events.length === 1 ? 'event' : 'events'} in this view</p> : null}
         </div>
         <div className={styles.monthControls} aria-label="Change month">
           <Link href={href(shiftMonth(month, -1))} aria-label="Previous month"><ArrowLeft size={17} /></Link>
@@ -109,7 +109,8 @@ export default function EventCalendar({ month, selectedDay, category, events, sc
                 <strong>{event.title}</strong>
                 {event.symbol ? <Link href={`/stocks/${encodeURIComponent(event.symbol)}/events`}>{event.symbol} <ArrowRight size={14} /></Link> : null}
                 {event.detail ? <p>{event.detail}</p> : null}
-                {event.source ? <p>Source: {event.source.replaceAll('_', ' ')}</p> : null}
+                {/* A ticker page names no data source (Spec PRD-78: no internal language). */}
+                {event.source && scope === 'global' ? <p>Source: {event.source.replaceAll('_', ' ')}</p> : null}
               </li>
             ))}</ol>
           ) : <p className={styles.empty}>{available ? 'No recorded events on this day.' : reason ?? 'This calendar source is unavailable.'}</p>}

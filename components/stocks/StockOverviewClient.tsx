@@ -8,7 +8,6 @@ import SegmentedControl from '@/components/ui/SegmentedControl'
 import TemporalLineChart, { type TemporalLinePoint } from '@/components/charts/TemporalLineChart'
 import type { OhlcPoint, PricePoint } from '@/lib/finance'
 import type { Scorecard } from '@/lib/scorecard-types'
-import type { ReadingVerdict } from '@/lib/ticker-readings'
 import {
   buildTechnicalSummary,
   distanceFromAverage,
@@ -17,8 +16,11 @@ import {
   type TechnicalTimeframe,
 } from '@/lib/technicalSignals'
 import type { EventMarker } from '@/lib/event-markers'
-import { SCORECARD_AXIS_LABELS, SCORECARD_AXIS_ORDER, scoreColor, type ScorecardAxis } from '@/lib/scorecard-types'
+import type { ScorecardAxis } from '@/lib/scorecard-types'
 import BeingBuilt, { BeingBuiltBadge } from '@/components/stocks/research/BeingBuilt'
+import MiniBars from '@/components/stocks/research/MiniBars'
+import { formatCompactMoney } from '@/lib/currency'
+import { shortYear, type ReportedPoint } from '@/lib/statement-reading'
 import ResearchChapter, { ChapterCard } from '@/components/stocks/research/ResearchChapter'
 import { hasUsableMaterializedScorecard } from '@/lib/ticker-page-scorecard'
 import { cn } from '@/lib/utils'
@@ -50,17 +52,10 @@ type OverviewRelatedAsset = {
   confidence: number | null
 }
 
-type OverviewFundDetail = {
-  label: string
-  value: string
-  /** The date the figure refers to, when the source gives one. */
-  asOf?: string | null
-}
-
-type OverviewFundGroup = {
-  key: string
-  label: string
-  rows: OverviewFundDetail[]
+/** A latest reported figure and the date it refers to. */
+type OverviewFigure = {
+  value: number
+  asOf: string | null
 }
 
 type OverviewHolding = {
@@ -105,8 +100,8 @@ type StockOverviewClientProps = {
   historicalData: PricePoint[]
   historicalChartState: HistoricalChartState
   ohlcData: OhlcPoint[]
-  keyStats: OverviewStat[]
-  fundamentalGroups: OverviewFundGroup[]
+  /** Formatted market cap, or null when the summary has none. */
+  marketCap: string | null
   holdings: OverviewHolding[]
   sectorWeights: OverviewSectorWeight[]
   nextEarnings: OverviewEarnings | null
@@ -115,17 +110,20 @@ type StockOverviewClientProps = {
   chartEvents: Promise<EventMarker[] | null>
   regimeSignals: OverviewRegimePoint[]
   scorecard: Scorecard
-  /** Built on the server per viewer tier; empty when unavailable. */
-  readingVerdicts: ReadingVerdict[]
+  /** Reported annual revenue, oldest first, the same series the Fundamentals tab draws; null when unavailable. */
+  revenue: Promise<ReportedPoint[] | null>
+  /** The same latest figures the Fundamentals tab shows. */
+  operatingMargin: OverviewFigure | null
+  netCash: OverviewFigure | null
 }
 
 const HERO_TIMEFRAMES: ChartTimeframe[] = ['1D', '5D', '1M', '3M', 'YTD', '1Y', '5Y', '10Y', 'ALL']
 const SIGNAL_TIMEFRAMES: TechnicalTimeframe[] = ['1D', '1W', '1M']
 
-function formatDate(value: string | null, options?: Intl.DateTimeFormatOptions): string {
-  if (!value) return '—'
+function formatDate(value: string | null, options?: Intl.DateTimeFormatOptions): string | null {
+  if (!value) return null
   const parsed = Date.parse(value)
-  if (!Number.isFinite(parsed)) return '—'
+  if (!Number.isFinite(parsed)) return null
   return new Date(parsed).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -134,32 +132,26 @@ function formatDate(value: string | null, options?: Intl.DateTimeFormatOptions):
   })
 }
 
-function formatCompactPercent(value: number | null): string {
-  if (value === null || !Number.isFinite(value)) return '—'
-  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
+function formatCompactPercent(value: number): string {
+  return `${value > 0 ? '+' : value < 0 ? '−' : ''}${Math.abs(value).toFixed(2)}%`
 }
 
-function formatConviction(value: number | null): string {
-  if (value === null || !Number.isFinite(value)) return '—'
+function formatConviction(value: number): string {
   const scaled = Math.abs(value) <= 1 ? value * 100 : value
   return `${scaled.toFixed(0)}%`
 }
 
-function formatRelationshipStrength(value: number | null): string {
-  if (value === null || !Number.isFinite(value)) return '—'
-  return `${value > 0 ? '+' : ''}${value.toFixed(2)}`
+/** The model signal's direction, as the prototype writes it: "Bearish · 62% conviction". */
+function directionCopy(direction: SignalDirection): string {
+  if (direction === 'bullish') return 'Bullish'
+  if (direction === 'bearish') return 'Bearish'
+  return 'Neutral'
 }
 
-function formatConfidence(value: number | null): string {
-  if (value === null || !Number.isFinite(value)) return '—'
-  const scaled = Math.abs(value) <= 1 ? value * 100 : value
-  return `${Math.max(0, Math.min(100, scaled)).toFixed(0)}%`
-}
-
-function regimeCopy(direction: SignalDirection | null): string {
-  if (direction === 'bullish') return 'Bullish regime'
-  if (direction === 'bearish') return 'Bearish regime'
-  return 'Neutral regime'
+function directionTone(direction: SignalDirection | undefined): string | undefined {
+  if (direction === 'bullish') return styles.positiveText
+  if (direction === 'bearish') return styles.negativeText
+  return undefined
 }
 
 function scorecardReadinessMessage(scorecard: Scorecard): string | null {
@@ -265,6 +257,16 @@ function HeroPriceChart({
   )
 }
 
+/** "Moves with it" for a positive association; a negative one moves the other way. */
+function movesCopy(strength: number | null): string | null {
+  if (strength === null || !Number.isFinite(strength) || strength === 0) return null
+  return strength > 0 ? 'Moves with it' : 'Moves against it'
+}
+
+/**
+ * Relationships (Spec PRD-78): one row per company with its ticker, name,
+ * "Moves with it", the strength as a bar and the day's change.
+ */
 function RelatedAssetsContent({
   ticker,
   relatedAssetsPromise,
@@ -273,83 +275,53 @@ function RelatedAssetsContent({
   relatedAssetsPromise: Promise<OverviewRelatedAsset[]>
 }) {
   const relatedAssets = use(relatedAssetsPromise)
-  const rankedAssets = [...relatedAssets].sort(
-    (left, right) => Math.abs(right.strength ?? 0) - Math.abs(left.strength ?? 0),
-  )
+  const rankedAssets = [...relatedAssets]
+    .sort((left, right) => Math.abs(right.strength ?? 0) - Math.abs(left.strength ?? 0))
+    .slice(0, 5)
 
   return (
-    <article id="relationships" className={styles.relationshipEditorial}>
-      <div className={styles.chapterHeader}>
-        <div>
-          <h2 className={styles.chapterTitle}>Relationships</h2>
-          <p className={styles.chapterDescription}>The strongest observed associations, ranked by relationship strength.</p>
-        </div>
-        <Link href={`/stocks/${ticker}/relationships`} className={styles.inlineArrow}>View all →</Link>
-      </div>
+    <ResearchChapter
+      id="relationships"
+      label="Relationships"
+      band
+      actions={<Link href={`/stocks/${ticker}/relationships`} className={styles.inlineArrow}>View all →</Link>}
+    >
       {rankedAssets.length > 0 ? (
-        <div className={styles.relationshipPreviewGrid}>
-          <div className={styles.relationshipTopology} data-relationship-topology="" aria-hidden="true">
-            <svg viewBox="0 0 760 300" preserveAspectRatio="xMidYMid meet">
-              <circle cx="286" cy="150" r="92" className={styles.topologyHalo} />
-              {rankedAssets.slice(0, 4).map((asset, index) => {
-                const coordinates = [
-                  { x: 92, y: 64 },
-                  { x: 552, y: 55 },
-                  { x: 676, y: 176 },
-                  { x: 474, y: 252 },
-                ][index]
-                const strength = Math.max(0.12, Math.min(1, Math.abs(asset.strength ?? 0.28)))
-                if (!coordinates) return null
-                return (
-                  <g key={asset.symbol}>
-                    <line
-                      x1="286"
-                      y1="150"
-                      x2={coordinates.x}
-                      y2={coordinates.y}
-                      className={styles.topologyLink}
-                      strokeWidth={0.8 + strength * 2.4}
-                      strokeOpacity={0.18 + strength * 0.5}
-                    />
-                    <circle cx={coordinates.x} cy={coordinates.y} r="29" className={styles.topologyNode} />
-                    <text x={coordinates.x} y={coordinates.y + 4} className={styles.topologyLabel}>{asset.symbol}</text>
-                  </g>
-                )
-              })}
-              <circle cx="286" cy="150" r="38" className={styles.topologyCenter} />
-              <circle cx="286" cy="150" r="48" className={styles.topologyCenterRing} />
-              <text x="286" y="155" className={styles.topologyCenterLabel}>{ticker}</text>
-            </svg>
-          </div>
-          <div className={styles.relatedAssets}>
-            {rankedAssets.slice(0, 5).map((asset) => (
-              <Link key={asset.symbol} href={`/stocks/${asset.symbol}`} className={styles.relatedChip}>
-                <span className={styles.relatedIdentity}>
-                  <span className={styles.chipTicker}>{asset.symbol}</span>
-                  <span className={styles.relatedName}>{asset.name ?? asset.relation}</span>
-                </span>
-                <span className={styles.relationshipMagnitude}>
-                  <strong>{formatRelationshipStrength(asset.strength)}</strong>
-                  <span>Strength</span>
-                  {asset.strength !== null && Number.isFinite(asset.strength) ? (
-                    <span className={styles.strengthBar} aria-hidden="true" data-strength-bar="">
-                      <span style={{ width: `${Math.max(0, Math.min(1, Math.abs(asset.strength))) * 100}%` }} />
+        <ul className={styles.relatedAssets} aria-label={`Companies related to ${ticker}`}>
+          {rankedAssets.map((asset) => {
+            const strength = asset.strength !== null && Number.isFinite(asset.strength) ? asset.strength : null
+            const change = asset.changePercent !== null && Number.isFinite(asset.changePercent) ? asset.changePercent : null
+            const moves = movesCopy(strength)
+            return (
+              <li key={asset.symbol}>
+                <Link href={`/stocks/${asset.symbol}`} className={styles.relatedRow} data-related-row="">
+                  <span className={styles.relatedIdentity}>
+                    <span className={styles.chipTicker}>{asset.symbol}</span>
+                    {asset.name ? <span className={styles.relatedName}>{asset.name}</span> : null}
+                  </span>
+                  {moves ? <span className={styles.relatedMoves}>{moves}</span> : <span />}
+                  {strength !== null ? (
+                    <span className={styles.relationshipMagnitude}>
+                      <span className={styles.strengthBar} aria-hidden="true" data-strength-bar="">
+                        <span style={{ width: `${Math.max(0, Math.min(1, Math.abs(strength))) * 100}%` }} />
+                      </span>
+                      <strong aria-label={`Strength ${Math.abs(strength).toFixed(2)}`}>{Math.abs(strength).toFixed(2)}</strong>
                     </span>
-                  ) : null}
-                </span>
-                <span className={styles.relatedSemantics}>
-                  <span>{asset.relation}</span>
-                  <span>Confidence {formatConfidence(asset.confidence)}</span>
-                  <span className={directionToneClass(asset.changePercent)}>Today {formatCompactPercent(asset.changePercent)}</span>
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
+                  ) : (
+                    <span className={styles.relationshipMagnitude}><BeingBuiltBadge /></span>
+                  )}
+                  {change !== null ? (
+                    <span className={cn(styles.relatedChange, directionToneClass(change))}>Today {formatCompactPercent(change)}</span>
+                  ) : <span />}
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
       ) : (
-        <div className={styles.inlineDataState}><span>Relationships</span><strong>Not available yet</strong></div>
+        <BeingBuilt size="inline">The companies that move most closely with {ticker} are being added.</BeingBuilt>
       )}
-    </article>
+    </ResearchChapter>
   )
 }
 
@@ -366,6 +338,7 @@ function TechnicalSummaryPanel({ gauge }: { gauge: TechnicalGaugeData }) {
   const share = (count: number) => (total ? `${(count / total) * 100}%` : '0%')
   return (
     <div className={styles.technicalSummary} data-technical-summary="">
+      <div className={styles.dialFrame}>
       <svg viewBox="0 0 120 70" className={styles.technicalDial} role="img" aria-label={`${gauge.verdict}, ${Math.round(clamped)} of 100`}>
         <path d={gaugeArcPath(60, 62, 46, -90, 90)} className={styles.gaugeArcTrack} />
         <path d={gaugeArcPath(60, 62, 46, -90, -34)} className={styles.gaugeArcSell} />
@@ -377,6 +350,10 @@ function TechnicalSummaryPanel({ gauge }: { gauge: TechnicalGaugeData }) {
         <circle cx={60} cy={62} r={5.5} className={styles.gaugeHub} />
         <circle cx={60} cy={62} r={2.2} className={styles.gaugeHubCore} />
       </svg>
+        {/* The dial runs from "Strong sell" to "Strong buy", written at its ends. */}
+        <span className={styles.dialEnd} data-end="sell" aria-hidden="true">Strong sell</span>
+        <span className={styles.dialEnd} data-end="buy" aria-hidden="true">Strong buy</span>
+      </div>
       <div className={styles.technicalVerdict}>
         <span className={styles.technicalCaption}>All {total} indicators</span>
         <p>
@@ -437,6 +414,81 @@ function TechnicalRow({ label, gauge }: { label: string; gauge: TechnicalGaugeDa
   )
 }
 
+const dayFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+
+function formatDay(value: string): string {
+  const parsed = Date.parse(`${value.slice(0, 10)}T00:00:00Z`)
+  return Number.isFinite(parsed) ? dayFormat.format(parsed) : value
+}
+
+/**
+ * One Fundamentals card (Spec PRD-78): the value, a short line and ten years of
+ * bars. What has not arrived carries the badge and no value.
+ */
+function FundamentalCard({
+  label,
+  figure,
+  context,
+  tone,
+  bars,
+  pending,
+}: {
+  label: string
+  figure: string | null
+  context: string
+  tone?: 'down'
+  bars?: React.ReactNode
+  /** The sentence for the part that is still being built, if any. */
+  pending?: string | null
+}) {
+  return (
+    <div className={styles.fundamentalCard} data-fundamental-card={label.toLowerCase().replace(/\s+/g, '-')}>
+      <div className={styles.fundamentalHead}>
+        <h3>{label}</h3>
+        {figure ? null : <BeingBuiltBadge />}
+      </div>
+      {figure ? (
+        <p className={styles.fundamentalValue}>
+          <strong data-tone={tone}>{figure}</strong>
+          <span>{context}</span>
+        </p>
+      ) : null}
+      {bars ?? null}
+      {pending ? (
+        <p className={styles.fundamentalNote}>
+          {figure ? <><BeingBuiltBadge />{' '}</> : null}
+          {pending}
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+/** Revenue: the latest reported year and ten years of bars, the last one highlighted. */
+function RevenueCard({ revenuePromise, currency }: { revenuePromise: Promise<ReportedPoint[] | null>; currency: string }) {
+  const points = (use(revenuePromise) ?? []).slice(-10)
+  const latest = points.at(-1) ?? null
+  if (!latest) {
+    return <FundamentalCard label="Revenue" figure={null} context="" pending="The latest revenue and ten years of its history are being added." />
+  }
+  return (
+    <FundamentalCard
+      label="Revenue"
+      figure={formatCompactMoney(latest.value, latest.currency ?? currency)}
+      context={`reported for FY${latest.year}`}
+      bars={points.length >= 2 ? (
+        <MiniBars
+          bars={points.map((point) => ({ key: point.periodEnd, value: point.value }))}
+          firstLabel={shortYear(points[0].year)}
+          lastLabel={shortYear(latest.year)}
+          ariaLabel={`Reported revenue by fiscal year, ${points[0].year} to ${latest.year}`}
+        />
+      ) : null}
+      pending={points.length < 10 ? 'Earlier years are being added.' : null}
+    />
+  )
+}
+
 /** The expanded chart, with the company events once they have arrived. */
 function ExpandedChartWithEvents({
   eventsPromise,
@@ -454,15 +506,16 @@ export default function StockOverviewClient({
   historicalData,
   historicalChartState,
   ohlcData,
-  keyStats,
-  fundamentalGroups,
+  marketCap,
   holdings,
   sectorWeights,
   nextEarnings,
   relatedAssets: relatedAssetsPromise,
   chartEvents,
   scorecard,
-  readingVerdicts,
+  revenue: revenuePromise,
+  operatingMargin,
+  netCash,
 }: StockOverviewClientProps) {
   const [heroTimeframe, setHeroTimeframe] = useState<ChartTimeframe>('1Y')
   const [fullHistoricalData, setFullHistoricalData] = useState<PricePoint[] | null>(null)
@@ -516,19 +569,8 @@ export default function StockOverviewClient({
     { key: 'oscillators', label: 'Oscillators', gauge: technicalSummary.gauges.oscillators },
     { key: 'moving-averages', label: 'Moving averages', gauge: technicalSummary.gauges.movingAverages },
   ] as const
-  const marketCapReference = keyStats.find((stat) => stat.label === 'Market Cap')
-  const orderedFundamentalGroups = isFund
-    ? [...fundamentalGroups].sort((left, right) => Number(right.key === 'fund') - Number(left.key === 'fund'))
-    : fundamentalGroups
-  const visibleFundamentalGroups = orderedFundamentalGroups.slice(0, 6)
   const availableScorecardAxes = scorecard.axes.filter((axis) => axis.available && axis.score !== null).length
   const selectedAxisData = selectedAxis ? scorecard.axes.find((axis) => axis.key === selectedAxis) ?? null : null
-  const orderedAxes = SCORECARD_AXIS_ORDER.map((key) => scorecard.axes.find((axis) => axis.key === key) ?? {
-    key,
-    label: SCORECARD_AXIS_LABELS[key],
-    score: null,
-    available: false,
-  })
   const toggleAxis = (key: ScorecardAxis['key']) => setSelectedAxis((current) => (current === key ? null : key))
 
   const selectHeroTimeframe = (timeframe: ChartTimeframe) => {
@@ -577,7 +619,8 @@ export default function StockOverviewClient({
   const researchVerdicts = [
     {
       label: 'Model signal',
-      value: latestSignal ? regimeCopy(latestSignal.direction) : 'Unavailable',
+      value: latestSignal ? directionCopy(latestSignal.direction) : 'Unavailable',
+      tone: directionTone(latestSignal?.direction),
       detail: latestSignal?.conviction !== null
         && latestSignal?.conviction !== undefined
         && Number.isFinite(latestSignal.conviction)
@@ -587,15 +630,16 @@ export default function StockOverviewClient({
     {
       label: `Technical · ${signalTimeframe}`,
       value: hasTechnicalData ? technicalSummary.gauges.summary.verdict : 'Not enough price history',
-      detail: hasTechnicalData ? `${Math.round(technicalSummary.gauges.summary.position)} / 100` : null,
+      tone: hasTechnicalData ? actionTone(technicalSummary.gauges.summary.verdictAction) : undefined,
+      detail: hasTechnicalData ? `${Math.round(technicalSummary.gauges.summary.position)}/100` : null,
     },
   ]
   const nextEarningsReference = nextEarnings?.date
     ? formatDate(nextEarnings.date, { month: 'short', day: 'numeric' })
     : null
   const referenceFacts = [
-    marketCapReference ? { label: 'Market cap', value: marketCapReference.value } : null,
-    nextEarningsReference && nextEarningsReference !== '—'
+    marketCap ? { label: 'Market cap', value: marketCap } : null,
+    nextEarningsReference
       ? { label: 'Next earnings', value: nextEarningsReference }
       : null,
   ].filter((fact): fact is OverviewStat => fact !== null)
@@ -681,19 +725,10 @@ export default function StockOverviewClient({
     </ResearchChapter>
   )
 
-  const allFundamentalRows = visibleFundamentalGroups.flatMap((group) => group.rows)
-  const fundamentalValue = (pattern: RegExp) => allFundamentalRows.find((row) => pattern.test(row.label))?.value ?? null
-  const fundamentalDate = (pattern: RegExp) => allFundamentalRows.find((row) => pattern.test(row.label))?.asOf ?? null
-  const fundamentalCards = isFund
-    ? [
-        { key: 'holdings', label: 'Holdings', value: holdings.length ? String(holdings.length) : null, asOf: null, context: 'holdings covered' },
-        { key: 'exposures', label: 'Sector exposure', value: sectorWeights.length ? String(sectorWeights.length) : null, asOf: null, context: 'sectors covered' },
-      ]
-    : [
-        { key: 'revenue', label: 'Revenue', value: fundamentalValue(/^(total\s+)?(revenue|sales)\b/i), asOf: fundamentalDate(/^(total\s+)?(revenue|sales)\b/i), context: 'latest reported' },
-        { key: 'operating-margin', label: 'Operating margin', value: fundamentalValue(/operating\s+margin/i), asOf: fundamentalDate(/operating\s+margin/i), context: 'operating profit per dollar of sales' },
-        { key: 'net-cash', label: 'Net cash', value: fundamentalValue(/^net\s+cash\b/i), asOf: fundamentalDate(/^net\s+cash\b/i), context: 'cash minus debt' },
-      ]
+  const fundCards = [
+    { key: 'holdings', label: 'Holdings', value: holdings.length ? String(holdings.length) : null, context: 'holdings covered' },
+    { key: 'exposures', label: 'Sector exposure', value: sectorWeights.length ? String(sectorWeights.length) : null, context: 'sectors covered' },
+  ]
 
   const fundamentalsSection = (
     <ResearchChapter
@@ -702,7 +737,7 @@ export default function StockOverviewClient({
       actions={<Link href={`/stocks/${ticker}/fundamentals`} className={styles.inlineArrow}>Full fundamentals →</Link>}
     >
       <div className={styles.fundamentalCards} data-fundamental-cards="">
-        {fundamentalCards.map((card) => (
+        {isFund ? fundCards.map((card) => (
           <div key={card.key} className={styles.fundamentalCard} data-fundamental-card={card.key}>
             <div className={styles.fundamentalHead}>
               <h3>{card.label}</h3>
@@ -711,28 +746,40 @@ export default function StockOverviewClient({
             {card.value ? (
               <p className={styles.fundamentalValue}>
                 <strong>{card.value}</strong>
-                <span>{card.context}{card.asOf ? ` · as of ${new Date(`${card.asOf}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}` : ''}</span>
+                <span>{card.context}</span>
               </p>
             ) : null}
             <p className={styles.fundamentalNote}>
-              {card.value ? <><BeingBuiltBadge />{' '}</> : null}
-              {card.value
-                ? isFund ? 'How this changed over time is being added.' : 'Ten years of history is being added.'
-                : isFund ? `The ${card.label.toLowerCase()} and how it changed over time are being added.` : `The latest ${card.label.toLowerCase()} and ten years of its history are being added.`}
+              {card.value ? <><BeingBuiltBadge />{' '}How this changed over time is being added.</> : `The ${card.label.toLowerCase()} and how it changed over time are being added.`}
             </p>
           </div>
-        ))}
-      </div>
-      <div className={styles.contextualLinks}>
-        <Link href={`/stocks/${ticker}/financials`}>Financial statements →</Link>
-        <Link href={`/stocks/${ticker}/valuation`}>Valuation history →</Link>
-        <Link href={`/stocks/${ticker}/ownership`}>Ownership & capital →</Link>
+        )) : (
+          <>
+            <Suspense fallback={<FundamentalCard label="Revenue" figure={null} context="" pending="Ten years of reported revenue is being added." />}>
+              <RevenueCard revenuePromise={revenuePromise} currency={currency} />
+            </Suspense>
+            <FundamentalCard
+              label="Operating margin"
+              figure={operatingMargin ? `${Math.round(operatingMargin.value)}%` : null}
+              tone={operatingMargin && operatingMargin.value < 0 ? 'down' : undefined}
+              context={`operating profit per dollar of sales${operatingMargin?.asOf ? ` · as of ${formatDay(operatingMargin.asOf)}` : ''}`}
+              pending={operatingMargin ? 'Ten years of the margin is being added.' : 'The operating margin and ten years of its history are being added.'}
+            />
+            <FundamentalCard
+              label="Net cash"
+              figure={netCash ? formatCompactMoney(netCash.value, currency) : null}
+              tone={netCash && netCash.value < 0 ? 'down' : undefined}
+              context={`cash minus debt${netCash?.asOf ? ` · as of ${formatDay(netCash.asOf)}` : ''}`}
+              pending={netCash ? 'Ten years of cash and debt is being added.' : 'Net cash and ten years of cash and debt are being added.'}
+            />
+          </>
+        )}
       </div>
     </ResearchChapter>
   )
 
   const relationshipsSection = (
-    <Suspense fallback={<div className={styles.relationshipEditorial}><div className={styles.inlineDataState}><span>Relationships</span><strong>Loading</strong></div></div>}>
+    <Suspense fallback={<ResearchChapter id="relationships" label="Relationships" band><p className={styles.chartStatus} role="status">Loading related companies.</p></ResearchChapter>}>
       <RelatedAssetsContent ticker={ticker} relatedAssetsPromise={relatedAssetsPromise} />
     </Suspense>
   )
@@ -837,87 +884,44 @@ export default function StockOverviewClient({
             ) : (
               <div className={styles.snapshotGradeBlock}>
                 <div className={styles.snapshotScorecard}>
-                  <ScorecardDisc
-                    scorecard={scorecard}
-                    size={132}
-                    compact
-                    className={styles.overviewScorecardDisc}
-                    selectedAxis={selectedAxis}
-                    onSelectAxis={toggleAxis}
-                    showLabels={false}
-                    slicesFocusable={false}
-                  />
+                  {/* Each slice is the button for its axis; the axis names are page text around the disc. */}
+                  <div className={styles.discFrame}>
+                    <ScorecardDisc
+                      scorecard={scorecard}
+                      size={124}
+                      compact
+                      className={styles.overviewScorecardDisc}
+                      selectedAxis={selectedAxis}
+                      onSelectAxis={toggleAxis}
+                      textLabels
+                    />
+                  </div>
                   <div className={styles.snapshotSummary}>
                     <span>Research score</span>
                     <strong>{scorecardMessage ?? scorecard.overall.label}</strong>
                     <p>{availableScorecardAxes} of {scorecard.axes.length} dimensions observed</p>
                   </div>
                 </div>
-                {/* The axis names as page text: always readable, one button per axis. */}
-                <div className={styles.axisList} role="group" aria-label="Score dimensions" data-axis-list="">
-                  {orderedAxes.map((axis) => {
-                    const scored = axis.available && axis.score !== null
-                    return (
-                      <button
-                        key={axis.key}
-                        type="button"
-                        className={styles.axisChip}
-                        aria-pressed={selectedAxis === axis.key}
-                        data-scorecard-axis={axis.key}
-                        onClick={() => toggleAxis(axis.key)}
-                      >
-                        <span className={styles.axisSwatch} style={{ background: scored ? scoreColor(axis.score) : 'transparent' }} aria-hidden="true" />
-                        <span>{axis.label}</span>
-                        <strong>{scored ? Math.round(axis.score as number) : '–'}</strong>
-                      </button>
-                    )
-                  })}
-                </div>
                 {selectedAxisData ? (
                   <div className={styles.axisCard} data-axis-card={selectedAxisData.key}>
                     <div className={styles.axisCardHead}>
                       <h3>{selectedAxisData.label}</h3>
-                      <span>{selectedAxisData.available && selectedAxisData.score !== null ? `${Math.round(selectedAxisData.score)}/100` : 'Not scored'}</span>
+                      {selectedAxisData.available && selectedAxisData.score !== null ? <span>{Math.round(selectedAxisData.score)}/100</span> : <BeingBuiltBadge />}
                       <button type="button" className={styles.axisCardClose} aria-label={`Close ${selectedAxisData.label}`} onClick={() => setSelectedAxis(null)}>×</button>
                     </div>
                     <BeingBuilt size="inline">What this score means, and the three measures behind it, are being added.</BeingBuilt>
                   </div>
                 ) : null}
-                <Link href={`/stocks/${ticker}/methodology`} className={styles.inlineArrow}>How the score works →</Link>
               </div>
             )}
             <dl className={styles.snapshotVerdicts} aria-label="Current research snapshot">
               {researchVerdicts.map((verdict) => (
                 <div key={verdict.label} className={styles.snapshotVerdict}>
                   <dt>{verdict.label}</dt>
-                  <dd>{verdict.value}</dd>
-                  {verdict.detail ? <p>{verdict.detail}</p> : null}
-                </div>
-              ))}
-              {/* Reading standings (Spec "Ticker reading standings V1"): built on the server per tier. */}
-              {readingVerdicts.map((verdict) => (
-                <div key={verdict.key} className={styles.snapshotVerdict} data-overview-reading={verdict.key}>
-                  <dt>{verdict.label}</dt>
                   <dd>
-                    {verdict.href ? (
-                      <Link
-                        href={verdict.href}
-                        className={styles.snapshotVerdictLink}
-                        {...(verdict.analyticsId
-                          ? {
-                              'data-analytics-id': verdict.analyticsId,
-                              'data-analytics-event': 'auth_start',
-                              'data-analytics-intent': 'sign_up',
-                            }
-                          : {})}
-                      >
-                        {verdict.value}
-                      </Link>
-                    ) : (
-                      verdict.value
-                    )}
+                    <strong className={verdict.tone}>{verdict.value}</strong>
+                    {verdict.detail ? <span> · {verdict.detail}</span> : null}
                   </dd>
-                  {verdict.detail ? <p>{verdict.detail}</p> : null}
                 </div>
               ))}
             </dl>
@@ -930,9 +934,7 @@ export default function StockOverviewClient({
         {timingSection}
         {questionsSection}
         {fundamentalsSection}
-        <div className={cn(styles.editorialSlot, styles.relationshipsSlot)}>
-          {relationshipsSection}
-        </div>
+        {relationshipsSection}
       </div>
 
       {process.env.NODE_ENV !== 'production' ? <aside className={styles.adPlacement} aria-label="Advertisement placement preview">Advertisement placement <span>Preview · zero runtime space without a campaign</span></aside> : null}

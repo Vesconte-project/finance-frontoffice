@@ -133,7 +133,7 @@ test('expanded chart reads, draws and explains what is missing', async ({ page }
   await expect(dialog.getByRole('alert')).toContainText('Intraday prices are missing for 1D.')
   await dialog.getByRole('button', { name: 'RSI, not available yet' }).click()
   await expect(dialog.getByRole('alert')).toContainText('RSI is not available yet.')
-  await expect(dialog.getByRole('alert')).toContainText('ENG-152')
+  await expect(dialog.getByRole('alert')).not.toContainText('ENG-152')
 
   // Fibonacci: two picks on the chart draw the levels.
   await dialog.getByRole('button', { name: 'Fibonacci' }).click()

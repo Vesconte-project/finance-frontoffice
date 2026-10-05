@@ -292,10 +292,6 @@ dialog.dialog > div {
   color: var(--text);
 }
 
-.reference {
-  color: var(--text-muted);
-}
-
 .statusClose {
   min-height: 32px;
   margin-left: auto;

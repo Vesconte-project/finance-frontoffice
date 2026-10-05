@@ -29,6 +29,32 @@
   color: var(--text-small);
 }
 
+/* The footer under a chapter's chart: a label, a figure and what it is. */
+.chapterFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.625rem;
+  margin: 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line-soft);
+  font-size: 0.875rem;
+  color: var(--text-small);
+}
+
+.chapterFooter > span:first-child {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.chapterFooter strong {
+  font-family: var(--font-display), serif;
+  font-size: 1.25rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
 /* One line under a chart or a lead, for the part still being built. */
 .chartNote,
 .leadNote {

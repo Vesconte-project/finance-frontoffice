@@ -114,18 +114,15 @@ test('a signed-out reader gets one invitation row and nothing else', () => {
   )
 })
 
-test('the page requests /readings only after confirming a signed-in viewer', () => {
+test('the Overview does not request /readings: its verdict lines are the two the ticker Spec places there', () => {
+  // Founder, 2026-10-05 (Spec PRD-78): beside the chart only the score, the
+  // model signal and the technical verdict. The reading standings left the
+  // Overview, so the page never asks for them.
   const page = readRepoFile('app/(app)/stocks/[ticker]/page.tsx')
-  const loader = page.slice(page.indexOf('async function loadReadingVerdicts'))
-  const gate = loader.indexOf('if (!viewer.isSignedIn) return [signedOutReadingVerdict(ticker)]')
-  const request = loader.indexOf('getTickerReadingsPayload(ticker)')
-
-  assert.ok(gate > 0, 'signed-out gate present')
-  assert.ok(request > gate, 'the backend request comes after the signed-out gate')
+  assert.doesNotMatch(page, /getTickerReadingsPayload|loadReadingVerdicts|readingVerdicts/)
   assert.match(page, /export const dynamic = 'force-dynamic'/)
-  // Nothing viewer-specific is built in the client: the component only renders rows.
   const overview = readRepoFile('components/stocks/StockOverviewClient.tsx')
-  assert.doesNotMatch(overview, /getTickerReadingsPayload|parseTickerReadings|formatStandingPercent/)
+  assert.doesNotMatch(overview, /getTickerReadingsPayload|parseTickerReadings|formatStandingPercent|readingVerdicts/)
 })
 
 // Spec "Reading eligibility V1", accepted Snapshot

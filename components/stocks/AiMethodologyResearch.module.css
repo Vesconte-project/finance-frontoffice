@@ -1,7 +1,12 @@
-.aiPage,
-.methodology {
+.aiPage {
   display: grid;
   gap: 28px;
+  min-width: 0;
+}
+
+/* Methodology chapters sit edge to edge; the bands separate them. */
+.methodology {
+  display: grid;
   min-width: 0;
 }
 

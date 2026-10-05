@@ -45,3 +45,11 @@ test('canonical overview stats do not treat latest metadata as an as-of market c
 
   assert.equal(stats.marketCap, null)
 })
+
+test('every tab reads the same market cap: the snapshot figure, else the quote text', async () => {
+  const { tickerMarketCap } = await import('../lib/ticker-page-stats')
+  assert.equal(tickerMarketCap({ profile: { marketCap: 2e12 }, quote: { marketCapText: '$4.98T' } }), 2e12)
+  assert.equal(tickerMarketCap({ fundamentalsSummary: { marketCap: 3e12 }, quote: { marketCapText: '$4.98T' } }), 3e12)
+  assert.equal(tickerMarketCap({ quote: { marketCapText: '$4.98T' } }), 4.98e12)
+  assert.equal(tickerMarketCap({ quote: { marketCapText: 'n/a' } }), null)
+})

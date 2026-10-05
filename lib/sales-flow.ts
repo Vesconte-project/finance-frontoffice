@@ -5,9 +5,10 @@
  * of reported results — sales, gross profit, operating income, net income —
  * drawn to scale, so the bands narrow from what was sold to what was kept. The
  * branches between them (cost of sales, operating costs, taxes) and the uses
- * of profit (buybacks, dividends, what was kept) are not reported line items
- * yet (ENG-88); they are drawn as outlined "being built" nodes of a fixed size,
- * never sized from a difference of two reported values.
+ * of profit (buybacks, dividends, what was kept), and what the costs are made
+ * of, are not reported line items yet (ENG-88, ENG-163); they are drawn as
+ * outlined "being built" nodes of a fixed size, never sized from a difference
+ * of two reported values.
  */
 import type { PlotBox } from './chart-labels'
 
@@ -105,7 +106,7 @@ export type WideFlow = {
   links: WideLink[]
 }
 
-export const WIDE_FLOW_BOX: PlotBox = { width: 1000, height: 460 }
+export const WIDE_FLOW_BOX: PlotBox = { width: 1000, height: 500 }
 
 const NODE_WIDTH = 12
 const PENDING_HEIGHT = 30
@@ -129,7 +130,11 @@ function bandPath(x1: number, top1: number, bottom1: number, x2: number, top2: n
  * keeps a thin line at the bottom: a loss has no width to flow.
  */
 export function wideFlow(values: FlowValues, box: PlotBox = WIDE_FLOW_BOX): WideFlow {
-  const pendingTop = 16
+  // Two rows of being-built nodes above the reported path: the costs that leave
+  // it, and above them what those costs are made of (Spec PRD-78, wide flow:
+  // "custo das vendas e componentes", "custos operacionais e componentes").
+  const partsTop = 16
+  const pendingTop = partsTop + PENDING_HEIGHT + 20
   const mainTop = pendingTop + PENDING_HEIGHT + 34
   const bottom = box.height - 16
   const mainHeight = bottom - mainTop
@@ -154,6 +159,8 @@ export function wideFlow(values: FlowValues, box: PlotBox = WIDE_FLOW_BOX): Wide
   const costOfSales = pending('costOfSales', 2, pendingTop)
   const operatingCosts = pending('operatingCosts', 3, pendingTop)
   const taxes = pending('taxes', 4, pendingTop)
+  const costOfSalesParts = pending('costOfSalesParts', 3, partsTop)
+  const operatingCostsParts = pending('operatingCostsParts', 4, partsTop)
   const uses = (['buybacks', 'dividends', 'retained'] as const).map((id, index) => {
     const slot = mainHeight / 3
     return pending(id, 5, mainTop + slot * index + (slot - PENDING_HEIGHT) / 2, PENDING_HEIGHT, 'left')
@@ -182,10 +189,12 @@ export function wideFlow(values: FlowValues, box: PlotBox = WIDE_FLOW_BOX): Wide
     }
   }
 
-  const nodes = [business, sales, costOfSales, gross, operatingCosts, operating, taxes, net, ...uses]
+  const nodes = [business, sales, costOfSales, costOfSalesParts, gross, operatingCosts, operatingCostsParts, operating, taxes, net, ...uses]
   const links: WideLink[] = [
     { from: 'business', to: 'sales', d: bandPath(business.x + business.width, business.y, business.y + business.height, sales.x, sales.y, sales.y + sales.height), pending: true },
     pendingLink(sales, costOfSales),
+    pendingLink(costOfSales, costOfSalesParts),
+    pendingLink(operatingCosts, operatingCostsParts),
     reportedLink(sales, gross),
     pendingLink(gross, operatingCosts),
     reportedLink(gross, operating),

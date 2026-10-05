@@ -1,6 +1,10 @@
 /*
  * Liquid-glass segmented control.
  *
+ * A page can retune it through custom properties: the option height, and the
+ * drop's fill, label colour and rim (the ticker page uses a dark pill, Spec
+ * PRD-78 "Controlos segmentados").
+ *
  * Scoped exception to the solid-surface rule in docs/design/design-system.md:
  * translucency, blur and a specular rim are used only for the selection drop
  * of selectors, never for panels or cards. The track itself stays solid.
@@ -29,7 +33,7 @@
 .option {
   position: relative;
   z-index: 1;
-  min-height: 28px;
+  min-height: var(--segmented-option-height, 28px);
   padding: 0 10px;
   border: 0;
   border-radius: 999px;
@@ -101,7 +105,7 @@
 }
 
 .pane {
-  background: color-mix(in srgb, var(--surface) 46%, transparent);
+  background: var(--segmented-active-bg, color-mix(in srgb, var(--surface) 46%, transparent));
   -webkit-backdrop-filter: blur(3px) saturate(1.6);
   backdrop-filter: blur(3px) saturate(1.6);
   box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 10%, transparent);
@@ -120,7 +124,7 @@
 
 .stripLabel {
   position: absolute;
-  color: var(--text);
+  color: var(--segmented-active-fg, var(--text));
   font-size: 12px;
   font-weight: 500;
   line-height: 1;
@@ -137,13 +141,17 @@
  * The ocre edge marks the selection without using ocre as small text.
  */
 .rim {
-  border: 1px solid var(--accent);
-  background:
+  border: 1px solid var(--segmented-active-rim, var(--accent));
+  background: var(
+    --segmented-active-sheen,
     linear-gradient(180deg, var(--glass-lens-specular) 0%, transparent 42%),
-    linear-gradient(0deg, color-mix(in srgb, var(--text) 6%, transparent) 0%, transparent 30%);
-  box-shadow:
+    linear-gradient(0deg, color-mix(in srgb, var(--text) 6%, transparent) 0%, transparent 30%)
+  );
+  box-shadow: var(
+    --segmented-active-shadow,
     inset 0 1px 0 var(--glass-lens-specular),
-    inset 0 -1px 0 color-mix(in srgb, var(--text) 8%, transparent);
+    inset 0 -1px 0 color-mix(in srgb, var(--text) 8%, transparent)
+  );
   mix-blend-mode: normal;
 }
 
@@ -153,20 +161,20 @@
 }
 
 .control[data-dragging='true'] .pane {
-  background: color-mix(in srgb, var(--surface) 30%, transparent);
+  background: var(--segmented-active-bg, color-mix(in srgb, var(--surface) 30%, transparent));
   box-shadow:
     0 6px 18px color-mix(in srgb, var(--text) 16%, transparent),
     0 1px 3px color-mix(in srgb, var(--text) 12%, transparent);
 }
 
 .control[data-dragging='true'] .stripLabel {
-  color: var(--text);
+  color: var(--segmented-active-fg, var(--text));
 }
 
 @media (prefers-reduced-transparency: reduce) {
   .pane,
   .control[data-dragging='true'] .pane {
-    background: var(--surface);
+    background: var(--segmented-active-bg, var(--surface));
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }

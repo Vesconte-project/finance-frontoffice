@@ -11,14 +11,13 @@ import {
   type BackendRequestLogContext,
 } from '@/lib/backend-request-log'
 import { BackendDataError } from '@/lib/backend'
-import { getViewerAccess } from '@/lib/billing'
-import { getTickerDisclosures, getTickerEvents, getTickerReadingsPayload } from '@/lib/canonical-research'
-import { currencyForTicker, formatCompactMoney, formatMoney } from '@/lib/currency'
+import { getTickerDisclosures, getTickerEvents, getTickerFinancialStatements } from '@/lib/canonical-research'
+import { annualSeries, summaryAmount, summaryDate, summaryPercent, type ReportedPoint } from '@/lib/statement-reading'
+import { currencyForTicker, formatCompactMoney } from '@/lib/currency'
 import {
   getOhlcData,
   getStockQuote,
   getTickerFundamentals,
-  type TickerFinancialRow,
   type TickerFundamentals,
 } from '@/lib/finance'
 import {
@@ -36,19 +35,12 @@ import {
 import { getCachedLatestScreenerRow, getCachedSignalHistoryForTicker } from '@/lib/signals'
 import {
   getTickerPageSummary,
-  type LatestFundamentalsRow,
   type SymbolCoverageRow,
 } from '@/lib/ticker-data'
 import { scorecardFromTickerSummary } from '@/lib/ticker-page-scorecard'
-import { canonicalTickerStats } from '@/lib/ticker-page-stats'
+import { canonicalTickerStats, parseCompactCurrencyNumber } from '@/lib/ticker-page-stats'
 import { buildEventMarkers, type EventMarker } from '@/lib/event-markers'
 import { resolveStockAsset } from '@/lib/stock-asset-kind'
-import {
-  parseTickerReadings,
-  readingVerdicts,
-  signedOutReadingVerdict,
-  type ReadingVerdict,
-} from '@/lib/ticker-readings'
 
 export const dynamic = 'force-dynamic'
 
@@ -83,134 +75,9 @@ function stockEntrySourceFromContext(
   return 'direct'
 }
 
-function parseCompactCurrencyNumber(value: string | null): number | null {
-  if (!value) return null
-  const normalized = value
-    .replace(/[$€£₹¥]/g, '')
-    .replace(/\b(?:USD|EUR|GBP|GBp|GBX|AUD|HKD|INR|JPY|DKK|SEK|NOK|kr)\b/gi, '')
-    .replace(/,/g, '')
-    .trim()
-  const match = normalized.match(/^(-?\d+(?:\.\d+)?)([KMBT])?$/i)
-  if (!match) return null
 
-  const numeric = Number(match[1])
-  if (!Number.isFinite(numeric)) return null
-
-  const suffix = match[2]?.toUpperCase()
-  if (suffix === 'T') return numeric * 1_000_000_000_000
-  if (suffix === 'B') return numeric * 1_000_000_000
-  if (suffix === 'M') return numeric * 1_000_000
-  if (suffix === 'K') return numeric * 1_000
-  return numeric
-}
-
-type DatedFinancialRow = TickerFinancialRow & { asOf?: string | null }
-
-type FundamentalGroup = {
-  key: string
-  label: string
-  rows: Array<{ label: string; value: string; asOf?: string | null }>
-}
-
-function normalizeFundamentalLabel(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
-}
-
-function formatFundamentalValue(label: string, rawValue: string | number, currency: string): string {
-  const text = String(rawValue).trim()
-  if (!text || text === '—') return '—'
-
-  const normalizedLabel = normalizeFundamentalLabel(label)
-  if (/date|inception/.test(normalizedLabel)) {
-    const parsedDate = Date.parse(text)
-    if (Number.isFinite(parsedDate)) {
-      return new Date(parsedDate).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    }
-  }
-
-  if (!/^-?\d[\d,]*(?:\.\d+)?$/.test(text)) return text
-  const numeric = Number.parseFloat(text.replace(/,/g, ''))
-  if (!Number.isFinite(numeric)) return text
-
-  const isPercent = /(yield|margin|growth|return on|\broe\b|\broa\b|percent|pct|payout)/.test(normalizedLabel)
-  if (isPercent) {
-    const scaled = Math.abs(numeric) <= 1.5 ? numeric * 100 : numeric
-    return `${scaled.toFixed(2)}%`
-  }
-
-  const isCurrency = /(market cap|revenue|sales|ebitda|cash|debt|assets|equity|income|flow|fcf|enterprise value|liabilit|profit)/.test(normalizedLabel)
-  if (isCurrency && Math.abs(numeric) >= 1_000) return formatCompactMoney(numeric, currency)
-
-  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(numeric)
-}
-
-function usableFinancialRows(
-  latestRows: LatestFundamentalsRow[],
-  fundamentals: TickerFundamentals | null,
-  currency: string
-): DatedFinancialRow[] {
-  const rows: DatedFinancialRow[] = [
-    ...latestRows.map((row) => ({
-      label: row.metricLabel,
-      value: formatFundamentalValue(
-        row.metricLabel,
-        row.valueNumber ?? row.valueDisplay ?? '—',
-        currency
-      ),
-      // The date the figure refers to, so the block can show it.
-      asOf: (row.periodEnd ?? row.asOf)?.slice(0, 10) ?? null,
-    })),
-    ...(fundamentals?.snapshot ?? []),
-    ...(fundamentals?.profile ?? []),
-    ...(fundamentals?.portfolio ?? []),
-    ...(fundamentals?.distributions ?? []),
-    ...(fundamentals?.risk ?? []),
-  ]
-  if (fundamentals?.dividendYield) rows.push({ label: 'Dividend yield', value: fundamentals.dividendYield })
-  if (fundamentals?.dividendRate) rows.push({ label: 'Dividend rate', value: fundamentals.dividendRate })
-  if (fundamentals?.payoutRatio) rows.push({ label: 'Payout ratio', value: fundamentals.payoutRatio })
-  if (fundamentals?.exDividendDate) rows.push({ label: 'Ex-dividend date', value: fundamentals.exDividendDate })
-
-  const seen = new Set<string>()
-  return rows.filter((row) => {
-    const key = normalizeFundamentalLabel(row.label)
-    if (!key || seen.has(key) || !row.value || row.value === '—') return false
-    if (/^(symbol|ticker|name|company name)$/.test(key)) return false
-    seen.add(key)
-    return true
-  }).map((row) => ({
-    label: row.label,
-    value: formatFundamentalValue(row.label, row.value, currency),
-    asOf: row.asOf ?? null,
-  }))
-}
-
-function buildFundamentalGroups(
-  latestRows: LatestFundamentalsRow[],
-  fundamentals: TickerFundamentals | null,
-  currency: string
-): FundamentalGroup[] {
-  const rows = usableFinancialRows(latestRows, fundamentals, currency)
-  const definitions: Array<{ key: string; label: string; matcher: RegExp }> = [
-    { key: 'valuation', label: 'Valuation', matcher: /(market cap|enterprise|valuation|price.*book|price.*sales|\bp\/?e\b|trailing pe|forward pe|multiple)/i },
-    { key: 'growth-income', label: 'Growth and income', matcher: /(growth|revenue|sales|earnings|\beps\b|net income|cash flow)/i },
-    { key: 'profitability', label: 'Profitability', matcher: /(margin|profit|ebitda|return on|\broe\b|\broa\b)/i },
-    { key: 'balance-sheet', label: 'Balance sheet', matcher: /(cash|debt|asset|liabilit|equity|liquidity|current ratio|quick ratio)/i },
-    { key: 'dividends', label: 'Dividends', matcher: /(dividend|distribution|yield|payout|ex date)/i },
-    { key: 'fund', label: 'Fund information', matcher: /(expense|turnover|inception|fund family|net assets|category)/i },
-  ]
-
-  return definitions
-    .map((definition) => ({
-      key: definition.key,
-      label: definition.label,
-      rows: rows.filter((row) => definition.matcher.test(normalizeFundamentalLabel(row.label))).slice(0, 10),
-    }))
-    .filter((group) => group.rows.length > 0)
+function overviewFigure(value: number | null, asOf: string | null): { value: number; asOf: string | null } | null {
+  return value === null ? null : { value, asOf }
 }
 
 function emptyRelationships(ticker: string, window: number): TickerRelationships {
@@ -282,42 +149,6 @@ async function loadOptionalStockDataset<T>(
       timeout: details.timeout,
     })
     return fallback
-  }
-}
-
-/**
- * Reading standings for the verdicts list (Spec "Ticker reading standings V1").
- *
- * The tier is resolved per request. A signed-out reader never triggers the
- * `/readings` request and receives only the sign-up row. For a signed-in reader
- * any failure or malformed payload returns no rows at all: no placeholder.
- */
-async function loadReadingVerdicts(
-  context: BackendRequestLogContext,
-  ticker: string
-): Promise<ReadingVerdict[]> {
-  const viewer = await getViewerAccess()
-  if (!viewer.isSignedIn) return [signedOutReadingVerdict(ticker)]
-
-  const endpoint = `/tickers/${ticker}/readings`
-  const startedAt = Date.now()
-  try {
-    const parsed = parseTickerReadings(await getTickerReadingsPayload(ticker))
-    if (!parsed) {
-      logStockPageEvent('error', 'optional dataset malformed', context, { endpoint, durationMs: Date.now() - startedAt })
-      return []
-    }
-    return readingVerdicts(parsed)
-  } catch (error) {
-    const details = backendErrorDetails(error)
-    logStockPageEvent('error', 'optional dataset unavailable', context, {
-      endpoint,
-      durationMs: Date.now() - startedAt,
-      error: details.message,
-      aborted: details.aborted,
-      timeout: details.timeout,
-    })
-    return []
   }
 }
 
@@ -442,8 +273,14 @@ export default async function TickerPage({
   }
 
   const scorecard = scorecardFromTickerSummary(tickerSummary)
-  const readingVerdictsPromise = runWithBackendRequestLogContext(requestLogContext, () =>
-    loadReadingVerdicts(requestLogContext, ticker)
+  // Reported annual revenue for the Fundamentals card: the same series the
+  // Fundamentals tab draws (Spec PRD-78, "Os mesmos números em todas as tabs").
+  // Not awaited; the card waits for it on its own.
+  const revenuePromise = runWithBackendRequestLogContext(requestLogContext, () =>
+    loadOptionalStockDataset<ReportedPoint[] | null>(requestLogContext, `/tickers/${ticker}/financial-statements`, null, async () => {
+      const income = await getTickerFinancialStatements(ticker, { statementType: 'income_statement', periodType: 'annual', limit: 500 })
+      return income.available ? annualSeries(income.rows, 'revenue') : null
+    })
   )
   // Company events for the expanded chart's Events layer. Not awaited: the page
   // renders without them and the chart reads them when it opens. `null` means
@@ -591,44 +428,10 @@ export default async function TickerPage({
     marketStatsVolume: marketStats?.volume,
   })
   const marketCapNumeric = canonicalStats.marketCap ?? parseCompactCurrencyNumber(canonicalStats.marketCapText)
-  const marketCapValue =
-    marketCapNumeric !== null
-      ? formatCompactMoney(marketCapNumeric, currency)
-      : canonicalStats.marketCapText ?? '—'
-  const trailingPe = canonicalStats.trailingPe !== null ? canonicalStats.trailingPe.toFixed(2) : '—'
-  const dividendYieldRow = latestFundamentals.find((item) =>
-    `${item.metric.toLowerCase()} ${item.metricLabel.toLowerCase()}`.includes('yield')
-  )
-  const dividendYield = (() => {
-    if (dividendYieldRow?.valueNumber !== null && dividendYieldRow?.valueNumber !== undefined) {
-      const percentage = Math.abs(dividendYieldRow.valueNumber) <= 1
-        ? dividendYieldRow.valueNumber * 100
-        : dividendYieldRow.valueNumber
-      return `${percentage.toFixed(Math.abs(percentage) < 10 ? 2 : 1).replace(/\.0+$/, '')}%`
-    }
-    return dividendYieldRow?.valueDisplay ?? '—'
-  })()
-  const volumeValue = canonicalStats.volume !== null ? Math.round(canonicalStats.volume).toLocaleString() : '—'
-  const latestRevenueValue =
-    fundamentalsSummary?.latestRevenue !== null && fundamentalsSummary?.latestRevenue !== undefined
-      ? formatCompactMoney(fundamentalsSummary.latestRevenue, currency)
-      : '—'
-  const latestEpsValue =
-    fundamentalsSummary?.latestEps !== null && fundamentalsSummary?.latestEps !== undefined
-      ? fundamentalsSummary.latestEps.toFixed(2)
-      : '—'
-
-  const keyStats = [
-    { label: 'Market Cap', value: marketCapValue },
-    { label: 'P/E', value: trailingPe },
-    { label: 'Revenue', value: latestRevenueValue },
-    { label: 'EPS', value: latestEpsValue },
-    { label: 'Dividend Yield', value: dividendYield },
-    { label: 'Volume', value: volumeValue },
-    { label: '52W High', value: formatMoney(marketStats?.week52High ?? null, currency) },
-    { label: '52W Low', value: formatMoney(marketStats?.week52Low ?? null, currency) },
-  ].filter((stat) => stat.value !== '—').slice(0, 6)
-  const fundamentalGroups = buildFundamentalGroups(latestFundamentals, fundamentals, currency)
+  // Under the chart: market cap and next earnings only (Spec PRD-78, decision 7).
+  const marketCapValue = marketCapNumeric !== null
+    ? formatCompactMoney(marketCapNumeric, currency)
+    : canonicalStats.marketCapText ?? null
   const holdings = isEtf ? fundamentals?.holdings ?? [] : []
 
   return (
@@ -658,8 +461,7 @@ export default async function TickerPage({
         historicalData={historicalData}
         historicalChartState={historicalChartState}
         ohlcData={ohlcData}
-        keyStats={keyStats}
-        fundamentalGroups={fundamentalGroups}
+        marketCap={marketCapValue}
         holdings={holdings}
         sectorWeights={fundamentals?.sectorWeights ?? []}
         nextEarnings={tickerSummary.nextEarnings ? {
@@ -678,7 +480,9 @@ export default async function TickerPage({
           episode_status: signal.live_episode_status,
         }))}
         scorecard={scorecard}
-        readingVerdicts={await readingVerdictsPromise}
+        revenue={revenuePromise}
+        operatingMargin={overviewFigure(summaryPercent(latestFundamentals, /operating\s+margin/i), summaryDate(latestFundamentals, /operating\s+margin/i))}
+        netCash={overviewFigure(summaryAmount(latestFundamentals, /^net\s+cash\b/i), summaryDate(latestFundamentals, /^net\s+cash\b/i))}
       />
     </div>
   )

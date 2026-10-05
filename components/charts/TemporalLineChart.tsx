@@ -38,7 +38,7 @@ type XTick = { index: number; label: string }
 
 function formatDate(value: string, options?: Intl.DateTimeFormatOptions): string {
   const parsed = Date.parse(value)
-  if (!Number.isFinite(parsed)) return '—'
+  if (!Number.isFinite(parsed)) return value
   return new Date(parsed).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric', ...options,
   })
@@ -93,7 +93,34 @@ function placeXLabels(
   return kept.map(({ key, x, label }) => ({ key, x, label }))
 }
 
-function buildXTicks(dates: string[], maxTicks = 6): XTick[] {
+/** A year as `'16`, for compact charts (Spec PRD-78, "Gráficos largos e compactos"). */
+function shortYear(year: number): string {
+  return `'${String(year).slice(-2)}`
+}
+
+/**
+ * Two gridlines at round values inside the plotted range (Spec PRD-78: an area
+ * chart with two gridlines, each with its value written on it).
+ */
+function twoGridValues(floor: number, ceiling: number): number[] {
+  const range = ceiling - floor
+  if (!(range > 0)) return [floor]
+  const magnitude = 10 ** Math.floor(Math.log10(range))
+  // From the widest round step to the finest: the first that fits two lines
+  // inside the plot gives its outermost two.
+  for (const unit of [10, 5, 2.5, 2, 1, 0.5, 0.25, 0.2, 0.1]) {
+    const step = unit * magnitude
+    const values: number[] = []
+    for (let value = Math.ceil(floor / step) * step; value < ceiling; value += step) {
+      // Keep each line clear of the plot's top and bottom edges.
+      if (value > floor + range * 0.08 && value < ceiling - range * 0.08) values.push(value)
+    }
+    if (values.length >= 2) return [values[0], values[values.length - 1]]
+  }
+  return [floor + range / 3, floor + (range * 2) / 3]
+}
+
+function buildXTicks(dates: string[], maxTicks = 6, compact = false): XTick[] {
   const total = dates.length
   if (total === 0) return []
   if (total === 1) return [{ index: 0, label: formatDate(dates[0], { month: 'short', day: 'numeric' }) }]
@@ -104,7 +131,7 @@ function buildXTicks(dates: string[], maxTicks = 6): XTick[] {
     let previousYear: number | null = null
     dates.forEach((date, index) => {
       const year = new Date(`${date}T00:00:00Z`).getUTCFullYear()
-      if (previousYear !== null && year !== previousYear) ticks.push({ index, label: String(year) })
+      if (previousYear !== null && year !== previousYear) ticks.push({ index, label: compact ? shortYear(year) : String(year) })
       previousYear = year
     })
     return thinTicks(ticks, maxTicks)
@@ -120,7 +147,7 @@ function buildXTicks(dates: string[], maxTicks = 6): XTick[] {
         ticks.push({
           index,
           label: parsed.getUTCMonth() === 0
-            ? String(parsed.getUTCFullYear())
+            ? compact ? shortYear(parsed.getUTCFullYear()) : String(parsed.getUTCFullYear())
             : parsed.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' }),
         })
       }
@@ -320,6 +347,8 @@ export default function TemporalLineChart({
         }
 
         const candles = mode === 'candles'
+        // The chart picks its compact drawing from its own width, never the device's.
+        const compact = width <= 519
         const padding = { top: 12, right: 58, bottom: 24, left: 6 }
         const innerWidth = Math.max(1, width - padding.left - padding.right)
         const innerHeight = Math.max(1, height - padding.top - padding.bottom)
@@ -338,11 +367,11 @@ export default function TemporalLineChart({
         }))
         const linePath = renderedPoints.map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(' ')
         const areaPath = `${linePath} L${renderedPoints.at(-1)?.x.toFixed(2)} ${(padding.top + innerHeight).toFixed(2)} L${renderedPoints[0]?.x.toFixed(2)} ${(padding.top + innerHeight).toFixed(2)} Z`
-        // Each date label needs roughly 96px; fit as many as the plot width holds.
-        const xTickLimit = Math.max(2, Math.min(6, Math.floor(innerWidth / 96) + 1))
-        const xTicks = buildXTicks(points.map((point) => point.date), xTickLimit)
+        // Each date label needs roughly 96px; fit as many as the plot width holds, fewer when compact.
+        const xTickLimit = compact ? Math.max(2, Math.min(4, Math.floor(innerWidth / 80))) : Math.max(2, Math.min(6, Math.floor(innerWidth / 96) + 1))
+        const xTicks = buildXTicks(points.map((point) => point.date), xTickLimit, compact)
         const xLabels = placeXLabels(xTicks, renderedPoints, padding.left, innerWidth)
-        const yTicks = Array.from({ length: 5 }, (_, index) => floor + ((ceiling - floor) / 4) * index)
+        const yTicks = twoGridValues(floor, ceiling)
         // The reading and a measured span never show at once.
         const spanShown = measure !== null && measure.first !== measure.second
         const hoverPoint = hoverIndex === null || spanShown ? null : renderedPoints[hoverIndex] ?? null
@@ -442,6 +471,7 @@ export default function TemporalLineChart({
             data-chart-mode={mode}
             data-measuring={measuring ? 'true' : undefined}
             data-temporal-line-chart=""
+            data-chart-variant={compact ? 'compact' : 'wide'}
           >
             <svg width={width} height={height} className={styles.svg} role="img" aria-label={ariaLabel}>
               {yTicks.map((tick) => {

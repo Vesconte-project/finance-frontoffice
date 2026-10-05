@@ -26,6 +26,11 @@ type ScorecardDiscProps = {
    * buttons elsewhere, so each choice is one tab stop.
    */
   slicesFocusable?: boolean
+  /**
+   * Write the axis names as page text around the disc, so they keep their size
+   * however small the disc is drawn (Spec PRD-78, "Etiquetas").
+   */
+  textLabels?: boolean
 }
 
 type Point = {
@@ -78,6 +83,7 @@ export default function ScorecardDisc({
   selectedAxis = null,
   showLabels: showLabelsProp,
   slicesFocusable = true,
+  textLabels = false,
 }: ScorecardDiscProps) {
   const interactive = Boolean(onSelectAxis) && !mini
   const resolvedSize = size ?? (mini ? 40 : compact ? 260 : 360)
@@ -86,22 +92,26 @@ export default function ScorecardDisc({
   const axisMap = axisByKey(scorecard)
   const outerRadius = mini ? 102 : compact ? 82 : 78
   const labelRadius = 107
+  // Page-text labels sit just outside the outer ring.
+  const textLabelRadius = outerRadius + 16
   const centerRadius = mini ? 30 : compact ? 35 : 39
   const slice = 360 / SCORECARD_AXIS_ORDER.length
   const gap = mini ? 2.5 : 3.8
   const overallScore = scorecard.overall.score
   const overallColor = overallScore === null ? 'var(--text-muted)' : scoreColor(overallScore)
-  const grade = scorecard.overall.grade || '–'
-  const showLabels = showLabelsProp ?? !mini
+  // A missing grade draws nothing in the centre, never a dash.
+  const grade = /^[-–—]?$/.test(scorecard.overall.grade?.trim() ?? '') ? '' : scorecard.overall.grade.trim()
+  const showLabels = !textLabels && (showLabelsProp ?? !mini)
   const showRings = !mini
   const fontScale = resolvedSize / viewBoxSize
 
   return (
     <div
-      className={cn('shrink-0', className)}
+      className={cn('shrink-0', textLabels && 'relative', className)}
       style={{ width: resolvedSize, height: resolvedSize }}
-      aria-label={`Scorecard ${grade}, ${scorecard.overall.label}`}
+      aria-label={grade ? `Scorecard ${grade}, ${scorecard.overall.label}` : `Scorecard, ${scorecard.overall.label}`}
       role={interactive && slicesFocusable ? 'group' : 'img'}
+      data-text-labels={textLabels ? '' : undefined}
     >
       <svg viewBox={`0 0 ${viewBoxSize} ${viewBoxSize}`} width={resolvedSize} height={resolvedSize} className="block overflow-visible">
         <style>
@@ -121,6 +131,16 @@ export default function ScorecardDisc({
             .scorecard-disc-axis { cursor: pointer; outline: none; }
             .scorecard-disc-axis:focus-visible .scorecard-disc-hit { stroke: var(--accent); stroke-width: 2.5; }
             .scorecard-disc-axis[data-selected='true'] .scorecard-disc-hit { stroke: var(--text); stroke-width: 1.5; stroke-dasharray: 3 3; }
+            .scorecard-disc-label {
+              position: absolute;
+              transform: translate(-50%, -50%);
+              color: var(--text-muted);
+              font: 600 11px/1 var(--font-body), sans-serif;
+              white-space: nowrap;
+              pointer-events: none;
+            }
+            .scorecard-disc-label[data-side='end'] { transform: translate(-100%, -50%); }
+            .scorecard-disc-label[data-side='start'] { transform: translate(0, -50%); }
           `}
         </style>
 
@@ -155,7 +175,6 @@ export default function ScorecardDisc({
           const endAngle = (index + 1) * slice - gap / 2
           const midAngle = (startAngle + endAngle) / 2
           const labelPoint = polarToCartesian(center, labelRadius, midAngle)
-          const missingMark = polarToCartesian(center, radius * 0.62, midAngle)
 
           const select = () => onSelectAxis?.(key)
           const axisButton = interactive
@@ -197,18 +216,6 @@ export default function ScorecardDisc({
                 strokeDasharray={available ? undefined : mini ? '3 3' : '5 4'}
                 style={{ animationDelay: `${index * 42}ms` }}
               />
-              {!available && !mini ? (
-                <text
-                  x={missingMark.x}
-                  y={missingMark.y + 4}
-                  textAnchor="middle"
-                  fontSize={14}
-                  fontWeight={500}
-                  fill="var(--content-muted)"
-                >
-                  –
-                </text>
-              ) : null}
               {showLabels ? (
                 <text
                   x={labelPoint.x}
@@ -266,6 +273,24 @@ export default function ScorecardDisc({
           </text>
         ) : null}
       </svg>
+      {textLabels
+        ? SCORECARD_AXIS_ORDER.map((key, index) => {
+            const label = axisMap.get(key)?.label ?? SCORECARD_AXIS_LABELS[key]
+            const point = polarToCartesian(center, textLabelRadius, (index + 0.5) * slice)
+            const side = point.x < center - 8 ? 'end' : point.x > center + 8 ? 'start' : 'middle'
+            return (
+              <span
+                key={key}
+                aria-hidden="true"
+                className="scorecard-disc-label"
+                data-side={side}
+                style={{ left: `${(point.x / viewBoxSize) * 100}%`, top: `${(point.y / viewBoxSize) * 100}%` }}
+              >
+                {label}
+              </span>
+            )
+          })
+        : null}
     </div>
   )
 }

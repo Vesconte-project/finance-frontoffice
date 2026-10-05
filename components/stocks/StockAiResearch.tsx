@@ -22,13 +22,20 @@ export default async function StockAiResearch({ data }: { data: StockResearchDat
           aside={(
             <>
               <BeingBuilt label="Sources">Each answer will cite the Vesconte data it uses, with its date; this is being added.</BeingBuilt>
-              <ChapterCard title="Your plan" meta={access.isPro ? 'Pro' : 'Free'}>
-                {access.isPro ? (
-                  <p>AI research will be part of your plan when it opens.</p>
-                ) : (
+              {/* A visitor without a session has no plan to show (Spec PRD-78, "Visitante sem sessão"). */}
+              {access.isSignedIn ? (
+                <ChapterCard title="Your plan" meta={access.isPro ? 'Pro' : 'Free'}>
+                  {access.isPro ? (
+                    <p>AI research will be part of your plan when it opens.</p>
+                  ) : (
+                    <p>AI research will be part of eligible plans. <Link href="/pricing">View plans →</Link></p>
+                  )}
+                </ChapterCard>
+              ) : (
+                <ChapterCard title="Plans">
                   <p>AI research will be part of eligible plans. <Link href="/pricing">View plans →</Link></p>
-                )}
-              </ChapterCard>
+                </ChapterCard>
+              )}
             </>
           )}
         >
@@ -36,7 +43,9 @@ export default async function StockAiResearch({ data }: { data: StockResearchDat
         </ResearchChapter>
         <ResearchChapter id="brief" label="Research brief" band>
           <BeingBuilt size="chart">
-            A short brief on {data.name}, built from its signals, fundamentals and events, with a citation for each point, is being added.
+            {data.kind === 'fund'
+              ? `A short brief on ${data.name}, built from its holdings, signals and events, with a citation for each point, is being added.`
+              : `A short brief on ${data.name}, built from its signals, fundamentals and events, with a citation for each point, is being added.`}
           </BeingBuilt>
         </ResearchChapter>
       </div>

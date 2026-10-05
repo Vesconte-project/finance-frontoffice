@@ -1,0 +1,195 @@
+/* Ownership & Capital: the price chapters (Spec PRD-78). */
+
+.chartNote,
+.cardNote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-small);
+}
+
+.cardText {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--text-body);
+}
+
+/* ---- What the price pays for: always horizontal, four columns ---- */
+
+.paysFlow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr) 1.25rem) minmax(0, 1fr);
+  min-height: 15rem;
+  min-width: 0;
+}
+
+/* A column and the links that leave it share one grid row; `display: contents`
+   keeps both in the flow's grid. */
+.paysStep {
+  display: contents;
+}
+
+.paysColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.paysGap {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.paysGap * {
+  vector-effect: non-scaling-stroke;
+}
+
+.paysLink {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 3;
+}
+
+.paysLink[data-pending='true'] {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+
+.paysNode {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 0.25rem;
+  min-width: 0;
+  min-height: 3.25rem;
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--text);
+  border-radius: 6px;
+  background: var(--surface);
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.paysNode[data-pending='true'] {
+  border-style: dashed;
+  border-color: var(--line-strong);
+  background: var(--surface-soft);
+}
+
+.paysNode[aria-pressed='true'] {
+  border-style: solid;
+  border-color: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+
+.paysNode:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.paysName {
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.paysValue {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- How the price got here ---- */
+
+.priceStage {
+  position: relative;
+  max-width: 48rem;
+}
+
+.priceFrame {
+  max-width: none;
+}
+
+.periodBand {
+  fill: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.zero {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.priceLine {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.pricePoint {
+  stroke: var(--text);
+  stroke-width: 6;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.pricePoint[data-last='true'] {
+  stroke-width: 9;
+}
+
+.periodPicker {
+  position: absolute;
+  inset: 0;
+  display: grid;
+}
+
+.periodButton {
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.periodButton:hover {
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+
+.periodButton:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.periodRange {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.375rem;
+  margin: 0;
+  font-family: var(--font-display), serif;
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-body);
+}
+
+.periodRange strong {
+  font-weight: 500;
+  color: var(--text);
+}

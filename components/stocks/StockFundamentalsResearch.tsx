@@ -4,7 +4,7 @@ import RevenueChapter from '@/components/stocks/fundamentals/RevenueChapter'
 import styles from '@/components/stocks/fundamentals/Fundamentals.module.css'
 import BeingBuilt, { BeingBuiltBadge } from '@/components/stocks/research/BeingBuilt'
 import ReportedBars from '@/components/stocks/research/ReportedBars'
-import ResearchChapter, { ChapterCard, LeadStat } from '@/components/stocks/research/ResearchChapter'
+import ResearchChapter, { LeadStat } from '@/components/stocks/research/ResearchChapter'
 import { formatChartMoney, formatCompactMoney, formatMoney } from '@/lib/currency'
 import {
   shortYear,
@@ -23,7 +23,7 @@ function formatDay(value: string): string {
   return Number.isFinite(parsed) ? dateFormat.format(parsed) : value
 }
 
-function OperatingMarginChapter({ data }: { data: StockResearchData }) {
+function OperatingMarginChapter({ data, sinceYear }: { data: StockResearchData; sinceYear: number | null }) {
   const rows = data.summary.latestFundamentals
   const operating = summaryPercent(rows, /operating\s+margin/i)
   const net = summaryPercent(rows, /net\s+(profit\s+)?margin/i)
@@ -41,24 +41,28 @@ function OperatingMarginChapter({ data }: { data: StockResearchData }) {
         <BeingBuilt size="inline">Operating profit for each {perUnit} of sales is being added.</BeingBuilt>
       )}
       aside={(
-        <>
-          <BeingBuilt label="What moved the margin">What raised or lowered the margin, in percentage points, is being added.</BeingBuilt>
-          {net !== null ? (
-            <ChapterCard title="Net margin">
-              <p className={styles.cardFigure} data-card-figure="">
-                <strong>{`${Math.round(net)}¢`}</strong>
-                <span>of net profit for each {perUnit} of sales{netDate ? ` · as of ${formatDay(netDate)}` : ''}</span>
-              </p>
-            </ChapterCard>
-          ) : (
-            <BeingBuilt label="Net margin" size="inline">Net profit for each {perUnit} of sales is being added.</BeingBuilt>
-          )}
-        </>
+        <BeingBuilt label={sinceYear ? `Since ${sinceYear}` : 'Since the first year shown'}>
+          What raised or lowered the margin, in percentage points, is being added.
+        </BeingBuilt>
       )}
     >
       <BeingBuilt size="chart">
         The operating margin over ten years, against the median of its sector, with the gap written between them, is being added.
       </BeingBuilt>
+      {/* Spec PRD-78: the net margin is the chapter's footer. */}
+      {net !== null ? (
+        <p className={styles.chapterFooter} data-net-margin="">
+          <span>Net margin</span>
+          <strong>{`${Math.round(net)}¢`}</strong>
+          <span>of net profit for each {perUnit} of sales{netDate ? ` · as of ${formatDay(netDate)}` : ''}</span>
+        </p>
+      ) : (
+        <p className={styles.chapterFooter} data-net-margin="">
+          <span>Net margin</span>
+          <BeingBuiltBadge />
+          <span>Net profit for each {perUnit} of sales is being added.</span>
+        </p>
+      )}
     </ResearchChapter>
   )
 }
@@ -124,7 +128,7 @@ function DividendsChapter({
       aside={(
         <>
           <BeingBuilt label="Each $100 of profit">How each $100 of profit went to buybacks, dividends and what the company kept is being added.</BeingBuilt>
-          <Link className={styles.chapterLink} href={`/stocks/${ticker}/ownership`}>Buybacks and ownership →</Link>
+          <Link className={styles.chapterLink} href={`/stocks/${ticker}/ownership`}>Ownership & Capital →</Link>
         </>
       )}
     >
@@ -205,7 +209,7 @@ export default function StockFundamentalsResearch({
         ) : (
           <>
             <RevenueChapter points={revenue} currency={data.currency} />
-            <OperatingMarginChapter data={data} />
+            <OperatingMarginChapter data={data} sinceYear={revenue.length ? revenue.slice(-10)[0].year : null} />
             <CashAndDebtChapter data={data} />
             <DividendsChapter ticker={data.ticker} dividends={dividends} currency={data.currency} />
           </>
