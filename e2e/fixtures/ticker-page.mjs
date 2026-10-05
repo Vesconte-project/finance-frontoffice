@@ -97,7 +97,7 @@ export function tickerSummaryFixture(ticker) {
       updatedAt: asOf,
     },
     fundamentalsSummary: null,
-    latestFundamentals: [],
+    latestFundamentals: tickerLatestFundamentalsFixture(ticker),
     nextEarnings: {
       ticker,
       earningsDate: '2026-11-03',
@@ -155,4 +155,122 @@ export function tickerEventsFixture(ticker) {
     available: true, reason: null, symbol: ticker, count: rows.length,
     snapshotMode: 'latest', isPointInTime: false, startDate: null, endDate: null, unavailableDomains: [], rows,
   }
+}
+
+/**
+ * Annual income statements for the Fundamentals and Financials tabs. Invented.
+ * QAS reports ten clean years; QAM reports four, with a loss in 2024 and no
+ * gross profit for 2023 (the flow must keep a thin line and say what is
+ * missing); QAL reports none.
+ */
+const STATEMENT_FIXTURES = {
+  QAS: Array.from({ length: 10 }, (_, index) => {
+    const year = 2016 + index
+    const revenue = 180e9 * 1.09 ** index
+    return { year, revenue, gross_profit: revenue * 0.44, operating_income: revenue * 0.3, net_income: revenue * 0.24 }
+  }),
+  QAM: [
+    { year: 2022, revenue: 42e9, gross_profit: 21e9, operating_income: 6.1e9, net_income: 4.4e9 },
+    { year: 2023, revenue: 45e9, gross_profit: null, operating_income: 3.2e9, net_income: 1.9e9 },
+    { year: 2024, revenue: 39e9, gross_profit: 15e9, operating_income: -2.4e9, net_income: -3.1e9 },
+    { year: 2025, revenue: 47e9, gross_profit: 22e9, operating_income: 5.3e9, net_income: 3.8e9 },
+  ],
+  QAL: [],
+}
+
+const LINE_LABELS = {
+  revenue: 'Total Revenue',
+  gross_profit: 'Gross Profit',
+  operating_income: 'Operating Income',
+  net_income: 'Net Income',
+}
+
+export function tickerFinancialStatementsFixture(ticker, statementType) {
+  const years = STATEMENT_FIXTURES[ticker] ?? []
+  const rows = statementType && statementType !== 'income_statement'
+    ? []
+    : [...years].reverse().flatMap((entry) => Object.keys(LINE_LABELS).flatMap((lineItemId) => (
+      entry[lineItemId] === null ? [] : [{
+        symbol: ticker,
+        statementType: 'income_statement',
+        lineItemId,
+        displayLabel: LINE_LABELS[lineItemId],
+        value: entry[lineItemId],
+        currency: 'USD',
+        periodType: 'annual',
+        fiscalYear: entry.year,
+        fiscalQuarter: null,
+        periodEnd: `${entry.year}-09-30`,
+        knownAt: `${entry.year}-11-01T00:00:00Z`,
+        source: 'fixture',
+        sourceUpdatedAt: null,
+        ingestedAt: null,
+        methodologyVersion: 'fixture',
+        dataQualityFlags: {},
+      }]
+    )))
+  return {
+    available: true,
+    reason: rows.length ? null : 'no_financial_statement_rows',
+    symbol: ticker,
+    latestOnly: true,
+    limit: 500,
+    truncated: false,
+    count: rows.length,
+    rows,
+  }
+}
+
+/** Quarterly dividends per share for QAS since 2017, rising once a year. Invented. */
+export function tickerCorporateActionsFixture(ticker) {
+  const rows = []
+  if (ticker === 'QAS') {
+    for (let year = 2017; year <= 2026; year += 1) {
+      for (const month of ['02', '05', '08', '11']) {
+        const exDate = `${year}-${month}-09`
+        if (exDate > '2026-09-30') continue
+        const amount = Number((0.12 * 1.06 ** (year - 2017)).toFixed(3))
+        rows.push({
+          eventId: `qas-dividend-${exDate}`,
+          symbol: 'QAS',
+          actionType: 'dividend',
+          exDate,
+          paymentDate: null,
+          cashAmount: amount,
+          adjustedCashAmount: amount,
+          frequency: 'quarterly',
+          currency: 'USD',
+          knownAt: `${exDate}T00:00:00Z`,
+          source: 'fixture',
+          methodologyVersion: 'fixture',
+        })
+      }
+    }
+  }
+  rows.reverse()
+  return {
+    available: true,
+    reason: rows.length ? null : 'no_corporate_action_event_observations',
+    symbol: ticker,
+    count: rows.length,
+    rows,
+  }
+}
+
+/** Latest fundamentals for the summary: the figures the Overview and Fundamentals share. */
+export function tickerLatestFundamentalsFixture(ticker) {
+  const rows = {
+    QAS: [['operating_margin', 'Operating Margin', 0.302], ['net_margin', 'Net Margin', 0.241], ['net_cash', 'Net Cash', 42e9]],
+    QAM: [['operating_margin', 'Operating Margin', 0.113], ['net_cash', 'Net Cash', -12.5e9]],
+  }[ticker] ?? []
+  return rows.map(([metric, metricLabel, valueNumber]) => ({
+    ticker,
+    metric,
+    metricLabel,
+    valueNumber,
+    valueDisplay: null,
+    unit: null,
+    periodEnd: '2025-09-30',
+    asOf: '2025-11-01',
+  }))
 }

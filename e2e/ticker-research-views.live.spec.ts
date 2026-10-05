@@ -101,7 +101,7 @@ test.describe('ticker research views Phase 2 slice', () => {
     await expect(page.getByRole('navigation', { name: 'Ticker research' })).toBeVisible()
     await expectNoHorizontalOverflow(page)
 
-    await expect(page.getByRole('heading', { name: 'Financial Statements', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Where each dollar of sales goes', exact: true })).toBeVisible()
     await expect(loading).toHaveCount(0)
 
     await page.emulateMedia({ reducedMotion: 'reduce' })
@@ -116,57 +116,37 @@ test.describe('ticker research views Phase 2 slice', () => {
     await expect(page.getByRole('heading', { name: 'Valuation History', exact: true })).toBeVisible()
   })
 
-  test('Fundamentals keeps all themes in one stable priority', async ({ page }, testInfo) => {
+  test('Fundamentals reads as four chapters in the Spec order', async ({ page }, testInfo) => {
     const runtimeWarnings = watchForReactRuntimeWarnings(page)
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/stocks/AAPL/fundamentals')
-    await expect(page.getByRole('heading', { name: 'Fundamentals', exact: true })).toBeVisible()
-    const themes = await page.locator('[class*="theme"][id]').evaluateAll((nodes) => nodes.map((node) => node.id))
-    expect(themes).toContain('valuation')
-    expect(themes).toContain('growth')
-    expect(themes).toContain('financial-health')
-    expect(themes[0]).toBe('financial-health')
+    const chapters = await page.locator('[data-research-chapter]').evaluateAll((nodes) => nodes.map((node) => node.id))
+    expect(chapters).toEqual(['revenue', 'operating-margin', 'cash-and-debt', 'dividends'])
     await expectNoHorizontalOverflow(page)
-    await capture(page, testInfo, 'phase2-aapl-fundamentals-desktop')
+    await capture(page, testInfo, 'phase3-aapl-fundamentals-desktop')
 
     await page.setViewportSize({ width: 390, height: 844 })
     await expectNoHorizontalOverflow(page)
-    await capture(page, testInfo, 'phase2-aapl-fundamentals-mobile')
+    await capture(page, testInfo, 'phase3-aapl-fundamentals-mobile')
     expect(runtimeWarnings).toEqual([])
   })
 
-  test('Financial Statements exposes shareable canonical Annual and Quarterly observations', async ({ page }, testInfo) => {
+  test('Financials shows where each dollar of sales went, by year', async ({ page }, testInfo) => {
     const runtimeWarnings = watchForReactRuntimeWarnings(page)
     await page.setViewportSize({ width: 1440, height: 900 })
-    await page.goto('/stocks/AAPL/financials?period=annual')
-    // The three statements share one page now, so each is a heading on it
-    // rather than a tab hiding the other two.
-    await expect(page.getByRole('heading', { name: 'Income', exact: true })).toBeVisible()
+    // An old link with a period still lands on the page.
+    await page.goto('/stocks/AAPL/financials?period=quarterly')
+    await expect(page.getByRole('heading', { name: 'Where each dollar of sales goes', exact: true })).toBeVisible()
     const researchNav = page.getByRole('navigation', { name: 'Ticker research' })
-    const financialsLink = researchNav.getByRole('link', { name: 'Financials', exact: true })
-    await expect(financialsLink).toHaveAttribute('aria-current', 'page')
-    await expect(researchNav.locator('[data-active="true"]')).toHaveCount(1)
-    await expect(page.getByRole('link', { name: 'Annual', exact: true })).toHaveAttribute('aria-current', 'page')
-    await expect(page.getByRole('rowheader', { name: 'Revenue', exact: true })).toBeVisible()
+    await expect(researchNav.getByRole('link', { name: 'Financials', exact: true })).toHaveAttribute('aria-current', 'page')
+    await expect(page.locator('[data-flow-variant="wide"]')).toBeVisible()
     await expectNoHorizontalOverflow(page)
-    await capture(page, testInfo, 'canonical-aapl-statements-annual')
-
-    await page.getByRole('link', { name: 'Quarterly', exact: true }).click()
-    await expect(page).toHaveURL(/period=quarterly/)
-    await expect(page.getByRole('link', { name: 'Quarterly', exact: true })).toHaveAttribute('aria-current', 'page')
-    await capture(page, testInfo, 'canonical-aapl-statements-quarterly')
+    await capture(page, testInfo, 'phase3-aapl-financials-desktop')
 
     await page.setViewportSize({ width: 390, height: 844 })
+    await expect(page.locator('[data-flow-variant="narrow"]')).toBeVisible()
     await expectNoHorizontalOverflow(page)
-    await capture(page, testInfo, 'phase2-aapl-statements-quarterly-mobile')
-
-    await page.setViewportSize({ width: 1440, height: 900 })
-    await page.evaluate(() => {
-      document.documentElement.style.zoom = '2'
-    })
-    await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).zoom)).toBe('2')
-    await expectNoHorizontalOverflow(page)
-    await capture(page, testInfo, 'phase2-aapl-statements-200-zoom')
+    await capture(page, testInfo, 'phase3-aapl-financials-mobile')
     expect(runtimeWarnings).toEqual([])
   })
 

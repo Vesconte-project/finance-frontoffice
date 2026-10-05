@@ -20,7 +20,9 @@ import {
 } from '../e2e/fixtures/market-atlas.mjs'
 import {
   isFixtureTicker,
+  tickerCorporateActionsFixture,
   tickerEventsFixture,
+  tickerFinancialStatementsFixture,
   tickerHistoryFixture,
   tickerOhlcFixture,
   tickerSummaryFixture,
@@ -102,6 +104,18 @@ const server = createServer((request, response) => {
   const eventsRoute = path.match(/^\/tickers\/([^/]+)\/events$/)
   if (eventsRoute && isFixtureTicker(decodeURIComponent(eventsRoute[1]))) {
     send(response, 200, tickerEventsFixture(decodeURIComponent(eventsRoute[1])))
+    return
+  }
+
+  const statementsRoute = path.match(/^\/tickers\/([^/]+)\/financial-statements$/)
+  if (statementsRoute && isFixtureTicker(decodeURIComponent(statementsRoute[1]))) {
+    send(response, 200, tickerFinancialStatementsFixture(decodeURIComponent(statementsRoute[1]), url.searchParams.get('statementType')))
+    return
+  }
+
+  const actionsRoute = path.match(/^\/tickers\/([^/]+)\/corporate-actions$/)
+  if (actionsRoute && isFixtureTicker(decodeURIComponent(actionsRoute[1]))) {
+    send(response, 200, tickerCorporateActionsFixture(decodeURIComponent(actionsRoute[1])))
     return
   }
 
