@@ -1863,16 +1863,6 @@
     gap: 16px;
   }
 
-  .snapshotScorecard {
-    grid-template-columns: minmax(0, 1fr);
-    justify-items: center;
-    gap: 10px;
-    text-align: center;
-  }
-
-  .snapshotSummary {
-    justify-items: center;
-  }
 }
 
 .snapshotGradeLink {
@@ -2907,4 +2897,19 @@
   font-size: 0.875rem;
   line-height: 1.5;
   color: var(--text-body);
+}
+
+/* Beside the chart, the disc sits on top with its text centred below. Kept
+   after the phone layout of the score so it wins at this width. */
+@container overview-lead (min-width: 56rem) {
+  .snapshotScorecard {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    gap: 10px;
+    text-align: center;
+  }
+
+  .snapshotSummary {
+    justify-items: center;
+  }
 }

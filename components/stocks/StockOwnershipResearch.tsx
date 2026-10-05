@@ -6,6 +6,7 @@ import ResearchChapter, { ChapterCard, LeadStat } from '@/components/stocks/rese
 import type { BuybackSummary, PricePeriod } from '@/lib/capital-reading'
 import { formatCompactMoney } from '@/lib/currency'
 import { currentResearchSnapshot } from '@/lib/research-evidence'
+import { tickerMarketCap } from '@/lib/ticker-page-stats'
 import type { StockResearchData } from '@/lib/stock-research'
 import styles from './StockOwnershipResearch.module.css'
 
@@ -161,7 +162,7 @@ function EquityOwnership({ data, buybackYears, mixedCurrencies, sharesBought, sh
         sharesTodayAsOf={sharesTodayAsOf}
       />
 
-      <PricePaysForChapter marketCap={snapshot.marketCap} marketCapAsOf={snapshot.reportingPeriod} currency={currency} />
+      <PricePaysForChapter marketCap={tickerMarketCap(data.summary)} marketCapAsOf={snapshot.marketCap !== null ? snapshot.reportingPeriod : null} currency={currency} />
 
       <PriceHistoryChapter byYear={priceByYear} byQuarter={priceByQuarter} currency={currency} />
     </>

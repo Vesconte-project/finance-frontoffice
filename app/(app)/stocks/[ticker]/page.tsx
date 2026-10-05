@@ -38,7 +38,7 @@ import {
   type SymbolCoverageRow,
 } from '@/lib/ticker-data'
 import { scorecardFromTickerSummary } from '@/lib/ticker-page-scorecard'
-import { canonicalTickerStats } from '@/lib/ticker-page-stats'
+import { canonicalTickerStats, parseCompactCurrencyNumber } from '@/lib/ticker-page-stats'
 import { buildEventMarkers, type EventMarker } from '@/lib/event-markers'
 import { resolveStockAsset } from '@/lib/stock-asset-kind'
 
@@ -75,26 +75,6 @@ function stockEntrySourceFromContext(
   return 'direct'
 }
 
-function parseCompactCurrencyNumber(value: string | null): number | null {
-  if (!value) return null
-  const normalized = value
-    .replace(/[$€£₹¥]/g, '')
-    .replace(/\b(?:USD|EUR|GBP|GBp|GBX|AUD|HKD|INR|JPY|DKK|SEK|NOK|kr)\b/gi, '')
-    .replace(/,/g, '')
-    .trim()
-  const match = normalized.match(/^(-?\d+(?:\.\d+)?)([KMBT])?$/i)
-  if (!match) return null
-
-  const numeric = Number(match[1])
-  if (!Number.isFinite(numeric)) return null
-
-  const suffix = match[2]?.toUpperCase()
-  if (suffix === 'T') return numeric * 1_000_000_000_000
-  if (suffix === 'B') return numeric * 1_000_000_000
-  if (suffix === 'M') return numeric * 1_000_000
-  if (suffix === 'K') return numeric * 1_000
-  return numeric
-}
 
 function overviewFigure(value: number | null, asOf: string | null): { value: number; asOf: string | null } | null {
   return value === null ? null : { value, asOf }

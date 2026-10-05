@@ -99,7 +99,8 @@ export default function ScorecardDisc({
   const gap = mini ? 2.5 : 3.8
   const overallScore = scorecard.overall.score
   const overallColor = overallScore === null ? 'var(--text-muted)' : scoreColor(overallScore)
-  const grade = scorecard.overall.grade || ''
+  // A missing grade draws nothing in the centre, never a dash.
+  const grade = /^[-–—]?$/.test(scorecard.overall.grade?.trim() ?? '') ? '' : scorecard.overall.grade.trim()
   const showLabels = !textLabels && (showLabelsProp ?? !mini)
   const showRings = !mini
   const fontScale = resolvedSize / viewBoxSize

@@ -106,14 +106,16 @@ function twoGridValues(floor: number, ceiling: number): number[] {
   const range = ceiling - floor
   if (!(range > 0)) return [floor]
   const magnitude = 10 ** Math.floor(Math.log10(range))
-  for (const unit of [0.1, 0.2, 0.25, 0.5, 1, 2, 2.5, 5, 10]) {
+  // From the widest round step to the finest: the first that fits two lines
+  // inside the plot gives its outermost two.
+  for (const unit of [10, 5, 2.5, 2, 1, 0.5, 0.25, 0.2, 0.1]) {
     const step = unit * magnitude
     const values: number[] = []
     for (let value = Math.ceil(floor / step) * step; value < ceiling; value += step) {
       // Keep each line clear of the plot's top and bottom edges.
       if (value > floor + range * 0.08 && value < ceiling - range * 0.08) values.push(value)
     }
-    if (values.length <= 2 && values.length > 0) return values
+    if (values.length >= 2) return [values[0], values[values.length - 1]]
   }
   return [floor + range / 3, floor + (range * 2) / 3]
 }
