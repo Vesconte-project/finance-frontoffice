@@ -310,7 +310,7 @@ function NodeCard({
       {history.length > 0 ? (
         <ReportedBars
           ariaLabel={`${NODE_LABEL[id]} by fiscal year, FY${year} highlighted`}
-          values={{ wide: 'all', compact: 'all' }}
+          values={{ wide: 'all', compact: 'ends' }}
           bars={history.map(({ year: barYear, point: barPoint }) => ({
             key: String(barYear),
             value: barPoint.value,
@@ -392,6 +392,12 @@ export default function SalesFlowChapter({
       lead={(
         <BeingBuilt size="inline">Net profit for each {perUnit} of sales in FY{year}, and its change on the year before, is being added.</BeingBuilt>
       )}
+      aside={(
+        <>
+          <NodeCard id={selected} year={year} years={years} series={series} currency={currency} />
+          <BeingBuilt label="Biggest changes">The four largest changes against the year before, with costs that rose shown in red, are being added.</BeingBuilt>
+        </>
+      )}
     >
       <div className={styles.salesBar} data-sales-by-business="">
         <span className={styles.salesBarFill} aria-hidden="true" />
@@ -407,11 +413,6 @@ export default function SalesFlowChapter({
       <div className={styles.flow} data-sales-flow="" role="group" aria-label={`Where each dollar of sales went in FY${year}`}>
         <WideFlow values={values} unit={unit} currency={currency} selected={selected} onSelect={setSelected} />
         <NarrowFlow values={values} unit={unit} currency={currency} selected={selected} onSelect={setSelected} />
-      </div>
-      {/* The flow takes the chapter's full width, so the detail sits under it. */}
-      <div className={styles.details} data-flow-details="">
-        <NodeCard id={selected} year={year} years={years} series={series} currency={currency} />
-        <BeingBuilt label="Biggest changes">The four largest changes against the year before, with costs that rose shown in red, are being added.</BeingBuilt>
       </div>
     </ResearchChapter>
   )

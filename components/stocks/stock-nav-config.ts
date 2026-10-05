@@ -32,13 +32,13 @@ export const stockResearchPrimaryItems: readonly StockResearchLink[] = [
   { key: 'fundamentals', label: 'Fundamentals', loadingTitle: '', slug: 'fundamentals' },
   { key: 'financials', label: 'Financials', loadingTitle: '', slug: 'financials' },
   { key: 'valuation', label: 'Valuation', loadingTitle: '', slug: 'valuation' },
-  { key: 'signals', label: 'Signals', loadingTitle: 'Signals & Indicators', slug: 'signals' },
+  { key: 'signals', label: 'Signals', loadingTitle: '', slug: 'signals' },
   { key: 'events', label: 'Events', loadingTitle: '', slug: 'events' },
-  { key: 'relationships', label: 'Relationships', slug: 'relationships' },
+  { key: 'relationships', label: 'Relationships', loadingTitle: '', slug: 'relationships' },
   { key: 'business', label: 'Business', loadingTitle: '', slug: 'business' },
-  { key: 'ownership', label: 'Ownership & Capital', slug: 'ownership' },
-  { key: 'ai-research', label: 'AI Research', slug: 'ai-research' },
-  { key: 'methodology', label: 'Methodology', slug: 'methodology' },
+  { key: 'ownership', label: 'Ownership & Capital', loadingTitle: '', slug: 'ownership' },
+  { key: 'ai-research', label: 'AI Research', loadingTitle: '', slug: 'ai-research' },
+  { key: 'methodology', label: 'Methodology', loadingTitle: '', slug: 'methodology' },
 ] as const
 
 export function stockResearchHref(

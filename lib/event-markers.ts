@@ -7,7 +7,7 @@
  */
 import { eventCategory } from './calendar-model'
 
-export type EventMarkerCategory = 'earnings' | 'dividends' | 'company'
+export type EventMarkerCategory = 'earnings' | 'dividends' | 'guidance' | 'company'
 
 export type EventMarker = {
   id: string
@@ -29,13 +29,15 @@ export type EventRowLike = {
 export const EVENT_CATEGORY_LABEL: Record<EventMarkerCategory, string> = {
   earnings: 'Earnings',
   dividends: 'Dividend',
+  guidance: 'Guidance',
   company: 'Company event',
 }
 
 const DAY = /^\d{4}-\d{2}-\d{2}/
 
 /**
- * One marker per past company event, newest revision first, sorted by date.
+ * One marker per past company event (results, dividends, guidance and other
+ * company events), newest revision first, sorted by date.
  * Identity is the event's own id; without one, its domain, type and title, so a
  * revision that moved the date replaces the earlier date instead of doubling it.
  * Market-wide releases and events still in the future are left out.
@@ -52,7 +54,8 @@ export function buildEventMarkers(rows: readonly EventRowLike[], today: string):
   for (const [key, row] of latest) {
     const date = row.occursAt!.slice(0, 10)
     if (date > today) continue
-    const category = eventCategory(row.domain, row.eventType, row.title)
+    // Guidance comes from the disclosures stream, placed on the day it was observed.
+    const category = row.domain === 'guidance' ? 'guidance' : eventCategory(row.domain, row.eventType, row.title)
     if (category === 'macro') continue
     markers.push({ id: key, date, category, title: row.title.trim() })
   }
@@ -90,4 +93,16 @@ export function stackMarkerLevels(xs: readonly number[], gap: number): number[] 
     levels[index] = level
   }
   return levels
+}
+
+/**
+ * The price change on the session after an event's day: that session's close
+ * against the event day's close. Simple arithmetic on reported closes (Spec
+ * decision 4). `null` when the event is on the last bar or a close is missing.
+ */
+export function nextSessionChange(closes: readonly number[], index: number): number | null {
+  const today = closes[index]
+  const next = closes[index + 1]
+  if (!Number.isFinite(today) || !Number.isFinite(next) || today === 0 || next === undefined) return null
+  return ((next - today) / today) * 100
 }

@@ -1,0 +1,69 @@
+.ask {
+  display: grid;
+  gap: 0.875rem;
+  min-width: 0;
+}
+
+.row {
+  display: flex;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.row input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  font: inherit;
+  color: var(--text);
+}
+
+.row button,
+.suggestions button {
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.row button {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--bg);
+}
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.suggestions button {
+  min-height: 40px;
+  text-align: left;
+}
+
+.row input:focus-visible,
+.row button:focus-visible,
+.suggestions button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.message {
+  min-height: 1.25rem;
+  margin: 0;
+  max-width: 40rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--text-body);
+}

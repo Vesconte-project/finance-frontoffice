@@ -5,8 +5,8 @@ import styles from './AiMethodologyResearch.module.css'
 
 export default function StockMethodologyResearch({ data }: { data: StockResearchData }) {
   return (
-    <ResearchViewShell data={data} title="Methodology">
-      <main className={styles.methodology}>
+    <ResearchViewShell data={data} title="Methodology" showHeader={false}>
+      <div className={styles.methodology}>
         <aside className={styles.index} aria-label="Methodology contents">
           <span className={styles.kicker}>On this page</span>
           <nav>
@@ -23,7 +23,7 @@ export default function StockMethodologyResearch({ data }: { data: StockResearch
           <p className={styles.intro}>Vesconte presents market, company and fund evidence in separate layers. The page does not turn these layers into a trading instruction.</p>
 
           <section id="evidence" className={styles.methodSection}>
-            <div className={styles.sectionLabel}>01</div><div>
+            <div className={styles.sectionLabel} aria-hidden="true" /><div>
               <h2>Score, signal and technical read</h2>
               <div className={styles.definitionList}>
                 <div><strong>Score</strong><p>The Vesconte scorecard summary, built from its defined evidence axes.</p></div>
@@ -34,7 +34,7 @@ export default function StockMethodologyResearch({ data }: { data: StockResearch
           </section>
 
           <section id="data" className={styles.methodSection}>
-            <div className={styles.sectionLabel}>02</div><div>
+            <div className={styles.sectionLabel} aria-hidden="true" /><div>
               <h2>Data and timestamps</h2>
               <p className={styles.sectionCopy}>Data comes from the Vesconte research service. The page shows the fields and periods it returns, as they are.</p>
               <dl className={styles.factList}>
@@ -47,7 +47,7 @@ export default function StockMethodologyResearch({ data }: { data: StockResearch
           </section>
 
           <section id="coverage" className={styles.methodSection}>
-            <div className={styles.sectionLabel}>03</div><div>
+            <div className={styles.sectionLabel} aria-hidden="true" /><div>
               <h2>Coverage states</h2>
               <div className={styles.statusList}>
                 <div><strong>Available</strong><span>Usable fields are present.</span></div>
@@ -61,7 +61,7 @@ export default function StockMethodologyResearch({ data }: { data: StockResearch
           </section>
 
           <section id="limits" className={styles.methodSection}>
-            <div className={styles.sectionLabel}>04</div><div>
+            <div className={styles.sectionLabel} aria-hidden="true" /><div>
               <h2>Limitations</h2>
               <ul className={styles.limitList}>
                 <li>Coverage varies by asset, field and reporting period.</li>
@@ -73,21 +73,21 @@ export default function StockMethodologyResearch({ data }: { data: StockResearch
           </section>
 
           <section id="assets" className={styles.methodSection}>
-            <div className={styles.sectionLabel}>05</div><div>
+            <div className={styles.sectionLabel} aria-hidden="true" /><div>
               <h2>Equities and funds</h2>
               <p className={styles.sectionCopy}>The language and applicable evidence adapt to {data.kind === 'fund' ? 'funds and ETFs' : 'equities'}. Corporate fundamentals, ownership and earnings do not automatically apply to ETFs or funds.</p>
             </div>
           </section>
 
           <section id="disclosures" className={styles.methodSection}>
-            <div className={styles.sectionLabel}>06</div><div>
+            <div className={styles.sectionLabel} aria-hidden="true" /><div>
               <h2>Disclosures</h2>
               <p className={styles.sectionCopy}>Review the product limits and the questions commonly covered by the platform.</p>
               <div className={styles.linkRow}><Link href="/product#limits">Product limits</Link><Link href="/faq">FAQ</Link></div>
             </div>
           </section>
         </article>
-      </main>
+      </div>
     </ResearchViewShell>
   )
 }

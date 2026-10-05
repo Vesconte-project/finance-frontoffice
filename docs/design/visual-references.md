@@ -87,7 +87,7 @@ PRD-78 phase 3. Founder rule for these tabs (2026-10-04): only values the backen
   - The wide drawing writes every bar's value. The compact drawing writes the ends and uses short years ('25).
   - At the two ends of a chart, labels align with the bar's outer edge so they stay on the plot.
   - Margins and net cash come from the summary rows the Overview reads, so a fact has one value across the tabs.
-- **Financials:** "Where each dollar of sales goes", following the prototype. The flow takes the full width of the chapter; the card and "Biggest changes" sit under it.
+- **Financials:** "Where each dollar of sales goes". The card and "Biggest changes" sit beside the flow on wide screens and under it on narrow ones, like every chapter. With the 1400px page width the full flow appears from about 1300px.
   - From 900px of chart space the full flow runs left to right. The reported chain (sales → gross profit → operating income → net income) is drawn to scale and bottom-aligned, so profit runs along the bottom.
   - Branches that are not reported are outlined nodes of a fixed size, with a thin dashed ribbon. They say where money goes, never how much.
   - Below 900px: three columns. Sales is a bar; then its four parts (› where they open); then the children of the open part.
@@ -114,6 +114,27 @@ PRD-78 phase 5.
 - **Buybacks:**
   - Each reported execution is a bar (`ReportedBars`), with years named at their first execution. The first and last amounts are written on the chart.
   - The side card lists the latest eight executions: the period, then spent, shares and average price.
+
+## Ticker conformance pass — 2026-10-05
+
+A review against the accepted Spec (PRD-78) found these items, now fixed.
+
+- **Screens:**
+  - The ticker page and its chrome use the Spec's measures: 1400px maximum, and 20px side margins on phones (14px below 340px).
+  - The detail column is beside the chart from 960px (300px, 340px from 1200px).
+- **Overview:**
+  - The hero chart opens on 1Y.
+  - "What do you make of it?" shows Overdone / Fair / Not sure yet. A tap answers with the Spec's message and an OK; nothing is saved.
+  - Key readings measure 50/200 days, 20/40 weeks or 10/20 months, by timeframe.
+- **Events layer:**
+  - The card shows the next session's move.
+  - Guidance from the disclosures stream is a marker of its own.
+  - Insider trades are marked as being built.
+- **Every block** with a summary figure shows the date it refers to.
+- **Signals, Ownership, AI Research and Methodology** follow the design rules:
+  - no page header and no footnotes;
+  - no section numbers and no dashes in place of values;
+  - controls that are not ready answer with a message instead of sitting disabled.
 
 ## Expanding selector study — 2026-07-21
 

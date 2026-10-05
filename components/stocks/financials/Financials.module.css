@@ -335,19 +335,3 @@
   line-height: 1.45;
   color: var(--text-body);
 }
-
-/* ---- Detail under the flow: the chosen element and the biggest changes ---- */
-
-.details {
-  display: grid;
-  gap: 1rem;
-  min-width: 0;
-  margin-top: 0.75rem;
-}
-
-@container research-chapter (width >= 48rem) {
-  .details {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
-  }
-}

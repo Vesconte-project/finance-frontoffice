@@ -9,6 +9,7 @@ import { formatChartMoney, formatCompactMoney, formatMoney } from '@/lib/currenc
 import {
   shortYear,
   summaryAmount,
+  summaryDate,
   summaryPercent,
   type DividendHistory,
   type ReportedPoint,
@@ -26,6 +27,8 @@ function OperatingMarginChapter({ data }: { data: StockResearchData }) {
   const rows = data.summary.latestFundamentals
   const operating = summaryPercent(rows, /operating\s+margin/i)
   const net = summaryPercent(rows, /net\s+(profit\s+)?margin/i)
+  const operatingDate = summaryDate(rows, /operating\s+margin/i)
+  const netDate = summaryDate(rows, /net\s+(profit\s+)?margin/i)
   const perUnit = formatChartMoney(1, data.currency)
   return (
     <ResearchChapter
@@ -33,7 +36,7 @@ function OperatingMarginChapter({ data }: { data: StockResearchData }) {
       label="Operating margin"
       band
       lead={operating !== null ? (
-        <LeadStat value={`${Math.round(operating)}¢`} context={`of operating profit for each ${perUnit} of sales`} tone={operating < 0 ? 'down' : undefined} />
+        <LeadStat value={`${Math.round(operating)}¢`} context={`of operating profit for each ${perUnit} of sales${operatingDate ? ` · as of ${formatDay(operatingDate)}` : ''}`} tone={operating < 0 ? 'down' : undefined} />
       ) : (
         <BeingBuilt size="inline">Operating profit for each {perUnit} of sales is being added.</BeingBuilt>
       )}
@@ -44,7 +47,7 @@ function OperatingMarginChapter({ data }: { data: StockResearchData }) {
             <ChapterCard title="Net margin">
               <p className={styles.cardFigure} data-card-figure="">
                 <strong>{`${Math.round(net)}¢`}</strong>
-                <span>of net profit for each {perUnit} of sales</span>
+                <span>of net profit for each {perUnit} of sales{netDate ? ` · as of ${formatDay(netDate)}` : ''}</span>
               </p>
             </ChapterCard>
           ) : (
@@ -62,12 +65,13 @@ function OperatingMarginChapter({ data }: { data: StockResearchData }) {
 
 function CashAndDebtChapter({ data }: { data: StockResearchData }) {
   const netCash = summaryAmount(data.summary.latestFundamentals, /^net\s+cash\b/i)
+  const netCashDate = summaryDate(data.summary.latestFundamentals, /^net\s+cash\b/i)
   return (
     <ResearchChapter
       id="cash-and-debt"
       label="Cash and debt"
       lead={netCash !== null ? (
-        <LeadStat value={formatCompactMoney(netCash, data.currency)} context="net cash: cash minus debt" tone={netCash < 0 ? 'down' : undefined} />
+        <LeadStat value={formatCompactMoney(netCash, data.currency)} context={`net cash: cash minus debt${netCashDate ? ` · as of ${formatDay(netCashDate)}` : ''}`} tone={netCash < 0 ? 'down' : undefined} />
       ) : (
         <BeingBuilt size="inline">Net cash, the cash left after all debt, is being added.</BeingBuilt>
       )}

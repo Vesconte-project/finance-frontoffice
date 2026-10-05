@@ -194,3 +194,42 @@
   font-size: 0.8125rem;
   color: var(--text);
 }
+
+.buybackLead {
+  min-width: 0;
+}
+
+.legendSpent,
+.legendWorth {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.legendSpent::before,
+.legendWorth::before {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 2px;
+  content: '';
+}
+
+.legendSpent::before {
+  background: color-mix(in srgb, var(--text) 38%, transparent);
+}
+
+.legendWorth::before {
+  background: var(--up-ink, var(--up));
+}
+
+.legendWorth strong {
+  font-family: var(--font-mono);
+  color: var(--up-ink, var(--up));
+}
+
+.legendNote {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}

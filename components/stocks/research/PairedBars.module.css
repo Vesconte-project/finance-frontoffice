@@ -1,0 +1,22 @@
+.frame {
+  max-width: 52rem;
+}
+
+.zero {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+
+.first {
+  fill: color-mix(in srgb, var(--text) 38%, transparent);
+}
+
+.second {
+  fill: var(--up-ink, var(--up));
+}
+
+.bracket {
+  fill: none;
+  stroke: var(--text-small);
+  stroke-width: 1;
+}

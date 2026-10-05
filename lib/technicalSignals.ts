@@ -44,13 +44,22 @@ export type TechnicalSummary = {
 export type TechnicalReadings = {
   close: number | null
   rsi14: number | null
-  sma50: number | null
-  sma200: number | null
+  /** Periods of the two averages for this timeframe (Spec PRD-78: 50/200 days, 20/40 weeks, 10/20 months). */
+  averagePeriods: readonly [number, number]
+  shortAverage: number | null
+  longAverage: number | null
   macd: number | null
   macdSignal: number | null
 }
 
 export { distanceFromAverage } from './technical-readings'
+
+/** The two averages the Key readings card measures the price against, per timeframe. */
+export const KEY_READING_AVERAGES: Record<TechnicalTimeframe, readonly [number, number]> = {
+  '1D': [50, 200],
+  '1W': [20, 40],
+  '1M': [10, 20],
+}
 
 function toBar(p: OhlcPoint): Bar {
   // Quando high/low faltam (histórico pré-2020), usa close como proxy.
@@ -561,8 +570,9 @@ export function buildTechnicalSummary(data: OhlcPoint[], timeframe: TechnicalTim
     readings: {
       close: currentPrice,
       rsi14,
-      sma50: sma(closes, 50),
-      sma200: sma(closes, 200),
+      averagePeriods: KEY_READING_AVERAGES[timeframe],
+      shortAverage: sma(closes, KEY_READING_AVERAGES[timeframe][0]),
+      longAverage: sma(closes, KEY_READING_AVERAGES[timeframe][1]),
       macd: macdValue.macd,
       macdSignal: macdValue.signal,
     },

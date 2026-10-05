@@ -174,6 +174,30 @@ dialog.dialog > div {
   color: var(--up-ink, var(--up));
 }
 
+.eventMeta [data-event-next-day] {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.eventMeta [data-event-next-day][data-tone='up'] {
+  color: var(--up-ink, var(--up));
+}
+
+.eventMeta [data-event-next-day][data-tone='down'] {
+  color: var(--down);
+}
+
+.eventPending {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-small);
+}
+
 .eventTitle {
   margin: 0;
   color: var(--text);

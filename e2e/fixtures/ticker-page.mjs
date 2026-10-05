@@ -335,3 +335,14 @@ export function tickerEquityCapitalEventsFixture(ticker) {
   rows.reverse()
   return { available: true, reason: rows.length ? null : 'no_equity_capital_event_observations', symbol: ticker, count: rows.length, rows }
 }
+
+/** Disclosures for QAS: one invented guidance update, for the Events layer. */
+export function tickerDisclosuresFixture(ticker) {
+  const rows = ticker === 'QAS' ? [{
+    domain: 'guidance', eventId: 'qas-guidance-2026-05', symbol: 'QAS', eventType: 'revenue_guidance',
+    title: 'Full-year revenue outlook', classification: 'candidate', occursAt: '2026-05-04T00:00:00Z',
+    occursAtRole: 'observed_at', knownAt: '2026-05-04T00:00:00Z', source: 'fixture', primarySource: null,
+    sourceMetadata: {}, dataQualityFlags: {}, confidence: 'high',
+  }] : []
+  return { available: true, reason: null, symbol: ticker, count: rows.length, snapshotMode: 'latest', isPointInTime: false, unavailableDomains: [], rows }
+}

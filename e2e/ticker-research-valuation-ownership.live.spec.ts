@@ -37,7 +37,6 @@ test.describe('ticker valuation and ownership Phase 2 slice', () => {
   test('Ownership and Fund Structure preserve asset-aware semantics', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/stocks/AAPL/ownership')
-    await expect(page.getByRole('heading', { name: 'Ownership & Capital', exact: true })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Who owns the shares', exact: true })).toBeVisible()
     await expect(page.getByText('Enterprise value', { exact: true })).toBeVisible()
     await expect(page.getByText('Market cap', { exact: true }).first()).toBeVisible()
@@ -52,7 +51,7 @@ test.describe('ticker valuation and ownership Phase 2 slice', () => {
     await capture(page, testInfo, 'phase2-ownership-aapl-long-mobile')
 
     await page.goto('/stocks/QQQ/ownership')
-    await expect(page.getByRole('heading', { name: 'Fund Structure', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Fund structure', exact: true })).toBeVisible()
     await expect(page.getByText(/company measures such as insider ownership/)).toBeVisible()
     await expect(page.getByText('Insider', { exact: true })).toHaveCount(0)
     await expectNoHorizontalOverflow(page)
