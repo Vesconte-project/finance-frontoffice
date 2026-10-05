@@ -12,7 +12,7 @@ import {
 } from '@/lib/backend-request-log'
 import { BackendDataError } from '@/lib/backend'
 import { getViewerAccess } from '@/lib/billing'
-import { getTickerEvents, getTickerReadingsPayload } from '@/lib/canonical-research'
+import { getTickerDisclosures, getTickerEvents, getTickerReadingsPayload } from '@/lib/canonical-research'
 import { currencyForTicker, formatCompactMoney, formatMoney } from '@/lib/currency'
 import {
   getOhlcData,
@@ -104,10 +104,12 @@ function parseCompactCurrencyNumber(value: string | null): number | null {
   return numeric
 }
 
+type DatedFinancialRow = TickerFinancialRow & { asOf?: string | null }
+
 type FundamentalGroup = {
   key: string
   label: string
-  rows: Array<{ label: string; value: string }>
+  rows: Array<{ label: string; value: string; asOf?: string | null }>
 }
 
 function normalizeFundamentalLabel(value: string): string {
@@ -150,8 +152,8 @@ function usableFinancialRows(
   latestRows: LatestFundamentalsRow[],
   fundamentals: TickerFundamentals | null,
   currency: string
-): TickerFinancialRow[] {
-  const rows: TickerFinancialRow[] = [
+): DatedFinancialRow[] {
+  const rows: DatedFinancialRow[] = [
     ...latestRows.map((row) => ({
       label: row.metricLabel,
       value: formatFundamentalValue(
@@ -159,6 +161,8 @@ function usableFinancialRows(
         row.valueNumber ?? row.valueDisplay ?? '—',
         currency
       ),
+      // The date the figure refers to, so the block can show it.
+      asOf: (row.periodEnd ?? row.asOf)?.slice(0, 10) ?? null,
     })),
     ...(fundamentals?.snapshot ?? []),
     ...(fundamentals?.profile ?? []),
@@ -181,6 +185,7 @@ function usableFinancialRows(
   }).map((row) => ({
     label: row.label,
     value: formatFundamentalValue(row.label, row.value, currency),
+    asOf: row.asOf ?? null,
   }))
 }
 
@@ -447,8 +452,17 @@ export default async function TickerPage({
     loadOptionalStockDataset<EventMarker[] | null>(requestLogContext, `/tickers/${ticker}/events`, null, async () => {
       const today = new Date().toISOString().slice(0, 10)
       const start = new Date(Date.now() - 3650 * 86_400_000).toISOString().slice(0, 10)
-      const payload = await getTickerEvents(ticker, { startDate: start, endDate: today, latestOnly: true, limit: 200 })
-      return payload.available && Array.isArray(payload.rows) ? buildEventMarkers(payload.rows, today) : []
+      const [payload, disclosures] = await Promise.all([
+        getTickerEvents(ticker, { startDate: start, endDate: today, latestOnly: true, limit: 200 }),
+        // Guidance lives in the disclosures stream; the layer still shows the
+        // company's events when it cannot be read.
+        getTickerDisclosures(ticker, { latestOnly: true, limit: 100 }).catch(() => null),
+      ])
+      if (!payload.available || !Array.isArray(payload.rows)) return []
+      const guidance = disclosures?.available && Array.isArray(disclosures.rows)
+        ? disclosures.rows.filter((row) => row.domain === 'guidance' && (row.occursAt ?? '') >= start)
+        : []
+      return buildEventMarkers([...payload.rows, ...guidance], today)
     })
   )
   const [ohlcResult, recentSignals, latestScreenerRows, fundamentals] = await runWithBackendRequestLogContext(

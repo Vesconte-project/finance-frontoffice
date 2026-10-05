@@ -37,7 +37,8 @@ test('tap selects an option and the drop settles on it', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await openTicker(page)
   const group = timeframe(page)
-  await expect(group.getByRole('radio', { name: '1M', exact: true })).toHaveAttribute('aria-checked', 'true')
+  // The hero chart opens on 1Y (Spec PRD-78).
+  await expect(group.getByRole('radio', { name: '1Y', exact: true })).toHaveAttribute('aria-checked', 'true')
 
   const fiveYears = group.getByRole('radio', { name: '5Y', exact: true })
   await fiveYears.click()
@@ -54,23 +55,23 @@ test('mouse drag previews without committing, and commits on release', async ({ 
     if (request.url().includes(`/api/stocks/${TICKER}/history`)) historyRequests.push(request.url())
   })
 
-  const start = await centreOf(group.getByRole('radio', { name: '1M', exact: true }))
+  const start = await centreOf(group.getByRole('radio', { name: '1Y', exact: true }))
   const all = await centreOf(group.getByRole('radio', { name: 'ALL', exact: true }))
-  const oneYear = group.getByRole('radio', { name: '1Y', exact: true })
-  const end = await centreOf(oneYear)
+  const threeMonths = group.getByRole('radio', { name: '3M', exact: true })
+  const end = await centreOf(threeMonths)
 
   await page.mouse.move(start.x, start.y)
   await page.mouse.down()
   // Across 10Y and ALL, which would load full history if they were committed.
   for (let step = 1; step <= 12; step += 1) await page.mouse.move(start.x + ((all.x - start.x) * step) / 12, start.y)
   await expect(group).toHaveAttribute('data-dragging', 'true')
-  await expect(group.getByRole('radio', { name: '1M', exact: true })).toHaveAttribute('aria-checked', 'true')
+  await expect(group.getByRole('radio', { name: '1Y', exact: true })).toHaveAttribute('aria-checked', 'true')
   for (let step = 1; step <= 8; step += 1) await page.mouse.move(all.x + ((end.x - all.x) * step) / 8, start.y)
   await page.mouse.up()
 
   await expect(group).toHaveAttribute('data-dragging', 'false')
-  await expect(oneYear).toHaveAttribute('aria-checked', 'true')
-  await expect.poll(() => dropOffsetFrom(oneYear)).toBeLessThan(1)
+  await expect(threeMonths).toHaveAttribute('aria-checked', 'true')
+  await expect.poll(() => dropOffsetFrom(threeMonths)).toBeLessThan(1)
   expect(historyRequests).toEqual([])
 })
 
@@ -80,7 +81,7 @@ test('touch drag on a phone-sized screen moves the selection', async ({ browser 
   await openTicker(page)
   const group = timeframe(page)
   const target = group.getByRole('radio', { name: 'YTD', exact: true })
-  const start = await centreOf(group.getByRole('radio', { name: '1M', exact: true }))
+  const start = await centreOf(group.getByRole('radio', { name: '1Y', exact: true }))
   const end = await centreOf(target)
 
   const cdp = await context.newCDPSession(page)
@@ -99,11 +100,11 @@ test('touch drag on a phone-sized screen moves the selection', async ({ browser 
 test('arrow keys, Home and End move the selection and focus', async ({ page }) => {
   await openTicker(page)
   const group = timeframe(page)
-  const current = group.getByRole('radio', { name: '1M', exact: true })
+  const current = group.getByRole('radio', { name: '1Y', exact: true })
   await current.focus()
   await page.keyboard.press('ArrowRight')
-  await expect(group.getByRole('radio', { name: '3M', exact: true })).toHaveAttribute('aria-checked', 'true')
-  await expect(group.getByRole('radio', { name: '3M', exact: true })).toBeFocused()
+  await expect(group.getByRole('radio', { name: '5Y', exact: true })).toHaveAttribute('aria-checked', 'true')
+  await expect(group.getByRole('radio', { name: '5Y', exact: true })).toBeFocused()
   await page.keyboard.press('Home')
   await expect(group.getByRole('radio', { name: '1D', exact: true })).toHaveAttribute('aria-checked', 'true')
   await page.keyboard.press('ArrowLeft')

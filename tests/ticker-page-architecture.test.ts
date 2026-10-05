@@ -33,7 +33,7 @@ test('ticker navigation exposes a stable horizontal Research hierarchy', () => {
   const relationshipField = readRepoFile('components/stocks/TickerRelationshipField.tsx')
   const relationshipFieldStyles = readRepoFile('components/stocks/TickerRelationshipField.module.css')
 
-  for (const label of ['Overview', 'Fundamentals', 'Financials', 'Valuation', 'Signals', 'Events', 'Relationships', 'Profile', 'Ownership & Capital', 'AI Research', 'Methodology']) assert.match(navigation, new RegExp(`label: '${label.replace(/[&]/g, '\\&')}'`))
+  for (const label of ['Overview', 'Fundamentals', 'Financials', 'Valuation', 'Signals', 'Events', 'Relationships', 'Business', 'Ownership & Capital', 'AI Research', 'Methodology']) assert.match(navigation, new RegExp(`label: '${label.replace(/[&]/g, '\\&')}'`))
   assert.doesNotMatch(navigation, /subitems|stockResearchMoreItems|Income Statement|Balance Sheet|Cash Flow|Signal History|Indicator Details/)
   assert.doesNotMatch(navigation, /label: 'Lens'/)
   assert.doesNotMatch(navigationComponent, /button|menu|More|chevron|ArrowDown|Escape|useSearchParams/)
@@ -177,7 +177,9 @@ test('legacy ticker detail routes resolve to stable research destinations', () =
     assert.match(source, /permanentRedirect/)
     assert.ok(source.includes(anchor), `${file} should redirect to ${anchor}`)
   }
-  assert.match(readRepoFile('app/(app)/stocks/[ticker]/profile/page.tsx'), /StockProfileResearch/)
+  // Profile was renamed Business (Spec PRD-78); the old path redirects.
+  assert.match(readRepoFile('app/(app)/stocks/[ticker]/profile/page.tsx'), /permanentRedirect\(`\/stocks\/\$\{ticker\.toUpperCase\(\)\}\/business`\)/)
+  assert.match(readRepoFile('app/(app)/stocks/[ticker]/business/page.tsx'), /StockBusinessResearch/)
   assert.match(readRepoFile('app/(app)/stocks/[ticker]/fundamentals/page.tsx'), /StockFundamentalsResearch/)
   assert.match(readRepoFile('app/(app)/stocks/[ticker]/financials/page.tsx'), /StockFinancialsResearch/)
 })
@@ -186,7 +188,7 @@ test('Phase 2 research views preserve local state and do not simulate statement 
   const navigation = readRepoFile('components/stocks/StockResearchNav.tsx')
   const tabs = readRepoFile('components/stocks/StockTabsAuto.tsx')
   const shell = readRepoFile('components/stocks/ResearchViewShell.tsx')
-  const profile = readRepoFile('components/stocks/StockProfileResearch.tsx')
+  const business = readRepoFile('components/stocks/StockBusinessResearch.tsx')
   const fundamentals = readRepoFile('components/stocks/StockFundamentalsResearch.tsx')
   const researchLoadingView = readRepoFile('components/stocks/TickerResearchLoading.tsx')
   const navConfig = readRepoFile('components/stocks/stock-nav-config.ts')
@@ -205,8 +207,9 @@ test('Phase 2 research views preserve local state and do not simulate statement 
   assert.match(tabs, /StockTickerChromeFallback/)
   assert.match(tabs, /Suspense/)
   assert.doesNotMatch(shell, /Research breadcrumb|assetContext/)
-  assert.match(profile, /Fund Profile/)
-  assert.match(profile, /Company Profile/)
+  assert.match(business, /label="How the business works"/)
+  assert.match(business, /label="What it depends on"/)
+  assert.match(business, /label="What the fund holds"/)
   assert.match(fundamentals, /FundChapters/)
   assert.doesNotMatch(fundamentals, /Math\.random|mock|fake/i)
   assert.doesNotMatch(fundamentals, /Data pending|trendPlaceholder/)
@@ -364,4 +367,96 @@ test('Valuation follows the accepted ticker Spec (PRD-78, phase 4): reported mul
   assert.doesNotMatch(reading, /function \w*(median|percentile|quantile|band|discount)/i)
   assert.doesNotMatch(assumes, /Math\.pow|\w \*\* \w/)
   assert.match(assumes, /role="status"/)
+})
+
+test('Business and Ownership & Capital follow the accepted ticker Spec (PRD-78, phase 5)', () => {
+  const nav = readRepoFile('components/stocks/stock-nav-config.ts')
+  const business = readRepoFile('components/stocks/StockBusinessResearch.tsx')
+  const ownership = readRepoFile('components/stocks/StockOwnershipResearch.tsx')
+  const ownershipPage = readRepoFile('app/(app)/stocks/[ticker]/ownership/page.tsx')
+  const capital = readRepoFile('lib/capital-reading.ts')
+
+  // The tab order of the Spec, with Business where Profile was.
+  const order = ['Overview', 'Fundamentals', 'Financials', 'Valuation', 'Signals', 'Events', 'Relationships', 'Business', 'Ownership & Capital', 'AI Research', 'Methodology']
+    .map((label) => nav.indexOf(`label: '${label}'`))
+  assert.ok(order.every((index) => index > 0))
+  assert.deepEqual([...order].sort((a, b) => a - b), order)
+  assert.doesNotMatch(nav, /label: 'Profile'/)
+
+  // Business: how the business works, then what it depends on.
+  assert.ok(business.indexOf('label="How the business works"') < business.indexOf('label="What it depends on"'))
+
+  // Ownership chapters in the Spec's order, with the reported buybacks.
+  const chapters = ['id="who-owns"', 'id="insiders"', '<BuybacksChapter', 'id="price-pays-for"'].map((token) => ownership.indexOf(token))
+  assert.ok(chapters.every((index) => index > 0))
+  assert.deepEqual([...chapters].sort((a, b) => a - b), chapters)
+  assert.match(ownership, /label="Buybacks since 2016"/)
+  assert.match(ownershipPage, /getTickerEquityCapitalEvents/)
+  assert.match(ownershipPage, /buybackExecutions/)
+  // Years add up the reported executions and value them at today's price
+  // (decision 4); the share count then and now waits on ENG-167.
+  assert.match(capital, /export function buybackSummary/)
+  assert.match(ownershipPage, /buybackSummary/)
+  assert.match(ownership, /label="Shares then and now"/)
+})
+
+test('conformance with the accepted ticker Spec (PRD-78): the items the review found', () => {
+  const overview = readRepoFile('components/stocks/StockOverviewClient.tsx')
+  const signals = readRepoFile('lib/technicalSignals.ts')
+  const dialog = readRepoFile('components/stocks/ExpandedChartDialog.tsx')
+  const page = readRepoFile('app/(app)/stocks/[ticker]/page.tsx')
+  const layout = readRepoFile('app/(app)/stocks/[ticker]/StockTickerLayout.module.css')
+  const chrome = readRepoFile('components/stocks/StockTickerChrome.module.css')
+  const flow = readRepoFile('components/stocks/financials/SalesFlowChapter.tsx')
+  const nav = readRepoFile('components/stocks/stock-nav-config.ts')
+  const methodology = readRepoFile('components/stocks/StockMethodologyResearch.tsx')
+  const signalsTab = readRepoFile('components/stocks/StockSignalsResearch.tsx')
+  const ask = readRepoFile('components/stocks/ai/AskQuestion.tsx')
+
+  // Questions worth asking: the take buttons are visible and answer explicitly; nothing is saved.
+  for (const take of ['Overdone', 'Fair', 'Not sure yet']) assert.match(overview, new RegExp(`'${take}'`))
+  assert.match(overview, /Opinions can’t be saved yet\. Saving your take and following how the evidence changes is coming in a later version\./)
+  assert.match(overview, />OK</)
+  assert.doesNotMatch(overview, /fetch\([^)]*take/i)
+  // The hero chart opens on 1Y.
+  assert.match(overview, /useState<ChartTimeframe>\('1Y'\)/)
+  // Key readings: 50/200 days, 20/40 weeks, 10/20 months.
+  assert.match(signals, /'1D': \[50, 200\]/)
+  assert.match(signals, /'1W': \[20, 40\]/)
+  assert.match(signals, /'1M': \[10, 20\]/)
+  // Events layer: the next day's move on the card, guidance markers, insiders being built.
+  assert.match(dialog, /nextSessionChange/)
+  assert.match(dialog, /data-event-next-day/)
+  assert.match(dialog, /Insider trades are being added/)
+  assert.match(page, /row\.domain === 'guidance'/)
+  // Screens: 1400px maximum, 20px phone margins (14px below 340px).
+  for (const css of [layout, chrome]) {
+    assert.match(css, /max-width: 1400px/)
+    assert.match(css, /max-width: 339\.98px/)
+  }
+  // Financials: the chosen element's card sits beside the flow on wide screens.
+  assert.match(flow, /aside=\{\(\s*<>\s*<NodeCard/)
+  // Every tab without a page header has a loading view without one.
+  for (const key of ['signals', 'ownership', 'ai-research', 'methodology', 'relationships', 'business']) {
+    assert.match(nav, new RegExp(`key: '${key}'[^}]*loadingTitle: ''`))
+  }
+  // No section numbering, no dashes in place of values, no silent disabled controls.
+  assert.doesNotMatch(methodology, />0[0-9]</)
+  assert.doesNotMatch(signalsTab, /\?\? '—'|\? '—' :/)
+  assert.doesNotMatch(ask, /<(input|button)[^>]*\bdisabled\b/)
+})
+
+test('every ticker tab renders without a page header, on the research chapters', () => {
+  for (const file of [
+    'components/stocks/StockFundamentalsResearch.tsx',
+    'components/stocks/StockFinancialsResearch.tsx',
+    'components/stocks/StockValuationResearch.tsx',
+    'components/stocks/StockSignalsResearch.tsx',
+    'components/stocks/StockEventsResearch.tsx',
+    'components/stocks/StockBusinessResearch.tsx',
+    'components/stocks/StockOwnershipResearch.tsx',
+    'components/stocks/StockAiResearch.tsx',
+    'components/stocks/StockMethodologyResearch.tsx',
+    'app/(app)/stocks/[ticker]/relationships/page.tsx',
+  ]) assert.match(readRepoFile(file), /showHeader=\{false\}/, `${file} shows a page header`)
 })

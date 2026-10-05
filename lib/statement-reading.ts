@@ -200,3 +200,17 @@ export function summaryAmount(
   const value = row?.valueNumber
   return value === null || value === undefined || !Number.isFinite(value) ? null : value
 }
+
+/**
+ * The date a summary figure refers to (its period end, else when it was
+ * observed), so each block can show the date of its own data (Spec: "Dados
+ * desatualizados").
+ */
+export function summaryDate(
+  rows: ReadonlyArray<{ metric: string; metricLabel: string; periodEnd?: string | null; asOf?: string | null }>,
+  pattern: RegExp,
+): string | null {
+  const row = rows.find((candidate) => pattern.test(candidate.metricLabel || candidate.metric.replace(/_/g, ' ')))
+  const date = row?.periodEnd ?? row?.asOf ?? null
+  return date && /^\d{4}-\d{2}-\d{2}/.test(date) ? date.slice(0, 10) : null
+}

@@ -53,6 +53,8 @@ type OverviewRelatedAsset = {
 type OverviewFundDetail = {
   label: string
   value: string
+  /** The date the figure refers to, when the source gives one. */
+  asOf?: string | null
 }
 
 type OverviewFundGroup = {
@@ -392,6 +394,32 @@ function TechnicalSummaryPanel({ gauge }: { gauge: TechnicalGaugeData }) {
   )
 }
 
+const TAKES = ['Overdone', 'Fair', 'Not sure yet'] as const
+
+/**
+ * "What do you make of it?" (Spec PRD-78, founder decision 10): the take
+ * buttons are visible and answer with an explicit message. Nothing is saved.
+ */
+function TakeButtons() {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className={styles.takes} data-takes="">
+      <span className={styles.takesLabel} id="takes-label">What do you make of it?</span>
+      <div className={styles.takeButtons} role="group" aria-labelledby="takes-label">
+        {TAKES.map((take) => (
+          <button key={take} type="button" className={styles.takeButton} onClick={() => setOpen(true)}>{take}</button>
+        ))}
+      </div>
+      {open ? (
+        <div className={styles.takeMessage} role="status" data-take-message="">
+          <p>Opinions can’t be saved yet. Saving your take and following how the evidence changes is coming in a later version.</p>
+          <button type="button" className={styles.takeOk} onClick={() => setOpen(false)}>OK</button>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 /** One family of indicators (oscillators, moving averages) as a compact row. */
 function TechnicalRow({ label, gauge }: { label: string; gauge: TechnicalGaugeData }) {
   const clamped = Math.max(0, Math.min(100, gauge.position))
@@ -436,7 +464,7 @@ export default function StockOverviewClient({
   scorecard,
   readingVerdicts,
 }: StockOverviewClientProps) {
-  const [heroTimeframe, setHeroTimeframe] = useState<ChartTimeframe>('1M')
+  const [heroTimeframe, setHeroTimeframe] = useState<ChartTimeframe>('1Y')
   const [fullHistoricalData, setFullHistoricalData] = useState<PricePoint[] | null>(null)
   const [fullHistoryState, setFullHistoryState] = useState<FullHistoryState>('idle')
   const fullHistoryRequested = useRef(false)
@@ -577,8 +605,8 @@ export default function StockOverviewClient({
   const periodUnit = signalTimeframe === '1D' ? 'day' : signalTimeframe === '1W' ? 'week' : 'month'
   const keyReadings = [
     { label: 'RSI (14)', value: readings.rsi14 === null ? null : readings.rsi14.toFixed(0), tone: undefined },
-    ...([50, 200] as const).map((period) => {
-      const distance = distanceFromAverage(readings.close, period === 50 ? readings.sma50 : readings.sma200)
+    ...readings.averagePeriods.map((period, index) => {
+      const distance = distanceFromAverage(readings.close, index === 0 ? readings.shortAverage : readings.longAverage)
       return {
         label: `vs ${period}-${periodUnit} average`,
         value: distance === null ? null : `${distance > 0 ? '+' : distance < 0 ? '−' : ''}${Math.abs(distance).toFixed(1)}%`,
@@ -649,20 +677,22 @@ export default function StockOverviewClient({
       <BeingBuilt>
         The questions a careful reader would ask about {ticker} right now, each with its evidence and the other side, are being added.
       </BeingBuilt>
+      <TakeButtons />
     </ResearchChapter>
   )
 
   const allFundamentalRows = visibleFundamentalGroups.flatMap((group) => group.rows)
   const fundamentalValue = (pattern: RegExp) => allFundamentalRows.find((row) => pattern.test(row.label))?.value ?? null
+  const fundamentalDate = (pattern: RegExp) => allFundamentalRows.find((row) => pattern.test(row.label))?.asOf ?? null
   const fundamentalCards = isFund
     ? [
-        { key: 'holdings', label: 'Holdings', value: holdings.length ? String(holdings.length) : null, context: 'holdings covered' },
-        { key: 'exposures', label: 'Sector exposure', value: sectorWeights.length ? String(sectorWeights.length) : null, context: 'sectors covered' },
+        { key: 'holdings', label: 'Holdings', value: holdings.length ? String(holdings.length) : null, asOf: null, context: 'holdings covered' },
+        { key: 'exposures', label: 'Sector exposure', value: sectorWeights.length ? String(sectorWeights.length) : null, asOf: null, context: 'sectors covered' },
       ]
     : [
-        { key: 'revenue', label: 'Revenue', value: fundamentalValue(/^(total\s+)?(revenue|sales)\b/i), context: 'latest reported' },
-        { key: 'operating-margin', label: 'Operating margin', value: fundamentalValue(/operating\s+margin/i), context: 'operating profit per dollar of sales' },
-        { key: 'net-cash', label: 'Net cash', value: fundamentalValue(/^net\s+cash\b/i), context: 'cash minus debt' },
+        { key: 'revenue', label: 'Revenue', value: fundamentalValue(/^(total\s+)?(revenue|sales)\b/i), asOf: fundamentalDate(/^(total\s+)?(revenue|sales)\b/i), context: 'latest reported' },
+        { key: 'operating-margin', label: 'Operating margin', value: fundamentalValue(/operating\s+margin/i), asOf: fundamentalDate(/operating\s+margin/i), context: 'operating profit per dollar of sales' },
+        { key: 'net-cash', label: 'Net cash', value: fundamentalValue(/^net\s+cash\b/i), asOf: fundamentalDate(/^net\s+cash\b/i), context: 'cash minus debt' },
       ]
 
   const fundamentalsSection = (
@@ -681,7 +711,7 @@ export default function StockOverviewClient({
             {card.value ? (
               <p className={styles.fundamentalValue}>
                 <strong>{card.value}</strong>
-                <span>{card.context}</span>
+                <span>{card.context}{card.asOf ? ` · as of ${new Date(`${card.asOf}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}` : ''}</span>
               </p>
             ) : null}
             <p className={styles.fundamentalNote}>

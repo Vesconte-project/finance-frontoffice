@@ -1,10 +1,10 @@
-import Link from 'next/link'
 import type { CSSProperties } from 'react'
 import ResearchViewShell, { ResearchAdPlacement } from '@/components/stocks/ResearchViewShell'
 import { buildTechnicalSummary, type TechnicalGaugeData, type TechnicalIndicatorRow } from '@/lib/technicalSignals'
 import type { OhlcPoint } from '@/lib/ohlc-data'
 import type { SignalResearchData } from '@/lib/signal-research'
-import BeingBuilt from '@/components/stocks/research/BeingBuilt'
+import BeingBuilt, { BeingBuiltBadge } from '@/components/stocks/research/BeingBuilt'
+import ResearchChapter, { ChapterCard, LeadStat } from '@/components/stocks/research/ResearchChapter'
 import styles from './StockSignalsResearch.module.css'
 
 const RANGE_DAYS = { '1M': 31, '3M': 93, '1Y': 366, '5Y': 1826 } as const
@@ -53,7 +53,7 @@ function PriceSignalTimeline({ data }: { data: SignalResearchData }) {
   if (rows.length < 2) {
     return (
       <div className={styles.chartFallback} role="status">
-        <span>{data.ohlc.status === 'empty' ? 'Price history · Unavailable' : 'Price history · Partial coverage'}</span>
+        <BeingBuilt size="chart">Prices for the signal timeline are being added.</BeingBuilt>
       </div>
     )
   }
@@ -148,14 +148,14 @@ function TechnicalTrack({
           <span>Neutral {gauge.counts.neutral}</span>
           <span>Sell {gauge.counts.sell}</span>
         </div>
-      ) : <span className={styles.trackMeta}>The current OHLC window does not contain enough rows for this read.</span>}
+      ) : <span className={styles.trackMeta}>Not enough price history for this read yet.</span>}
       <details className={styles.trackDetails} open={open && available}>
         <summary>Indicator details</summary>
         <dl className={styles.indicatorRows}>
           {rows.slice(0, title === 'Summary' ? 6 : 10).map((row) => (
             <div className={styles.metricRow} key={row.name}>
               <dt>{row.name}</dt>
-              <dd>{row.value} · {row.action}</dd>
+              <dd>{row.value === '—' ? 'Not enough history' : `${row.value} · ${row.action}`}</dd>
             </div>
           ))}
         </dl>
@@ -166,33 +166,28 @@ function TechnicalTrack({
 }
 
 function SignalHistory({ data }: { data: SignalResearchData }) {
+  if (data.observations.length === 0) {
+    return <BeingBuilt>Earlier signals for this stock, each with its date and horizon, are being added.</BeingBuilt>
+  }
   return (
-    <section className={styles.historySection} aria-labelledby="signal-history-heading">
-      <div className={styles.sectionHeader}>
-        <div>
-          <span className={styles.sectionLabel}>Observed records</span>
-          <h2 className={styles.sectionTitle} id="signal-history-heading">Signal History</h2>
-        </div>
-        <span className={styles.pending}>{data.observations.length > 0 ? `${data.observations.length} records` : 'Partial coverage'}</span>
-      </div>
-      {data.observations.length > 0 ? (
-        <details>
-          <summary className={styles.historySummary}>Open signal observations</summary>
-          <div className={styles.historyList}>
-            {data.observations.slice(0, 18).map((observation) => (
-              <div className={styles.historyRow} key={observation.id}>
-                <time dateTime={observation.signalDate}>{formatDate(observation.signalDate)}</time>
-                <strong>{directionLabel(observation.direction)}</strong>
-                <span>Horizon {observation.horizon ?? '—'}</span>
-              </div>
-            ))}
+    <details className={styles.historyDetails}>
+      <summary className={styles.historySummary}>{data.observations.length} earlier signals</summary>
+      <div className={styles.historyList}>
+        {data.observations.slice(0, 18).map((observation) => (
+          <div className={styles.historyRow} key={observation.id}>
+            <time dateTime={observation.signalDate}>{formatDate(observation.signalDate)}</time>
+            <strong>{directionLabel(observation.direction)}</strong>
+            {observation.horizon ? <span>Horizon {observation.horizon}</span> : null}
           </div>
-        </details>
-      ) : (
-        <div className={styles.pendingLine}><strong>Signal history</strong><span className={styles.pending}>Unavailable or not covered for this ticker.</span></div>
-      )}
-    </section>
+        ))}
+      </div>
+    </details>
   )
+}
+
+/** A reported figure, or the Being built badge in its place — never a dash. */
+function Figure({ value, suffix = '' }: { value: number | null | undefined; suffix?: string }) {
+  return value === null || value === undefined || !Number.isFinite(value) ? <BeingBuiltBadge /> : <>{formatNumber(value)}{suffix}</>
 }
 
 export default function StockSignalsResearch({ data, family }: { data: SignalResearchData; family?: string }) {
@@ -205,131 +200,74 @@ export default function StockSignalsResearch({ data, family }: { data: SignalRes
   const currentSignalClass = current ? styles[current.direction] : styles.neutral
 
   return (
-    <ResearchViewShell data={research} title="Signals & Indicators">
+    // No page header: the chrome above already names the company and the tab.
+    <ResearchViewShell data={research} title="Signals & Indicators" showHeader={false}>
       <div className={styles.page} data-signal-research="">
-        <header className={styles.intro}>
-          <span className={styles.eyebrow}>{research.ticker} · Technical evidence</span>
-          <div className={styles.introMeta}>
-            <span>Chart range · {SIGNAL_CHART_RANGE}</span>
-            <span>Technical aggregation · {technicalFrame}</span>
-            <span>{research.kind === 'fund' ? 'Fund' : 'Equity'}</span>
-          </div>
-        </header>
-
-        <section className={styles.currentGrid} aria-labelledby="current-signal-heading">
-          <div className={styles.timelinePanel}>
-            <div className={styles.timelineHeader}>
-              <div>
-                <span className={styles.sectionLabel}>Price and observations</span>
-                <h2 className={styles.sectionTitle}>Signal timeline</h2>
+        <ResearchChapter
+          id="signal-timeline"
+          label="Model signal"
+          actions={<span className={styles.timelineRange}>{SIGNAL_CHART_RANGE}</span>}
+          aside={current ? (
+            <ChapterCard title="Current signal" meta={formatDate(current.signalDate)}>
+              <div className={`${styles.currentSignal} ${currentSignalClass}`}>
+                <div className={styles.direction}><span className={styles.directionDot} />{directionLabel(current.direction)}</div>
+                <dl className={styles.facts}>
+                  {current.horizon ? <div className={styles.factRow}><dt>Horizon</dt><dd>{current.horizon}</dd></div> : null}
+                  {current.price !== null ? <div className={styles.factRow}><dt>Price at signal</dt><dd>{formatNumber(current.price)}</dd></div> : null}
+                </dl>
               </div>
-              <span className={styles.timelineRange}>{SIGNAL_CHART_RANGE}</span>
-            </div>
-            <PriceSignalTimeline data={data} />
-            <div className={styles.timelineNotes} aria-label="Signal direction legend">
-              <span><i className={`${styles.legendDot} ${styles.signalBullish}`} />Bullish</span>
-              <span><i className={`${styles.legendDot} ${styles.signalNeutral}`} />Neutral</span>
-              <span><i className={`${styles.legendDot} ${styles.signalBearish}`} />Bearish</span>
-              <span>Markers only appear when signal and price dates match.</span>
-            </div>
+            </ChapterCard>
+          ) : (
+            <BeingBuilt label="Current signal">The model’s latest signal for {research.ticker}, with its date and horizon, is being added.</BeingBuilt>
+          )}
+        >
+          <PriceSignalTimeline data={data} />
+          <div className={styles.timelineNotes} aria-label="Signal direction legend">
+            <span><i className={`${styles.legendDot} ${styles.signalBullish}`} />Bullish</span>
+            <span><i className={`${styles.legendDot} ${styles.signalNeutral}`} />Neutral</span>
+            <span><i className={`${styles.legendDot} ${styles.signalBearish}`} />Bearish</span>
           </div>
+        </ResearchChapter>
 
-          <aside className={`${styles.currentSignal} ${currentSignalClass}`}>
-            <div>
-              <span className={styles.sectionLabel} id="current-signal-heading">Current Signal</span>
-            </div>
-            {current ? (
-              <div className={styles.direction}><span className={styles.directionDot} />{directionLabel(current.direction)}</div>
-            ) : <div className={styles.pendingLine}><strong>Current signal</strong><span className={styles.pending}>Unavailable</span></div>}
-            {current ? (
-              <dl className={styles.facts}>
-                <div className={styles.factRow}><dt>Signal date</dt><dd>{formatDate(current.signalDate)}</dd></div>
-                <div className={styles.factRow}><dt>Horizon</dt><dd>{current.horizon ?? '—'}</dd></div>
-                <div className={styles.factRow}><dt>Price</dt><dd>{current.price === null ? '—' : formatNumber(current.price)}</dd></div>
-                <div className={styles.factRow}><dt>Signal coverage</dt><dd>{current.coverage === true ? 'Available' : 'Partial coverage'}</dd></div>
-              </dl>
-            ) : null}
-            <p className={styles.trackMeta}>Only fields with confirmed product semantics are shown. Probability, strength, returns and episode state are not interpreted here.</p>
-          </aside>
-        </section>
-
-        <section className={styles.technicalSection} aria-labelledby="technical-evidence-heading">
-          <div className={styles.sectionHeader}>
-            <div>
-              <span className={styles.sectionLabel}>Derived from available OHLC</span>
-              <h2 className={styles.sectionTitle} id="technical-evidence-heading">Technical evidence</h2>
-            </div>
-            <span className={styles.pending}>{available ? `OHLC rows · ${data.ohlc.rows.length}` : 'Partial coverage'}</span>
-          </div>
-          <div className={styles.technicalSummary}>
-            <div className={styles.overallRead}>
-              <span className={styles.sectionLabel}>Overall Technical Read</span>
-              <strong>{available ? technical.gauges.summary.verdict : 'Not enough price history'}</strong>
-              <span>Existing Overview aggregation, using the selected technical window.</span>
-            </div>
-            <dl className={styles.metricList}>
-              <div className={styles.metricRow}><dt>Observed rows</dt><dd>{data.ohlc.rows.length || '—'}</dd></div>
-              <div className={styles.metricRow}><dt>Technical source</dt><dd>OHLC</dd></div>
-              <div className={styles.metricRow}><dt>Indicator history</dt><dd>Not available</dd></div>
-            </dl>
-          </div>
+        <ResearchChapter
+          id="technicals"
+          label="Technicals"
+          band
+          lead={available ? (
+            <LeadStat value={technical.gauges.summary.verdict} context={`Summary of ${technical.oscillatorRows.length + technical.movingAverageRows.length} indicators · ${technicalFrame}`} />
+          ) : (
+            <BeingBuilt size="inline">The technical read needs at least 30 days of prices for {research.ticker}.</BeingBuilt>
+          )}
+        >
           <div className={styles.trackGrid}>
             <TechnicalTrack title="Summary" gauge={technical.gauges.summary} rows={[...technical.oscillatorRows, ...technical.movingAverageRows]} available={available} open={!family || family === 'summary'} />
             <TechnicalTrack title="Oscillators" gauge={technical.gauges.oscillators} rows={technical.oscillatorRows} available={available} open={family === 'oscillators'} />
             <TechnicalTrack title="Moving Averages" gauge={technical.gauges.movingAverages} rows={technical.movingAverageRows} available={available} open={family === 'moving-averages'} />
           </div>
-        </section>
+        </ResearchChapter>
 
-        <section className={styles.secondarySection} aria-labelledby="secondary-evidence-heading">
-          <div className={styles.sectionHeader}>
-            <div>
-              <span className={styles.sectionLabel}>Market context</span>
-              <h2 className={styles.sectionTitle} id="secondary-evidence-heading">Momentum, trend, volume and volatility</h2>
-            </div>
-          </div>
+        <ResearchChapter id="market-context" label="Momentum, volume and volatility">
           <div className={styles.secondaryGrid}>
-            <section>
-              <span className={styles.sectionLabel}>Momentum & Trend</span>
-              <dl className={styles.metricList}>
-                <div className={styles.metricRow}><dt>1D change</dt><dd>{formatNumber(stats?.change1D)}%</dd></div>
-                <div className={styles.metricRow}><dt>1M change</dt><dd>{formatNumber(stats?.change1M)}%</dd></div>
-                <div className={styles.metricRow}><dt>1Y change</dt><dd>{formatNumber(stats?.change1Y)}%</dd></div>
-              </dl>
-            </section>
-            <section>
-              <span className={styles.sectionLabel}>Volume, Volatility & Liquidity</span>
-              <dl className={styles.metricList}>
-                <div className={styles.metricRow}><dt>Latest volume</dt><dd>{stats?.volume === null || stats?.volume === undefined ? '—' : stats.volume.toLocaleString()}</dd></div>
-                <div className={styles.metricRow}><dt>30D volatility</dt><dd>{stats?.vol30dPct === null || stats?.vol30dPct === undefined ? '—' : `${formatNumber(stats.vol30dPct)}%`}</dd></div>
-                <div className={styles.metricRow}><dt>Liquidity fields</dt><dd>Unavailable</dd></div>
-              </dl>
-            </section>
+            <dl className={styles.metricList} aria-label="Price change">
+              <div className={styles.metricRow}><dt>1D change</dt><dd><Figure value={stats?.change1D} suffix="%" /></dd></div>
+              <div className={styles.metricRow}><dt>1M change</dt><dd><Figure value={stats?.change1M} suffix="%" /></dd></div>
+              <div className={styles.metricRow}><dt>1Y change</dt><dd><Figure value={stats?.change1Y} suffix="%" /></dd></div>
+            </dl>
+            <dl className={styles.metricList} aria-label="Volume and volatility">
+              <div className={styles.metricRow}><dt>Latest volume</dt><dd>{stats?.volume === null || stats?.volume === undefined ? <BeingBuiltBadge /> : stats.volume.toLocaleString()}</dd></div>
+              <div className={styles.metricRow}><dt>30-day volatility</dt><dd><Figure value={stats?.vol30dPct} suffix="%" /></dd></div>
+              <div className={styles.metricRow}><dt>Liquidity</dt><dd><BeingBuiltBadge /></dd></div>
+            </dl>
           </div>
-        </section>
+        </ResearchChapter>
 
-        <section className={styles.historySection} aria-labelledby="regime-history-heading">
-          <div className={styles.sectionHeader}>
-            <div>
-              <span className={styles.sectionLabel}>State changes</span>
-              <h2 className={styles.sectionTitle} id="regime-history-heading">Regime History</h2>
-            </div>
-          </div>
-          <BeingBuilt label="Regime transitions">When the market regime for this stock changed, and for how long each lasted, is being added.</BeingBuilt>
-        </section>
+        <ResearchChapter id="regime-history" label="Regime history" band>
+          <BeingBuilt>When the market regime for this stock changed, and for how long each lasted, is being added.</BeingBuilt>
+        </ResearchChapter>
 
-        <SignalHistory data={data} />
-
-        <section className={styles.methodology} aria-labelledby="signals-methodology-heading">
-          <div className={styles.methodHeader}>
-            <div>
-              <span className={styles.sectionLabel}>Method and coverage</span>
-              <h2 id="signals-methodology-heading">Methodology</h2>
-            </div>
-            <Link href={`/stocks/${research.ticker}/methodology`} className={styles.methodLink}>Open methodology →</Link>
-          </div>
-          <p>Summary, Oscillators and Moving Averages reuse the existing OHLC-derived implementation used by the Overview. Signal observations are shown as supplied after server-side shape and date validation. No probability, accuracy, performance or regime conclusion is calculated here.</p>
-          <div className={styles.methodMeta}><span>Coverage · {research.coverageLabel}</span><span>Source · Vesconte research data</span></div>
-        </section>
+        <ResearchChapter id="signal-history" label="Signal history">
+          <SignalHistory data={data} />
+        </ResearchChapter>
 
         <ResearchAdPlacement />
       </div>

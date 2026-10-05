@@ -6,7 +6,8 @@ import Dialog from '@/components/ui/Dialog'
 import SegmentedControl from '@/components/ui/SegmentedControl'
 import { measureBetween } from '@/lib/chart-measure'
 import { formatMoney, formatSignedMoney } from '@/lib/currency'
-import { EVENT_CATEGORY_LABEL, markerBarIndex, type EventMarker } from '@/lib/event-markers'
+import { EVENT_CATEGORY_LABEL, markerBarIndex, nextSessionChange, type EventMarker } from '@/lib/event-markers'
+import { BeingBuiltBadge } from '@/components/stocks/research/BeingBuilt'
 import {
   INTRADAY_RANGES,
   availableRanges,
@@ -114,6 +115,8 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
   )
   const selectedPosition = placedEvents.findIndex((event) => event.id === selectedEvent)
   const selected = selectedPosition >= 0 ? placedEvents[selectedPosition] : null
+  // The close-to-close change on the session after the event's day (Spec: "efeito no dia seguinte").
+  const selectedNextDay = selected ? nextSessionChange(bars.map((item) => item.close), selected.index) : null
   const closes = useMemo(() => bars.map((bar) => ({ date: bar.date, value: bar.close })), [bars])
   const measurement = measure ? measureBetween(closes, measure.first, measure.second) : null
   const formatChange = (value: number) => formatSignedMoney(value, currency)
@@ -310,6 +313,11 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
                   <p className={styles.eventMeta}>
                     <span className={styles.eventCategory} data-category={selected.category}>{EVENT_CATEGORY_LABEL[selected.category]}</span>
                     <time dateTime={selected.date}>{formatDate(selected.date)}</time>
+                    <span data-event-next-day="" data-tone={selectedNextDay === null || selectedNextDay === 0 ? undefined : selectedNextDay > 0 ? 'up' : 'down'}>
+                      {selectedNextDay === null
+                        ? 'Next day: not traded yet'
+                        : `Next day ${selectedNextDay > 0 ? '+' : selectedNextDay < 0 ? '−' : ''}${Math.abs(selectedNextDay).toFixed(1)}%`}
+                    </span>
                   </p>
                   <p className={styles.eventTitle}>{selected.title}</p>
                 </div>
@@ -322,6 +330,7 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
             ) : (
               <p className={styles.eventTitle}>No company events are recorded for these prices.</p>
             )}
+            <p className={styles.eventPending} data-events-pending=""><BeingBuiltBadge /> Insider trades are being added to this layer.</p>
           </div>
         ) : null}
 

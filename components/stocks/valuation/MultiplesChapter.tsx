@@ -7,6 +7,8 @@ import ResearchChapter, { ChapterCard, LeadStat } from '@/components/stocks/rese
 import { VALUATION_MULTIPLES, formatMultiple, type MultipleKey, type MultiplePoint } from '@/lib/valuation-reading'
 import styles from './Valuation.module.css'
 
+const dayFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+
 /**
  * Multiples: the reported history of the chosen multiple, with its highest
  * point and today's value written on the line. The usual range, the median,
@@ -31,7 +33,7 @@ export default function MultiplesChapter({
       label="Multiples, last 10 years"
       lead={latest ? (
         <>
-          <LeadStat value={formatMultiple(latest.value)} context={`${chosen.label} today`} />
+          <LeadStat value={formatMultiple(latest.value)} context={`${chosen.label} today · as of ${dayFormat.format(Date.parse(`${latest.date}T00:00:00Z`))}`} />
           <p className={styles.leadNote}><BeingBuiltBadge /> Its usual range and median are being added.</p>
         </>
       ) : (

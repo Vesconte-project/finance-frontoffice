@@ -24,10 +24,23 @@
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 1280px;
+  /* Same measures as the page content below it (StockTickerLayout). */
+  max-width: 1400px;
   min-width: 0;
   margin-inline: auto;
-  padding-inline: clamp(16px, 4vw, 24px);
+  padding-inline: 20px;
+}
+
+@media (max-width: 339.98px) {
+  .content {
+    padding-inline: 14px;
+  }
+}
+
+@media (min-width: 768px) {
+  .content {
+    padding-inline: 24px;
+  }
 }
 
 .navigation {

@@ -1,0 +1,14 @@
+.chapters {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+}
+
+.description {
+  max-width: 44rem;
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--text-body);
+  overflow-wrap: anywhere;
+}

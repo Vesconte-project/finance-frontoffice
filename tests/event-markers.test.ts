@@ -62,3 +62,15 @@ test('distance to an average is a signed percentage of the average', () => {
   assert.equal(distanceFromAverage(null, 100), null)
   assert.equal(distanceFromAverage(100, 0), null)
 })
+
+test('guidance from the disclosures stream is a marker of its own, and the next session move is plain arithmetic', async () => {
+  const { buildEventMarkers, nextSessionChange, EVENT_CATEGORY_LABEL } = await import('../lib/event-markers')
+  const markers = buildEventMarkers([
+    { domain: 'guidance', eventId: 'g1', eventType: 'revenue_guidance', title: 'FY revenue outlook', occursAt: '2026-05-02T00:00:00Z', knownAt: '2026-05-02T00:00:00Z' },
+  ], '2026-10-01')
+  assert.equal(markers[0].category, 'guidance')
+  assert.equal(EVENT_CATEGORY_LABEL.guidance, 'Guidance')
+  assert.ok(Math.abs((nextSessionChange([100, 102, 99], 0) ?? 0) - 2) < 1e-9)
+  assert.ok(Math.abs((nextSessionChange([100, 102, 99], 1) ?? 0) + (300 / 102)) < 1e-9)
+  assert.equal(nextSessionChange([100, 102, 99], 2), null, 'the latest session has no next day yet')
+})

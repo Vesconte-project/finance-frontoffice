@@ -205,7 +205,7 @@
   .identity {
     --selected-node-column: 22px;
     --selected-node-size: 15px;
-    column-gap: 8px;
+    column-gap: 6px;
   }
 
   .node {
@@ -259,6 +259,13 @@
   /* Spare width goes mostly to the rail, so the metadata wraps as little as possible. */
   .rail {
     flex-grow: 3;
+    gap: 6px;
+  }
+
+  /* Slightly tighter gaps keep the actions beside the quote with the Spec's
+     20px phone margins (PRD-78) down to 360px. */
+  .line {
+    column-gap: 8px;
   }
 }
 

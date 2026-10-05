@@ -72,7 +72,7 @@ test('the scan covers every ticker tab and the shared research primitives', () =
   for (const file of [
     'components/stocks/StockOverviewClient.tsx',
     'components/stocks/StockOwnershipResearch.tsx',
-    'components/stocks/StockProfileResearch.tsx',
+    'components/stocks/StockBusinessResearch.tsx',
     'components/stocks/StockSignalsResearch.tsx',
     'components/stocks/StockMethodologyResearch.tsx',
     'components/stocks/research/BeingBuilt.tsx',
@@ -91,7 +91,7 @@ test('a block waiting for data shows the badge and a sentence, never a value', (
   assert.match(beingBuilt, />Being built</)
   assert.match(beingBuilt, /data-being-built\b/)
   assert.doesNotMatch(beingBuilt, /value\s*[?:]/, 'BeingBuilt takes no value to show')
-  for (const file of ['components/stocks/StockOwnershipResearch.tsx', 'components/stocks/StockProfileResearch.tsx', 'components/stocks/StockSignalsResearch.tsx']) {
+  for (const file of ['components/stocks/StockOwnershipResearch.tsx', 'components/stocks/StockBusinessResearch.tsx', 'components/stocks/StockSignalsResearch.tsx']) {
     assert.match(readRepoFile(file), /from '@\/components\/stocks\/research\/BeingBuilt'/, `${file} uses the shared Being built block`)
   }
 })

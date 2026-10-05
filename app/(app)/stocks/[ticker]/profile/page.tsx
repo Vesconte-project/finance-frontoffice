@@ -1,11 +1,7 @@
-import StockProfileResearch from '@/components/stocks/StockProfileResearch'
-import ResearchUnavailable from '@/components/stocks/ResearchUnavailable'
-import { getStockResearchData } from '@/lib/stock-research'
+import { permanentRedirect } from 'next/navigation'
 
-export default async function ProfilePage({ params }: { params: Promise<{ ticker: string }> }) {
-  const { ticker: rawTicker } = await params
-  const ticker = rawTicker.toUpperCase()
-  const data = await getStockResearchData(ticker).catch(() => null)
-  if (!data) return <ResearchUnavailable ticker={ticker} />
-  return <StockProfileResearch data={data} />
+/** Profile was renamed Business (Spec "Página de ticker — leitura em camadas V1"). */
+export default async function LegacyProfilePage({ params }: { params: Promise<{ ticker: string }> }) {
+  const { ticker } = await params
+  permanentRedirect(`/stocks/${ticker.toUpperCase()}/business`)
 }
