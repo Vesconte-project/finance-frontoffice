@@ -17,20 +17,22 @@ Status: Phase 2 first vertical slice implemented for visual review.
 - Fund Profile replaces company language with holdings, sector exposure, distributions, and risk.
 - Missing descriptive or identifier fields use a compact `Data pending` state without fabricated copy.
 
-### Fundamentals
+### Fundamentals (PRD-78, phase 3)
 
-- Equity themes are Valuation, Growth, Profitability, Financial health, and Shareholder return.
-- Fund themes are Portfolio, Exposure, Valuation, Distributions, and Risk.
-- Current canonical metric rows use one stable asset-aware order.
-- Historical trend slots are reserved as `Data pending` until a canonical series contract exists.
+- Equity chapters, in the Spec's order: Revenue, Operating margin, Cash and debt, Dividends.
+- Revenue charts the reported annual revenue from the canonical financial statement contract. The five-year growth, the "% growth" view and the split by business are Being built (ENG-170, ENG-160).
+- Operating margin, net margin and net cash read the ticker summary's latest fundamentals, the same rows the Overview reads, so a fact has one value across the tabs. Their history, the sector median and the debt detail are Being built (ENG-90, ENG-91, ENG-88, ENG-168).
+- Dividends chart the reported dividend per share by ex-date from `/tickers/:ticker/corporate-actions`. The split-adjusted amount is used only when the source reports it for every payment in the window.
+- Funds keep Portfolio, Exposure, Distributions and Risk.
 
-### Financial Statements
+### Financials (PRD-78, phase 3)
 
-- Income Statement, Balance Sheet, and Cash Flow are stable URL states through `?statement=`.
-- Annual and Quarterly are stable URL states through `?period=`.
-- The current summary snapshot is explicitly separate from a complete statement series.
-- Financial Statements consumes the canonical financial statement contract through the server-only backend helper. It displays reported line items and period ends, selects the latest known observation for repeated line-item/period snapshots, and does not calculate comparative growth or restatement relationships.
-- Mobile exposes the selected period as the primary column rather than making horizontal scrolling the main interaction.
+- One chapter, "Where each dollar of sales goes": a horizontal flow for a chosen year (the last five reported) with an Amount / % of sales switch.
+- The flow's main path is the chain of reported results from the canonical financial statement contract: sales, gross profit, operating income and net income, drawn to scale.
+- Branches that are not reported line items are outlined Being built nodes of a fixed size. They are never sized from a difference of two values. These branches are cost of sales, operating costs, taxes, buybacks, dividends and what was kept.
+- Below 900px of chart space the flow becomes three columns: sales, its four parts, and what the open part is made of.
+- The card shows the chosen element's reported value and five years of it. The change on the year before, the share of sales and "Biggest changes" are Being built (ENG-170).
+- The statement tables, the quarterly view and the history by plan (Spec "Financial statements history by plan V1") were removed by founder decision on 2026-10-04. Old `?period=` and `?statement=` links land on this page.
 
 ## Data boundaries
 

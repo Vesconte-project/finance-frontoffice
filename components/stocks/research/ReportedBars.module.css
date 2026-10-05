@@ -1,0 +1,20 @@
+.frame {
+  max-width: 48rem;
+}
+
+.zero {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+
+.bar {
+  fill: color-mix(in srgb, var(--text) 62%, transparent);
+}
+
+.bar[data-negative='true'] {
+  fill: color-mix(in srgb, var(--down) 70%, transparent);
+}
+
+.bar[data-highlighted='true'] {
+  fill: var(--text);
+}

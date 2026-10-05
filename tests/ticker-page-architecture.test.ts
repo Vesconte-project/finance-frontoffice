@@ -179,7 +179,7 @@ test('legacy ticker detail routes resolve to stable research destinations', () =
   }
   assert.match(readRepoFile('app/(app)/stocks/[ticker]/profile/page.tsx'), /StockProfileResearch/)
   assert.match(readRepoFile('app/(app)/stocks/[ticker]/fundamentals/page.tsx'), /StockFundamentalsResearch/)
-  assert.match(readRepoFile('app/(app)/stocks/[ticker]/financials/page.tsx'), /StockFinancialStatementsResearch/)
+  assert.match(readRepoFile('app/(app)/stocks/[ticker]/financials/page.tsx'), /StockFinancialsResearch/)
 })
 
 test('Phase 2 research views preserve local state and do not simulate statement data', () => {
@@ -188,10 +188,9 @@ test('Phase 2 research views preserve local state and do not simulate statement 
   const shell = readRepoFile('components/stocks/ResearchViewShell.tsx')
   const profile = readRepoFile('components/stocks/StockProfileResearch.tsx')
   const fundamentals = readRepoFile('components/stocks/StockFundamentalsResearch.tsx')
-  const fundamentalsView = readRepoFile('lib/stock-fundamentals-view.ts')
   const researchLoadingView = readRepoFile('components/stocks/TickerResearchLoading.tsx')
   const navConfig = readRepoFile('components/stocks/stock-nav-config.ts')
-  const financials = readRepoFile('components/stocks/StockFinancialStatementsResearch.tsx')
+  const financials = readRepoFile('components/stocks/StockFinancialsResearch.tsx')
   const overviewLink = readRepoFile('components/stocks/ResearchOverviewLink.tsx')
   const contract = readRepoFile('docs/features/ticker-research-views.md')
 
@@ -208,41 +207,17 @@ test('Phase 2 research views preserve local state and do not simulate statement 
   assert.doesNotMatch(shell, /Research breadcrumb|assetContext/)
   assert.match(profile, /Fund Profile/)
   assert.match(profile, /Company Profile/)
-  // The deliberate equity/fund ordering moved into the view builder when the
-  // page stopped being a list of themes; the intent it guards is unchanged.
-  assert.match(fundamentalsView, /EQUITY_CHAPTERS/)
-  assert.match(fundamentalsView, /FUND_CHAPTERS/)
+  assert.match(fundamentals, /FundChapters/)
   assert.doesNotMatch(fundamentals, /Math\.random|mock|fake/i)
-  // The trend rail this page used to render was a placeholder that never
-  // filled, on a page whose history the backend does hold.
   assert.doesNotMatch(fundamentals, /Data pending|trendPlaceholder/)
-  // The levels are Financials' job and the latest values are Overview's; this
-  // view exists for the change between periods and must keep showing it.
-  assert.match(fundamentals, /changes/)
   // The tab and the ticker chrome already name this page; a heading repeating
   // the tab beside a coverage badge told the reader nothing.
   assert.match(fundamentals, /showHeader=\{false\}/)
   // A view with no page header must not grow one while it loads.
   assert.match(navConfig, /key: 'fundamentals'[^}]*loadingTitle: ''/)
   assert.doesNotMatch(researchLoadingView, /=== 'overview'/)
-  assert.match(financials, /payload\.rows/)
-  assert.match(financials, /lineItemId/)
-  // A statement read alphabetically is not a statement: the rows arrived with
-  // the top line last and a per-share figure in the middle of the money.
-  assert.match(financials, /STATEMENT_ORDER/)
-  assert.match(financials, /StatementChart/)
   assert.match(financials, /showHeader=\{false\}/)
-  // The canonical key is a join key for this codebase, not a reader's row label.
-  assert.doesNotMatch(financials, /<small>\{lineItem\.lineItemId\}/)
-  // Every reported period, not a slice applied after asking for five hundred.
-  assert.doesNotMatch(financials, /slice\(0, 5\)/)
   assert.match(navConfig, /key: 'financials'[^}]*loadingTitle: ''/)
-  assert.match(financials, /aria-label="Reporting frequency"/)
-  // All three statements on one page: this contract returns six income line
-  // items, three balance-sheet items and one cash-flow item, and three tabs
-  // over that left each one nearly empty.
-  assert.match(financials, /StatementBundle/)
-  assert.match(financials, /CHART_NESTING/)
   assert.doesNotMatch(financials, /Math\.random|mock|fake/i)
   assert.match(overviewLink, /href=\{`\/stocks\/\$\{ticker\}`\}/)
   assert.doesNotMatch(overviewLink, /searchParams|lens/)
@@ -322,4 +297,44 @@ test('the Overview follows the accepted ticker Spec (PRD-78): order, Being built
   assert.match(dialog, /useState\(false\)[\s\S]*setShowEvents|const \[showEvents, setShowEvents\] = useState\(false\)/)
   // Values are never derived here: net cash only when the summary supplies it.
   assert.doesNotMatch(overview, /cash\s*-\s*debt|totalCash\s*-/i)
+})
+
+test('Fundamentals and Financials follow the accepted ticker Spec (PRD-78, phase 3): reported values only', () => {
+  const fundamentals = readRepoFile('components/stocks/StockFundamentalsResearch.tsx')
+  const revenue = readRepoFile('components/stocks/fundamentals/RevenueChapter.tsx')
+  const flow = readRepoFile('components/stocks/financials/SalesFlowChapter.tsx')
+  const flowStyles = readRepoFile('components/stocks/financials/Financials.module.css')
+  const reading = readRepoFile('lib/statement-reading.ts')
+  const fundamentalsPage = readRepoFile('app/(app)/stocks/[ticker]/fundamentals/page.tsx')
+  const financialsPage = readRepoFile('app/(app)/stocks/[ticker]/financials/page.tsx')
+
+  // Fundamentals chapters in the Spec's order.
+  const order = ['<RevenueChapter', '<OperatingMarginChapter', '<CashAndDebtChapter', '<DividendsChapter'].map((token) => fundamentals.indexOf(token))
+  assert.ok(order.every((index) => index > 0), 'every Fundamentals chapter is rendered')
+  assert.deepEqual([...order].sort((a, b) => a - b), order)
+  assert.match(revenue, /id="revenue"/)
+  assert.match(fundamentals, /id="operating-margin"/)
+  assert.match(fundamentals, /id="cash-and-debt"/)
+  assert.match(fundamentals, /id="dividends"/)
+  // Growth is the backend's (ENG-170): the "% growth" view is Being built.
+  assert.match(revenue, /'% growth'/)
+  assert.doesNotMatch(revenue, /Math\.pow|\*\* \(1 \//)
+  // Dividends are reported payments from corporate actions.
+  assert.match(fundamentalsPage, /getTickerCorporateActions/)
+  assert.match(fundamentalsPage, /dividendHistory/)
+
+  // Financials: one horizontal flow, with the detail under it.
+  assert.match(flow, /label="Where each dollar of sales goes"/)
+  assert.match(flow, /data-flow-variant="wide"/)
+  assert.match(flow, /data-flow-variant="narrow"/)
+  assert.match(flowStyles, /@container sales-flow \(width >= 56\.25rem\)/)
+  assert.doesNotMatch(flowStyles, /flex-direction: column[^}]*data-flow-variant|writing-mode/)
+  assert.match(flow, /label="Biggest changes"/)
+  assert.match(financialsPage, /incomeSeries/)
+  // The statement tables and the history by plan were removed (founder, 2026-10-04).
+  assert.doesNotMatch(financialsPage, /cutStatementHistory|tierFor|searchParams/)
+
+  // Nothing is derived from two reported values: no subtraction between line
+  // items, no ratio and no growth in the reading layer.
+  assert.doesNotMatch(reading, /\.value\s*[-/]\s*[\w.]+\.value|growth\s*=|yoy/i)
 })

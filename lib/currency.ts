@@ -82,3 +82,20 @@ export function formatCompactMoney(value: number | null | undefined, currency: s
   const symbol = PREFIX_SYMBOL[normalized.currency]
   return symbol ? `${symbol}${formatted}` : `${formatted} ${normalized.currency}`
 }
+
+/**
+ * A short amount for writing on a chart: three significant figures, compact,
+ * with the minus sign ahead of the currency (−$3.2B, $394B, $0.24).
+ */
+export function formatChartMoney(value: number | null | undefined, currency: string | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return '—'
+  const normalized = normalizeMoneyValue(Math.abs(value), currency)
+  const formatted = new Intl.NumberFormat('en-US', {
+    notation: 'compact',
+    maximumSignificantDigits: 3,
+  }).format(normalized.value)
+  const sign = value < 0 ? '−' : ''
+  if (KR_SUFFIX_CURRENCIES.has(normalized.currency)) return `${sign}${formatted} kr`
+  const symbol = PREFIX_SYMBOL[normalized.currency]
+  return symbol ? `${sign}${symbol}${formatted}` : `${sign}${formatted} ${normalized.currency}`
+}

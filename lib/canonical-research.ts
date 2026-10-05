@@ -35,6 +35,25 @@ export type FinancialStatementsPayload = CanonicalAvailability & {
   rows: FinancialStatementLineItem[]
 }
 
+export type CorporateActionRow = {
+  eventId: string | null
+  symbol: string | null
+  actionType: string | null
+  exDate: string | null
+  paymentDate: string | null
+  cashAmount: number | null
+  adjustedCashAmount: number | null
+  frequency: string | null
+  currency: string | null
+  knownAt: string | null
+  source: string | null
+  methodologyVersion: string | null
+}
+
+export type CorporateActionsPayload = CanonicalAvailability & {
+  rows: CorporateActionRow[]
+}
+
 export type MarketMetricObservation = {
   symbol: string
   metric: string
@@ -133,6 +152,21 @@ export async function getTickerMarketMetrics(
       limit: options.limit ?? 250,
     })}`,
     { context: `ticker.market-metrics.${ticker}` },
+  )
+}
+
+export async function getTickerCorporateActions(
+  tickerRaw: string,
+  options: { actionType?: 'dividend' | 'split'; limit?: number } = {},
+): Promise<CorporateActionsPayload> {
+  const ticker = normalizedTicker(tickerRaw)
+  return fetchBackendJson<CorporateActionsPayload>(
+    `/tickers/${encodeURIComponent(ticker)}/corporate-actions${queryString({
+      actionType: options.actionType,
+      latestOnly: true,
+      limit: options.limit ?? 200,
+    })}`,
+    { context: `ticker.corporate-actions.${ticker}` },
   )
 }
 

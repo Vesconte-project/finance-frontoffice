@@ -78,6 +78,21 @@ PRD-78 phase 2 rebuilds the Overview on the research chapters, in the Spec's ord
   - A tap on a marker, or the previous/next buttons, opens the card: what it was and when. No effect on the price is inferred.
   - The events are fetched without blocking the page, and the chart reads them when it opens.
 
+## Ticker Fundamentals and Financials — 2026-10-05
+
+PRD-78 phase 3. Founder rule for these tabs (2026-10-04): only values the backend reports. Growth, changes on the year before, ratios and differences between line items are Being built until the backend sends them (ENG-170, ENG-90).
+
+- **Fundamentals:** Revenue, Operating margin, Cash and debt and Dividends, as chapters.
+  - `ReportedBars` draws reported values from a zero line, with the numbers written on the bars. Losses hang below the line.
+  - The wide drawing writes every bar's value. The compact drawing writes the ends and uses short years ('25).
+  - At the two ends of a chart, labels align with the bar's outer edge so they stay on the plot.
+  - Margins and net cash come from the summary rows the Overview reads, so a fact has one value across the tabs.
+- **Financials:** "Where each dollar of sales goes", following the prototype. The flow takes the full width of the chapter; the card and "Biggest changes" sit under it.
+  - From 900px of chart space the full flow runs left to right. The reported chain (sales → gross profit → operating income → net income) is drawn to scale and bottom-aligned, so profit runs along the bottom.
+  - Branches that are not reported are outlined nodes of a fixed size, with a thin dashed ribbon. They say where money goes, never how much.
+  - Below 900px: three columns. Sales is a bar; then its four parts (› where they open); then the children of the open part.
+  - The year and Amount / % of sales use the liquid-glass segmented control.
+
 ## Expanding selector study — 2026-07-21
 
 The reusable expanding selector transforms mechanics from the references below into a Vesconte-specific analytical control. It carries no ticker, investment-horizon, URL, or routing semantics. No reference code, assets, branding, or layout was copied.
