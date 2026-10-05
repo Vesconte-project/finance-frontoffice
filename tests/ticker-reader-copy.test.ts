@@ -50,14 +50,22 @@ function visibleStrings(relativePath: string): Array<{ text: string; line: numbe
   return found
 }
 
+// StockInsightSummary is no longer rendered by any tab.
+const NOT_RENDERED = new Set(['components/stocks/StockInsightSummary.tsx'])
+
 const TICKER_SURFACES = [
-  ...walk('components/stocks', /\.tsx$/),
+  ...walk('components/stocks', /\.tsx$/).filter((file) => !NOT_RENDERED.has(file)),
   ...walk('app/(app)/stocks/[ticker]', /\.tsx$/),
+  // Shared components the ticker tabs render.
+  'components/RelationshipOrbit.tsx',
+  'components/RelationshipComparisonChart.tsx',
+  'components/calendar/EventCalendar.tsx',
+  'components/charts/TemporalLineChart.tsx',
 ]
 
 // Internal language the ticker page must never show (Spec: "Página de ticker —
 // leitura em camadas V1", Being built rule and acceptance criteria).
-const FORBIDDEN = /\b(canonical|contract|payload|finance-backend)\b|Pending integration|Integration pending|Data pending/i
+const FORBIDDEN = /\b(canonical|contract|payload|finance-backend|endpoints?|dataset)\b|Pending integration|Integration pending|Data pending|\bENG-\d+|\bREQ-\d+/i
 
 test('no visible text on the ticker page uses internal language', () => {
   const offenders = TICKER_SURFACES.flatMap((file) =>
@@ -80,10 +88,37 @@ test('the scan covers every ticker tab and the shared research primitives', () =
     'components/stocks/research/ChartFrame.tsx',
     'app/(app)/stocks/[ticker]/page.tsx',
     'app/(app)/stocks/[ticker]/relationships/page.tsx',
+    'components/RelationshipOrbit.tsx',
+    'components/RelationshipComparisonChart.tsx',
+    'components/calendar/EventCalendar.tsx',
   ]) assert.ok(TICKER_SURFACES.includes(file), `${file} is not scanned`)
   // The scanner itself must see the words it is meant to forbid.
   assert.ok(FORBIDDEN.test('Pending integration') && FORBIDDEN.test('the canonical summary'))
+  assert.ok(FORBIDDEN.test('The relationship endpoint did not return') && FORBIDDEN.test('(ENG-152)'))
   assert.ok(!FORBIDDEN.test('Being built'))
+})
+
+/** Visible strings, leaving out a literal compared with `===` / `!==` (an internal sentinel, never shown). */
+function shownStrings(relativePath: string): Array<{ text: string; line: number }> {
+  const source = ts.createSourceFile(relativePath, readRepoFile(relativePath), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const compared = new Set<number>()
+  const visit = (node: TypeScript.Node) => {
+    if (ts.isBinaryExpression(node) && [ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken].includes(node.operatorToken.kind)) {
+      for (const side of [node.left, node.right]) if (ts.isStringLiteral(side)) compared.add(source.getLineAndCharacterOfPosition(side.getStart()).line + 1)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  return visibleStrings(relativePath).filter(({ text, line }) => !(compared.has(line) && /^[—–-]$/.test(text)))
+}
+
+test('no ticker tab shows a dash in place of a value (Spec PRD-78, Being built rule)', () => {
+  const offenders = TICKER_SURFACES.flatMap((file) =>
+    shownStrings(file)
+      .filter(({ text }) => /^[—–]$/.test(text))
+      .map(({ line }) => `${file}:${line}`),
+  )
+  assert.deepEqual(offenders, [])
 })
 
 test('a block waiting for data shows the badge and a sentence, never a value', () => {
@@ -91,7 +126,17 @@ test('a block waiting for data shows the badge and a sentence, never a value', (
   assert.match(beingBuilt, />Being built</)
   assert.match(beingBuilt, /data-being-built\b/)
   assert.doesNotMatch(beingBuilt, /value\s*[?:]/, 'BeingBuilt takes no value to show')
-  for (const file of ['components/stocks/StockOwnershipResearch.tsx', 'components/stocks/StockBusinessResearch.tsx', 'components/stocks/StockSignalsResearch.tsx']) {
+  for (const file of [
+    'components/stocks/StockOverviewClient.tsx',
+    'components/stocks/StockFundamentalsResearch.tsx',
+    'components/stocks/StockValuationResearch.tsx',
+    'components/stocks/StockOwnershipResearch.tsx',
+    'components/stocks/StockBusinessResearch.tsx',
+    'components/stocks/StockSignalsResearch.tsx',
+    'components/stocks/StockEventsResearch.tsx',
+    'components/stocks/StockAiResearch.tsx',
+    'app/(app)/stocks/[ticker]/relationships/page.tsx',
+  ]) {
     assert.match(readRepoFile(file), /from '@\/components\/stocks\/research\/BeingBuilt'/, `${file} uses the shared Being built block`)
   }
 })

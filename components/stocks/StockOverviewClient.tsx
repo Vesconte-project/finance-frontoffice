@@ -100,7 +100,8 @@ type StockOverviewClientProps = {
   historicalData: PricePoint[]
   historicalChartState: HistoricalChartState
   ohlcData: OhlcPoint[]
-  keyStats: OverviewStat[]
+  /** Formatted market cap, or null when the summary has none. */
+  marketCap: string | null
   holdings: OverviewHolding[]
   sectorWeights: OverviewSectorWeight[]
   nextEarnings: OverviewEarnings | null
@@ -505,7 +506,7 @@ export default function StockOverviewClient({
   historicalData,
   historicalChartState,
   ohlcData,
-  keyStats,
+  marketCap,
   holdings,
   sectorWeights,
   nextEarnings,
@@ -568,7 +569,6 @@ export default function StockOverviewClient({
     { key: 'oscillators', label: 'Oscillators', gauge: technicalSummary.gauges.oscillators },
     { key: 'moving-averages', label: 'Moving averages', gauge: technicalSummary.gauges.movingAverages },
   ] as const
-  const marketCapReference = keyStats.find((stat) => stat.label === 'Market Cap')
   const availableScorecardAxes = scorecard.axes.filter((axis) => axis.available && axis.score !== null).length
   const selectedAxisData = selectedAxis ? scorecard.axes.find((axis) => axis.key === selectedAxis) ?? null : null
   const toggleAxis = (key: ScorecardAxis['key']) => setSelectedAxis((current) => (current === key ? null : key))
@@ -638,7 +638,7 @@ export default function StockOverviewClient({
     ? formatDate(nextEarnings.date, { month: 'short', day: 'numeric' })
     : null
   const referenceFacts = [
-    marketCapReference ? { label: 'Market cap', value: marketCapReference.value } : null,
+    marketCap ? { label: 'Market cap', value: marketCap } : null,
     nextEarningsReference
       ? { label: 'Next earnings', value: nextEarningsReference }
       : null,

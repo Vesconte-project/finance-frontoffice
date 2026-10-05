@@ -12,6 +12,7 @@ import {
   type KeyboardEvent,
 } from 'react'
 import RelationshipComparisonChart from '@/components/RelationshipComparisonChart'
+import ResearchChapter from '@/components/stocks/research/ResearchChapter'
 import ExpandingSelector from '@/components/ui/ExpandingSelector'
 import SegmentedControl from '@/components/ui/SegmentedControl'
 import { sectorColor } from '@/lib/network-regions'
@@ -25,7 +26,6 @@ type RelationshipOrbitProps = {
   centerTicker: string
   centerName: string | null
   relationshipsByWindow: Record<RelationshipWindow, TickerRelationships>
-  coverageLabel: string
   initialWindow?: RelationshipWindow
   initialLayer?: ToggleLayer
   maxNeighborsPerLayer?: number
@@ -57,7 +57,6 @@ type OrbitPoint = RelationshipRow & {
 }
 
 const DEFAULT_LAYER_RENDER_LIMIT = 50
-const INITIAL_CARD_COUNT = 12
 const LAYER_ORDER: ToggleLayer[] = ['residual', 'leadLag', 'theme', 'market']
 const LAYER_COPY: Record<ToggleLayer, { label: string }> = {
   residual: {
@@ -73,21 +72,18 @@ const LAYER_COPY: Record<ToggleLayer, { label: string }> = {
     label: 'Moves with the market',
   },
 }
-const LAYER_DESCRIPTION: Record<ToggleLayer, (ticker: string) => string> = {
-  residual: (ticker) => `Companies whose movement remained connected to ${ticker} after broad-market effects were filtered out.`,
-  leadLag: (ticker) => `Companies observed moving before or after ${ticker}; this indicates timing, not causality.`,
-  theme: (ticker) => `Companies returned with an investment theme shared with ${ticker}.`,
-  market: (ticker) => `Companies whose prices moved with ${ticker} as part of the wider market.`,
-}
-const WINDOW_OPTIONS = ['126', '252'] as const
+const WINDOW_LABEL: Record<RelationshipWindow, string> = { 126: '126 days', 252: '252 days' }
 
 function strengthMagnitude(value: number | null): number {
   return value === null ? -1 : Math.abs(value)
 }
 
-function formatStrength(value: number | null): string {
-  if (value === null || !Number.isFinite(value)) return '—'
-  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}`
+function formatStrength(value: number): string {
+  return `${value > 0 ? '+' : value < 0 ? '−' : ''}${Math.abs(value).toFixed(2)}`
+}
+
+function finite(value: number | null): value is number {
+  return value !== null && Number.isFinite(value)
 }
 
 function normalizedConfidence(value: number | null): number | null {
@@ -96,9 +92,8 @@ function normalizedConfidence(value: number | null): number | null {
   return Math.max(0, Math.min(1, scaled))
 }
 
-function formatConfidence(value: number | null): string {
-  const normalized = normalizedConfidence(value)
-  return normalized === null ? '—' : `${Math.round(normalized * 100)}%`
+function formatConfidence(value: number): string {
+  return `${Math.round((normalizedConfidence(value) ?? 0) * 100)}%`
 }
 
 function themeLabel(peer: RelationshipThemePeer): string | null {
@@ -444,8 +439,8 @@ function RelationshipInspector({
             </div>
           </div>
           <div className={styles.evidenceMetrics}>
-            <span><small>Raw strength</small><strong>{formatStrength(row.strength)}</strong></span>
-            <span><small>Confidence</small><strong>{formatConfidence(row.confidence)}</strong></span>
+            {finite(row.strength) ? <span><small>Strength</small><strong>{formatStrength(row.strength)}</strong></span> : null}
+            {finite(row.confidence) ? <span><small>Confidence</small><strong>{formatConfidence(row.confidence)}</strong></span> : null}
           </div>
         </div>
 
@@ -472,72 +467,10 @@ function RelationshipInspector({
   )
 }
 
-function DiscoveryCards({
-  rows,
-  selectedSymbol,
-  centerTicker,
-  layer,
-  onSelect,
-}: {
-  rows: RelationshipRow[]
-  selectedSymbol: string
-  centerTicker: string
-  layer: ToggleLayer
-  onSelect: (symbol: string) => void
-}) {
-  const [showAll, setShowAll] = useState(false)
-  const visibleRows = showAll ? rows : rows.slice(0, INITIAL_CARD_COUNT)
-
-  return (
-    <section className={styles.discovery} aria-labelledby="relationship-discovery-heading">
-      <div className={styles.discoveryHeader}>
-        <div>
-          <h2 id="relationship-discovery-heading">Connected companies</h2>
-          <p>Select one to compare its recent price path with {centerTicker}.</p>
-        </div>
-        <span>{rows.length} found</span>
-      </div>
-
-      <div className={styles.cardGrid}>
-        {visibleRows.map((row) => {
-          const active = row.symbol === selectedSymbol
-          return (
-            <article
-              key={`${row.relation}:${row.symbol}`}
-              className={styles.companyCard}
-              data-relationship-card=""
-              data-selected={active ? 'true' : 'false'}
-              style={{ '--company-color': row.color } as CSSProperties}
-            >
-              <button type="button" onClick={() => onSelect(row.symbol)} aria-pressed={active}>
-                <span className={styles.cardTopline}>
-                  <i />
-                  <strong>{row.symbol}</strong>
-                  <b>{formatStrength(row.strength)} · {formatConfidence(row.confidence)} conf.</b>
-                </span>
-                {row.name ? <span className={styles.cardName}>{row.name}</span> : null}
-                <span className={styles.cardEvidence}>{evidenceLabel(row, centerTicker, layer)}</span>
-              </button>
-              <Link href={`/stocks/${row.symbol}`} aria-label={`Explore ${row.symbol}`}>Explore</Link>
-            </article>
-          )
-        })}
-      </div>
-
-      {rows.length > INITIAL_CARD_COUNT ? (
-        <button type="button" className={styles.showAll} onClick={() => setShowAll((current) => !current)}>
-          {showAll ? 'Show strongest only' : `Show all ${rows.length} companies`}
-        </button>
-      ) : null}
-    </section>
-  )
-}
-
 export default function RelationshipOrbit({
   centerTicker,
   centerName,
   relationshipsByWindow,
-  coverageLabel,
   initialWindow = 252,
   initialLayer,
   maxNeighborsPerLayer = DEFAULT_LAYER_RENDER_LIMIT,
@@ -545,9 +478,7 @@ export default function RelationshipOrbit({
   const normalizedCenter = centerTicker.trim().toUpperCase()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const reduceMotion = useReducedMotion()
   const nodeRefs = useRef<Array<HTMLButtonElement | null>>([])
-  const workspaceRef = useRef<HTMLDivElement | null>(null)
   const availableWindows = useMemo(
     () => ([126, 252] as RelationshipWindow[]).filter((candidate) =>
       LAYER_ORDER.some((layer) => layerItems(relationshipsByWindow[candidate], layer).length > 0),
@@ -598,13 +529,6 @@ export default function RelationshipOrbit({
     if (value === 'residual' || value === 'leadLag' || value === 'theme' || value === 'market') selectLayer(value)
   }
 
-  const selectFromCard = (symbol: string) => {
-    setSelectedSymbol(symbol)
-    globalThis.requestAnimationFrame(() => {
-      workspaceRef.current?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
-    })
-  }
-
   const handleNodeKeyboard = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return
     event.preventDefault()
@@ -621,9 +545,15 @@ export default function RelationshipOrbit({
 
   if (!selectedRow) return null
 
+  const asOf = relationships.asOf && /^\d{4}-\d{2}-\d{2}/.test(relationships.asOf)
+    ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(Date.parse(`${relationships.asOf.slice(0, 10)}T00:00:00Z`))
+    : null
+
   return (
-    <section className={styles.root} data-relationship-evidence="">
-      <div className={styles.controlDeck}>
+    <ResearchChapter
+      id="related-companies"
+      label="Related companies"
+      actions={(
         <div className={styles.controlBar}>
           <ExpandingSelector
             label="View"
@@ -633,50 +563,28 @@ export default function RelationshipOrbit({
             onValueChange={selectLayerValue}
             className={styles.modeSelector}
           />
-          <div className={styles.windowControl}>
-            <span>Window</span>
-            {availableWindows.length > 1 ? (
-              <SegmentedControl
-                options={WINDOW_OPTIONS.filter((option) => availableWindows.includes(Number(option) as RelationshipWindow))}
-                value={String(window) as '126' | '252'}
-                onChange={selectWindow}
-                ariaLabel="Evidence window"
-                analyticsId="relationship_window"
-              />
-            ) : (
-              <strong>{window}</strong>
-            )}
-          </div>
+          {availableWindows.length > 1 ? (
+            <SegmentedControl
+              options={availableWindows.map((candidate) => WINDOW_LABEL[candidate])}
+              value={WINDOW_LABEL[window]}
+              onChange={(label) => selectWindow(label.startsWith('126') ? '126' : '252')}
+              ariaLabel="Trading days measured"
+              analyticsId="relationship_window"
+            />
+          ) : null}
         </div>
-        <div className={styles.metadata} aria-label="Relationship dataset details">
-          <span>Dataset {relationships.asOf ?? 'date unavailable'}</span>
-          <span>{allRows.length} companies</span>
-          <span>{coverageLabel}</span>
+      )}
+      aside={(
+        <div className={styles.inspector} aria-live="polite">
+          <RelationshipInspector row={selectedRow} centerTicker={normalizedCenter} layer={visibleLayer} />
         </div>
-      </div>
-
-      <div className={styles.mapGuide} id="relationship-map-guide">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.p
-            key={visibleLayer}
-            initial={reduceMotion ? false : { opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduceMotion ? undefined : { opacity: 0, y: -3 }}
-            transition={{ duration: reduceMotion ? 0 : 0.18, ease: [0.16, 1, 0.3, 1] }}
-          >
-            {LAYER_DESCRIPTION[visibleLayer](normalizedCenter)}
-          </motion.p>
-        </AnimatePresence>
-        <div className={styles.mapLegend} aria-label="How to read the relationship map">
-          <span><i data-key="strength" />Strength = closer, larger, thicker</span>
-          <span><i data-key="confidence" />Confidence = clearer</span>
-          <span><i data-key="sector" />Colour = sector</span>
-          {visibleLayer === 'leadLag' ? <span><i data-key="direction" />Arrow = observed order</span> : null}
-        </div>
-      </div>
-
-      <div className={styles.workspace} ref={workspaceRef}>
-        <div className={styles.stage} data-layer={visibleLayer} data-selected-symbol={selectedSymbol} aria-describedby="relationship-map-guide">
+      )}
+    >
+      <div className={styles.root} data-relationship-evidence="">
+        <p className={styles.metadata}>
+          {allRows.length} {allRows.length === 1 ? 'company' : 'companies'} · {window} trading days{asOf ? ` · as of ${asOf}` : ''}
+        </p>
+        <div className={styles.stage} data-layer={visibleLayer} data-selected-symbol={selectedSymbol}>
           <RelationshipConnections points={points} selectedSymbol={selectedSymbol} layer={visibleLayer} />
           <div className={styles.centerNode} data-relationship-center="">
             <span className={styles.centerBall} />
@@ -703,9 +611,14 @@ export default function RelationshipOrbit({
                   data-active={active ? 'true' : 'false'}
                   data-labelled={point.rank <= 9 ? 'true' : 'false'}
                   aria-pressed={active}
-                  aria-label={`${point.symbol}, ${point.relation}, raw strength ${formatStrength(point.strength)}, confidence ${formatConfidence(point.confidence)}`}
+                  aria-label={[
+                    point.symbol,
+                    point.relation,
+                    finite(point.strength) ? `strength ${formatStrength(point.strength)}` : null,
+                    finite(point.confidence) ? `confidence ${formatConfidence(point.confidence)}` : null,
+                  ].filter(Boolean).join(', ')}
+                  tabIndex={active ? 0 : -1}
                   onClick={() => setSelectedSymbol(point.symbol)}
-                  onFocus={() => setSelectedSymbol(point.symbol)}
                   onKeyDown={(event) => handleNodeKeyboard(event, index)}
                 >
                   <span className={styles.nodeBall}><i /></span>
@@ -715,20 +628,7 @@ export default function RelationshipOrbit({
             })}
           </div>
         </div>
-
-        <aside className={styles.inspector} aria-live="polite">
-          <RelationshipInspector row={selectedRow} centerTicker={normalizedCenter} layer={visibleLayer} />
-        </aside>
       </div>
-
-      <DiscoveryCards
-        key={`${window}:${visibleLayer}`}
-        rows={allRows}
-        selectedSymbol={selectedSymbol}
-        centerTicker={normalizedCenter}
-        layer={visibleLayer}
-        onSelect={selectFromCard}
-      />
-    </section>
+    </ResearchChapter>
   )
 }

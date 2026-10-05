@@ -509,3 +509,10 @@
     transition: none;
   }
 }
+
+/* The date of a block's data (Spec PRD-78, "Dados desatualizados"). */
+.dataDate {
+  margin: 0.75rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--text-small);
+}

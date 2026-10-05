@@ -38,7 +38,7 @@ type XTick = { index: number; label: string }
 
 function formatDate(value: string, options?: Intl.DateTimeFormatOptions): string {
   const parsed = Date.parse(value)
-  if (!Number.isFinite(parsed)) return '—'
+  if (!Number.isFinite(parsed)) return value
   return new Date(parsed).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric', ...options,
   })

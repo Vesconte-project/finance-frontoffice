@@ -13,7 +13,7 @@ import {
 import { BackendDataError } from '@/lib/backend'
 import { getTickerDisclosures, getTickerEvents, getTickerFinancialStatements } from '@/lib/canonical-research'
 import { annualSeries, summaryAmount, summaryDate, summaryPercent, type ReportedPoint } from '@/lib/statement-reading'
-import { currencyForTicker, formatCompactMoney, formatMoney } from '@/lib/currency'
+import { currencyForTicker, formatCompactMoney } from '@/lib/currency'
 import {
   getOhlcData,
   getStockQuote,
@@ -448,43 +448,10 @@ export default async function TickerPage({
     marketStatsVolume: marketStats?.volume,
   })
   const marketCapNumeric = canonicalStats.marketCap ?? parseCompactCurrencyNumber(canonicalStats.marketCapText)
-  const marketCapValue =
-    marketCapNumeric !== null
-      ? formatCompactMoney(marketCapNumeric, currency)
-      : canonicalStats.marketCapText ?? '—'
-  const trailingPe = canonicalStats.trailingPe !== null ? canonicalStats.trailingPe.toFixed(2) : '—'
-  const dividendYieldRow = latestFundamentals.find((item) =>
-    `${item.metric.toLowerCase()} ${item.metricLabel.toLowerCase()}`.includes('yield')
-  )
-  const dividendYield = (() => {
-    if (dividendYieldRow?.valueNumber !== null && dividendYieldRow?.valueNumber !== undefined) {
-      const percentage = Math.abs(dividendYieldRow.valueNumber) <= 1
-        ? dividendYieldRow.valueNumber * 100
-        : dividendYieldRow.valueNumber
-      return `${percentage.toFixed(Math.abs(percentage) < 10 ? 2 : 1).replace(/\.0+$/, '')}%`
-    }
-    return dividendYieldRow?.valueDisplay ?? '—'
-  })()
-  const volumeValue = canonicalStats.volume !== null ? Math.round(canonicalStats.volume).toLocaleString() : '—'
-  const latestRevenueValue =
-    fundamentalsSummary?.latestRevenue !== null && fundamentalsSummary?.latestRevenue !== undefined
-      ? formatCompactMoney(fundamentalsSummary.latestRevenue, currency)
-      : '—'
-  const latestEpsValue =
-    fundamentalsSummary?.latestEps !== null && fundamentalsSummary?.latestEps !== undefined
-      ? fundamentalsSummary.latestEps.toFixed(2)
-      : '—'
-
-  const keyStats = [
-    { label: 'Market Cap', value: marketCapValue },
-    { label: 'P/E', value: trailingPe },
-    { label: 'Revenue', value: latestRevenueValue },
-    { label: 'EPS', value: latestEpsValue },
-    { label: 'Dividend Yield', value: dividendYield },
-    { label: 'Volume', value: volumeValue },
-    { label: '52W High', value: formatMoney(marketStats?.week52High ?? null, currency) },
-    { label: '52W Low', value: formatMoney(marketStats?.week52Low ?? null, currency) },
-  ].filter((stat) => stat.value !== '—').slice(0, 6)
+  // Under the chart: market cap and next earnings only (Spec PRD-78, decision 7).
+  const marketCapValue = marketCapNumeric !== null
+    ? formatCompactMoney(marketCapNumeric, currency)
+    : canonicalStats.marketCapText ?? null
   const holdings = isEtf ? fundamentals?.holdings ?? [] : []
 
   return (
@@ -514,7 +481,7 @@ export default async function TickerPage({
         historicalData={historicalData}
         historicalChartState={historicalChartState}
         ohlcData={ohlcData}
-        keyStats={keyStats}
+        marketCap={marketCapValue}
         holdings={holdings}
         sectorWeights={fundamentals?.sectorWeights ?? []}
         nextEarnings={tickerSummary.nextEarnings ? {

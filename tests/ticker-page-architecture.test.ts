@@ -140,20 +140,25 @@ test('Relationships uses the shared expanding selector and an accessible focused
   assert.match(relationships, /SegmentedControl/)
   assert.match(relationships, /label="View"/)
   assert.match(relationships, /Moves independently/)
-  assert.match(relationships, /Strength = closer, larger, thicker/)
-  assert.match(relationships, /Confidence = clearer/)
+  // Global rules (Spec PRD-78): a chapter, no loose legend, no summary or
+  // footnote, no internal language, no cards repeating the map, no dashes.
+  assert.match(relationships, /<ResearchChapter/)
+  assert.doesNotMatch(relationships, /Strength = closer|How to read|mapLegend|Dataset |DiscoveryCards|data-relationship-card|'—'/)
+  assert.doesNotMatch(page, /relationship endpoint|How to read relationships|Coverage:|methodology#relationships/)
+  assert.match(readRepoFile('components/stocks/StockMethodologyResearch.tsx'), /id="relationships"/)
+  assert.doesNotMatch(styles, /@media \(max-width/)
   assert.match(relationships, /confidenceProminence/)
   assert.match(relationships, /data-company-name/)
   assert.match(relationships, /data-relationship-node/)
-  assert.match(relationships, /data-relationship-card/)
   assert.match(relationships, /aria-pressed/)
   assert.match(relationships, /RelationshipConnections/)
   assert.match(relationships, /RelationshipComparisonChart/)
   assert.match(relationships, /DEFAULT_LAYER_RENDER_LIMIT = 50/)
   assert.match(relationships, /sectorColor/)
   assert.match(relationships, /requestAnimationFrame/)
-  assert.match(comparison, /separate vertical scales/)
-  assert.match(comparison, /Overlaid paths use separate vertical scales/)
+  // Both lines on one scale, each named at its end: no legend and no caveat needed.
+  assert.doesNotMatch(comparison, /separate vertical scales|styles\.legend/)
+  assert.match(comparison, /endLabel/)
   assert.match(comparisonRoute, /getHistoricalData/)
   assert.match(comparisonRoute, /Two different valid ticker symbols are required/)
   assert.doesNotMatch(relationships, /NetworkGraphCanvas|FilterChip/)
@@ -496,4 +501,38 @@ test('every ticker tab renders without a page header, on the research chapters',
     'components/stocks/StockMethodologyResearch.tsx',
     'app/(app)/stocks/[ticker]/relationships/page.tsx',
   ]) assert.match(readRepoFile(file), /showHeader=\{false\}/, `${file} shows a page header`)
+})
+
+test('Signals, Events, Relationships, AI Research and Methodology are research chapters in a fixed order (PRD-78, global rules)', () => {
+  const inOrder = (source: string, tokens: string[], name: string) => {
+    const positions = tokens.map((token) => source.indexOf(token))
+    assert.ok(positions.every((index) => index >= 0), `${name}: every chapter is rendered (${tokens.join(', ')})`)
+    assert.deepEqual([...positions].sort((a, b) => a - b), positions, `${name}: chapters follow the set order`)
+  }
+  const signals = readRepoFile('components/stocks/StockSignalsResearch.tsx')
+  const timeline = readRepoFile('components/stocks/signals/SignalTimelineChapter.tsx')
+  inOrder(signals, ['<SignalTimelineChapter', 'id="technicals"', 'id="market-context"', 'id="regime-history"', 'id="signal-history"'], 'Signals')
+  // Names and numbers are page text over the chart; each signal is a point to pick; no static range pill or loose legend.
+  assert.doesNotMatch(signals + timeline, /<text\b|timelineRange|Signal direction legend/)
+  assert.match(timeline, /aria-pressed=\{selected === marker\.id\}/)
+
+  const events = readRepoFile('components/stocks/StockEventsResearch.tsx')
+  inOrder(events, ['id="next-event"', 'id="calendar"', 'id="reported-against-estimate"', 'id="documents"'], 'Events')
+  assert.doesNotMatch(events, /title="Scheduled"|title="Past"|reported twice/)
+  const calendarStyles = readRepoFile('components/calendar/EventCalendar.module.css')
+  assert.doesNotMatch(calendarStyles, /@media \(max-width/)
+
+  const relationships = readRepoFile('components/RelationshipOrbit.tsx')
+  inOrder(relationships, ['id="related-companies"', 'data-relationship-evidence'], 'Relationships')
+
+  const ai = readRepoFile('components/stocks/StockAiResearch.tsx')
+  inOrder(ai, ['id="ask"', 'id="brief"'], 'AI Research')
+  // A visitor without a session is not shown a plan.
+  assert.match(ai, /access\.isSignedIn \?/)
+
+  const methodology = readRepoFile('components/stocks/StockMethodologyResearch.tsx')
+  inOrder(methodology, ['id="evidence"', 'id="relationships"', 'id="data"', 'id="coverage"', 'id="limits"', 'id="assets"', 'id="disclosures"'], 'Methodology')
+  assert.doesNotMatch(methodology, /How to read Vesconte|The final geometry is reserved|sectionLabel|On this page/)
+  // A fund is not scored, so its methodology does not define the score.
+  assert.match(methodology, /isFund \? null : <div><strong>Score<\/strong>/)
 })

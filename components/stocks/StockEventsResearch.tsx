@@ -5,6 +5,8 @@ import type { CalendarResult } from '@/lib/calendar-events'
 import type { CalendarCategory } from '@/lib/calendar-model'
 import { normalizeEarningsHistory } from '@/lib/event-research'
 import { formatCompactMoney } from '@/lib/currency'
+import BeingBuilt from '@/components/stocks/research/BeingBuilt'
+import ResearchChapter, { LeadStat } from '@/components/stocks/research/ResearchChapter'
 import type { StockResearchData } from '@/lib/stock-research'
 import styles from './StockEventsResearch.module.css'
 
@@ -61,79 +63,69 @@ function collapseEvents(rows: CanonicalEvent[]): CalendarEntry[] {
   })
 }
 
-function Calendar({ title, entries }: { title: string; entries: CalendarEntry[] }) {
-  if (entries.length === 0) return null
+/** Filings and announcements with their document: the one thing the calendar does not carry. */
+function Documents({ entries }: { entries: CalendarEntry[] }) {
   return (
-    <section className={styles.section}>
-      <h2>{title}</h2>
-      <ol className={styles.calendar}>
-        {entries.map((entry) => (
-          <li key={entry.key}>
-            <time dateTime={entry.row.occursAt ?? undefined}>{formatDate(entry.row.occursAt)}</time>
-            <div>
-              <strong>{entry.row.title}</strong>
-              {entry.movedFrom ? <p>Moved from {formatDate(entry.movedFrom)}</p> : null}
-            </div>
-            {entry.row.documentUrl ? (
-              <a href={entry.row.documentUrl} target="_blank" rel="noreferrer">
-                {entry.row.documentType ? entry.row.documentType.replace(/_/g, ' ') : 'Document'} ↗
-              </a>
-            ) : <span />}
-          </li>
-        ))}
-      </ol>
-    </section>
+    <ol className={styles.calendar} data-event-documents="">
+      {entries.map((entry) => (
+        <li key={entry.key}>
+          <time dateTime={entry.row.occursAt ?? undefined}>{formatDate(entry.row.occursAt)}</time>
+          <strong>{entry.row.title}</strong>
+          <a href={entry.row.documentUrl!} target="_blank" rel="noreferrer">
+            {entry.row.documentType ? entry.row.documentType.replace(/_/g, ' ') : 'Document'} ↗
+          </a>
+        </li>
+      ))}
+    </ol>
   )
 }
 
+/** A reported figure, or a plain "Not reported" — never a blank cell or a dash. */
+function Cell({ value }: { value: string }) {
+  return value ? <>{value}</> : <span className={styles.notReported}>Not reported</span>
+}
+
 function EarningsHistory({ data }: { data: StockResearchData }) {
-  const { rows, duplicateKeys } = normalizeEarningsHistory(data.summary.earningsHistory)
-  if (rows.length === 0) return null
+  const { rows } = normalizeEarningsHistory(data.summary.earningsHistory)
+  if (rows.length === 0) {
+    return <BeingBuilt size="chart">Each quarter’s reported earnings and revenue against what was expected are being added.</BeingBuilt>
+  }
 
   return (
-    <section className={styles.section}>
-      <h2>Reported against estimate</h2>
-      <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th scope="col">Period</th>
-              <th scope="col">Reported</th>
-              <th scope="col">EPS</th>
-              <th scope="col">Estimate</th>
-              <th scope="col">Surprise</th>
-              <th scope="col">Revenue</th>
-              <th scope="col">Estimate</th>
-              <th scope="col">Surprise</th>
+    <div className={styles.tableWrap}>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            <th scope="col">Period</th>
+            <th scope="col">Reported</th>
+            <th scope="col">EPS</th>
+            <th scope="col">Estimate</th>
+            <th scope="col">Surprise</th>
+            <th scope="col">Revenue</th>
+            <th scope="col">Estimate</th>
+            <th scope="col">Surprise</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={`${row.earningsDate}-${row.fiscalPeriod ?? 'period'}`}>
+              <th scope="row">{row.fiscalPeriod ?? formatDate(row.earningsDate)}</th>
+              <td><Cell value={formatDate(row.earningsDate)} /></td>
+              <td><Cell value={formatNumber(row.epsActual)} /></td>
+              <td><Cell value={formatNumber(row.epsEstimate)} /></td>
+              <td data-direction={row.epsSurprisePct === null ? undefined : row.epsSurprisePct >= 0 ? 'up' : 'down'}>
+                <Cell value={formatSurprise(row.epsSurprisePct)} />
+              </td>
+              <td><Cell value={row.revenueActual === null ? '' : formatCompactMoney(row.revenueActual, data.currency)} /></td>
+              <td><Cell value={row.revenueEstimate === null ? '' : formatCompactMoney(row.revenueEstimate, data.currency)} /></td>
+              <td data-direction={row.revenueSurprisePct === null ? undefined : row.revenueSurprisePct >= 0 ? 'up' : 'down'}>
+                <Cell value={formatSurprise(row.revenueSurprisePct)} />
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={`${row.earningsDate}-${row.fiscalPeriod ?? 'period'}`}>
-                <th scope="row">{row.fiscalPeriod ?? formatDate(row.earningsDate)}</th>
-                <td>{formatDate(row.earningsDate)}</td>
-                <td>{formatNumber(row.epsActual)}</td>
-                <td>{formatNumber(row.epsEstimate)}</td>
-                <td data-direction={row.epsSurprisePct === null ? undefined : row.epsSurprisePct >= 0 ? 'up' : 'down'}>
-                  {formatSurprise(row.epsSurprisePct)}
-                </td>
-                <td>{row.revenueActual === null ? '' : formatCompactMoney(row.revenueActual, data.currency)}</td>
-                <td>{row.revenueEstimate === null ? '' : formatCompactMoney(row.revenueEstimate, data.currency)}</td>
-                <td data-direction={row.revenueSurprisePct === null ? undefined : row.revenueSurprisePct >= 0 ? 'up' : 'down'}>
-                  {formatSurprise(row.revenueSurprisePct)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {duplicateKeys.length > 0 ? (
-        <p className={styles.note}>
-          {duplicateKeys.length} {duplicateKeys.length === 1 ? 'period is' : 'periods are'} reported twice with
-          different figures and {duplicateKeys.length === 1 ? 'is' : 'are'} left out.
-        </p>
-      ) : null}
-    </section>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
@@ -160,50 +152,59 @@ export default function StockEventsResearch({
   const upcoming = entries
     .filter((entry) => (entry.row.occursAt ?? '') >= today)
     .sort((left, right) => (left.row.occursAt ?? '').localeCompare(right.row.occursAt ?? ''))
-  const past = entries
-    .filter((entry) => (entry.row.occursAt ?? '') < today)
+  // Documents are what the calendar does not show; the events themselves live in the calendar.
+  const documents = entries
+    .filter((entry) => entry.row.documentUrl && (entry.row.occursAt ?? '') < today)
     .sort((left, right) => (right.row.occursAt ?? '').localeCompare(left.row.occursAt ?? ''))
+    .slice(0, 12)
 
   const earnings = data.summary.nextEarnings
-  const nextDate = upcoming[0]?.row.occursAt ?? earnings?.earningsDate ?? null
+  const next = upcoming[0] ?? null
+  const nextDate = next?.row.occursAt ?? earnings?.earningsDate ?? null
+  const nextContext = [
+    earnings?.fiscalPeriod,
+    earnings?.epsEstimate === null || earnings?.epsEstimate === undefined ? null : `EPS estimate ${formatNumber(earnings.epsEstimate)}`,
+    earnings?.revenueEstimate === null || earnings?.revenueEstimate === undefined ? null : `revenue estimate ${formatCompactMoney(earnings.revenueEstimate, data.currency)}`,
+    next?.movedFrom ? `moved from ${formatDate(next.movedFrom)}` : null,
+  ].filter(Boolean).join(' · ')
 
   return (
-    // No page header: the tab above already says Events. The Upcoming / Recent
-    // / History tabs are gone too — they only changed the date window of the
-    // request, and one of them was hiding the earnings history entirely.
+    // No page header: the tab above already says Events.
     <ResearchViewShell data={data} title={isFund ? 'Fund Events' : 'Earnings & Events'} showHeader={false}>
-      {nextDate ? (
-        <section className={styles.next}>
-          <h2>{isFund ? 'Next fund event' : 'Next earnings'}</h2>
-          <p className={styles.nextDate}>{formatDate(nextDate)}</p>
-          <p className={styles.nextMeta}>
-            {[
-              earnings?.fiscalPeriod,
-              earnings?.epsEstimate === null || earnings?.epsEstimate === undefined
-                ? null
-                : `EPS estimate ${formatNumber(earnings.epsEstimate)}`,
-              earnings?.revenueEstimate === null || earnings?.revenueEstimate === undefined
-                ? null
-                : `Revenue estimate ${formatCompactMoney(earnings.revenueEstimate, data.currency)}`,
-            ].filter(Boolean).join(' · ')}
-          </p>
-        </section>
-      ) : null}
+      <div className={styles.page} data-events-research="">
+        <ResearchChapter
+          id="next-event"
+          label={isFund ? 'Next fund event' : 'Next earnings'}
+          lead={nextDate ? (
+            <LeadStat value={formatDate(nextDate)} context={nextContext || (next ? next.row.title : undefined)} />
+          ) : (
+            <BeingBuilt size="inline">The date of {data.ticker}’s next {isFund ? 'fund event' : 'results'} is being added.</BeingBuilt>
+          )}
+        >
+          {null}
+        </ResearchChapter>
 
-      <EventCalendar month={month} selectedDay={selectedDay} category={category}
-        events={calendar.events} scope="ticker" basePath={`/stocks/${encodeURIComponent(data.ticker)}/events`}
-        available={calendar.available} reason={calendar.available ? null : 'The event calendar is unavailable for this symbol right now.'}
-        unavailableDomains={calendar.unavailableDomains} truncated={calendar.truncated} />
+        <ResearchChapter id="calendar" label="Calendar" band>
+          <EventCalendar month={month} selectedDay={selectedDay} category={category}
+            events={calendar.events} scope="ticker" basePath={`/stocks/${encodeURIComponent(data.ticker)}/events`}
+            available={calendar.available} reason={calendar.available ? null : 'The event calendar is unavailable for this symbol right now.'}
+            unavailableDomains={calendar.unavailableDomains} truncated={calendar.truncated} />
+        </ResearchChapter>
 
-      {!isFund ? <EarningsHistory data={data} /> : null}
-      <Calendar title="Scheduled" entries={upcoming} />
-      <Calendar title="Past" entries={past} />
+        {!isFund ? (
+          <ResearchChapter id="reported-against-estimate" label="Reported against estimate">
+            <EarningsHistory data={data} />
+          </ResearchChapter>
+        ) : null}
 
-      {entries.length === 0 ? (
-        <p className={styles.note}>No events are recorded for this symbol yet.</p>
-      ) : null}
+        {documents.length > 0 ? (
+          <ResearchChapter id="documents" label="Filings and documents" band={!isFund}>
+            <Documents entries={documents} />
+          </ResearchChapter>
+        ) : null}
 
-      <ResearchAdPlacement />
+        <ResearchAdPlacement />
+      </div>
     </ResearchViewShell>
   )
 }

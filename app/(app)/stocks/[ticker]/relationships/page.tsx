@@ -3,6 +3,8 @@ import EmptyState from '@/components/ui/EmptyState'
 import RetryButton from '@/components/ui/RetryButton'
 import ResearchViewShell from '@/components/stocks/ResearchViewShell'
 import ResearchUnavailable from '@/components/stocks/ResearchUnavailable'
+import BeingBuilt from '@/components/stocks/research/BeingBuilt'
+import ResearchChapter from '@/components/stocks/research/ResearchChapter'
 import RelationshipOrbit, { type RelationshipWindow, type ToggleLayer } from '@/components/RelationshipOrbit'
 import { hasRelationshipExperience } from '@/lib/relationship-visibility'
 import { getTickerRelationships, type TickerRelationships } from '@/lib/relationships'
@@ -83,37 +85,20 @@ export default async function RelationshipsPage({
   const hasAnyExperience = hasRelationshipExperience(relationshipsByWindow[126]) || hasRelationshipExperience(relationshipsByWindow[252])
   return (
     <ResearchViewShell data={researchResult} title="Relationships" showHeader={false}>
-      <div className="space-y-6" data-relationship-page="">
+      <div data-relationship-page="">
         {hasAnyExperience ? (
           <RelationshipOrbit
             relationshipsByWindow={relationshipsByWindow}
             centerTicker={ticker}
             centerName={researchResult.name}
-            coverageLabel={researchResult.coverageLabel}
             initialWindow={initialWindow}
             initialLayer={initialLayer}
           />
         ) : (
-          <section className="border-y border-border py-6" aria-labelledby="relationship-coverage-heading">
-            <p className="text-caption uppercase tracking-[0.14em] text-content-muted">Partial coverage</p>
-            <h2 id="relationship-coverage-heading" className="mt-2 text-section-title text-content-primary">No usable relationships for this asset</h2>
-            <p className="mt-2 max-w-xl text-body-sm text-content-secondary">The relationship endpoint did not return enough identified associations for a live comparison view.</p>
-            {researchResult.kind === 'fund' ? (
-              <p className="mt-2 max-w-xl text-body-sm text-content-muted">Holdings and fund structure remain available in their research views.</p>
-            ) : null}
-          </section>
+          <ResearchChapter id="related-companies" label="Related companies">
+            <BeingBuilt size="chart">The companies whose prices move with {ticker}’s, and how closely, are being added.</BeingBuilt>
+          </ResearchChapter>
         )}
-
-        <section className="border-t border-border pt-5" aria-labelledby="relationship-method-heading">
-          <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <h2 id="relationship-method-heading" className="text-section-title text-content-primary">How to read relationships</h2>
-            <a href={`/stocks/${ticker}/methodology#relationships`} className="action-link text-caption">Methodology →</a>
-          </div>
-          <p className="mt-2 max-w-3xl text-body-sm text-content-secondary">These are observed associations. An association does not establish causality, influence, prediction, or a business relationship.</p>
-          <div className="mt-4 flex min-w-0 flex-col gap-2 text-caption text-content-muted sm:flex-row sm:flex-wrap sm:gap-x-5">
-            <span className="min-w-0 break-words [overflow-wrap:anywhere]">Coverage: {researchResult.coverageLabel}</span>
-          </div>
-        </section>
       </div>
     </ResearchViewShell>
   )

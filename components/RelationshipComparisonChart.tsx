@@ -147,31 +147,29 @@ export default function RelationshipComparisonChart({
     return (
       <div className={styles.unavailable} role="status">
         <strong>Price comparison unavailable</strong>
-        <span>The relationship evidence remains available in the universe.</span>
+        <span>The two prices over the last year could not be read for this pair right now.</span>
       </div>
     )
   }
 
   return (
     <div className={styles.root} style={{ '--peer-color': peerColor } as CSSProperties}>
-      <div className={styles.legend} aria-hidden="true">
-        <span><i className={styles.baseSwatch} />{baseTicker}<strong>{formatChange(last.base)}</strong></span>
-        <span><i className={styles.peerSwatch} />{peerTicker}<strong>{formatChange(last.peer)}</strong></span>
-      </div>
       <ChartContainer className={styles.chart} loadingText="">
         {({ width, height }) => {
-          const padding = { top: 8, right: 8, bottom: 24, left: 8 }
+          // Room on the right for each line's name and change, written at its end.
+          const padding = { top: 12, right: 92, bottom: 24, left: 8 }
           const innerWidth = Math.max(1, width - padding.left - padding.right)
           const innerHeight = Math.max(1, height - padding.top - padding.bottom)
-          const baseDomain = paddedDomain(indexed.map((point) => point.base))
-          const peerDomain = paddedDomain(indexed.map((point) => point.peer))
+          // Both lines are indexed to 100 on the first common day, so they share one
+          // scale and their distance apart is the real difference in return.
+          const domain = paddedDomain(indexed.flatMap((point) => [point.base, point.peer]))
           const plotY = (value: number, domain: { floor: number; ceiling: number }) =>
             padding.top + (1 - (value - domain.floor) / (domain.ceiling - domain.floor)) * innerHeight
           const positioned = indexed.map((point, index) => ({
             ...point,
             x: padding.left + (index / Math.max(1, indexed.length - 1)) * innerWidth,
-            baseY: plotY(point.base, baseDomain),
-            peerY: plotY(point.peer, peerDomain),
+            baseY: plotY(point.base, domain),
+            peerY: plotY(point.peer, domain),
           }))
           const basePath = linePath(positioned.map((point) => ({ x: point.x, y: point.baseY })))
           const peerPath = linePath(positioned.map((point) => ({ x: point.x, y: point.peerY })))
@@ -183,7 +181,7 @@ export default function RelationshipComparisonChart({
                 width={width}
                 height={height}
                 role="img"
-                aria-label={`Overlaid indexed price history for ${baseTicker} and ${peerTicker}, shown with separate vertical scales`}
+                aria-label={`${baseTicker} and ${peerTicker} over the last year, both starting at 100: ${baseTicker} ${formatChange(last.base)}, ${peerTicker} ${formatChange(last.peer)}`}
                 onPointerMove={(event) => {
                   const bounds = event.currentTarget.getBoundingClientRect()
                   const ratio = Math.max(0, Math.min(1, (event.clientX - bounds.left - padding.left) / innerWidth))
@@ -206,6 +204,25 @@ export default function RelationshipComparisonChart({
                 <text x={padding.left} y={height - 4} className={styles.axisLabel}>{formatDate(indexed[0].date)}</text>
                 <text x={padding.left + innerWidth} y={height - 4} textAnchor="end" className={styles.axisLabel}>{formatDate(last.date)}</text>
               </svg>
+              {(() => {
+                const end = positioned.at(-1)!
+                // Keep the two end labels apart when the lines finish close together.
+                const gap = 18
+                let baseTop = end.baseY
+                let peerTop = end.peerY
+                if (Math.abs(baseTop - peerTop) < gap) {
+                  const middle = (baseTop + peerTop) / 2
+                  const baseAbove = baseTop <= peerTop
+                  baseTop = middle + (baseAbove ? -gap / 2 : gap / 2)
+                  peerTop = middle + (baseAbove ? gap / 2 : -gap / 2)
+                }
+                return (
+                  <>
+                    <span className={styles.endLabel} data-line="base" style={{ left: end.x + 8, top: baseTop }}>{baseTicker} <strong>{formatChange(last.base)}</strong></span>
+                    <span className={styles.endLabel} data-line="peer" style={{ left: end.x + 8, top: peerTop }}>{peerTicker} <strong>{formatChange(last.peer)}</strong></span>
+                  </>
+                )
+              })()}
               {hover ? (
                 <div className={styles.tooltip} style={{ left: Math.min(width - 132, Math.max(8, hover.x + 10)) }}>
                   <strong>{formatDate(hover.date)}</strong>
@@ -217,7 +234,6 @@ export default function RelationshipComparisonChart({
           )
         }}
       </ChartContainer>
-      <p className={styles.caption}>Overlaid paths use separate vertical scales. Compare direction and timing; return labels preserve the true magnitude.</p>
     </div>
   )
 }

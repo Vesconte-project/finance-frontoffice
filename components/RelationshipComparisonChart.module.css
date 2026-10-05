@@ -201,3 +201,19 @@
     transform: scaleX(0.72);
   }
 }
+
+/* Each line's name and change, written at its end instead of a legend. */
+.endLabel {
+  position: absolute;
+  transform: translateY(-50%);
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--text-small);
+  pointer-events: none;
+}
+
+.endLabel strong {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--text);
+}
