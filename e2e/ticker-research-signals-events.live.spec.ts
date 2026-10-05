@@ -15,12 +15,10 @@ async function expectNoHorizontalOverflow(page: Page) {
 }
 
 async function expectResearchContext(page: Page, active: 'Signals' | 'Events') {
+  // Every tab is a plain link: the navigation has no menus or buttons.
   const nav = page.getByRole('navigation', { name: 'Ticker research' })
   await expect(nav).toBeVisible()
-  const trigger = active === 'Signals'
-    ? nav.getByRole('button', { name: active, exact: true })
-    : nav.getByRole('link', { name: active, exact: true })
-  await expect(trigger.locator('..')).toHaveAttribute('data-active', 'true')
+  await expect(nav.getByRole('link', { name: active, exact: true })).toHaveAttribute('aria-current', 'page')
 }
 
 test.describe('ticker Signals & Events Phase 2 slice', () => {
@@ -35,7 +33,9 @@ test.describe('ticker Signals & Events Phase 2 slice', () => {
     await expect(page.locator('#signal-timeline')).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Summary', exact: true })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Oscillators', exact: true })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Moving Averages', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Moving averages', exact: true })).toBeVisible()
+    // Spec PRD-78 global rules: no loose legend, no static range pill.
+    await expect(page.getByLabel('Signal direction legend')).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'Signal history', exact: true })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Regime history', exact: true })).toBeVisible()
     await expectNoHorizontalOverflow(page)
@@ -44,12 +44,8 @@ test.describe('ticker Signals & Events Phase 2 slice', () => {
     await page.goto('/stocks/AAPL/signals?family=oscillators')
     await expectResearchContext(page, 'Signals')
     await expect(page).toHaveURL(/family=oscillators/)
-    await expect(page.locator('details[open]').filter({ hasText: 'Indicator details' })).toHaveCount(1)
+    await expect(page.locator('details[open]').filter({ hasText: 'Each indicator' })).toHaveCount(1)
     await capture(page, testInfo, 'phase2-signals-aapl-long-desktop')
-
-    await page.getByRole('button', { name: 'Signals', exact: true }).click()
-    await expect(page.getByRole('menu', { name: 'Signals' })).toBeVisible()
-    await capture(page, testInfo, 'phase2-signals-submenu-active')
 
     await page.goto('/stocks/AAPL/indicators?family=moving-averages')
     await expect(page).toHaveURL(/\/stocks\/AAPL\/signals\?family=moving-averages/)
@@ -79,11 +75,14 @@ test.describe('ticker Signals & Events Phase 2 slice', () => {
     await page.goto('/stocks/AAPL/events')
     await expectResearchContext(page, 'Events')
     await expect(page.getByRole('heading', { name: 'Next earnings', exact: true })).toBeVisible()
-    // One entry per event, not one per time we observed it. The read model is
-    // bitemporal, and the next earnings date used to appear once per knownAt.
-    await expect(page.getByRole('listitem').filter({ hasText: 'Earnings 2026Q4' })).toHaveCount(1)
-    // The earnings history is on the page rather than behind a third tab.
-    await expect(page.getByRole('heading', { name: 'Reported against estimate', exact: true })).toBeVisible()
+    // Chapters in their order: next results, calendar, results against estimates, documents.
+    const chapters = await page.locator('[data-research-chapter]').evaluateAll((nodes) => nodes.map((node) => node.id))
+    expect(chapters.slice(0, 3)).toEqual(['next-event', 'calendar', 'reported-against-estimate'])
+    // One entry per filed document, not one per time we observed it: the read model is bitemporal.
+    const documents = await page.locator('[data-event-documents] li strong').allTextContents()
+    expect(new Set(documents).size).toBe(documents.length)
+    // No source ids and no blank cells in the table.
+    await expect(page.getByText(/^Source: /)).toHaveCount(0)
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, 'phase2-events-aapl-desktop')
 

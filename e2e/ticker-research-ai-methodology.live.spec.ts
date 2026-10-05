@@ -30,7 +30,9 @@ test.describe('ticker AI Research and Methodology preview', () => {
     // Asking answers with an explicit message and sends nothing.
     await page.getByRole('button', { name: 'Ask', exact: true }).click()
     await expect(page.locator('[data-ask-message]')).toContainText('can’t be given yet')
-    await expect(page.getByRole('heading', { name: 'Your plan', exact: true })).toBeVisible()
+    // A visitor without a session is shown the plans, never "Your plan".
+    await expect(page.getByRole('heading', { name: 'Plans', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Your plan', exact: true })).toHaveCount(0)
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, 'phase2-ai-research-aapl-desktop')
 
@@ -55,8 +57,10 @@ test.describe('ticker AI Research and Methodology preview', () => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/stocks/AAPL/methodology')
     await expect(page.getByRole('heading', { name: 'Score, signal and technical read', exact: true })).toBeVisible()
-    await expect(page.getByLabel('Methodology contents').getByRole('link', { name: 'Disclosures', exact: true })).toBeVisible()
-    await expect(page.getByText('Long term', { exact: true }).first()).toBeVisible()
+    // One chapter per subject, with no numbering, contents index or summary.
+    const chapters = await page.locator('[data-research-chapter]').evaluateAll((nodes) => nodes.map((node) => node.id))
+    expect(chapters).toEqual(['evidence', 'relationships', 'data', 'coverage', 'limits', 'assets', 'disclosures'])
+    await expect(page.getByLabel('Methodology contents')).toHaveCount(0)
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, 'phase2-methodology-aapl-desktop')
 
