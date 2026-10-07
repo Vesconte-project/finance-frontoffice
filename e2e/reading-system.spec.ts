@@ -44,7 +44,8 @@ for (const colorScheme of ['light', 'dark'] as const) {
       }
     })
     expect(typography.title.split(',')[0]).toBe(typography.question.split(',')[0])
-    expect(typography.question).not.toBe(typography.interface)
+    // Headings and FAQ questions share the interface face since the 2026-10-07 identity.
+    expect(typography.question.split(',')[0]).toBe(typography.interface.split(',')[0])
     if (colorScheme === 'dark') expect(typography.smallBrightness).toBeGreaterThan(typography.answerBrightness)
     expect(typography.answer).not.toBe('')
     expect(typography.open).not.toBe(typography.page)

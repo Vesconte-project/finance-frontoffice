@@ -13,6 +13,9 @@ type HcNode = {
   A1: number; A2: number; A3: number; S1: number; S2: number; S3: number
   P1: number; P2: number; P3: number; ph: number; sx: number; sy: number; sc: number
   da: number; hover: number; clar: number
+  // How much of the ETF light reaches this node, 1 at an ETF and fading with
+  // the distance travelled along the network's own links.
+  light: number
 }
 
 const CSS = `
@@ -76,13 +79,15 @@ export default function HeroConstellation() {
     const theme = getComputedStyle(document.documentElement)
     const themeColor = (name: string) => theme.getPropertyValue(name).trim()
     const themeRgb = (name: string): [number, number, number] => {
-      const hex = themeColor(name).replace('#', '')
+      let hex = themeColor(name).replace('#', '')
+      // The CSS minifier shortens #ffffff to #fff.
+      if (hex.length === 3) hex = [...hex].map((digit) => digit + digit).join('')
       return [0, 2, 4].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16)) as [number, number, number]
     }
     root.dataset.reducedMotion = String(reducedMotion)
 
     let W = 0, H = 0, DPR = 1, cx = 0, cy = 0, R = 0, cam = 0
-    let nodes: HcNode[] = [], pairs: number[] = []
+    let nodes: HcNode[] = [], pairs: number[] = [], pairLengths: number[] = []
     let mx = 0, my = 0, tmx = 0, tmy = 0, mpx = -1e4, mpy = -1e4
     let rafId = 0
     let heroVisible = true
@@ -161,12 +166,14 @@ export default function HeroConstellation() {
     const TICKERS = ['VT','ASML','NVDA','SPY','TSM','AAPL','VEA','MSFT','BABA','QQQ','AMZN','NVO','META','VWO','TSLA','SHEL','GOOGL','GLD','JPM','SONY','XOM','AVGO','AMD','LLY','V','COST','NFLX','HD','BRK.B']
     const ETF_TICKERS = new Set(['VT', 'VEA', 'VWO', 'SPY', 'QQQ', 'GLD'])
     const ETF_COUNT = ETF_TICKERS.size
-    const COLORS: [number, number, number][] = [themeRgb('--text')]
+    const COLORS: [number, number, number][] = [themeRgb('--network-node')]
     const G: [number, number, number] = themeRgb('--accent')
     const spark = themeColor('--accent')
     const sparkRgb = G.join(',')
-    const lineRgb = themeRgb('--text').join(',')
+    const lineRgb = themeRgb('--network-node').join(',')
     const labelColor = themeColor('--text-muted')
+    const LIGHT_FLOOR = 0.08
+    const LIGHT_STOPS = [0, 0.25, 0.5, 0.75, 1]
     const smooth = (a: number, b: number, t: number) => { t = Math.min(1, Math.max(0, (t - a) / (b - a))); return t * t * (3 - 2 * t) }
     const fib = (i: number, n: number) => { const y = 1 - (i / Math.max(1, n - 1)) * 2; const r = Math.sqrt(Math.max(0, 1 - y * y)); const th = i * 2.399963; return [Math.cos(th) * r, y, Math.sin(th) * r] }
 
@@ -187,7 +194,7 @@ export default function HeroConstellation() {
             bx = Math.cos(angle) * R * 0.64
             by = Math.sin(angle) * R * 0.43
             bz = Math.sin(angle * 2) * R * 0.12
-            rad = 5.2
+            rad = 6
           } else {
             const v = fib(i, HUBS)
             const rr = R * (0.45 + Math.random() * 0.5)
@@ -200,16 +207,40 @@ export default function HeroConstellation() {
           A1: R * (0.02 + Math.random() * 0.05), A2: R * (0.02 + Math.random() * 0.05), A3: R * (0.02 + Math.random() * 0.05),
           S1: 0.2 + Math.random() * 0.4, S2: 0.2 + Math.random() * 0.4, S3: 0.2 + Math.random() * 0.4,
           P1: Math.random() * 6.28, P2: Math.random() * 6.28, P3: Math.random() * 6.28,
-          ph: Math.random() * 6.28, sx: 0, sy: 0, sc: 1, da: 1, hover: 0, clar: 1 })
+          ph: Math.random() * 6.28, sx: 0, sy: 0, sc: 1, da: 1, hover: 0, clar: 1, light: 0 })
       }
       pairs = []; const TH = R * 0.34
       for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
         const dx = nodes[i].bx - nodes[j].bx, dy = nodes[i].by - nodes[j].by, dz = nodes[i].bz - nodes[j].bz
         if (dx * dx + dy * dy + dz * dz < TH * TH && Math.random() < 0.5) { pairs.push(i, j); if (pairs.length > 1500) break }
       }
+      // Each ETF is a light source. The light travels outward along the links,
+      // weakening with the distance it has covered, so it reaches three or four
+      // links before it fades out. A node lit by several paths keeps the
+      // strongest (the shortest path from any ETF).
+      const adjacency: [number, number][][] = nodes.map(() => [])
+      pairLengths = []
+      for (let k = 0; k < pairs.length; k += 2) {
+        const a = nodes[pairs[k]], b = nodes[pairs[k + 1]]
+        const length = Math.hypot(a.bx - b.bx, a.by - b.by, a.bz - b.bz)
+        pairLengths.push(length)
+        adjacency[pairs[k]].push([pairs[k + 1], length]); adjacency[pairs[k + 1]].push([pairs[k], length])
+      }
+      const travelled = nodes.map((n) => n.signal ? 0 : Infinity)
+      const settled = nodes.map(() => false)
+      for (let step = 0; step < N; step++) {
+        let next = -1
+        for (let i = 0; i < N; i++) if (!settled[i] && (next < 0 || travelled[i] < travelled[next])) next = i
+        if (next < 0 || travelled[next] === Infinity) break
+        settled[next] = true
+        for (const [to, length] of adjacency[next]) travelled[to] = Math.min(travelled[to], travelled[next] + length)
+      }
+      lightReach = R * 0.27
+      nodes.forEach((n, i) => { n.light = Math.exp(-travelled[i] / lightReach) })
     }
 
     let tt = 0, p = 0, targetP = 0
+    let lightReach = 1
     let searchMode = 0, searchModeTarget = 0, dismissingSearch = false
     const focus = { i: -1, t: 0, tone: spark as string }
     const oc = document.createElement('canvas'); const octx = oc.getContext('2d')!
@@ -225,6 +256,18 @@ export default function HeroConstellation() {
         const aA = conn ? (0.32 + 0.5 * focus.t) : ((0.03 + 0.11 * da + 0.05 * p + 0.25 * hv) * ld)
         g.strokeStyle = 'rgba(' + (conn ? sparkRgb : lineRgb) + ',' + (aA * edgeReveal) + ')'; g.lineWidth = 1 + hv * 0.5 + (conn ? focus.t * 2 : 0)
         g.beginPath(); g.moveTo(a.sx, a.sy); g.lineTo(b.sx, b.sy); g.stroke()
+        // The ETF light along this link: strongest at the end nearer an ETF,
+        // fading towards the other, and never a flat colour across the link.
+        const peak = Math.max(a.light, b.light)
+        if (!conn && peak > LIGHT_FLOOR) {
+          const length = pairLengths[k / 2]
+          const along = (s: number) => Math.max(a.light * Math.exp(-s * length / lightReach), b.light * Math.exp(-(1 - s) * length / lightReach))
+          const strength = 0.85 * edgeReveal * ld
+          const gradient = g.createLinearGradient(a.sx, a.sy, b.sx, b.sy)
+          for (const s of LIGHT_STOPS) gradient.addColorStop(s, 'rgba(' + sparkRgb + ',' + (Math.max(0, (along(s) - LIGHT_FLOOR) / (1 - LIGHT_FLOOR)) * strength) + ')')
+          g.strokeStyle = gradient; g.lineWidth = 1 + 0.9 * peak + hv * 0.5
+          g.beginPath(); g.moveTo(a.sx, a.sy); g.lineTo(b.sx, b.sy); g.stroke()
+        }
       }
       if (mode !== 'conn') {
         for (let idx = 0; idx < nodes.length; idx++) { const n = nodes[idx]
@@ -236,7 +279,7 @@ export default function HeroConstellation() {
           g.globalAlpha = Math.min(1, (n.da + n.hover * 0.6) * dim * nodeReveal)
           g.beginPath(); g.arc(n.sx, n.sy, r, 0, 6.28); g.fillStyle = col; g.fill()
           const lab = n.label
-          if (lab && (n.da > 0.4 || n.hover > 0.25)) { g.globalAlpha = 1; g.font = '500 11px IBM Plex Mono, monospace'; g.fillStyle = labelColor; g.fillText(lab, n.sx + r + 4, n.sy + 3) }
+          if (lab && (n.da > 0.4 || n.hover > 0.25)) { g.globalAlpha = 1; g.font = n.signal ? '600 12px IBM Plex Mono, monospace' : '500 11px IBM Plex Mono, monospace'; g.fillStyle = n.signal ? spark : labelColor; g.fillText(lab, n.sx + r + 4, n.sy + 3) }
           g.globalAlpha = 1
         }
       }

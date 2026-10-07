@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans, Source_Serif_4 } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { ClerkProvider } from '@clerk/nextjs'
 import AnalyticsProvider from '@/components/analytics/AnalyticsProvider'
 import OptionalSessionReplay from '@/components/analytics/OptionalSessionReplay'
@@ -14,7 +14,6 @@ import "./globals.css";
 
 const plexSans = IBM_Plex_Sans({ variable: "--font-plex-sans", subsets: ["latin"], weight: ["400", "500"] });
 const plexMono = IBM_Plex_Mono({ variable: "--font-plex-mono", subsets: ["latin"], weight: ["400", "500"] });
-const sourceSerif = Source_Serif_4({ variable: "--font-source-serif", subsets: ["latin"], weight: ["400", "500"] });
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteOrigin()),
@@ -30,7 +29,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${plexSans.variable} ${plexMono.variable} ${sourceSerif.variable} h-full antialiased`}
+      className={`${plexSans.variable} ${plexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <ClerkProvider appearance={clerkAppearance}>

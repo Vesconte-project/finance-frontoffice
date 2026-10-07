@@ -54,7 +54,7 @@ export const authAppearance = {
     },
     footer: { backgroundColor: 'transparent' },
     headerTitle: {
-      fontFamily: 'var(--font-display), serif',
+      fontFamily: 'var(--font-display), sans-serif',
       fontSize: '1.75rem',
       letterSpacing: 'normal',
     },
