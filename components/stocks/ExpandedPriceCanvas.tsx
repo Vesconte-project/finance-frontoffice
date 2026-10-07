@@ -96,13 +96,13 @@ function readPalette(element: Element): Palette {
   const styles = getComputedStyle(element)
   const token = (name: string, fallback: string) => styles.getPropertyValue(name).trim() || fallback
   return {
-    up: token('--up', '#3E7A55'),
-    down: token('--down', '#A34A3C'),
-    accent: token('--accent', '#A87A2A'),
-    text: token('--text', '#15202E'),
-    muted: token('--text-muted', '#3B4657'),
-    line: token('--line', '#D9D2C4'),
-    surface: token('--surface', '#FAF7F1'),
+    up: token('--up', '#0F7B55'),
+    down: token('--down', '#C2362B'),
+    accent: token('--accent', '#2557D6'),
+    text: token('--text', '#0B1220'),
+    muted: token('--text-muted', '#566173'),
+    line: token('--line', '#D3D8DF'),
+    surface: token('--surface', '#FFFFFF'),
     // next/font renames the family, so take the resolved one from CSS.
     font: `11px ${styles.fontFamily || 'ui-monospace, monospace'}`,
   }

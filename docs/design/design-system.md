@@ -6,17 +6,17 @@
 
 | Role | Light | Dark | Use |
 | --- | --- | --- | --- |
-| `--bg` | `#F3EFE7` | `#0F1620` | Page and footer background |
-| `--surface` | `#FAF7F1` | `#172130` | Solid panels, cards, menus, inputs |
-| `--line` | `#D9D2C4` | `#2A3444` | Borders and dividers |
-| `--text` | `#15202E` | `#ECE6DA` | Primary text and wordmark |
-| `--text-muted` | `#3B4657` | `#A9B0BB` | Cool text base and low emphasis metadata; derived roles adjust reading hierarchy |
-| `--accent` | `#A87A2A` | `#C99A48` | Focus, selection, active indicator, small ETF nodes in the homepage network |
-| `--up` | `#3E7A55` | `#6FAF86` | Positive data and chart marks |
-| `--down` | `#A34A3C` | `#D07565` | Negative data and chart marks |
-| `--btn-primary-bg` / `--btn-primary-fg` | Ink / paper | Paper / ink | Primary actions |
+| `--bg` | `#F2F3F5` | `#0F1620` | Page and footer background; a neutral grey so white panels separate from it |
+| `--surface` | `#FFFFFF` | `#172130` | Solid panels, cards, menus, inputs |
+| `--line` | `#D3D8DF` | `#2A3444` | Borders and dividers |
+| `--text` | `#0B1220` | `#ECE6DA` | Primary text and wordmark |
+| `--text-muted` | `#566173` | `#A9B0BB` | Cool text base and low emphasis metadata; derived roles adjust reading hierarchy |
+| `--accent` | `#2557D6` | `#C99A48` | Focus, selection, active indicator, small ETF nodes in the homepage network |
+| `--up` | `#0F7B55` | `#6FAF86` | Positive data and chart marks |
+| `--down` | `#C2362B` | `#D07565` | Negative data and chart marks |
+| `--btn-primary-bg` / `--btn-primary-fg` | Blue / white | Paper / ink | Primary actions |
 
-The light theme is declared on `:root`; the dark theme follows the system preference unless the existing `html[data-theme]` or `.dark` / `.light` override applies. Legacy variables in `globals.css` are compatibility aliases to these roles. New components should consume the semantic roles directly and should not introduce literal colors. `--up-ink` is derived from `--up` and `--text` so small positive data labels reach normal-text contrast on the light background.
+Light mode is the neutral-paper direction the founder chose on 2026-10-07: white panels on a neutral grey page, near-black ink, and one blue accent. Dark mode keeps its palette; both themes share the same surface relationship (`--surface` panels lifted from `--bg`, `--surface-soft` bands between them). The light theme is declared on `:root`; the dark theme follows the system preference unless the existing `html[data-theme]` or `.dark` / `.light` override applies. Legacy variables in `globals.css` are compatibility aliases to these roles. New components should consume the semantic roles directly and should not introduce literal colors. `--up-ink` is derived from `--up` and `--text` so small positive data labels reach normal-text contrast on the light background.
 
 ### Reading layers
 
@@ -26,9 +26,9 @@ The base palette above remains the only set of literal colours. `globals.css` de
 
 ## Type and logo
 
-`app/layout.tsx` loads Source Serif 4, IBM Plex Sans, and IBM Plex Mono through `next/font`, each at 400 and 500. Page and section headings, FAQ questions, the company name at the top of a company page, and the wordmark use Source Serif 4. Interface copy and controls use Plex Sans. Tickers, prices, scores, and dates use Plex Mono. Numbers use tabular figures.
+`app/layout.tsx` loads IBM Plex Sans and IBM Plex Mono through `next/font`, each at 400 and 500. `--font-display` resolves to Plex Sans: page and section headings, FAQ questions, the company name at the top of a company page, and the wordmark use it with slightly tight tracking (`-0.01em`). Interface copy and controls use Plex Sans. Tickers, prices, scores, and dates use Plex Mono. Numbers use tabular figures.
 
-The only logo is “Vesconte” in Source Serif 4 small caps, with approximately `0.06em` letter spacing and `--text`. There is no separate symbol. Do not add the old initials or footer slash mark.
+The only logo is “VESCONTE” in Plex Sans 500 uppercase, about 15 px, with `0.2em` letter spacing and `--text`. There is no separate symbol. Do not add the old initials or footer slash mark.
 
 ## Components
 
@@ -40,11 +40,11 @@ Panels are solid `--surface` with a 1 px `--line` border. Buttons and cards use 
 
 The homepage network distributes ETF nodes around the field in `--accent`. No single ticker is the fixed center. The compact scrolled header shows a search icon and expands the field on focus. Its result list keeps names, tickers, and tracking status; secondary source and exchange metadata stay in the full search panel.
 
-Keep green and red in data displays. Ocre marks where the reader is: focus, selection, active navigation, and the selected network node. It should not cover large areas. Canvas and Three.js components resolve computed CSS tokens at the rendering boundary; they must not carry a second palette.
-Absolute financial amounts use neutral ink marks in charts; signed changes may use the up/down roles. This prevents a large ocre chart from implying that every number is a selection.
+Keep green and red in data displays. The accent (blue in light, ocre in dark) marks where the reader is: focus, selection, active navigation, and the selected network node. It should not cover large areas. Canvas and Three.js components resolve computed CSS tokens at the rendering boundary; they must not carry a second palette.
+Absolute financial amounts use neutral ink marks in charts; signed changes may use the up/down roles. This prevents a large accent-coloured chart from implying that every number is a selection.
 
 ## Accessibility and implementation
 
-Normal text must reach 4.5:1 contrast in both themes. `--text` and `--text-muted` do so on both `--bg` and `--surface`. The light ocre is reserved for non-text indicators or large labels because it does not reach 4.5:1 as small text on paper. Preserve visible keyboard focus and reduced-motion behavior. `e2e/visual-identity.spec.ts` captures the homepage, company page, and footer in both themes and checks the core text and button contrast pairs.
+Normal text must reach 4.5:1 contrast in both themes. `--text` and `--text-muted` do so on both `--bg` and `--surface`. The light blue accent reaches 4.5:1 on both `--bg` and `--surface`; the dark ocre is still reserved for non-text indicators or large labels. Preserve visible keyboard focus and reduced-motion behavior. `e2e/visual-identity.spec.ts` captures the homepage, company page, and footer in both themes and checks the core text and button contrast pairs.
 
 Reuse `components/ui` primitives and existing navigation before adding new component styles. Add a new semantic role in `app/globals.css` only when the existing roles cannot express a real product meaning; keep geometry in the owning CSS module. Keep page structure and copy decisions separate from identity changes.

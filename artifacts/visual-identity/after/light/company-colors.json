@@ -1,7 +1,7 @@
 {
   "preference": false,
-  "rootBg": "#f3efe7",
-  "shellBg": "rgb(243, 239, 231)",
-  "shellToken": "#f3efe7",
-  "companyTitleColor": "rgb(21, 32, 46)"
+  "rootBg": "#f2f3f5",
+  "shellBg": "rgb(242, 243, 245)",
+  "shellToken": "#f2f3f5",
+  "companyTitleColor": "rgb(11, 18, 32)"
 }

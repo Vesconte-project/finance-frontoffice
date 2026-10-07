@@ -26,7 +26,9 @@ for (const colorScheme of ['light', 'dark'] as const) {
       const ratios = await page.evaluate(() => {
         const css = getComputedStyle(document.documentElement)
         const channel = (value: number) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
-        const luminance = (hex: string) => {
+        const luminance = (value: string) => {
+          // The CSS minifier shortens #ffffff to #fff.
+          const hex = value.length === 4 ? `#${[...value.slice(1)].map((digit) => digit + digit).join('')}` : value
           const rgb = [1, 3, 5].map((offset) => channel(Number.parseInt(hex.slice(offset, offset + 2), 16) / 255))
           return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722
         }
@@ -52,7 +54,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await page.evaluate(() => document.fonts.ready)
     await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' })
     if (phase === 'after') {
-      await expect(page.locator('[data-ticker-identity] :is(h1, p)').first()).toHaveCSS('color', colorScheme === 'light' ? 'rgb(21, 32, 46)' : 'rgb(236, 230, 218)')
+      await expect(page.locator('[data-ticker-identity] :is(h1, p)').first()).toHaveCSS('color', colorScheme === 'light' ? 'rgb(11, 18, 32)' : 'rgb(236, 230, 218)')
     }
     writeFileSync(join(directory, 'company-colors.json'), JSON.stringify(await page.evaluate(() => {
       const root = getComputedStyle(document.documentElement)

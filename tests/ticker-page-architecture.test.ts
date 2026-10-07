@@ -307,7 +307,7 @@ test('the Overview follows the accepted ticker Spec (PRD-78): order, Being built
   assert.match(overviewStyles, /@container overview-lead \(min-width: 72rem\)[\s\S]*21\.25rem/)
   assert.match(overviewStyles, /@container hero-chart \(max-width: 519px\)/)
   assert.doesNotMatch(overviewStyles, /wrap-reverse/)
-  // Fundamentals cards: reported revenue bars from the same series as the tab; serif numbers.
+  // Fundamentals cards: reported revenue bars from the same series as the tab; display-face numbers.
   assert.match(page, /annualSeries\(income\.rows, 'revenue'\)/)
   assert.match(overview, /MiniBars/)
   assert.match(overviewStyles, /\.fundamentalValue strong \{[^}]*font-display/)
