@@ -46,6 +46,7 @@ const CSS = `
 .hc-root .hc-fieldreadings{right:24px;text-align:right}
 .hc-root #hc-focusLayer{position:fixed;inset:0;z-index:70;opacity:0;pointer-events:none}
 .hc-root #hc-focusDim{position:absolute;inset:0;background:color-mix(in srgb,var(--bg) 70%,transparent)}
+.hc-root #hc-focusFront{position:absolute;top:0;left:0;pointer-events:none}
 .hc-root #hc-focusCard{position:absolute;left:54%;top:50%;width:min(360px,46vw);padding:22px;border-radius:6px;background:var(--surface);color:var(--text);border:1px solid var(--line)}
 .hc-root #hc-focusBack{background:none;border:none;color:var(--focus-muted);font-family:var(--font-mono);font-size:12px;cursor:pointer;padding:0;margin-bottom:14px}
 .hc-root #hc-focusBack:hover{color:var(--text)}
@@ -192,6 +193,7 @@ export default function HeroConstellation() {
     function resize() {
       DPR = Math.min(2, window.devicePixelRatio || 1); W = document.documentElement.clientWidth; H = tallestHeight()
       c.width = W * DPR; c.height = H * DPR; c.style.width = W + 'px'; c.style.height = H + 'px'
+      front.width = c.width; front.height = c.height; front.style.width = c.style.width; front.style.height = c.style.height
       cx = W * 0.5; cy = H * 0.5; R = Math.max(W, H) * 0.62; cam = R * 1.9
     }
     function build() {
@@ -258,6 +260,19 @@ export default function HeroConstellation() {
     let searchMode = 0, searchModeTarget = 0, dismissingSearch = false
     const focus = { i: -1, t: 0, tone: spark as string }
     const oc = document.createElement('canvas'); const octx = oc.getContext('2d')!
+    // The focused node and its links are drawn above the focus veil, so the
+    // rest of the field dims while the node itself stays in full light.
+    const front = $('hc-focusFront') as HTMLCanvasElement; const fx = front.getContext('2d')!
+    let frontDrawn = false
+    // Where the focused node settles: beside the card on a wide screen, and
+    // centred in the space between the header and the card on a narrow one,
+    // where the card sits at the bottom.
+    const focusAnchor = () => {
+      if (!window.matchMedia('(max-width:720px)').matches) return { x: W * 0.30, y: window.innerHeight * 0.5 }
+      const top = document.querySelector('.site-header__row')?.getBoundingClientRect().bottom ?? 64
+      const bottom = $('hc-focusCard').getBoundingClientRect().top
+      return { x: W * 0.5, y: (top + bottom) / 2 }
+    }
 
     function drawScene(g: CanvasRenderingContext2D, sig: number, mode: string) {
       const nodeReveal = smooth(0, 0.45, reveal)
@@ -350,9 +365,10 @@ export default function HeroConstellation() {
       if (focus.t < 0.01 || focus.i < 0 || !nodes[focus.i]) {
         x.setTransform(DPR, 0, 0, DPR, 0, 0); x.clearRect(0, 0, W, H)
         drawScene(x, sig, 'all')
+        if (frontDrawn) { fx.setTransform(1, 0, 0, 1, 0, 0); fx.clearRect(0, 0, front.width, front.height); frontDrawn = false }
       } else {
-        const fn = nodes[focus.i]
-        const aX = fn.sx + (W * 0.30 - fn.sx) * focus.t, aY = fn.sy + (H * 0.5 - fn.sy) * focus.t, fs = 1 + focus.t * 3.0
+        const fn = nodes[focus.i], anchor = focusAnchor()
+        const aX = fn.sx + (anchor.x - fn.sx) * focus.t, aY = fn.sy + (anchor.y - fn.sy) * focus.t, fs = 1 + focus.t * 3.0
         if (oc.width !== c.width || oc.height !== c.height) { oc.width = c.width; oc.height = c.height }
         octx.setTransform(DPR, 0, 0, DPR, 0, 0); octx.clearRect(0, 0, W, H)
         octx.save(); octx.translate(aX, aY); octx.scale(fs, fs); octx.translate(-fn.sx, -fn.sy)
@@ -360,16 +376,18 @@ export default function HeroConstellation() {
         octx.restore()
         x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, c.width, c.height)
         x.drawImage(oc, 0, 0)
-        x.setTransform(DPR, 0, 0, DPR, 0, 0)
+        fx.setTransform(1, 0, 0, 1, 0, 0); fx.clearRect(0, 0, front.width, front.height)
+        fx.setTransform(DPR, 0, 0, DPR, 0, 0)
         for (let k = 0; k < pairs.length; k += 2) {
           const ia = pairs[k], ib = pairs[k + 1]
           if (ia !== focus.i && ib !== focus.i) continue
           const o = (ia === focus.i) ? nodes[ib] : nodes[ia]
           const ox = aX + (o.sx - fn.sx) * fs, oy = aY + (o.sy - fn.sy) * fs
-          x.strokeStyle = 'rgba(' + sparkRgb + ',' + (0.68 * focus.t) + ')'; x.lineWidth = 1.4
-          x.beginPath(); x.moveTo(aX, aY); x.lineTo(ox, oy); x.stroke()
+          fx.strokeStyle = 'rgba(' + sparkRgb + ',' + (0.68 * focus.t) + ')'; fx.lineWidth = 1.4
+          fx.beginPath(); fx.moveTo(aX, aY); fx.lineTo(ox, oy); fx.stroke()
         }
-        orb(x, aX, aY)
+        orb(fx, aX, aY)
+        frontDrawn = true
       }
       if (!reducedMotion) rafId = requestAnimationFrame(render)
     }
@@ -604,11 +622,11 @@ export default function HeroConstellation() {
       const fn = focus.i >= 0 ? nodes[focus.i] : null
       if (!fn?.label || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
       event.preventDefault()
-      const fs = 1 + focus.t * 3
+      const fs = 1 + focus.t * 3, anchor = focusAnchor()
       startFlight({
         ticker: fn.label,
         universe: universeNow(focus.i),
-        view: { ax: viewAx, ay: viewAy, zoom: viewZoom * fs, x: fn.sx + (W * 0.30 - fn.sx) * focus.t, y: fn.sy + (H * 0.5 - fn.sy) * focus.t },
+        view: { ax: viewAx, ay: viewAy, zoom: viewZoom * fs, x: fn.sx + (anchor.x - fn.sx) * focus.t, y: fn.sy + (anchor.y - fn.sy) * focus.t },
         lineScale: fs,
         progress: p,
         // Same geometry as orb() at focus.t = 1.
@@ -750,6 +768,7 @@ export default function HeroConstellation() {
 
       <div id="hc-focusLayer" aria-hidden="true">
         <div id="hc-focusDim" />
+        <canvas id="hc-focusFront" aria-hidden="true" />
         <div id="hc-focusCard" role="dialog" aria-modal="true" aria-labelledby="hc-fcT" aria-describedby="hc-fcN">
           <button id="hc-focusBack" type="button">← back</button>
           <div className="hc-fc-ticker" id="hc-fcT" />

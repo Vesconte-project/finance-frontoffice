@@ -115,11 +115,11 @@ export default function TickerUniverse() {
       g!.setTransform(dpr, 0, 0, dpr, 0, 0)
       g!.globalCompositeOperation = 'source-over'
       g!.clearRect(0, 0, width, height)
-      const { veil, labels } = drawUniverseFrame(g!, { universe, handoff, ownLinksFrom, projected, k, done, width, height, bandBottom, palette })
+      const { labels } = drawUniverseFrame(g!, { universe, handoff, ownLinksFrom, projected, k, done, width, height, bandBottom, palette })
 
       // The flying node rides above the page, which rises around it.
       if (flight && handoff && !done) {
-        placeOrb(flight.orb, flight.orbLabel, { handoff, k, x: x + box.left, y: y + box.top, rest, palette, veil, labels })
+        placeOrb(flight.orb, flight.orbLabel, { handoff, k, x: x + box.left, y: y + box.top, rest, palette, labels })
       }
       if (!done && k >= 1) {
         done = true
