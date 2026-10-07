@@ -3870,3 +3870,22 @@ html.atlas-immersive .site-header__brand { visibility: hidden !important; pointe
 .app-shell__atmosphere { display: none; }
 .site-header__brand, .site-header__brand-full, [data-ticker-identity], [data-ticker-identity] :is(h1, p, span, strong):not([data-ticker-metadata], [data-ticker-metadata] *, [data-ticker-actions] *) { color: var(--text) !important; }
 .auth-page, main.marketing-home, main.marketing-pricing, .app-shell, input { color-scheme: inherit; }
+
+/* ── Arriving at a ticker from the homepage focus card ─────────────────────
+   While the ticker universe turns the homepage's network into place
+   (TickerUniverse sets the attribute for the length of the turn), the page
+   rises over it in reading order and the identity node waits for the orb. */
+@keyframes universe-arrival-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+html[data-universe-arrival] .site-header__row,
+html[data-universe-arrival] [data-stock-ticker-layout] [data-arrival-part],
+html[data-universe-arrival] [data-stock-ticker-layout] [data-ticker-navigation] {
+  animation: universe-arrival-rise 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+html[data-universe-arrival] .site-header__row { animation-delay: 700ms; }
+html[data-universe-arrival] [data-stock-ticker-layout] [data-arrival-part='identity'] { animation-delay: 780ms; }
+html[data-universe-arrival] [data-stock-ticker-layout] [data-ticker-navigation] { animation-delay: 860ms; }
+html[data-universe-arrival] [data-stock-ticker-layout] [data-arrival-part='content'] { animation-delay: 940ms; }
+html[data-universe-arrival] [data-stock-ticker-layout] [data-selected-ticker-anchor] { opacity: 0; }

@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import gsap from 'gsap'
 import { useScrollRuntime } from '@/components/motion/ScrollRuntime'
 import { scrollMotionTokens } from '@/components/motion/scroll-tokens'
 import { PICK_READING_CONTENT, PICK_READING_KEYS } from '@/lib/picks-content'
+import { offerUniverseHandoff } from '@/lib/ticker-universe'
 
 
 type HcNode = {
@@ -19,7 +21,6 @@ type HcNode = {
 }
 
 const CSS = `
-@media(prefers-reduced-motion:no-preference){@view-transition{navigation:auto}}
 .hc-root{
   --text-2:var(--text-muted);--text-3:var(--text-muted);
   --spark:var(--accent);--spark-2:var(--accent);
@@ -69,6 +70,9 @@ const CSS = `
 export default function HeroConstellation() {
   const rootRef = useRef<HTMLDivElement>(null)
   const { reducedMotion, runtime } = useScrollRuntime()
+  const router = useRouter()
+  const routerRef = useRef(router)
+  useEffect(() => { routerRef.current = router }, [router])
 
   useEffect(() => {
     const root = rootRef.current
@@ -242,6 +246,8 @@ export default function HeroConstellation() {
 
     let tt = 0, p = 0, targetP = 0
     let lightReach = 1
+    // The camera of the last frame, handed to the ticker page with the network.
+    let viewAx = 0, viewAy = 0, viewZoom = 1
     let searchMode = 0, searchModeTarget = 0, dismissingSearch = false
     const focus = { i: -1, t: 0, tone: spark as string }
     const oc = document.createElement('canvas'); const octx = oc.getContext('2d')!
@@ -319,6 +325,7 @@ export default function HeroConstellation() {
       const zoom = breathe * (1.2 + smooth(0, 1, p) * 0.95) * (1 - 0.42 * searchMode)
       const ay = (reducedMotion ? 0 : tt * 0.016) + p * Math.PI * 1.4 + mx * 0.4
       const ax = 0.16 + (reducedMotion ? 0 : Math.sin(tt * 0.028) * 0.05) + my * 0.26
+      viewAx = ax; viewAy = ay; viewZoom = zoom
       const cA = Math.cos(ax), sA = Math.sin(ax), cB = Math.cos(ay), sB = Math.sin(ay)
       for (const n of nodes) {
         const bx = n.bx + Math.sin(tt * n.S1 + n.P1) * n.A1, by = n.by + Math.cos(tt * n.S2 + n.P2) * n.A2, bz = n.bz + Math.sin(tt * n.S3 + n.P3) * n.A3
@@ -522,6 +529,7 @@ export default function HeroConstellation() {
       $('hc-fcN').textContent = tickerName(ticker)
       renderConnections(neighborhoodCache.get(ticker) ?? [])
       ;($('hc-fcO') as HTMLAnchorElement).href = '/stocks/' + encodeURIComponent(n.label)
+      routerRef.current.prefetch('/stocks/' + encodeURIComponent(n.label))
       focusReturn = document.activeElement instanceof HTMLElement ? document.activeElement : null
       focus.i = idx; fL.setAttribute('aria-hidden', 'false'); fL.style.pointerEvents = 'auto'; releaseScrollLock ??= runtime.acquireLock()
       if (reducedMotion) { focus.t = 1; updateCard(); backBtn.focus() } else gsap.to(focus, { t: 1, duration: 0.55, ease: 'power2.out', onUpdate: updateCard, onComplete: () => backBtn.focus() })
@@ -560,35 +568,33 @@ export default function HeroConstellation() {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && focus.i >= 0) closeFocus() }
     window.addEventListener('keydown', onKey)
 
-    // Opening the focused node's full page hands the orb to the ticker page:
-    // the browser morphs it into the page's identity node while the page opens
-    // from where the orb sat (cross-document view transition). Every other
-    // navigation away from the homepage keeps the plain page load.
-    let handoffOrb: HTMLElement | null = null
-    const removeHandoffOrb = () => { handoffOrb?.remove(); handoffOrb = null }
-    const onPageSwap = (event: PageSwapEvent) => {
-      const transition = event.viewTransition
-      if (!transition) return
+    // Opening the focused node's full page hands this network to the ticker
+    // page (TickerUniverse), which keeps the same world going and turns the
+    // camera until the orb lands on the ticker's identity node. A modified
+    // click (new tab, new window) stays an ordinary link.
+    const openLink = $('hc-fcO') as HTMLAnchorElement
+    const onOpen = (event: MouseEvent) => {
       const fn = focus.i >= 0 ? nodes[focus.i] : null
-      const target = event.activation?.entry?.url
-      const path = target ? new URL(target).pathname : ''
-      if (!fn?.label || focus.t < 0.99 || path !== '/stocks/' + encodeURIComponent(fn.label)) { transition.skipTransition(); return }
-      // Same geometry as orb() at focus.t = 1: a 23px ring with a 14px hole.
-      const outer = 23.1, hole = 13.9
-      removeHandoffOrb()
-      handoffOrb = document.createElement('span')
-      handoffOrb.setAttribute('aria-hidden', 'true')
-      Object.assign(handoffOrb.style, {
-        position: 'fixed', left: (W * 0.30 - outer) + 'px', top: (H * 0.5 - outer) + 'px',
-        width: outer * 2 + 'px', height: outer * 2 + 'px', boxSizing: 'border-box', borderRadius: '50%',
-        border: (outer - hole) + 'px solid ' + spark, background: themeColor('--surface'),
-        pointerEvents: 'none', zIndex: '80', viewTransitionName: 'ticker-node',
+      if (!fn?.label || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      event.preventDefault()
+      const fs = 1 + focus.t * 3
+      offerUniverseHandoff({
+        ticker: fn.label,
+        universe: {
+          nodes: nodes.map((n) => ({
+            x: n.bx + Math.sin(tt * n.S1 + n.P1) * n.A1, y: n.by + Math.cos(tt * n.S2 + n.P2) * n.A2, z: n.bz + Math.sin(tt * n.S3 + n.P3) * n.A3,
+            r: n.r, label: n.label, signal: n.signal, light: n.light, clar: n.clar,
+          })),
+          pairs: [...pairs], pairLengths: [...pairLengths], lightReach, R, cam, focus: focus.i,
+        },
+        view: { ax: viewAx, ay: viewAy, zoom: viewZoom * fs, x: fn.sx + (W * 0.30 - fn.sx) * focus.t, y: fn.sy + (H * 0.5 - fn.sy) * focus.t },
+        lineScale: fs,
+        progress: p,
+        createdAt: Date.now(),
       })
-      document.body.append(handoffOrb)
+      routerRef.current.push(openLink.getAttribute('href') ?? '/stocks/' + encodeURIComponent(fn.label))
     }
-    window.addEventListener('pageswap', onPageSwap)
-    // Coming back through the history cache must not leave the handoff behind.
-    window.addEventListener('pageshow', removeHandoffOrb)
+    openLink.addEventListener('click', onOpen)
     let pendingFocus = false
     const openAfterChromeSettles = (idx: number) => {
       if (pendingFocus || focus.i >= 0) return
@@ -658,7 +664,7 @@ export default function HeroConstellation() {
       window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseout', onOut); window.removeEventListener('resize', onResize)
       window.removeEventListener('pointerdown', finishReveal); window.removeEventListener('keydown', finishReveal); window.removeEventListener('wheel', finishReveal); window.removeEventListener('touchstart', finishReveal); window.removeEventListener('focusin', finishReveal)
       window.removeEventListener('keydown', onKey); window.removeEventListener('click', onClick, true)
-      window.removeEventListener('pageswap', onPageSwap); window.removeEventListener('pageshow', removeHandoffOrb); removeHandoffOrb()
+      openLink.removeEventListener('click', onOpen)
       window.removeEventListener('mousedown', onDown, true); window.removeEventListener('meridian:search-focus', onSearchFocus)
       window.removeEventListener('wheel', onWheel, true); window.removeEventListener('touchstart', onTouchStart, true); window.removeEventListener('touchmove', onTouchMove, true)
       backBtn.removeEventListener('click', closeFocus); fDim.removeEventListener('click', closeFocus)
