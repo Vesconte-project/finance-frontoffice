@@ -12,10 +12,8 @@ export const MARKETING_NAV_ITEMS = [
   { label: 'FAQ', href: '/faq' },
 ] as const
 
-export const FOOTER_SECONDARY_LINKS = [
-  { label: 'Community', href: '/community' },
-  { label: 'Data coverage', href: '/product#ticker-pages' },
-  { label: 'Methodology', href: '/product#methodology' },
+export const FOOTER_LINKS = [
+  ...MARKETING_NAV_ITEMS,
   { label: 'Disclosures', href: '/product#limits' },
   { label: 'Contact', href: '/faq#contact' },
 ] as const
