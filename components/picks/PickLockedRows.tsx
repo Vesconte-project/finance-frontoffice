@@ -8,7 +8,7 @@ import styles from './Rankings.module.css'
 /**
  * The ranking a reader is not entitled to, drawn as its silhouette.
  *
- * The ghost cards are built from nothing: no rank, no blurred real data and no
+ * The ghost rows are built from nothing: no rank, no blurred real data and no
  * hidden payload behind them, because the rows they stand for were dropped
  * server-side in `lib/picks-access.ts` — `lockedCount` is a number, not a list.
  * What stays free is pointed to: a company's own standing, and the weekly ranking.
@@ -28,17 +28,20 @@ export default function PickLockedRows({
 
   return (
     <div className={styles.locked} data-picks-locked="">
-      <ul className={`${styles.grid} ${styles.ghostGrid}`} aria-hidden="true">
+      <ul className={styles.ghostList} aria-hidden="true">
         {Array.from({ length: ghosts }, (_, index) => (
           <li key={index} className={styles.ghost} style={{ '--i': index } as CSSProperties}>
-            <div className={styles.ghostTop}>
-              <span className={styles.ghostBar} style={{ width: '1.5rem' }} />
-              <span className={styles.ghostBar} style={{ width: '4rem' }} />
-              <span className={styles.ghostBar} style={{ width: '2rem', marginLeft: 'auto' }} />
-            </div>
-            <span className={styles.ghostBar} style={{ width: '45%' }} />
-            <span className={styles.ghostBar} style={{ width: '80%', height: '0.375rem' }} />
-            <span className={styles.ghostBar} style={{ width: '65%', height: '0.375rem' }} />
+            <span className={styles.ghostBar} style={{ width: '1.25rem' }} />
+            <span style={{ display: 'grid', gap: '0.5rem' }}>
+              <span className={styles.ghostBar} style={{ width: '3.5rem' }} />
+              <span className={styles.ghostBar} style={{ width: '8rem', height: '0.5rem' }} />
+            </span>
+            <span className={styles.ghostParts}>
+              <span className={styles.ghostBar} style={{ height: '0.375rem' }} />
+              <span className={styles.ghostBar} style={{ height: '0.375rem' }} />
+              <span className={styles.ghostBar} style={{ height: '0.375rem' }} />
+            </span>
+            <span className={styles.ghostBar} style={{ width: '2rem', justifySelf: 'end' }} />
           </li>
         ))}
       </ul>

@@ -3,7 +3,7 @@ import PickCard from '@/components/picks/PickCard'
 import PickDisclosure from '@/components/picks/PickDisclosure'
 import PickLockedRows from '@/components/picks/PickLockedRows'
 import PickReadingRail from '@/components/picks/PickReadingRail'
-import RankingsNav from '@/components/picks/RankingsNav'
+import { RankingsHeader, RankingsStage } from '@/components/picks/RankingsChrome'
 import { resolveVisiblePicks } from '@/lib/picks-access'
 import { PICK_READING_CONTENT, PICK_SCORE_CAVEAT, formatSnapshotDate, type PickReadingKey } from '@/lib/picks-content'
 import styles from './Rankings.module.css'
@@ -28,40 +28,31 @@ export default async function PicksReadingPage({ reading }: { reading: PickReadi
   const asOfLabel = result.status === 'ok' ? formatSnapshotDate(result.asOf) : null
 
   const head = (
-    <header className={styles.head}>
-      <div className={styles.titleRow}>
-        <div>
-          <p className={styles.eyebrow}>Rankings</p>
-          <h1 className={styles.title}>{content.label}</h1>
-          <p className={styles.subtitle}>{content.subtitle}</p>
-        </div>
-        {asOfLabel ? (
-          <span className={styles.stamp}>
-            <span className={styles.stampDot} aria-hidden="true" />
-            {asOfLabel}
-          </span>
-        ) : null}
-      </div>
-      <RankingsNav active={reading} />
-    </header>
+    <RankingsHeader
+      eyebrow="Rankings"
+      title={content.label}
+      subtitle={content.subtitle}
+      stamp={asOfLabel}
+      active={reading}
+    />
   )
 
   if (result.status === 'unavailable') {
     return (
-      <div className={styles.page}>
+      <RankingsStage seed={content.label}>
         {head}
         <div className={styles.empty} data-analytics-id={`picks_unavailable:${reading}`}>
           <h2 className={styles.emptyTitle}>This ranking is temporarily unavailable</h2>
           <p className={styles.emptyText}>The latest snapshot did not load. Nothing is wrong with your account.</p>
           <RetryButton analyticsId="picks_unavailable_retry">Retry</RetryButton>
         </div>
-      </div>
+      </RankingsStage>
     )
   }
 
   if (result.totalRanked === 0) {
     return (
-      <div className={styles.page}>
+      <RankingsStage seed={content.label}>
         {head}
         <div className={styles.empty}>
           <h2 className={styles.emptyTitle}>Nothing qualified for this ranking</h2>
@@ -70,23 +61,23 @@ export default async function PicksReadingPage({ reading }: { reading: PickReadi
             empty market.
           </p>
         </div>
-      </div>
+      </RankingsStage>
     )
   }
 
   return (
-    <div className={styles.page}>
+    <RankingsStage seed={content.label}>
       {head}
 
       <div className={styles.body}>
         <div className={styles.main}>
           {result.items.length > 0 ? (
             <>
-              <div className={styles.grid}>
+              <ol className={styles.list} aria-label={`${content.label} ranking`}>
                 {result.items.map((item, index) => (
                   <PickCard key={item.symbol} item={item} rank={index + 1} index={index} showCapital={reading === 'income'} />
                 ))}
-              </div>
+              </ol>
               <p className={styles.caveat}>{PICK_SCORE_CAVEAT}</p>
             </>
           ) : null}
@@ -98,6 +89,6 @@ export default async function PicksReadingPage({ reading }: { reading: PickReadi
       </div>
 
       <PickDisclosure asOfLabel={asOfLabel} />
-    </div>
+    </RankingsStage>
   )
 }

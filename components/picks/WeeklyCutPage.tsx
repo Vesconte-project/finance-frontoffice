@@ -2,7 +2,7 @@ import Link from 'next/link'
 import RetryButton from '@/components/ui/RetryButton'
 import PickCard from '@/components/picks/PickCard'
 import PickDisclosure from '@/components/picks/PickDisclosure'
-import RankingsNav from '@/components/picks/RankingsNav'
+import { RankingsHeader, RankingsStage } from '@/components/picks/RankingsChrome'
 import { getSectorCut, type SectorCut } from '@/lib/picks'
 import {
   PICK_READING_CONTENT,
@@ -42,29 +42,22 @@ export default async function WeeklyCutPage() {
   const asOfLabel = ranking ? formatSnapshotDate(ranking.asOf) : null
 
   return (
-    <div className={styles.page} data-weekly-cut={state}>
-      <header className={styles.head}>
-        <div className={styles.titleRow}>
-          <div>
-            <p className={styles.eyebrow}>This week · Free</p>
-            <h1 className={styles.title}>{week.sector}</h1>
-            <p className={styles.subtitle}>
-              The top ten on{' '}
-              <Link href={readingHref} className={styles.inlineLink}>
-                {content.label.toLowerCase()}
-              </Link>
-              . A new sector every Monday, picked by the calendar.
-            </p>
-          </div>
-          {weekLabel ? (
-            <span className={styles.stamp}>
-              <span className={styles.stampDot} aria-hidden="true" />
-              Week of {weekLabel}
-            </span>
-          ) : null}
-        </div>
-        <RankingsNav active="weekly" />
-      </header>
+    <RankingsStage seed={week.sector} data-weekly-cut={state}>
+      <RankingsHeader
+        eyebrow="This week · Free"
+        title={week.sector}
+        subtitle={
+          <>
+            The top ten on{' '}
+            <Link href={readingHref} className={styles.inlineLink}>
+              {content.label.toLowerCase()}
+            </Link>
+            . A new sector every Monday, picked by the calendar.
+          </>
+        }
+        stamp={weekLabel ? `Week of ${weekLabel}` : null}
+        active="weekly"
+      />
 
       {state === 'unavailable' ? (
         <div className={styles.empty} data-analytics-id="picks_weekly_unavailable">
@@ -85,17 +78,17 @@ export default async function WeeklyCutPage() {
 
       {ranking ? (
         <div className={styles.main}>
-          <div className={styles.grid}>
+          <ol className={styles.list} aria-label={`${week.sector} on ${content.label.toLowerCase()}`}>
             {ranking.items.map((item, index) => (
               <PickCard key={item.symbol} item={item} rank={index + 1} index={index} showCapital={week.reading === 'income'} showSector={false} />
             ))}
-          </div>
+          </ol>
           <p className={styles.caveat}>
             {PICK_SCORE_CAVEAT} Ranks are within {week.sector} only.
           </p>
           <PickDisclosure asOfLabel={asOfLabel} />
         </div>
       ) : null}
-    </div>
+    </RankingsStage>
   )
 }

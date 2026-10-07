@@ -7,6 +7,19 @@ import { absenceCopy, formatStandingPercent, type TickerReadings } from '@/lib/t
 import { readingPartsDetail } from '@/lib/reading-eligibility'
 import styles from '@/components/picks/Rankings.module.css'
 
+/** Dots in the field; each stands for an equal slice of the ranked population. */
+const FIELD_DOTS = 33
+
+/** "Top 7%" as the word in the display face and the number in the mono face. */
+function StandingValue({ band }: { band: string }) {
+  const [word, ...rest] = band.split(' ')
+  return (
+    <p className={styles.standingValue}>
+      {word} <span>{rest.join(' ')}</span>
+    </p>
+  )
+}
+
 /** Where the company sits between the bottom (0) and the top (100) of the ranked population. */
 function percentileFromBottom(position: number, universeSize: number): number {
   if (universeSize <= 1) return 100
@@ -60,26 +73,30 @@ export default function StockRankingsResearch({
 
                   {ranked ? (
                     <>
-                      <p className={styles.standingValue}>
-                        {formatStandingPercent(item.standing.position, item.standing.universeSize)}
-                      </p>
-                      <div className={styles.percentile}>
+                      <StandingValue band={formatStandingPercent(item.standing.position, item.standing.universeSize)} />
+                      <div className={styles.field}>
                         <div
-                          className={styles.percentileTrack}
+                          className={styles.fieldTrack}
                           role="img"
                           aria-label={`Position ${item.standing.position} of ${item.standing.universeSize}, counted from the top`}
                         >
-                          <span className={styles.percentileFill} />
-                          <span className={styles.percentileMarker} />
+                          {Array.from({ length: FIELD_DOTS }, (_, d) => (
+                            <span
+                              key={d}
+                              className={styles.dot}
+                              data-past={(d / (FIELD_DOTS - 1)) * 100 <= p ? '' : undefined}
+                              style={{ '--d': d } as CSSProperties}
+                            />
+                          ))}
+                          <span className={styles.selfLight} />
+                          <span className={styles.self} />
                         </div>
-                        <div className={styles.percentileEnds} aria-hidden="true">
+                        <div className={styles.fieldEnds} aria-hidden="true">
                           <span>Bottom</span>
+                          <span>#{item.standing.position} of {item.standing.universeSize}</span>
                           <span>Top</span>
                         </div>
                       </div>
-                      <p className={styles.standingMeta}>
-                        #{item.standing.position} of {item.standing.universeSize}
-                      </p>
                     </>
                   ) : (
                     <>
