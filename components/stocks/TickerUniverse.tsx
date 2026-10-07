@@ -13,10 +13,11 @@ import {
 } from '@/lib/ticker-universe'
 import styles from './TickerUniverse.module.css'
 
-// The camera the band settles on, relative to the arrival frame.
-const TURN = 0.9
+// On arrival the camera turns towards its rest yaw by the way nearest to
+// this much turn, so the turn stays within about half a revolution of it.
+const PREFERRED_TURN = 1
 const REST_PITCH = 0.16
-const REST_ZOOM = 1.1
+const REST_ZOOM = 1.3
 const ARRIVAL_MS = 1400
 // Below the identity band the universe is gone; it starts to fade here
 // (a fraction of the band's height).
@@ -65,8 +66,15 @@ export default function TickerUniverse() {
     const ownLinksFrom = ensureOwnLinks(universe)
     const { nodes, pairs, pairLengths, lightReach } = universe
     const projected: ProjectedNode[] = []
-    const start: UniverseView = handoff?.view ?? { ax: 0.16, ay: 0.5, zoom: REST_ZOOM, x: 0, y: 0 }
-    const end = { ax: REST_PITCH, ay: start.ay + (handoff ? TURN : 0), zoom: REST_ZOOM }
+    // At rest the node sits at the band's left, so the camera faces the
+    // universe with the node on its left edge: the rest of the world then
+    // spreads out to the right across the band.
+    const fn = nodes[universe.focus]
+    const facing = Math.atan2(fn.z, -fn.x)
+    const aimFor = handoff ? handoff.view.ay + PREFERRED_TURN : facing
+    const restYaw = facing + Math.round((aimFor - facing) / (2 * Math.PI)) * 2 * Math.PI
+    const start: UniverseView = handoff?.view ?? { ax: REST_PITCH, ay: restYaw, zoom: REST_ZOOM, x: 0, y: 0 }
+    const end = { ax: REST_PITCH, ay: restYaw, zoom: REST_ZOOM }
     const arriving = Boolean(handoff) && !reducedMotion
     const startedAt = performance.now()
     let idle = 0
@@ -189,14 +197,14 @@ export default function TickerUniverse() {
       mask.addColorStop(1, 'rgba(0,0,0,' + (1 - k) + ')')
       g!.fillStyle = mask
       g!.fillRect(0, 0, width, height)
-      // ...and it is the ticker's neighbourhood: it fades with the distance
-      // from the node, so no stray piece of the network floats on its own.
+      // ...and it spreads across the whole band, a little stronger around the
+      // ticker's own node.
       const f = projected[focus]
-      const reach = Math.min(1000, Math.max(520, width * 0.5))
-      const around = g!.createRadialGradient(f.sx, f.sy, 0, f.sx, f.sy, reach)
+      const reach = Math.max(width - f.sx, f.sx) * 1.1
+      const around = g!.createRadialGradient(f.sx, f.sy, 0, f.sx, f.sy, Math.max(1, reach))
       around.addColorStop(0, 'rgba(0,0,0,1)')
-      around.addColorStop(0.3, 'rgba(0,0,0,1)')
-      around.addColorStop(1, 'rgba(0,0,0,' + (1 - k) + ')')
+      around.addColorStop(0.35, 'rgba(0,0,0,1)')
+      around.addColorStop(1, 'rgba(0,0,0,' + lerp(1, 0.55, k) + ')')
       g!.fillStyle = around
       g!.fillRect(0, 0, width, height)
       g!.globalCompositeOperation = 'source-over'
