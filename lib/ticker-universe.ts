@@ -2,9 +2,10 @@
  * The market universe behind a ticker page: the same kind of 3D network the
  * homepage draws, kept going behind the ticker's identity band.
  *
- * Opening a focused node's full page from the homepage hands the homepage's
- * own network over (offerUniverseHandoff), so the ticker page continues the
- * same world and turns the camera until the node lands on the identity node.
+ * Opening a focused node's full page, or searching, from the homepage hands
+ * the homepage's own network over (lib/universe-flight), so the ticker page
+ * continues the same world and turns the camera until a node lands on the
+ * identity node.
  * A ticker page reached any other way builds its own universe around the
  * ticker (createUniverse).
  */
@@ -59,43 +60,6 @@ export type UniverseHandoff = {
   veil: number
   focusLinks: number
   createdAt: number
-}
-
-const HANDOFF_TTL_MS = 15_000
-// A claimed handoff can be claimed again only this briefly, which covers an
-// effect that mounts twice (React's development double run) but not a later
-// visit to the same ticker.
-const RECLAIM_MS = 1_000
-let pending: { handoff: UniverseHandoff; claimedAt: number | null } | null = null
-
-export function offerUniverseHandoff(handoff: UniverseHandoff) {
-  pending = { handoff, claimedAt: null }
-}
-
-// The homepage registers itself while it is mounted, so a search made from
-// it can hand its network over too (see TickerSearchCombobox).
-let provider: ((ticker: string) => UniverseHandoff | null) | null = null
-
-export function provideUniverse(make: (ticker: string) => UniverseHandoff | null) {
-  provider = make
-  return () => { if (provider === make) provider = null }
-}
-
-/** Offers the mounted homepage's network to `ticker`'s page, if there is one. */
-export function handOffUniverseTo(ticker: string) {
-  const handoff = provider?.(ticker.trim().toUpperCase())
-  if (handoff) offerUniverseHandoff(handoff)
-}
-
-/** The pending handoff when it is for this ticker and still fresh. */
-export function claimUniverseHandoff(ticker: string, now: number): UniverseHandoff | null {
-  if (!pending) return null
-  const { handoff, claimedAt } = pending
-  if (claimedAt !== null && now - claimedAt > RECLAIM_MS) { pending = null; return null }
-  if (handoff.ticker.toUpperCase() !== ticker.toUpperCase()) { pending = null; return null }
-  if (now - handoff.createdAt > HANDOFF_TTL_MS || now < handoff.createdAt) { pending = null; return null }
-  pending.claimedAt ??= now
-  return handoff
 }
 
 const ETF_TICKERS = ['VT', 'VEA', 'VWO', 'SPY', 'QQQ', 'GLD']

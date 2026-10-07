@@ -6,7 +6,7 @@ import gsap from 'gsap'
 import { useScrollRuntime } from '@/components/motion/ScrollRuntime'
 import { scrollMotionTokens } from '@/components/motion/scroll-tokens'
 import { PICK_READING_CONTENT, PICK_READING_KEYS } from '@/lib/picks-content'
-import { offerUniverseHandoff, provideUniverse } from '@/lib/ticker-universe'
+import { provideUniverse, startFlight } from '@/lib/universe-flight'
 
 
 type HcNode = {
@@ -587,7 +587,7 @@ export default function HeroConstellation() {
       if (!fn?.label || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
       event.preventDefault()
       const fs = 1 + focus.t * 3
-      offerUniverseHandoff({
+      startFlight({
         ticker: fn.label,
         universe: universeNow(focus.i),
         view: { ax: viewAx, ay: viewAy, zoom: viewZoom * fs, x: fn.sx + (W * 0.30 - fn.sx) * focus.t, y: fn.sy + (H * 0.5 - fn.sy) * focus.t },
@@ -607,11 +607,14 @@ export default function HeroConstellation() {
     const releaseUniverse = provideUniverse((ticker) => {
       // The focus card zooms the field; its own link already hands over.
       if (focus.i >= 0 || focus.t > 0.01) return null
+      // Only nodes on the left of the visible universe: the ticker page keeps
+      // its node at the band's left edge, so the world must lie to its right
+      // and the camera never has to swing round to find it.
       const candidates: number[] = []
       for (let i = 0; i < nodes.length; i++) {
         const n = nodes[i]
         if (n.label || n.signal || n.da < 0.45) continue
-        if (n.sx < W * 0.08 || n.sx > W * 0.92 || n.sy < H * 0.12 || n.sy > H * 0.88) continue
+        if (n.sx < W * 0.06 || n.sx > W * 0.4 || n.sy < H * 0.15 || n.sy > H * 0.85) continue
         candidates.push(i)
       }
       if (!candidates.length) return null

@@ -1,16 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  claimUniverseHandoff,
   createUniverse,
   ensureOwnLinks,
-  handOffUniverseTo,
-  provideUniverse,
-  offerUniverseHandoff,
   projectUniverse,
   type ProjectedNode,
-  type UniverseHandoff,
 } from '../lib/ticker-universe'
+import { flyToTicker, planCamera, provideUniverse, REST_ZOOM } from '../lib/universe-flight'
 
 function seeded(seed: number) {
   return () => {
@@ -19,36 +15,28 @@ function seeded(seed: number) {
   }
 }
 
-function handoff(ticker: string, createdAt: number): UniverseHandoff {
-  return {
-    ticker,
-    universe: createUniverse(ticker, 1440, 900, seeded(1)),
-    view: { ax: 0.2, ay: 0.4, zoom: 4, x: 432, y: 450 },
-    lineScale: 4,
-    progress: 0,
-    orb: { outer: 23.1, ring: 9.2, glow: 63, label: true },
-    veil: 0.7,
-    focusLinks: 1,
-    createdAt,
+test('arriving from the homepage, the camera turns a short way towards its rest', () => {
+  const universe = createUniverse('XOM', 1440, 900, seeded(2))
+  const fn = universe.nodes[universe.focus]
+  const facing = Math.atan2(fn.z, -fn.x)
+  for (const ay of [facing, facing + 0.1, facing - 2, facing + 3, facing + 9]) {
+    const plan = planCamera(universe, { ax: 0.3, ay, zoom: 4, x: 400, y: 450 })
+    const turn = Math.abs(plan.end.ay - plan.start.ay)
+    assert.ok(turn >= 0.25 - 1e-9 && turn <= 0.7 + 1e-9, 'turn ' + turn)
+    assert.equal(plan.start.zoom, 4)
+    assert.equal(plan.end.zoom, REST_ZOOM)
   }
-}
-
-test('a handoff reaches only the ticker it was offered for', () => {
-  offerUniverseHandoff(handoff('XOM', 1_000))
-  assert.equal(claimUniverseHandoff('AAPL', 1_100), null)
-  assert.equal(claimUniverseHandoff('XOM', 1_200), null, 'a mismatched claim discards it')
 })
 
-test('a handoff survives a double mount but not a later visit', () => {
-  offerUniverseHandoff(handoff('XOM', 1_000))
-  assert.ok(claimUniverseHandoff('xom', 1_100))
-  assert.ok(claimUniverseHandoff('XOM', 1_400), 'a remount right after the first claim still arrives')
-  assert.equal(claimUniverseHandoff('XOM', 5_000), null)
-})
-
-test('a stale handoff is ignored', () => {
-  offerUniverseHandoff(handoff('XOM', 1_000))
-  assert.equal(claimUniverseHandoff('XOM', 60_000), null)
+test('without a flight the camera rests facing the universe from the node', () => {
+  const universe = createUniverse('XOM', 1440, 900, seeded(4))
+  const plan = planCamera(universe, null)
+  assert.deepEqual(plan.start, plan.end)
+  const out: ProjectedNode[] = []
+  projectUniverse(universe, { ...plan.end, x: 0, y: 0 }, out)
+  // The node is on the universe's left: most of the world projects to its right.
+  const right = out.filter((p, i) => i !== universe.focus && p.sx > 0).length
+  assert.ok(right > out.length * 0.6, right + ' of ' + out.length)
 })
 
 test('a built universe centres on the ticker and gives it links of its own', () => {
@@ -90,14 +78,12 @@ test('a focused node with too few links gains links to its nearest nodes', () =>
   assert.equal(ensureOwnLinks(universe), universe.pairs.length, 'nothing more to add')
 })
 
-test('a search hands over only while the homepage provides its network', () => {
+test('a search asks the homepage for its network only while it is mounted', () => {
   const asked: string[] = []
-  const release = provideUniverse((ticker) => { asked.push(ticker); return handoff(ticker, 10_000) })
-  handOffUniverseTo(' jpm ')
+  const release = provideUniverse((ticker) => { asked.push(ticker); return null })
+  flyToTicker(' jpm ')
   assert.deepEqual(asked, ['JPM'])
-  assert.ok(claimUniverseHandoff('JPM', 10_100))
   release()
-  handOffUniverseTo('AAPL')
+  flyToTicker('AAPL')
   assert.deepEqual(asked, ['JPM'], 'nothing is asked once the homepage is gone')
-  assert.equal(claimUniverseHandoff('AAPL', 10_200), null)
 })

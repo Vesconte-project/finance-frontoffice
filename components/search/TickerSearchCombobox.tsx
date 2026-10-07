@@ -18,7 +18,7 @@ import {
   type TickerSearchResult,
 } from '@/lib/ticker-search'
 import { trackEvent } from '@/lib/analytics'
-import { handOffUniverseTo } from '@/lib/ticker-universe'
+import { flyToTicker } from '@/lib/universe-flight'
 import { cn } from '@/lib/utils'
 
 type TickerSearchComboboxProps = {
@@ -569,8 +569,9 @@ export default function TickerSearchCombobox({
     setSearch(symbol)
     setIsOpen(false)
     setHighlightedIndex(-1)
-    // From the homepage, the ticker page continues its network (TickerUniverse).
-    handOffUniverseTo(symbol)
+    // From the homepage, the flight into the ticker page starts now, while
+    // the page loads (lib/universe-flight).
+    flyToTicker(symbol)
     router.push(routeForTicker(symbol))
   }
 

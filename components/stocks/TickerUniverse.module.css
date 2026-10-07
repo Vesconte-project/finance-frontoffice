@@ -11,22 +11,3 @@
   height: 300px;
   pointer-events: none;
 }
-
-/* The homepage orb while it lands on the identity node, above the page. */
-.orb {
-  position: fixed;
-  z-index: 120;
-  box-sizing: border-box;
-  border-style: solid;
-  border-radius: 50%;
-  pointer-events: none;
-}
-
-.orbLabel {
-  position: absolute;
-  top: 50%;
-  left: calc(100% + 14px);
-  transform: translateY(-50%);
-  color: var(--text);
-  font: 500 14px var(--font-plex-mono, 'IBM Plex Mono'), monospace;
-}
