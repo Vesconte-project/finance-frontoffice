@@ -1,5 +1,12 @@
+/*
+ * Not shown. Since the identity refresh the chrome painted a solid layer over
+ * this field; the ticker universe behind the band (TickerUniverse) now does
+ * its job, and the chrome is clear so that universe shows through. Left
+ * visible, this field would draw a second network in the band.
+ */
 .field,
 .fallback {
+  visibility: hidden;
   --relationship-accent: var(--accent);
   --relationship-line: var(--text);
   --relationship-node: var(--text-muted);
