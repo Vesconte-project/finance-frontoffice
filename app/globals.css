@@ -3517,7 +3517,8 @@ html.chrome-scrolled .dock-search {
        the toolbar is always showing — vh overstates the available height and
        pushes the hero far lower than what's actually visible. */
     top: clamp(170px, 36svh, 300px);
-    width: calc(100vw - 32px);
+    /* The header's own gutter, so the field lines up with the brand above it. */
+    width: calc(100vw - 40px);
     transition: transform var(--dock-search-motion-duration) var(--dock-search-motion-easing);
   }
   .dock-search__intro {
@@ -3529,6 +3530,15 @@ html.chrome-scrolled .dock-search {
   }
   .dock-search__subtitle {
     font-size: 14px;
+  }
+  /* The desktop field (62px, 17px type) is a centrepiece on a wide screen; at
+     phone width it outweighs the headline. 16px is the smallest type iOS
+     will not zoom into on focus. */
+  .dock-search__field {
+    --dock-search-input-height: 52px;
+  }
+  .dock-search__field :is(input) {
+    font-size: 16px;
   }
   .dock-search__support {
     align-items: center;
@@ -3547,12 +3557,6 @@ html.chrome-scrolled .dock-search {
   .dock-search:has(.ticker-search__root[data-open='true']) .dock-search__intro {
     opacity: 0;
     pointer-events: none;
-  }
-}
-
-@media (max-width: 389px) {
-  .dock-search__field :is(input) {
-    height: 60px;
   }
 }
 
