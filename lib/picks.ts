@@ -4,6 +4,7 @@ import { unstable_cache } from 'next/cache'
 import { fetchBackendJson } from './backend'
 import { PICK_FULL_LIST } from './picks-access-rules'
 import type { PickReadingKey } from './picks-content'
+import { WEEKLY_CUT_SIZE, isSectorCutValid } from './picks-weekly'
 import { parseEligibilityRule, type EligibilityRule } from './reading-eligibility'
 
 /**
@@ -52,6 +53,8 @@ export type PickFilters = {
   eligibility: EligibilityRule | null
   includeNonCompanies: boolean
   nonCompanyRule: string | null
+  /** The sector the backend says it filtered to. Null for the whole market, or before the filter ships. */
+  sector: string | null
 }
 
 export type PickRanking = {
@@ -126,12 +129,13 @@ function normalizeItem(raw: unknown): PickItem | null {
 
 function normalizeFilters(raw: unknown): PickFilters {
   const record = asRecord(raw)
-  if (!record) return { minCoverage: 0, eligibility: null, includeNonCompanies: false, nonCompanyRule: null }
+  if (!record) return { minCoverage: 0, eligibility: null, includeNonCompanies: false, nonCompanyRule: null, sector: null }
   return {
     minCoverage: readFiniteNumber(record, 'minCoverage') ?? 0,
     eligibility: parseEligibilityRule(record.eligibility),
     includeNonCompanies: record.includeNonCompanies === true,
     nonCompanyRule: readString(record, 'nonCompanyRule'),
+    sector: readString(record, 'sector'),
   }
 }
 
@@ -168,5 +172,39 @@ async function loadPickRanking(reading: PickReadingKey): Promise<PickRanking | n
 export const getPickRanking = unstable_cache(
   async (reading: PickReadingKey): Promise<PickRanking | null> => loadPickRanking(reading),
   ['picks-ranking-cache-v1'],
+  { revalidate: 300 }
+)
+
+/**
+ * The weekly free cut: the top ten of one reading inside one sector.
+ *
+ * Expects `GET /screener/rankings?reading=…&sector=…&limit=10` to filter to the
+ * sector and echo it in `filters.sector`. Until the backend ships that filter it
+ * ignores the parameter and returns the whole market, which `isSectorCutValid`
+ * rejects — so the page says the cut is not published rather than mislabelling the
+ * market's top ten as one sector's.
+ */
+export type SectorCut =
+  | { status: 'ok'; ranking: PickRanking }
+  | { status: 'unsupported' }
+
+async function loadSectorCut(reading: PickReadingKey, sector: string): Promise<SectorCut> {
+  const payload = await fetchBackendJson<unknown>(
+    `/screener/rankings?reading=${encodeURIComponent(reading)}&sector=${encodeURIComponent(sector)}&limit=${WEEKLY_CUT_SIZE}`,
+    { context: 'backend.screener.rankings.sector' }
+  )
+  const ranking = normalizePickRanking(payload, reading)
+  if (!ranking) return { status: 'unsupported' }
+  const items = ranking.items.slice(0, WEEKLY_CUT_SIZE)
+  if (!isSectorCutValid(sector, ranking.filters.sector, items.map((item) => item.sector))) {
+    return { status: 'unsupported' }
+  }
+  return { status: 'ok', ranking: { ...ranking, items } }
+}
+
+/** Free to every reader by design, so the cached value is safe to share as is. */
+export const getSectorCut = unstable_cache(
+  async (reading: PickReadingKey, sector: string): Promise<SectorCut> => loadSectorCut(reading, sector),
+  ['picks-sector-cut-v1'],
   { revalidate: 300 }
 )

@@ -27,6 +27,7 @@ export const HEADER_MENUS: HeaderMenuData[] = [
       { label: 'Long term', href: '/picks/long-term' },
       { label: 'Income', href: '/picks/income' },
       { label: 'Short term', href: '/picks/short-term' },
+      { label: 'This week', href: '/picks/weekly' },
       { label: 'Calendar', href: '/calendar' },
     ],
   },

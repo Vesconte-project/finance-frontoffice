@@ -127,3 +127,16 @@ export const PICK_DISCLOSURE = {
     'None. Vesconte receives no payment from the companies ranked, and no one at Vesconte holds a position in them.',
   risk: 'Shares can lose value, including all of it. A high rank today says nothing certain about future returns.',
 } as const
+
+/** A snapshot date (YYYY-MM-DD) as "Oct 3, 2026", or null when it is missing or malformed. */
+export function formatSnapshotDate(asOf: string | null): string | null {
+  if (!asOf) return null
+  const parsed = new Date(`${asOf}T00:00:00Z`)
+  if (Number.isNaN(parsed.getTime())) return null
+  return parsed.toLocaleDateString('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
+}

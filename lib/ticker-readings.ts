@@ -6,8 +6,9 @@
  * Deliberately free of `server-only` and I/O so the rules can be unit-tested: the
  * fetch lives in `lib/canonical-research.ts` and the tier decision in the page.
  *
- * The rows are built on the server. A signed-out reader receives only the sign-up
- * row, so no standing, percentage or absence reason ever reaches their browser.
+ * The rows are built on the server. A company's own standing is free to every reader
+ * (founder decision, Oct 2026): it says where one company sits, never which companies
+ * lead, so it does not give away the Pro ranking.
  */
 
 import { PICK_READING_CONTENT, PICK_READING_KEYS, PICK_READING_TO_SLUG, type PickReadingKey } from './picks-content'
@@ -32,6 +33,8 @@ export type ReadingItem =
 
 export type TickerReadings = {
   ticker: string
+  /** Snapshot date the standings were read from, when the backend sends it. */
+  asOf: string | null
   readings: ReadingItem[]
 }
 
@@ -89,7 +92,7 @@ function isPositiveInteger(value: unknown): value is number {
  */
 export function parseTickerReadings(raw: unknown): TickerReadings | null {
   if (!raw || typeof raw !== 'object') return null
-  const payload = raw as { ticker?: unknown; readings?: unknown }
+  const payload = raw as { ticker?: unknown; asOf?: unknown; readings?: unknown }
   if (typeof payload.ticker !== 'string' || !Array.isArray(payload.readings)) return null
   if (payload.readings.length !== PICK_READING_KEYS.length) return null
 
@@ -137,7 +140,11 @@ export function parseTickerReadings(raw: unknown): TickerReadings | null {
     }
   }
 
-  return { ticker: payload.ticker, readings: PICK_READING_KEYS.map((key) => byKey.get(key) as ReadingItem) }
+  return {
+    ticker: payload.ticker,
+    asOf: typeof payload.asOf === 'string' && payload.asOf ? payload.asOf : null,
+    readings: PICK_READING_KEYS.map((key) => byKey.get(key) as ReadingItem),
+  }
 }
 
 /** Rows for a signed-in reader, in the order Long term, Income, Short term. */

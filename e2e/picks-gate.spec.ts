@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 /**
- * The picks gate, checked where it actually matters: the bytes sent to the browser.
+ * The rankings gate, checked where it actually matters: the bytes sent to the browser.
  *
  * Asserting that ten cards are visible proves nothing — the failure this guards
  * against is a page that renders ten rows while shipping twenty-five in the RSC
@@ -23,39 +23,37 @@ function symbolsInPayload(body: string): string[] {
 }
 
 for (const reading of READINGS) {
-  test(`anonymous visitors receive ten ranked names and no more on ${reading}`, async ({ page, request }) => {
+  test(`anonymous visitors receive no ranked names on ${reading}`, async ({ page, request }) => {
     const response = await page.goto(`/picks/${reading}`)
     expect(response?.status()).toBe(200)
     await page.waitForLoadState('networkidle')
 
-    const lockedBlock = page.getByText(/Ranks 11–\d+/)
+    const lockedBlock = page.locator('[data-picks-locked]')
     if ((await lockedBlock.count()) === 0) {
-      test.skip(true, 'ranking unavailable or shorter than the gate; nothing to assert')
+      test.skip(true, 'ranking unavailable or empty; nothing to assert')
     }
 
     // What the reader sees.
-    const renderedCards = await page.locator('a[href^="/stocks/"]').count()
-    expect(renderedCards).toBe(10)
+    expect(await page.locator('main a[href^="/stocks/"]').count()).toBe(0)
 
     // What was actually sent. This is the assertion that matters.
     const raw = await (await request.get(`/picks/${reading}`)).text()
     const symbols = symbolsInPayload(raw)
-    expect(
-      symbols.length,
-      `payload carried ${symbols.length} symbols: ${symbols.join(', ')}`
-    ).toBe(10)
+    expect(symbols, `payload carried ${symbols.join(', ')}`).toEqual([])
   })
 }
 
-test('the locked block advertises a count, never the names behind it', async ({ page }) => {
+test('the locked block advertises a count and the free surfaces, never a name', async ({ page }) => {
   await page.goto('/picks/long-term')
   await page.waitForLoadState('networkidle')
 
-  const locked = page.getByRole('heading', { name: /more long term names/i })
+  const locked = page.getByRole('heading', { name: /companies ranked on long term/i })
   if ((await locked.count()) === 0) test.skip(true, 'ranking unavailable')
 
   await expect(locked).toBeVisible()
-  await expect(page.getByRole('link', { name: /create a free account/i })).toBeVisible()
+  await expect(page.getByRole('link', { name: /see plans/i })).toBeVisible()
+  await expect(page.getByRole('link', { name: /this week's free ranking/i })).toHaveAttribute('href', '/picks/weekly')
+  await expect(page.locator('[data-pick-disclosure]')).toContainText('not personal advice')
 
   // The placeholder rows must be decorative: no ticker text, and hidden from AT.
   const placeholders = page.locator('ul[aria-hidden="true"] li')
@@ -63,6 +61,28 @@ test('the locked block advertises a count, never the names behind it', async ({ 
   for (const text of await placeholders.allInnerTexts()) {
     expect(text.trim()).toMatch(/^\d*$/)
   }
+})
+
+test('the weekly ranking is public and never mislabels the market as a sector', async ({ page }) => {
+  const response = await page.goto('/picks/weekly')
+  expect(response?.status()).toBe(200)
+  const state = await page.locator('[data-weekly-cut]').getAttribute('data-weekly-cut')
+  expect(['ok', 'unpublished', 'unavailable']).toContain(state)
+  if (state === 'ok') {
+    expect(await page.locator('main a[href^="/stocks/"]').count()).toBeLessThanOrEqual(10)
+    await expect(page.locator('[data-pick-disclosure]')).toBeVisible()
+  }
+})
+
+test('a company standing is free to an anonymous reader', async ({ page }) => {
+  const response = await page.goto('/stocks/AAPL/rankings')
+  expect(response?.status()).toBe(200)
+  const view = page.locator('[data-ticker-rankings]')
+  await expect(view).toBeVisible()
+  await expect(view.getByRole('heading', { name: 'Where AAPL stands' })).toBeVisible()
+  await expect(view.locator('[data-reading]')).toHaveCount(3)
+  await expect(view.locator('[data-reading="longTerm"]')).toContainText(/Top \d+%|Bottom \d+%/)
+  await expect(page.locator('[data-pick-disclosure]')).toContainText('not personal advice')
 })
 
 test('an unknown reading is a 404 rather than a fallback ranking', async ({ request }) => {

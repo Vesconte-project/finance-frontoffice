@@ -2,7 +2,7 @@
  * The entitlement rules for picks rankings, kept pure so they can be tested.
  *
  * Deliberately free of `server-only`, imports and I/O. Nothing here is secret — that
- * anonymous readers see five rows is on the page in words. What must not leak is the
+ * only Pro readers see rows is on the page in words. What must not leak is the
  * data, and that is enforced in `lib/picks-access.ts`, which is server-only and is
  * the only caller of `cutToTier` that touches a real ranking.
  *
@@ -19,13 +19,14 @@ export const PICK_FULL_LIST = 25
 /**
  * How many ranked rows each tier sees.
  *
- * `pro` matches `free` on purpose. The tier exists so Pro-only behaviour has one
- * obvious place to land; until there is something real to give it, handing it a
- * bigger number than the ranking contains would be inventing a benefit.
+ * The current ranking is the paid product (founder decision, Oct 2026): anyone else
+ * gets the methodology, the disclosure and a count, never a name. What is free is a
+ * company's own standing on its page and the weekly cut, both served elsewhere.
+ * Until billing opens, `pro` only exists for accounts flagged by hand.
  */
 export const PICK_VISIBLE_LIMITS: Record<PickTier, number> = {
-  anonymous: 5,
-  free: PICK_FULL_LIST,
+  anonymous: 0,
+  free: 0,
   pro: PICK_FULL_LIST,
 }
 

@@ -4,7 +4,12 @@ import { GlassPanel, SiteHeader, sharedHeaderSpacerClass } from '@/components/ma
 import { getViewerAccess } from '@/lib/billing'
 
 
-const freeFeatures = ['Signal previews', 'Market and ticker context'] as const
+const freeFeatures = [
+  'Signal previews',
+  'Market and ticker context',
+  'Where any company stands in each ranking',
+  "This week's ranking",
+] as const
 
 const basicFeatures = [
   'Extended ML Lab usage',

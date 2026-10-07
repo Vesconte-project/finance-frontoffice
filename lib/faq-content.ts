@@ -138,7 +138,7 @@ export const FAQ_GROUPS: readonly FaqGroup[] = [
         slug: 'top-picks',
         question: 'What are the rankings?',
         answer:
-          'The tracked universe ranked three ways: long term, income, and short term. Each ranking is the same for every reader and orders companies against each other on published criteria; it is not a recommendation for you personally. Signed-out readers see the first five names; creating an account opens the full ranking.',
+          'The tracked universe ranked three ways: long term, income, and short term. Each ranking is the same for every reader and orders companies against each other on published criteria; it is not a recommendation for you personally. Where any single company stands is free on its page, and one ranking a week is open to everyone; the full current order is part of a paid plan.',
       },
       {
         slug: 'correlations-atlas',
@@ -173,7 +173,7 @@ export const FAQ_GROUPS: readonly FaqGroup[] = [
         slug: 'need-an-account',
         question: 'Do I need an account?',
         answer:
-          'Public pages can be explored without an account. An account opens the full rankings, the watchlist, and your dashboard —',
+          'Public pages can be explored without an account. An account opens the watchlist and your dashboard —',
         link: { href: '/sign-up', label: 'create an account', suffix: '.' },
       },
       {

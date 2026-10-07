@@ -5,7 +5,7 @@ import PickDisclosure from '@/components/picks/PickDisclosure'
 import PickLockedRows from '@/components/picks/PickLockedRows'
 import PickReadingRail from '@/components/picks/PickReadingRail'
 import { resolveVisiblePicks } from '@/lib/picks-access'
-import { PICK_READING_CONTENT, PICK_SCORE_CAVEAT, type PickReadingKey } from '@/lib/picks-content'
+import { PICK_READING_CONTENT, PICK_SCORE_CAVEAT, formatSnapshotDate, type PickReadingKey } from '@/lib/picks-content'
 
 /**
  * The body of a ranking page, shared by the three routes. Every row gets the same card:
@@ -21,18 +21,6 @@ import { PICK_READING_CONTENT, PICK_SCORE_CAVEAT, type PickReadingKey } from '@/
  * The entitlement cut happens in `resolveVisiblePicks`, server-side, before anything
  * reaches this component. Nothing here filters or hides rows.
  */
-
-function formatAsOf(asOf: string | null): string | null {
-  if (!asOf) return null
-  const parsed = new Date(`${asOf}T00:00:00Z`)
-  if (Number.isNaN(parsed.getTime())) return null
-  return parsed.toLocaleDateString('en-US', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
-}
 
 export default async function PicksReadingPage({ reading }: { reading: PickReadingKey }) {
   const content = PICK_READING_CONTENT[reading]
@@ -62,7 +50,7 @@ export default async function PicksReadingPage({ reading }: { reading: PickReadi
     )
   }
 
-  const asOfLabel = formatAsOf(result.asOf)
+  const asOfLabel = formatSnapshotDate(result.asOf)
   const isIncome = reading === 'income'
 
   return (
@@ -76,7 +64,7 @@ export default async function PicksReadingPage({ reading }: { reading: PickReadi
         ) : null}
       </div>
 
-      {result.items.length === 0 ? (
+      {result.totalRanked === 0 ? (
         <EmptyState
           title="Nothing qualified for this ranking"
           description="Every tracked name was held back by the coverage floor or is not a company. That is worth reporting as a data problem rather than reading as an empty market."
@@ -84,25 +72,30 @@ export default async function PicksReadingPage({ reading }: { reading: PickReadi
       ) : (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start">
           <div className="flex flex-col gap-6">
-            <div className="grid gap-4 sm:grid-cols-2">
-              {result.items.map((item, index) => (
-                <div key={item.symbol} className="flex flex-col gap-1.5">
-                  <PickCard item={item} rank={index + 1} />
-                  {isIncome ? (
-                    <PickCapitalNote value={item.capitalPerThousandIncome} className="px-1" />
-                  ) : null}
-                </div>
-              ))}
-            </div>
+            {result.items.length > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {result.items.map((item, index) => (
+                  <div key={item.symbol} className="flex flex-col gap-1.5">
+                    <PickCard item={item} rank={index + 1} />
+                    {isIncome ? (
+                      <PickCapitalNote value={item.capitalPerThousandIncome} className="px-1" />
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
 
             <PickLockedRows
               lockedCount={result.lockedCount}
               visibleCount={result.items.length}
               totalRanked={result.totalRanked}
               readingLabel={content.label}
+              tier={result.tier}
             />
 
-            <p className="text-caption text-content-muted">{PICK_SCORE_CAVEAT}</p>
+            {result.items.length > 0 ? (
+              <p className="text-caption text-content-muted">{PICK_SCORE_CAVEAT}</p>
+            ) : null}
 
             <PickDisclosure asOfLabel={asOfLabel} />
           </div>

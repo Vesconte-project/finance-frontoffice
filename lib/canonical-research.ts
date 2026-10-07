@@ -239,7 +239,7 @@ export async function getTickerDisclosures(
 
 /**
  * Raw `/tickers/{ticker}/readings` payload. Validation happens in
- * `lib/ticker-readings.ts`; callers must only request this for a signed-in reader.
+ * `lib/ticker-readings.ts`. Free to every reader: one company's standing, never a list.
  */
 export async function getTickerReadingsPayload(tickerRaw: string): Promise<unknown> {
   const ticker = normalizedTicker(tickerRaw)
