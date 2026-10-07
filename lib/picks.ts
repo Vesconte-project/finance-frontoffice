@@ -41,7 +41,7 @@ export type PickItem = {
   sector: string | null
   score: number
   coverage: number
-  /** Income only: what a thousand a year of dividends costs to buy. */
+  /** Income only: how much stock paid a thousand in dividends over the trailing year. */
   capitalPerThousandIncome: number | null
   components: PickComponent[]
 }

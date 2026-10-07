@@ -19,57 +19,6 @@ function strongestComponents(item: PickItem, count: number) {
     .slice(0, count)
 }
 
-export function PickHeroCard({ item, rank }: { item: PickItem; rank: number }) {
-  const parts = strongestComponents(item, 3)
-
-  return (
-    <Card
-      padding="none"
-      tone="featured"
-      className="group relative flex min-h-[280px] flex-col justify-between rounded-[var(--radius-2xl)] p-6 md:p-7"
-    >
-      <div className="relative z-10 flex items-start justify-between gap-4">
-        <div className="text-caption inline-flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 py-1 uppercase tracking-[0.18em] text-[var(--text)]">
-          Rank {rank}
-        </div>
-        <div className="text-right">
-          <div className="numeric-tabular text-3xl font-black leading-none text-[var(--text)]">{item.score}</div>
-          <div className="text-caption mt-1 text-[var(--text-small)]">score</div>
-        </div>
-      </div>
-
-      <div className="relative z-10 mt-6">
-        <Link
-          href={`/stocks/${encodeURIComponent(item.symbol)}`}
-          className="state-interactive inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-        >
-          <div className="numeric-tabular text-4xl font-black tracking-tight text-[var(--text)] md:text-5xl">
-            {item.symbol}
-          </div>
-          {item.name ? <div className="mt-1 text-lg text-[var(--text-body)]">{item.name}</div> : null}
-        </Link>
-
-        {item.sector ? <div className="text-caption mt-3 text-[var(--text-small)]">{item.sector}</div> : null}
-
-        {parts.length > 0 ? (
-          <div className="mt-5 flex flex-wrap gap-2">
-            {parts.map((component) => (
-              <span
-                key={component.key}
-                title={component.detail ?? undefined}
-                className="text-caption inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 py-1 text-[var(--text-body)]"
-              >
-                {component.label}
-                <span className="numeric-tabular text-[var(--text)]">{component.score}</span>
-              </span>
-            ))}
-          </div>
-        ) : null}
-      </div>
-    </Card>
-  )
-}
-
 export default function PickCard({ item, rank }: { item: PickItem; rank: number }) {
   const parts = strongestComponents(item, 2)
 
@@ -113,8 +62,10 @@ export default function PickCard({ item, rank }: { item: PickItem; rank: number 
 }
 
 /**
- * Income carries one number the other readings do not: what a thousand a year of
- * dividends costs to buy. Rendered only where it exists.
+ * Income carries one number the other readings do not: how much stock paid a thousand
+ * in dividends over the trailing year. Phrased in the past tense on purpose — a forward
+ * "buys $1,000 a year" would promise a payout nobody can guarantee. Rendered only where
+ * it exists.
  */
 export function PickCapitalNote({ value, className }: { value: number | null; className?: string }) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return null
@@ -127,7 +78,7 @@ export function PickCapitalNote({ value, className }: { value: number | null; cl
 
   return (
     <div className={cn('text-caption text-content-muted', className)}>
-      <span className="numeric-tabular text-content-secondary">{formatted}</span> buys $1,000 a year
+      <span className="numeric-tabular text-content-secondary">{formatted}</span> of shares paid $1,000 in dividends last year
     </div>
   )
 }

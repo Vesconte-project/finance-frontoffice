@@ -1,13 +1,16 @@
 import EmptyState from '@/components/ui/EmptyState'
 import RetryButton from '@/components/ui/RetryButton'
-import PickCard, { PickCapitalNote, PickHeroCard } from '@/components/picks/PickCard'
+import PickCard, { PickCapitalNote } from '@/components/picks/PickCard'
+import PickDisclosure from '@/components/picks/PickDisclosure'
 import PickLockedRows from '@/components/picks/PickLockedRows'
 import PickReadingRail from '@/components/picks/PickReadingRail'
 import { resolveVisiblePicks } from '@/lib/picks-access'
 import { PICK_READING_CONTENT, PICK_SCORE_CAVEAT, type PickReadingKey } from '@/lib/picks-content'
 
 /**
- * The body of a picks page, shared by the three routes.
+ * The body of a ranking page, shared by the three routes. Every row gets the same card:
+ * a featured first place would read as "buy this one", and the gap between neighbouring
+ * ranks is smaller than the model can resolve.
  *
  * The routes are static paths rather than one `[reading]` segment on purpose. With a
  * dynamic segment, an unknown slug can only be rejected during render — and by then a
@@ -38,7 +41,7 @@ export default async function PicksReadingPage({ reading }: { reading: PickReadi
   const header = (
     <header className="max-w-3xl">
       <div className="text-caption uppercase tracking-[0.18em] text-content-muted">
-        Picks · {content.label}
+        Rankings · {content.label}
       </div>
       <h1 className="text-page-title mt-2 text-content-primary">{content.headline}</h1>
       <p className="text-body mt-3">{content.subtitle}</p>
@@ -59,7 +62,6 @@ export default async function PicksReadingPage({ reading }: { reading: PickReadi
     )
   }
 
-  const [leader, ...rest] = result.items
   const asOfLabel = formatAsOf(result.asOf)
   const isIncome = reading === 'income'
 
@@ -82,25 +84,16 @@ export default async function PicksReadingPage({ reading }: { reading: PickReadi
       ) : (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start">
           <div className="flex flex-col gap-6">
-            {leader ? (
-              <div className="flex flex-col gap-2">
-                <PickHeroCard item={leader} rank={1} />
-                {isIncome ? <PickCapitalNote value={leader.capitalPerThousandIncome} /> : null}
-              </div>
-            ) : null}
-
-            {rest.length > 0 ? (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {rest.map((item, index) => (
-                  <div key={item.symbol} className="flex flex-col gap-1.5">
-                    <PickCard item={item} rank={index + 2} />
-                    {isIncome ? (
-                      <PickCapitalNote value={item.capitalPerThousandIncome} className="px-1" />
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            ) : null}
+            <div className="grid gap-4 sm:grid-cols-2">
+              {result.items.map((item, index) => (
+                <div key={item.symbol} className="flex flex-col gap-1.5">
+                  <PickCard item={item} rank={index + 1} />
+                  {isIncome ? (
+                    <PickCapitalNote value={item.capitalPerThousandIncome} className="px-1" />
+                  ) : null}
+                </div>
+              ))}
+            </div>
 
             <PickLockedRows
               lockedCount={result.lockedCount}
@@ -110,6 +103,8 @@ export default async function PicksReadingPage({ reading }: { reading: PickReadi
             />
 
             <p className="text-caption text-content-muted">{PICK_SCORE_CAVEAT}</p>
+
+            <PickDisclosure asOfLabel={asOfLabel} />
           </div>
 
           <PickReadingRail reading={reading} filters={result.filters} totalRanked={result.totalRanked} />

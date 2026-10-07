@@ -6,6 +6,7 @@ import {
   PICK_READING_CONTENT,
   PICK_READING_KEYS,
   PICK_READING_TO_SLUG,
+  PICK_DISCLOSURE,
   PICK_SCORE_CAVEAT,
   type PickReadingKey,
 } from '@/lib/picks-content'
@@ -115,6 +116,10 @@ export default async function HomeBoard({ data }: { data: HomeBoardData }) {
         </div>
 
         <p className={styles.caveat}>{PICK_SCORE_CAVEAT}</p>
+        <p className={styles.caveat} data-pick-disclosure="">
+          {PICK_DISCLOSURE.producer} {PICK_DISCLOSURE.general} {PICK_DISCLOSURE.risk}{' '}
+          <Link href="/product#methodology" className={styles.caveatLink}>Methodology</Link>
+        </p>
       </div>
     </section>
   )

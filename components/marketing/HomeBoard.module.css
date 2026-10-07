@@ -230,3 +230,18 @@
     min-height: 0;
   }
 }
+
+.caveatLink {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.caveatLink:hover {
+  color: var(--content-primary);
+}
+
+.caveatLink:focus-visible {
+  outline: 2px solid var(--brand-spark);
+  outline-offset: 2px;
+}

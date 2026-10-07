@@ -8,10 +8,8 @@ const freeFeatures = ['Signal previews', 'Market and ticker context'] as const
 
 const basicFeatures = [
   'Extended ML Lab usage',
-  'Daily picks',
-  'Periodic investment choices',
+  'Daily rankings',
   'Faster watchlist alerts',
-  'Buy/Sell notifications when available',
 ] as const
 
 const proFeatures = [

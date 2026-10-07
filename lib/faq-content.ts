@@ -78,7 +78,7 @@ export const FAQ_GROUPS: readonly FaqGroup[] = [
         slug: 'market-wide-monitoring',
         question: 'Can I monitor signals across the whole market yet?',
         answer:
-          'Not yet. Market-wide signal monitoring is being rebuilt on top of the scorecard readings rather than extended from the earlier screener, so that page stays closed rather than showing numbers we do not stand behind. Per-company signal research is open today, and Top picks ranks the tracked universe now.',
+          'Not yet. Market-wide signal monitoring is being rebuilt on top of the scorecard readings rather than extended from the earlier screener, so that page stays closed rather than showing numbers we do not stand behind. Per-company signal research is open today, and the rankings order the tracked universe now.',
       },
       {
         slug: 'how-to-use-signals',
@@ -136,9 +136,9 @@ export const FAQ_GROUPS: readonly FaqGroup[] = [
       },
       {
         slug: 'top-picks',
-        question: 'What is Top picks?',
+        question: 'What are the rankings?',
         answer:
-          'The tracked universe ranked three ways: long term, income, and short term. Signed-out readers see the first five names; creating an account opens the full ranking.',
+          'The tracked universe ranked three ways: long term, income, and short term. Each ranking is the same for every reader and orders companies against each other on published criteria; it is not a recommendation for you personally. Signed-out readers see the first five names; creating an account opens the full ranking.',
       },
       {
         slug: 'correlations-atlas',
@@ -173,7 +173,7 @@ export const FAQ_GROUPS: readonly FaqGroup[] = [
         slug: 'need-an-account',
         question: 'Do I need an account?',
         answer:
-          'Public pages can be explored without an account. An account opens the full Top picks ranking, the watchlist, and your dashboard —',
+          'Public pages can be explored without an account. An account opens the full rankings, the watchlist, and your dashboard —',
         link: { href: '/sign-up', label: 'create an account', suffix: '.' },
       },
       {
@@ -199,7 +199,7 @@ export const FAQ_GROUPS: readonly FaqGroup[] = [
         slug: 'financial-advice',
         question: 'Is this financial advice?',
         answer:
-          'No. Signals and AI analysis are research context, not personal advice or automatic instructions to buy or sell.',
+          'No. Rankings, signals and AI analysis are general research, the same for every reader. They do not take your circumstances, objectives or holdings into account, and they are not personal advice or instructions to buy or sell.',
       },
     ],
   },
