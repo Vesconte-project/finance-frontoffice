@@ -71,6 +71,8 @@ export default function TickerUniverse() {
       const elapsed = Math.min(RISE_AFTER_MS, performance.now() - startedAt)
       html.style.setProperty('--universe-arrival-elapsed', elapsed + 'ms')
       html.dataset.universeArrival = ''
+      // The identity node stays hidden while the flying node stands in for it.
+      html.dataset.universeOrb = ''
       rising = window.setTimeout(() => delete html.dataset.universeArrival, RISE_AFTER_MS - elapsed + 360 + RISE_MS)
       // The homepage may have been scrolled; the ticker page opens at its top.
       window.scrollTo({ top: 0, behavior: 'instant' })
@@ -80,6 +82,13 @@ export default function TickerUniverse() {
 
     const anchorOf = () => document.querySelector<HTMLElement>('[data-stock-ticker-layout] [data-selected-ticker-anchor]')
     const bandOf = () => document.querySelector<HTMLElement>('[data-stock-ticker-layout] [data-ticker-hero]')
+    // The flying node hands over to the identity node only once the identity
+    // has finished rising: a page that loaded late is still fading in when the
+    // camera lands, and swapping then would show the node half-transparent.
+    const identityRisen = () => {
+      const part = document.querySelector<HTMLElement>('[data-stock-ticker-layout] [data-arrival-part="identity"]')
+      return !part || part.getAnimations().every((a) => a.playState === 'finished' || a.playState === 'idle')
+    }
 
     function frame(now: number) {
       rafId = 0
@@ -121,9 +130,10 @@ export default function TickerUniverse() {
       if (flight && handoff && !done) {
         placeOrb(flight.orb, flight.orbLabel, { handoff, k, x: x + box.left, y: y + box.top, rest, palette, labels })
       }
-      if (!done && k >= 1) {
+      if (!done && k >= 1 && (identityRisen() || now - startedAt > ARRIVAL_MS + RISE_MS * 3)) {
         done = true
         endFlight(flight!)
+        delete html.dataset.universeOrb
       }
       if (done && rect && !remembered) {
         remembered = true
@@ -166,6 +176,7 @@ export default function TickerUniverse() {
       window.removeEventListener('resize', onResize)
       window.clearTimeout(rising)
       delete html.dataset.universeArrival
+      delete html.dataset.universeOrb
       if (flight && !done) releaseFlight(flight)
     }
   }, [ticker, reducedMotion])

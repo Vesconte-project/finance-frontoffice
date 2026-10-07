@@ -3924,4 +3924,4 @@ html[data-universe-arrival] .site-header__row { animation-delay: calc(700ms - va
 html[data-universe-arrival] [data-stock-ticker-layout] [data-arrival-part='identity'] { animation-delay: calc(780ms - var(--universe-arrival-elapsed, 0ms)); }
 html[data-universe-arrival] [data-stock-ticker-layout] [data-ticker-navigation] { animation-delay: calc(860ms - var(--universe-arrival-elapsed, 0ms)); }
 html[data-universe-arrival] [data-stock-ticker-layout] [data-arrival-part='content'] { animation-delay: calc(940ms - var(--universe-arrival-elapsed, 0ms)); }
-html[data-universe-arrival] [data-stock-ticker-layout] [data-selected-ticker-anchor] { opacity: 0; }
+html[data-universe-orb] [data-stock-ticker-layout] [data-selected-ticker-anchor] { opacity: 0; }
