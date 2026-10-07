@@ -1,4 +1,5 @@
 import StockTabsAuto from '@/components/stocks/StockTabsAuto'
+import TickerTabSwipe from '@/components/stocks/TickerTabSwipe'
 import TickerUniverse from '@/components/stocks/TickerUniverse'
 import { getStockTickerChromeData } from '@/lib/stock-ticker-chrome'
 import styles from './StockTickerLayout.module.css'
@@ -16,6 +17,7 @@ export default function StockTickerLayout({ children, params }: StockTickerLayou
       <TickerUniverse />
       <StockTabsAuto chromeData={chromeData} />
       <div className={styles.content} data-arrival-part="content">{children}</div>
+      <TickerTabSwipe />
     </div>
   )
 }
