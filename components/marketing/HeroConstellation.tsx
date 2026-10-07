@@ -121,8 +121,6 @@ export default function HeroConstellation() {
     // ...and only while something is painted over it. The softening exists to
     // keep the field from competing with the copy on top of it, so with nothing
     // on top there is nothing to yield to and the network comes into focus.
-    // Between the hero column fading out and the sections arriving, the field
-    // has a full viewport to itself; that stretch is the one where it is sharp.
     //
     // Driven by presence, not by scroll position. Tying it to scroll distance
     // made it a scrubbed parameter — it moved because the reader moved, which
@@ -413,6 +411,8 @@ export default function HeroConstellation() {
     updateBeats(0)
     const setP = (v: number) => { targetP = v; $('hc-prog').style.width = (v * 100) + '%'; const caption = $('hc-caption'); const readings = $('hc-readings'); const opacity = v > 0.02 ? '0' : '1'; caption.style.opacity = opacity; readings.style.opacity = opacity; updateBeats(v) }
 
+    // How many screens of scroll the camera's turn spans.
+    const TURN_SCREENS = 1.6
     const updateField = (progress: number, interactive = progress < 0.999) => {
       const strength = Math.max(0, Math.min(1, progress))
       heroVisible = interactive
@@ -432,6 +432,9 @@ export default function HeroConstellation() {
 
     const unregisterScrollScene = runtime.registerScene(({ gsap: runtimeGsap, lenis, ScrollTrigger }) => {
       scrollWithRuntime = (top, onComplete) => lenis.scrollTo(top, { duration: 0.28, lock: false, onComplete })
+      // Nothing is pinned: the sections scroll in over the field from the
+      // first wheel tick while the camera turns and closes in behind them, so
+      // the turn is still under way as the first section passes.
       const s = { p: 0 }
       const tween = runtimeGsap.to(s, {
         p: 1,
@@ -439,14 +442,12 @@ export default function HeroConstellation() {
         scrollTrigger: {
           trigger: stageEl,
           start: 'top top',
-          end: () => `+=${window.innerHeight}`,
+          end: () => `+=${window.innerHeight * TURN_SCREENS}`,
           scrub: scrollMotionTokens.scrub.cinematic,
-          pin: true,
-          anticipatePin: 1,
           onUpdate: self => setP(self.progress),
         },
       })
-      // Recede by pin release, before the first content frame enters the view.
+      // Recede as the first section rises to cover the screen.
       const hideTrigger = ScrollTrigger.create({
         trigger: stageEl,
         start: 'top top',
