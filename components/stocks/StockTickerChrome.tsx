@@ -1,10 +1,9 @@
 'use client'
 
-import { Suspense, use, useMemo } from 'react'
+import { use } from 'react'
 import StockResearchNav from '@/components/stocks/StockResearchNav'
 import TickerExportButton from '@/components/stocks/TickerExportButton'
 import StockTickerIdentity from '@/components/stocks/StockTickerIdentity'
-import TickerRelationshipField, { TickerRelationshipFieldFallback } from '@/components/stocks/TickerRelationshipField'
 import WatchlistButton from '@/components/WatchlistButton'
 import { assetMetadataParts } from '@/lib/asset-metadata'
 import type { StockTickerChromeData } from '@/lib/stock-ticker-chrome'
@@ -22,7 +21,6 @@ export function StockTickerChromeFallback({
 
   return (
     <section className={styles.chrome} data-ticker-hero="" data-ticker-chrome="loading" aria-label={`${ticker} research`}>
-      <TickerRelationshipFieldFallback accentColor={identityColor} />
       <div className={styles.content}>
         <StockTickerIdentity
           ticker={ticker}
@@ -49,14 +47,10 @@ export default function StockTickerChrome({
   isOverview: boolean
 }) {
   const resolved = use(data)
-  const relationships = useMemo(() => Promise.resolve(resolved.relationships), [resolved.relationships])
   const metadata = assetMetadataParts(resolved.assetBadgeLabel, resolved.exchange, resolved.currency)
 
   return (
     <section className={styles.chrome} data-ticker-hero="" data-ticker-chrome="ready" aria-label={`${resolved.ticker} research`}>
-      <Suspense fallback={<TickerRelationshipFieldFallback accentColor={resolved.identityColor} />}>
-        <TickerRelationshipField ticker={resolved.ticker} accentColor={resolved.identityColor} relationships={relationships} />
-      </Suspense>
       <div className={styles.content}>
         <StockTickerIdentity
           ticker={resolved.ticker}

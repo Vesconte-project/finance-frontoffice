@@ -68,7 +68,7 @@ export default function StockTickerIdentity({
         >
           <span className={styles.node} data-selected-ticker-anchor="" />
         </span>
-        <div className={styles.body}>
+        <div className={styles.body} data-arrival-part="identity">
           <div className={styles.main} data-ticker-identity="">
             {name}
             {/* The quote and the rail travel as one line beneath the name. */}

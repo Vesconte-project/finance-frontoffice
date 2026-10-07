@@ -6,18 +6,9 @@
   border: 1px solid color-mix(in srgb, var(--color-border) 64%, transparent);
   border-top: 0;
   border-radius: 6px;
-  background: var(--bg);
+  /* Clear, so the ticker universe behind the band shows through. */
+  background: transparent;
   box-shadow: none;
-}
-
-.chrome::after {
-  position: absolute;
-  z-index: 0;
-  inset: 0;
-  background:
-    var(--bg);
-  content: '';
-  pointer-events: none;
 }
 
 .content {

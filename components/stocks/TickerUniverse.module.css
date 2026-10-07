@@ -1,0 +1,13 @@
+/* Behind everything in the ticker layout (its stacking context), from the top
+   of the page under the header. Its height follows the identity band, and the
+   whole viewport while arriving from the homepage. */
+.universe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  display: block;
+  width: 100%;
+  height: 300px;
+  pointer-events: none;
+}
