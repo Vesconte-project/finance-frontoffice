@@ -180,8 +180,17 @@ export default function HeroConstellation() {
     const smooth = (a: number, b: number, t: number) => { t = Math.min(1, Math.max(0, (t - a) / (b - a))); return t * t * (3 - 2 * t) }
     const fib = (i: number, n: number) => { const y = 1 - (i / Math.max(1, n - 1)) * 2; const r = Math.sqrt(Math.max(0, 1 - y * y)); const th = i * 2.399963; return [Math.cos(th) * r, y, Math.sin(th) * r] }
 
+    // On a phone the browser's URL bar shows and hides as the reader scrolls,
+    // changing the window's height each time. The field is sized to the tallest
+    // the viewport gets (the large viewport, with the bar hidden), so the bar
+    // coming and going neither moves the camera nor changes how far the turn
+    // runs; only a change of width (a rotation) rebuilds the field.
+    const probe = document.createElement('div')
+    probe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:100lvh;visibility:hidden;pointer-events:none'
+    root.appendChild(probe)
+    const tallestHeight = () => Math.max(window.innerHeight, probe.getBoundingClientRect().height)
     function resize() {
-      DPR = Math.min(2, window.devicePixelRatio || 1); W = document.documentElement.clientWidth; H = window.innerHeight
+      DPR = Math.min(2, window.devicePixelRatio || 1); W = document.documentElement.clientWidth; H = tallestHeight()
       c.width = W * DPR; c.height = H * DPR; c.style.width = W + 'px'; c.style.height = H + 'px'
       cx = W * 0.5; cy = H * 0.5; R = Math.max(W, H) * 0.62; cam = R * 1.9
     }
@@ -367,7 +376,15 @@ export default function HeroConstellation() {
 
     const onMove = (e: MouseEvent) => { tmx = (e.clientX / window.innerWidth - .5); tmy = (e.clientY / window.innerHeight - .5); mpx = e.clientX; mpy = e.clientY }
     const onOut = () => { mpx = -1e4; mpy = -1e4 }
-    const onResize = () => { resize(); build(); if (reducedMotion) render() }
+    const onResize = () => {
+      if (document.documentElement.clientWidth === W) {
+        // A browser without the large viewport unit only learns the tallest
+        // height once the bar first hides: grow the canvas, keep the field.
+        if (tallestHeight() > H) { resize(); if (reducedMotion) render() }
+        return
+      }
+      resize(); build(); if (reducedMotion) render()
+    }
     if (!reducedMotion) {
       window.addEventListener('mousemove', onMove)
       window.addEventListener('mouseout', onOut)
@@ -442,7 +459,7 @@ export default function HeroConstellation() {
         scrollTrigger: {
           trigger: stageEl,
           start: 'top top',
-          end: () => `+=${window.innerHeight * TURN_SCREENS}`,
+          end: () => `+=${H * TURN_SCREENS}`,
           scrub: scrollMotionTokens.scrub.cinematic,
           onUpdate: self => setP(self.progress),
         },
@@ -451,7 +468,7 @@ export default function HeroConstellation() {
       const hideTrigger = ScrollTrigger.create({
         trigger: stageEl,
         start: 'top top',
-        end: () => `+=${window.innerHeight}`,
+        end: () => `+=${H}`,
         onUpdate: self => updateField(self.progress),
         onRefresh: self => updateField(self.progress),
       })
@@ -702,6 +719,7 @@ export default function HeroConstellation() {
       document.removeEventListener('visibilitychange', onVisibilityChange)
       unsubscribeStaticScroll?.()
       window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseout', onOut); window.removeEventListener('resize', onResize)
+      probe.remove()
       window.removeEventListener('pointerdown', finishReveal); window.removeEventListener('keydown', finishReveal); window.removeEventListener('wheel', finishReveal); window.removeEventListener('touchstart', finishReveal); window.removeEventListener('focusin', finishReveal)
       window.removeEventListener('keydown', onKey); window.removeEventListener('click', onClick, true)
       openLink.removeEventListener('click', onOpen); releaseUniverse()
