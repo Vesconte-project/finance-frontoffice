@@ -77,8 +77,9 @@ test('a focused node with too few links gains links to its nearest nodes', () =>
     kept.push(universe.pairs[k], universe.pairs[k + 1]); lengths.push(universe.pairLengths[k / 2])
   }
   universe.pairs = kept; universe.pairLengths = lengths
+  const before = kept.length
   const from = ensureOwnLinks(universe)
-  assert.equal(from, kept.length)
+  assert.equal(from, before)
   assert.equal(own(), 3)
   assert.equal(universe.pairLengths.length, universe.pairs.length / 2)
   assert.equal(ensureOwnLinks(universe), universe.pairs.length, 'nothing more to add')
