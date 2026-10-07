@@ -47,7 +47,7 @@ test('the locked block advertises a count and the free surfaces, never a name', 
   await page.goto('/picks/long-term')
   await page.waitForLoadState('networkidle')
 
-  const locked = page.getByRole('heading', { name: /companies ranked on long term/i })
+  const locked = page.getByRole('heading', { name: /companies ranked/i })
   if ((await locked.count()) === 0) test.skip(true, 'ranking unavailable')
 
   await expect(locked).toBeVisible()

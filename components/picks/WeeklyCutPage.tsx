@@ -1,8 +1,8 @@
 import Link from 'next/link'
-import EmptyState from '@/components/ui/EmptyState'
 import RetryButton from '@/components/ui/RetryButton'
-import PickCard, { PickCapitalNote } from '@/components/picks/PickCard'
+import PickCard from '@/components/picks/PickCard'
 import PickDisclosure from '@/components/picks/PickDisclosure'
+import RankingsNav from '@/components/picks/RankingsNav'
 import { getSectorCut, type SectorCut } from '@/lib/picks'
 import {
   PICK_READING_CONTENT,
@@ -11,6 +11,7 @@ import {
   formatSnapshotDate,
 } from '@/lib/picks-content'
 import { weeklyCutFor } from '@/lib/picks-weekly'
+import styles from './Rankings.module.css'
 
 /**
  * The free weekly ranking: the top ten of one reading inside one sector.
@@ -36,85 +37,65 @@ export default async function WeeklyCutPage() {
     cut = 'unavailable'
   }
 
-  const header = (
-    <header className="max-w-3xl">
-      <div className="text-caption uppercase tracking-[0.18em] text-content-muted">
-        Rankings · This week{weekLabel ? ` · from ${weekLabel}` : ''}
-      </div>
-      <h1 className="text-page-title mt-2 text-content-primary">
-        {week.sector}, ranked on {content.label.toLowerCase()}.
-      </h1>
-      <p className="text-body mt-3">
-        The top ten {week.sector} companies on the{' '}
-        <Link href={readingHref} className="underline underline-offset-2 hover:text-content-primary">
-          {content.label.toLowerCase()} ranking
-        </Link>
-        , open to everyone. A different sector and reading each week, chosen by the calendar, not by us.
-      </p>
-    </header>
-  )
-
-  if (cut === 'unavailable') {
-    return (
-      <div className="container-lg section-gap" data-weekly-cut="unavailable">
-        {header}
-        <EmptyState
-          analyticsId="picks_weekly_unavailable"
-          title="This week's ranking is temporarily unavailable"
-          description="Vesconte could not load the current scorecard snapshot. Nothing is wrong with your account — the request upstream did not complete."
-          action={<RetryButton analyticsId="picks_weekly_retry">Retry</RetryButton>}
-        />
-      </div>
-    )
-  }
-
-  if (cut.status === 'unsupported' || cut.ranking.items.length === 0) {
-    return (
-      <div className="container-lg section-gap" data-weekly-cut="unpublished">
-        {header}
-        <EmptyState
-          analyticsId="picks_weekly_unpublished"
-          title="This week's ranking is not published yet"
-          description="Rankings by sector are still being added. Until they are, where any single company stands is free on its own page."
-        />
-      </div>
-    )
-  }
-
-  const { ranking } = cut
-  const asOfLabel = formatSnapshotDate(ranking.asOf)
-  const isIncome = week.reading === 'income'
+  const ranking = cut !== 'unavailable' && cut.status === 'ok' && cut.ranking.items.length > 0 ? cut.ranking : null
+  const state = cut === 'unavailable' ? 'unavailable' : ranking ? 'ok' : 'unpublished'
+  const asOfLabel = ranking ? formatSnapshotDate(ranking.asOf) : null
 
   return (
-    <div className="container-lg section-gap" data-weekly-cut="ok">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        {header}
-        {asOfLabel ? (
-          <div className="text-caption shrink-0 rounded-md border border-border bg-surface-elevated px-3 py-1.5 text-content-muted">
-            Snapshot · {asOfLabel}
+    <div className={styles.page} data-weekly-cut={state}>
+      <header className={styles.head}>
+        <div className={styles.titleRow}>
+          <div>
+            <p className={styles.eyebrow}>This week · Free</p>
+            <h1 className={styles.title}>{week.sector}</h1>
+            <p className={styles.subtitle}>
+              The top ten on{' '}
+              <Link href={readingHref} className={styles.inlineLink}>
+                {content.label.toLowerCase()}
+              </Link>
+              . A new sector every Monday, picked by the calendar.
+            </p>
           </div>
-        ) : null}
-      </div>
-
-      <div className="flex max-w-5xl flex-col gap-6">
-        <div className="grid gap-4 sm:grid-cols-2">
-          {ranking.items.map((item, index) => (
-            <div key={item.symbol} className="flex flex-col gap-1.5">
-              <PickCard item={item} rank={index + 1} />
-              {isIncome ? <PickCapitalNote value={item.capitalPerThousandIncome} className="px-1" /> : null}
-            </div>
-          ))}
+          {weekLabel ? (
+            <span className={styles.stamp}>
+              <span className={styles.stampDot} aria-hidden="true" />
+              Week of {weekLabel}
+            </span>
+          ) : null}
         </div>
+        <RankingsNav active="weekly" />
+      </header>
 
-        <p className="text-caption text-content-muted">
-          {PICK_SCORE_CAVEAT} Ranks are within {week.sector} only.{' '}
-          <Link href={readingHref} className="underline underline-offset-2 hover:text-content-primary">
-            How the {content.label.toLowerCase()} ranking is read
-          </Link>
-        </p>
+      {state === 'unavailable' ? (
+        <div className={styles.empty} data-analytics-id="picks_weekly_unavailable">
+          <h2 className={styles.emptyTitle}>This week&apos;s ranking is temporarily unavailable</h2>
+          <p className={styles.emptyText}>The latest snapshot did not load. Nothing is wrong with your account.</p>
+          <RetryButton analyticsId="picks_weekly_retry">Retry</RetryButton>
+        </div>
+      ) : null}
 
-        <PickDisclosure asOfLabel={asOfLabel} />
-      </div>
+      {state === 'unpublished' ? (
+        <div className={styles.empty} data-analytics-id="picks_weekly_unpublished">
+          <h2 className={styles.emptyTitle}>Not published yet</h2>
+          <p className={styles.emptyText}>
+            Sector rankings are on their way. Until then, any company&apos;s standing is free on its own page.
+          </p>
+        </div>
+      ) : null}
+
+      {ranking ? (
+        <div className={styles.main}>
+          <div className={styles.grid}>
+            {ranking.items.map((item, index) => (
+              <PickCard key={item.symbol} item={item} rank={index + 1} index={index} showCapital={week.reading === 'income'} showSector={false} />
+            ))}
+          </div>
+          <p className={styles.caveat}>
+            {PICK_SCORE_CAVEAT} Ranks are within {week.sector} only.
+          </p>
+          <PickDisclosure asOfLabel={asOfLabel} />
+        </div>
+      ) : null}
     </div>
   )
 }

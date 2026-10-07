@@ -1,16 +1,24 @@
 import Link from 'next/link'
-import Card from '@/components/ui/Card'
+import type { CSSProperties } from 'react'
+import ResearchChapter from '@/components/stocks/research/ResearchChapter'
 import PickDisclosure from '@/components/picks/PickDisclosure'
 import { PICK_READING_CONTENT, PICK_READING_TO_SLUG, formatSnapshotDate } from '@/lib/picks-content'
 import { absenceCopy, formatStandingPercent, type TickerReadings } from '@/lib/ticker-readings'
 import { readingPartsDetail } from '@/lib/reading-eligibility'
+import styles from '@/components/picks/Rankings.module.css'
+
+/** Where the company sits between the bottom (0) and the top (100) of the ranked population. */
+function percentileFromBottom(position: number, universeSize: number): number {
+  if (universeSize <= 1) return 100
+  return Math.round(((universeSize - position) / (universeSize - 1)) * 1000) / 10
+}
 
 /**
  * Where one company stands in each ranking. Free to every reader.
  *
- * It answers "where is this one", never "which ones lead": a standing is shown as a
- * band (`Top 12%`) and a position out of the ranked population, with what the
- * reading measures beside it. The ordered list itself is the paid ranking.
+ * It answers "where is this one", never "which ones lead": a band (`Top 7%`), the
+ * company's place on a bottom-to-top track and its position out of the ranked
+ * population. The ordered list itself is the paid ranking.
  */
 export default function StockRankingsResearch({
   ticker,
@@ -22,84 +30,75 @@ export default function StockRankingsResearch({
   const asOfLabel = formatSnapshotDate(readings?.asOf ?? null)
 
   return (
-    <div className="flex flex-col gap-6" data-research-view="" data-ticker-rankings="">
-      <header className="max-w-3xl">
-        <h1 className="text-section-title text-content-primary">Where {ticker} stands</h1>
-        <p className="text-body mt-2">
-          Each ranking reads the same companies for a different question. A standing places {ticker} against
-          every other ranked company{asOfLabel ? `, as of ${asOfLabel}` : ''}.
-        </p>
-      </header>
+    <div data-research-view="" data-ticker-rankings="">
+      <ResearchChapter id="standings" label={`Where ${ticker} stands`} aside={<PickDisclosure asOfLabel={asOfLabel} />}>
+        {readings ? (
+          <div className={styles.standings}>
+            {readings.readings.map((item, index) => {
+              const content = PICK_READING_CONTENT[item.reading]
+              const href = `/picks/${PICK_READING_TO_SLUG[item.reading]}`
+              const ranked = item.status === 'ranked'
+              const p = ranked ? percentileFromBottom(item.standing.position, item.standing.universeSize) : 0
+              const detail =
+                item.status === 'absent' && item.absenceReason === 'insufficient_coverage'
+                  ? readingPartsDetail(item.measuredParts, item.missingParts)
+                  : null
 
-      {readings ? (
-        <div className="grid gap-4 lg:grid-cols-3">
-          {readings.readings.map((item) => {
-            const content = PICK_READING_CONTENT[item.reading]
-            const href = `/picks/${PICK_READING_TO_SLUG[item.reading]}`
-            const detail =
-              item.status === 'absent' && item.absenceReason === 'insufficient_coverage'
-                ? readingPartsDetail(item.measuredParts, item.missingParts)
-                : null
-
-            return (
-              <Card key={item.reading} className="flex flex-col rounded-[var(--radius-2xl)]" data-reading={item.reading}>
-                <div className="text-caption uppercase tracking-[0.18em] text-content-muted">{content.label}</div>
-
-                {item.status === 'ranked' ? (
-                  <>
-                    <div className="numeric-tabular mt-3 text-3xl font-black leading-none text-content-primary">
-                      {formatStandingPercent(item.standing.position, item.standing.universeSize)}
-                    </div>
-                    <div className="text-caption numeric-tabular mt-2 text-content-muted">
-                      #{item.standing.position} of {item.standing.universeSize} ranked companies
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="mt-3 text-xl font-semibold text-content-primary">{absenceCopy(item.absenceReason)}</div>
-                    {detail ? <div className="text-caption mt-2 text-content-muted">{detail}</div> : null}
-                  </>
-                )}
-
-                <p className="text-body-sm mt-4 text-content-secondary">{content.reader}</p>
-
-                <ul className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
-                  {content.measures.map((measure) => (
-                    <li key={measure.label} className="flex items-baseline justify-between gap-3">
-                      <span className="text-caption text-content-secondary">{measure.label}</span>
-                      {measure.weight ? (
-                        <span className="numeric-tabular text-caption text-content-muted">{measure.weight}</span>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-
-                <Link
-                  href={href}
-                  className="text-caption mt-auto pt-4 text-content-muted underline underline-offset-2 hover:text-content-primary"
+              return (
+                <article
+                  key={item.reading}
+                  className={styles.standing}
+                  style={{ '--i': index, '--p': `${p}%` } as CSSProperties}
+                  data-reading={item.reading}
                 >
-                  How {content.label.toLowerCase()} is read
-                </Link>
-              </Card>
-            )
-          })}
-        </div>
-      ) : (
-        <Card tone="quiet" className="rounded-[var(--radius-2xl)]">
-          <p className="text-body">Standings for {ticker} are not available right now.</p>
-        </Card>
-      )}
+                  <div className={styles.standingHead}>
+                    <span className={styles.standingLabel}>{content.label}</span>
+                    <Link href={href} className={styles.standingLink}>
+                      The model
+                    </Link>
+                  </div>
 
-      <p className="text-caption text-content-muted">
-        Top and Bottom bands place a company against the others; they are not marks out of a hundred. The full
-        current order is part of a paid plan;{' '}
-        <Link href="/picks/weekly" className="underline underline-offset-2 hover:text-content-primary">
-          this week&apos;s ranking
-        </Link>{' '}
-        is free.
-      </p>
+                  {ranked ? (
+                    <>
+                      <p className={styles.standingValue}>
+                        {formatStandingPercent(item.standing.position, item.standing.universeSize)}
+                      </p>
+                      <div className={styles.percentile}>
+                        <div
+                          className={styles.percentileTrack}
+                          role="img"
+                          aria-label={`Position ${item.standing.position} of ${item.standing.universeSize}, counted from the top`}
+                        >
+                          <span className={styles.percentileFill} />
+                          <span className={styles.percentileMarker} />
+                        </div>
+                        <div className={styles.percentileEnds} aria-hidden="true">
+                          <span>Bottom</span>
+                          <span>Top</span>
+                        </div>
+                      </div>
+                      <p className={styles.standingMeta}>
+                        #{item.standing.position} of {item.standing.universeSize}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className={styles.standingAbsent}>{absenceCopy(item.absenceReason)}</p>
+                      {detail ? <p className={styles.standingParts}>{detail}</p> : null}
+                    </>
+                  )}
 
-      <PickDisclosure asOfLabel={asOfLabel} />
+                  <p className={styles.standingParts}>{content.subtitle}</p>
+                </article>
+              )
+            })}
+          </div>
+        ) : (
+          <div className={styles.empty}>
+            <p className={styles.emptyText}>Standings for {ticker} are not available right now.</p>
+          </div>
+        )}
+      </ResearchChapter>
     </div>
   )
 }
