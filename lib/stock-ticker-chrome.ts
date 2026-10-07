@@ -2,7 +2,6 @@ import 'server-only'
 
 import { getViewerUserId } from '@/lib/auth'
 import { currencyForTicker } from '@/lib/currency'
-import { getTickerRelationships, rankTickerRelationshipCandidates } from '@/lib/relationships'
 import { resolveStockAsset, type StockAssetBadge } from '@/lib/stock-asset-kind'
 import { getTickerPageSummary } from '@/lib/ticker-data'
 import { tickerIdentityColor } from '@/lib/ticker-identity-color'
@@ -22,11 +21,6 @@ export type StockTickerChromeData = {
     signedIn: boolean
     initialInWatchlist: boolean
   }
-  relationships: Array<{
-    symbol: string
-    strength: number | null
-    confidence: number | null
-  }>
 }
 
 export async function getStockTickerChromeData(tickerRaw: string): Promise<StockTickerChromeData> {
@@ -35,9 +29,8 @@ export async function getStockTickerChromeData(tickerRaw: string): Promise<Stock
   const watchlistPromise = viewerUserIdPromise.then((userId) =>
     userId ? isTickerInWatchlist(userId, ticker).catch(() => false) : false
   )
-  const [summary, relationships, viewerUserId, initialInWatchlist] = await Promise.all([
+  const [summary, viewerUserId, initialInWatchlist] = await Promise.all([
     getTickerPageSummary(ticker).catch(() => null),
-    getTickerRelationships(ticker, { window: 252, topK: 50 }).catch(() => null),
     viewerUserIdPromise,
     watchlistPromise,
   ])
@@ -52,14 +45,6 @@ export async function getStockTickerChromeData(tickerRaw: string): Promise<Stock
         latestFundamentals: summary.latestFundamentals,
       }).badge
     : 'Equity'
-  const fieldNodes = relationships
-    ? rankTickerRelationshipCandidates(relationships, ticker).map(({ symbol, strength, confidence }) => ({
-        symbol,
-        strength,
-        confidence,
-      }))
-    : []
-
   return {
     ticker,
     displayName,
@@ -74,6 +59,5 @@ export async function getStockTickerChromeData(tickerRaw: string): Promise<Stock
       signedIn: Boolean(viewerUserId),
       initialInWatchlist,
     },
-    relationships: fieldNodes,
   }
 }

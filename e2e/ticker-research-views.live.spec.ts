@@ -39,7 +39,7 @@ test.describe('ticker research views Phase 2 slice', () => {
     await expect(tickerChrome.locator('[data-ticker-identity]')).toContainText('AAPL')
     await expect(tickerChrome.locator('[data-ticker-price]')).toBeVisible()
     await expect(tickerChrome.locator('[data-selected-ticker-node]')).toBeVisible()
-    await expect(tickerChrome.locator('[data-ticker-relationship-field]')).toBeVisible()
+    await expect(page.locator('[data-ticker-universe]')).toBeVisible()
     await expect(page.getByRole('button', { name: /Perspective/ })).toHaveCount(0)
     await expect(page.getByText('Final grade', { exact: true })).toHaveCount(0)
     await expectNoHorizontalOverflow(page)
