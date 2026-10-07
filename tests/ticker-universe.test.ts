@@ -4,6 +4,8 @@ import {
   claimUniverseHandoff,
   createUniverse,
   ensureOwnLinks,
+  handOffUniverseTo,
+  provideUniverse,
   offerUniverseHandoff,
   projectUniverse,
   type ProjectedNode,
@@ -24,6 +26,9 @@ function handoff(ticker: string, createdAt: number): UniverseHandoff {
     view: { ax: 0.2, ay: 0.4, zoom: 4, x: 432, y: 450 },
     lineScale: 4,
     progress: 0,
+    orb: { outer: 23.1, ring: 9.2, glow: 63, label: true },
+    veil: 0.7,
+    focusLinks: 1,
     createdAt,
   }
 }
@@ -83,4 +88,16 @@ test('a focused node with too few links gains links to its nearest nodes', () =>
   assert.equal(own(), 3)
   assert.equal(universe.pairLengths.length, universe.pairs.length / 2)
   assert.equal(ensureOwnLinks(universe), universe.pairs.length, 'nothing more to add')
+})
+
+test('a search hands over only while the homepage provides its network', () => {
+  const asked: string[] = []
+  const release = provideUniverse((ticker) => { asked.push(ticker); return handoff(ticker, 10_000) })
+  handOffUniverseTo(' jpm ')
+  assert.deepEqual(asked, ['JPM'])
+  assert.ok(claimUniverseHandoff('JPM', 10_100))
+  release()
+  handOffUniverseTo('AAPL')
+  assert.deepEqual(asked, ['JPM'], 'nothing is asked once the homepage is gone')
+  assert.equal(claimUniverseHandoff('AAPL', 10_200), null)
 })

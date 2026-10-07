@@ -6,7 +6,7 @@ import gsap from 'gsap'
 import { useScrollRuntime } from '@/components/motion/ScrollRuntime'
 import { scrollMotionTokens } from '@/components/motion/scroll-tokens'
 import { PICK_READING_CONTENT, PICK_READING_KEYS } from '@/lib/picks-content'
-import { offerUniverseHandoff } from '@/lib/ticker-universe'
+import { offerUniverseHandoff, provideUniverse } from '@/lib/ticker-universe'
 
 
 type HcNode = {
@@ -573,6 +573,15 @@ export default function HeroConstellation() {
     // camera until the orb lands on the ticker's identity node. A modified
     // click (new tab, new window) stays an ordinary link.
     const openLink = $('hc-fcO') as HTMLAnchorElement
+    // The network as it stands this frame, with `index` as the node the
+    // ticker page will carry.
+    const universeNow = (index: number) => ({
+      nodes: nodes.map((n) => ({
+        x: n.bx + Math.sin(tt * n.S1 + n.P1) * n.A1, y: n.by + Math.cos(tt * n.S2 + n.P2) * n.A2, z: n.bz + Math.sin(tt * n.S3 + n.P3) * n.A3,
+        r: n.r, label: n.label, signal: n.signal, light: n.light, clar: n.clar,
+      })),
+      pairs: [...pairs], pairLengths: [...pairLengths], lightReach, R, cam, focus: index,
+    })
     const onOpen = (event: MouseEvent) => {
       const fn = focus.i >= 0 ? nodes[focus.i] : null
       if (!fn?.label || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
@@ -580,20 +589,47 @@ export default function HeroConstellation() {
       const fs = 1 + focus.t * 3
       offerUniverseHandoff({
         ticker: fn.label,
-        universe: {
-          nodes: nodes.map((n) => ({
-            x: n.bx + Math.sin(tt * n.S1 + n.P1) * n.A1, y: n.by + Math.cos(tt * n.S2 + n.P2) * n.A2, z: n.bz + Math.sin(tt * n.S3 + n.P3) * n.A3,
-            r: n.r, label: n.label, signal: n.signal, light: n.light, clar: n.clar,
-          })),
-          pairs: [...pairs], pairLengths: [...pairLengths], lightReach, R, cam, focus: focus.i,
-        },
+        universe: universeNow(focus.i),
         view: { ax: viewAx, ay: viewAy, zoom: viewZoom * fs, x: fn.sx + (W * 0.30 - fn.sx) * focus.t, y: fn.sy + (H * 0.5 - fn.sy) * focus.t },
         lineScale: fs,
         progress: p,
+        // Same geometry as orb() at focus.t = 1.
+        orb: { outer: 23.1, ring: 9.2, glow: 63, label: true },
+        veil: 0.7,
+        focusLinks: 1,
         createdAt: Date.now(),
       })
       routerRef.current.push(openLink.getAttribute('href') ?? '/stocks/' + encodeURIComponent(fn.label))
     }
+    // A search from the homepage carries the network too: a node with no
+    // ticker of its own, picked at random among those on screen, becomes the
+    // searched ticker and the camera turns it into place on the ticker page.
+    const releaseUniverse = provideUniverse((ticker) => {
+      // The focus card zooms the field; its own link already hands over.
+      if (focus.i >= 0 || focus.t > 0.01) return null
+      const candidates: number[] = []
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i]
+        if (n.label || n.signal || n.da < 0.45) continue
+        if (n.sx < W * 0.08 || n.sx > W * 0.92 || n.sy < H * 0.12 || n.sy > H * 0.88) continue
+        candidates.push(i)
+      }
+      if (!candidates.length) return null
+      const index = candidates[Math.floor(Math.random() * candidates.length)]
+      const n = nodes[index]
+      const radius = Math.max(1.5, n.r * n.sc)
+      return {
+        ticker,
+        universe: universeNow(index),
+        view: { ax: viewAx, ay: viewAy, zoom: viewZoom, x: n.sx, y: n.sy },
+        lineScale: 1,
+        progress: p,
+        orb: { outer: radius, ring: radius, glow: 0, label: false },
+        veil: 0,
+        focusLinks: 0,
+        createdAt: Date.now(),
+      }
+    })
     openLink.addEventListener('click', onOpen)
     let pendingFocus = false
     const openAfterChromeSettles = (idx: number) => {
@@ -664,7 +700,7 @@ export default function HeroConstellation() {
       window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseout', onOut); window.removeEventListener('resize', onResize)
       window.removeEventListener('pointerdown', finishReveal); window.removeEventListener('keydown', finishReveal); window.removeEventListener('wheel', finishReveal); window.removeEventListener('touchstart', finishReveal); window.removeEventListener('focusin', finishReveal)
       window.removeEventListener('keydown', onKey); window.removeEventListener('click', onClick, true)
-      openLink.removeEventListener('click', onOpen)
+      openLink.removeEventListener('click', onOpen); releaseUniverse()
       window.removeEventListener('mousedown', onDown, true); window.removeEventListener('meridian:search-focus', onSearchFocus)
       window.removeEventListener('wheel', onWheel, true); window.removeEventListener('touchstart', onTouchStart, true); window.removeEventListener('touchmove', onTouchMove, true)
       backBtn.removeEventListener('click', closeFocus); fDim.removeEventListener('click', closeFocus)

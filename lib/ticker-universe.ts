@@ -51,6 +51,13 @@ export type UniverseHandoff = {
   lineScale: number
   // The homepage's scroll-in progress, which brightens its links.
   progress: number
+  // The focused node as the homepage drew it: the focus card's orb (a ring
+  // with a glow and the ticker beside it), or a plain node picked for a search.
+  orb: { outer: number; ring: number; glow: number; label: boolean }
+  // The homepage's focus-mode veil over its field (0 when there is none), and
+  // how strongly it already drew the node's own links in the accent (0 to 1).
+  veil: number
+  focusLinks: number
   createdAt: number
 }
 
@@ -63,6 +70,21 @@ let pending: { handoff: UniverseHandoff; claimedAt: number | null } | null = nul
 
 export function offerUniverseHandoff(handoff: UniverseHandoff) {
   pending = { handoff, claimedAt: null }
+}
+
+// The homepage registers itself while it is mounted, so a search made from
+// it can hand its network over too (see TickerSearchCombobox).
+let provider: ((ticker: string) => UniverseHandoff | null) | null = null
+
+export function provideUniverse(make: (ticker: string) => UniverseHandoff | null) {
+  provider = make
+  return () => { if (provider === make) provider = null }
+}
+
+/** Offers the mounted homepage's network to `ticker`'s page, if there is one. */
+export function handOffUniverseTo(ticker: string) {
+  const handoff = provider?.(ticker.trim().toUpperCase())
+  if (handoff) offerUniverseHandoff(handoff)
 }
 
 /** The pending handoff when it is for this ticker and still fresh. */

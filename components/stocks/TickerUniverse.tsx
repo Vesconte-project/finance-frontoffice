@@ -210,21 +210,23 @@ export default function TickerUniverse() {
       g!.globalCompositeOperation = 'source-over'
 
       // The ticker's own links leave the node in the accent, fading outward.
+      // A searched node's links start plain and light up on the way.
+      const litLinks = handoff ? handoff.focusLinks : 1
       for (let p = 0; p < pairs.length; p += 2) {
         if (pairs[p] !== focus && pairs[p + 1] !== focus) continue
         const o = projected[pairs[p] === focus ? pairs[p + 1] : pairs[p]]
         const gained = p >= ownLinksFrom && handoff && !done ? k : 1
         const gradient = g!.createLinearGradient(f.sx, f.sy, o.sx, o.sy)
-        gradient.addColorStop(0, 'rgba(' + accent + ',' + lerp(0.82, 0.34, k) * gained + ')')
-        gradient.addColorStop(1, 'rgba(' + accent + ',' + lerp(0.82, 0.04, k) * gained + ')')
+        gradient.addColorStop(0, 'rgba(' + accent + ',' + lerp(0.82 * litLinks, 0.34, k) * gained + ')')
+        gradient.addColorStop(1, 'rgba(' + accent + ',' + lerp(0.82 * litLinks, 0.04, k) * gained + ')')
         g!.strokeStyle = gradient
-        g!.lineWidth = lerp(1.4 + 2 * (handoff ? 1 : 0), 1.2, k)
+        g!.lineWidth = lerp(1 + 2.4 * litLinks, 1.2, k)
         g!.beginPath(); g!.moveTo(f.sx, f.sy); g!.lineTo(o.sx, o.sy); g!.stroke()
       }
 
       // The homepage's focus mode veils its field (#hc-focusDim); the veil lifts
       // as the camera turns, so the first frame matches the homepage's last.
-      const veil = handoff && !done ? 0.7 * (1 - k) : 0
+      const veil = handoff && !done ? handoff.veil * (1 - k) : 0
       if (veil > 0) {
         g!.globalAlpha = veil; g!.fillStyle = bg
         g!.fillRect(0, 0, width, height); g!.globalAlpha = 1
@@ -237,17 +239,21 @@ export default function TickerUniverse() {
         const restOuter = rect ? rect.width / 2 : 8.5
         const restRing = style ? Number.parseFloat(style.borderTopWidth) || 2 : 2
         const tone = style?.borderTopColor ? rgbOf(style.borderTopColor) : accent
-        const toneMix = accent.split(',').map((v, j) => Math.round(lerp(Number(v), Number(tone.split(',')[j]), k))).join(',')
-        const outer = lerp(23.1, restOuter, k)
+        // A searched node starts as the plain node it was; the focus card's
+        // orb starts in the accent.
+        const from = handoff!.orb
+        const startTone = from.label ? accent : lineRgb
+        const toneMix = startTone.split(',').map((v, j) => Math.round(lerp(Number(v), Number(tone.split(',')[j]), k))).join(',')
+        const outer = lerp(from.outer, restOuter, k)
         Object.assign(orb.style, {
           left: f.sx + box.left - outer + 'px', top: f.sy + box.top - outer + 'px',
           width: outer * 2 + 'px', height: outer * 2 + 'px',
-          borderWidth: lerp(9.2, restRing, k) + 'px', borderColor: 'rgb(' + toneMix + ')',
+          borderWidth: Math.min(outer, lerp(from.ring, restRing, k)) + 'px', borderColor: 'rgb(' + toneMix + ')',
           background: k < 0.5 ? surface : bg,
-          boxShadow: '0 0 0 ' + Math.max(0, 63 * (1 - 0.6 * k) - outer) + 'px rgba(' + accent + ',' + 0.28 * (1 - k) + ')',
+          boxShadow: from.glow > 0 ? '0 0 0 ' + Math.max(0, from.glow * (1 - 0.6 * k) - outer) + 'px rgba(' + accent + ',' + 0.28 * (1 - k) + ')' : 'none',
         })
         orb.style.opacity = String(1 - veil)
-        orbLabel!.style.opacity = String(labels)
+        orbLabel!.style.opacity = String(from.label ? labels : 0)
       }
 
       if (!done && k >= 1) {
