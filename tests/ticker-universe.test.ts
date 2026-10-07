@@ -3,6 +3,7 @@ import test from 'node:test'
 import {
   claimUniverseHandoff,
   createUniverse,
+  ensureOwnLinks,
   offerUniverseHandoff,
   projectUniverse,
   type ProjectedNode,
@@ -64,4 +65,21 @@ test('projection pins the focused node where the view puts it', () => {
     assert.ok(Math.abs(out[universe.focus].sx - view.x) < 1e-9)
     assert.ok(Math.abs(out[universe.focus].sy - view.y) < 1e-9)
   }
+})
+
+test('a focused node with too few links gains links to its nearest nodes', () => {
+  const universe = createUniverse('XOM', 1440, 900, seeded(5))
+  const own = () => { let n = 0; for (let k = 0; k < universe.pairs.length; k += 2) if (universe.pairs[k] === universe.focus || universe.pairs[k + 1] === universe.focus) n++; return n }
+  // Strip the node's links, as a homepage draw sometimes leaves it.
+  const kept: number[] = [], lengths: number[] = []
+  for (let k = 0; k < universe.pairs.length; k += 2) {
+    if (universe.pairs[k] === universe.focus || universe.pairs[k + 1] === universe.focus) continue
+    kept.push(universe.pairs[k], universe.pairs[k + 1]); lengths.push(universe.pairLengths[k / 2])
+  }
+  universe.pairs = kept; universe.pairLengths = lengths
+  const from = ensureOwnLinks(universe)
+  assert.equal(from, kept.length)
+  assert.equal(own(), 3)
+  assert.equal(universe.pairLengths.length, universe.pairs.length / 2)
+  assert.equal(ensureOwnLinks(universe), universe.pairs.length, 'nothing more to add')
 })

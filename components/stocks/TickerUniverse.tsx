@@ -6,6 +6,7 @@ import { useScrollRuntime } from '@/components/motion/ScrollRuntime'
 import {
   claimUniverseHandoff,
   createUniverse,
+  ensureOwnLinks,
   projectUniverse,
   type ProjectedNode,
   type UniverseView,
@@ -60,6 +61,8 @@ export default function TickerUniverse() {
 
     const handoff = claimUniverseHandoff(ticker, Date.now())
     const universe = handoff?.universe ?? createUniverse(ticker, html.clientWidth, window.innerHeight)
+    // Links the node gains here (the homepage gave it too few) fade in.
+    const ownLinksFrom = ensureOwnLinks(universe)
     const { nodes, pairs, pairLengths, lightReach } = universe
     const projected: ProjectedNode[] = []
     const start: UniverseView = handoff?.view ?? { ax: 0.16, ay: 0.5, zoom: REST_ZOOM, x: 0, y: 0 }
@@ -144,7 +147,7 @@ export default function TickerUniverse() {
         const peak = Math.max(a.light, b.light)
         if (peak > 0.08) {
           const length = pairLengths[p / 2]
-          const strength = lerp(0.85 * (0.06 + 0.94 * clar), 0.28, k)
+          const strength = lerp(0.85 * (0.06 + 0.94 * clar), 0.16, k)
           const gradient = g!.createLinearGradient(pa.sx, pa.sy, pb.sx, pb.sy)
           for (const s of [0, 0.25, 0.5, 0.75, 1]) {
             const along = Math.max(a.light * Math.exp(-s * length / lightReach), b.light * Math.exp(-(1 - s) * length / lightReach))
@@ -161,7 +164,7 @@ export default function TickerUniverse() {
         if (i === focus) continue
         const n = nodes[i], pn = projected[i]
         const homeAlpha = pn.depth * (0.10 + 0.90 * n.clar)
-        const restAlpha = n.signal ? 0.32 : 0.1 + 0.22 * pn.depth
+        const restAlpha = n.signal ? 0.3 : 0.14 + 0.26 * pn.depth
         const r = Math.min(15 * lineScale, Math.max(0.5, n.r * pn.s))
         g!.globalAlpha = Math.min(1, lerp(homeAlpha, restAlpha, k))
         g!.fillStyle = n.signal ? 'rgb(' + accent + ')' : 'rgb(' + lineRgb + ')'
@@ -186,16 +189,26 @@ export default function TickerUniverse() {
       mask.addColorStop(1, 'rgba(0,0,0,' + (1 - k) + ')')
       g!.fillStyle = mask
       g!.fillRect(0, 0, width, height)
+      // ...and it is the ticker's neighbourhood: it fades with the distance
+      // from the node, so no stray piece of the network floats on its own.
+      const f = projected[focus]
+      const reach = Math.min(1000, Math.max(520, width * 0.5))
+      const around = g!.createRadialGradient(f.sx, f.sy, 0, f.sx, f.sy, reach)
+      around.addColorStop(0, 'rgba(0,0,0,1)')
+      around.addColorStop(0.3, 'rgba(0,0,0,1)')
+      around.addColorStop(1, 'rgba(0,0,0,' + (1 - k) + ')')
+      g!.fillStyle = around
+      g!.fillRect(0, 0, width, height)
       g!.globalCompositeOperation = 'source-over'
 
       // The ticker's own links leave the node in the accent, fading outward.
-      const f = projected[focus]
       for (let p = 0; p < pairs.length; p += 2) {
         if (pairs[p] !== focus && pairs[p + 1] !== focus) continue
         const o = projected[pairs[p] === focus ? pairs[p + 1] : pairs[p]]
+        const gained = p >= ownLinksFrom && handoff && !done ? k : 1
         const gradient = g!.createLinearGradient(f.sx, f.sy, o.sx, o.sy)
-        gradient.addColorStop(0, 'rgba(' + accent + ',' + lerp(0.82, 0.34, k) + ')')
-        gradient.addColorStop(1, 'rgba(' + accent + ',' + lerp(0.82, 0, k) + ')')
+        gradient.addColorStop(0, 'rgba(' + accent + ',' + lerp(0.82, 0.34, k) * gained + ')')
+        gradient.addColorStop(1, 'rgba(' + accent + ',' + lerp(0.82, 0.04, k) * gained + ')')
         g!.strokeStyle = gradient
         g!.lineWidth = lerp(1.4 + 2 * (handoff ? 1 : 0), 1.2, k)
         g!.beginPath(); g!.moveTo(f.sx, f.sy); g!.lineTo(o.sx, o.sy); g!.stroke()

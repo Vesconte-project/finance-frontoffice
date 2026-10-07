@@ -152,6 +152,31 @@ export function createUniverse(ticker: string, width: number, height: number, ra
   return { nodes, pairs, pairLengths, lightReach, R, cam: R * 1.9, focus }
 }
 
+/**
+ * Gives the focused node at least `min` links of its own, to its nearest
+ * nodes. The homepage picks links at random, so its focused node can have
+ * none; on the ticker page the node is where the universe starts from.
+ * Returns the index in `pairs` where the added links begin.
+ */
+export function ensureOwnLinks(universe: Universe, min = 3): number {
+  const { nodes, pairs, pairLengths, focus } = universe
+  const addedFrom = pairs.length
+  const linked = new Set<number>()
+  for (let k = 0; k < pairs.length; k += 2) {
+    if (pairs[k] === focus) linked.add(pairs[k + 1])
+    else if (pairs[k + 1] === focus) linked.add(pairs[k])
+  }
+  if (linked.size >= min) return addedFrom
+  const f = nodes[focus]
+  nodes
+    .map((n, i) => [i, Math.hypot(n.x - f.x, n.y - f.y, n.z - f.z)] as const)
+    .filter(([i]) => i !== focus && !linked.has(i))
+    .sort((a, b) => a[1] - b[1])
+    .slice(0, min - linked.size)
+    .forEach(([i, length]) => { pairs.push(focus, i); pairLengths.push(length) })
+  return addedFrom
+}
+
 export type ProjectedNode = { sx: number; sy: number; s: number; depth: number }
 
 /**
