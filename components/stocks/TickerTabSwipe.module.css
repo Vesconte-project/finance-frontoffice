@@ -1,0 +1,34 @@
+/* The destination of a sideways swipe, shown at the edge the content is moving
+   away from. Solid surface, mono label, no motion of its own. */
+.hint {
+  position: fixed;
+  top: 50%;
+  z-index: 40;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.hint:empty {
+  display: none;
+}
+
+.hint[data-side='right'] {
+  right: 0.75rem;
+}
+
+.hint[data-side='left'] {
+  left: 0.75rem;
+}
+
+.hint[data-side=''] {
+  opacity: 0;
+}

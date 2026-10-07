@@ -25,7 +25,7 @@ const ELSEWHERE = [
   {
     href: '/picks/long-term',
     icon: PanelsTopLeft,
-    title: 'Top picks',
+    title: 'Rankings',
     body: 'The tracked universe ranked three ways — long term, income and short term.',
   },
   {

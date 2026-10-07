@@ -81,9 +81,9 @@ test('both recovery actions resolve to the existing auth routes with no return-t
   // Creating an account is the primary action; signing in is subordinate.
   assert.match(source, /href="\/sign-up"[\s\S]*?variant: 'primary'[\s\S]*?href="\/sign-in"[\s\S]*?variant: 'ghost'/)
 
-  // What the account gives is stated from the real entitlement, not a guess.
-  assert.match(source, /PICK_VISIBLE_LIMITS\.free/)
-  assert.match(source, /PICK_VISIBLE_LIMITS\.anonymous/)
+  // What the account gives is only what a free account really opens. Rankings are
+  // paid and a company's standing is free to everyone, so neither is promised here.
+  assert.doesNotMatch(source, /PICK_VISIBLE_LIMITS|companies per reading/)
 })
 
 test('the signed-in mutation path is semantically unchanged', () => {
@@ -196,7 +196,6 @@ test('no new dependency or design token is introduced; the modal is the shared p
     '@/components/ui/Button',
     '@/components/ui/Dialog',
     '@/components/ui/PromptPanel',
-    '@/lib/picks-access-rules',
     '@/lib/utils',
     'lucide-react',
     'next/link',

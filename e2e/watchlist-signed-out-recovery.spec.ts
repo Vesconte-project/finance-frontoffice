@@ -46,8 +46,8 @@ test.describe('signed-out watchlist account prompt', () => {
     await expect(dialog).toBeVisible()
     await expect(dialog).toContainText('Sign in to save this ticker to your watchlist.')
     await expect(dialog).toContainText(`A watchlist to keep ${TICKER}`)
-    await expect(dialog).toContainText(`Where ${TICKER} stands in each reading`)
-    await expect(dialog).toContainText('25 companies per reading instead of 5')
+    await expect(dialog).toContainText('A dashboard with the latest changes on the tickers you saved')
+    await expect(dialog).not.toContainText('companies per reading')
 
     const createAccount = dialog.getByRole('link', { name: 'Create account', exact: true })
     const signIn = dialog.getByRole('link', { name: 'Sign in', exact: true })

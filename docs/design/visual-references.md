@@ -136,6 +136,19 @@ A review against the accepted Spec (PRD-78) found these items, now fixed.
   - no section numbers and no dashes in place of values;
   - controls that are not ready answer with a message instead of sitting disabled.
 
+## Rankings — 2026-10-07
+
+The ranking pages (`/picks/*`, the weekly cut) and a company's Rankings section carry the homepage identity into a working page. `components/picks/Rankings.module.css` owns the pattern.
+
+- **Universe band:** `RankingsUniverse` draws the same resting universe the ticker page keeps under its identity (`lib/ticker-universe`, `drawUniverseFrame` at rest), turning around the header's own accent node and fading out at the band's bottom edge. It pauses off screen and in background tabs; reduced motion draws one still frame.
+- **Editorial list, not boxes:** ranked companies are rows on hairlines: rank, ticker and name, the measured parts as thin bars in the model's order, and the score. The whole row is the link.
+- **Light along the hairlines:** a short run of accent light travels along each row's hairline as the list arrives and again under the pointer, the same gesture as the network's light along its links (H9).
+- **Below the paid tier,** the list is drawn as its silhouette with one solid offer panel over it.
+- **A company's standing** is a field of nodes from bottom to top, with the company's own node in the accent and light running from it toward the top.
+- **Disclosure** is one line on a hairline with the full statement in a fold, present on every ranking surface.
+
+Motion is CSS-only (rise, fill, pop, light) and reduced motion removes all of it.
+
 ## Expanding selector study — 2026-07-21
 
 The reusable expanding selector transforms mechanics from the references below into a Vesconte-specific analytical control. It carries no ticker, investment-horizon, URL, or routing semantics. No reference code, assets, branding, or layout was copied.

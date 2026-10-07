@@ -92,7 +92,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     // /screener is deliberately absent: Signals is locked while it is rebuilt, and
     // its page is noindex. It returns here when there is something to read.
-    ...(['long-term', 'income', 'short-term'] as const).map((slug) => ({
+    ...(['long-term', 'income', 'short-term', 'weekly'] as const).map((slug) => ({
       url: `${baseUrl}/picks/${slug}`,
       lastModified: now,
       changeFrequency: 'daily' as const,

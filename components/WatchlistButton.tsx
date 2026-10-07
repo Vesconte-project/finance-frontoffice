@@ -7,7 +7,6 @@ import { buttonClass } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import Dialog from '@/components/ui/Dialog'
 import PromptPanel from '@/components/ui/PromptPanel'
-import { PICK_VISIBLE_LIMITS } from '@/lib/picks-access-rules'
 
 /**
  * Founder-approved copy. Preserve verbatim — these strings are product scope,
@@ -150,11 +149,7 @@ export default function WatchlistButton({
               descriptionId={descriptionId}
               points={[
                 <>A watchlist to keep {ticker} and the other tickers you follow</>,
-                <>Where {ticker} stands in each reading</>,
-                <>
-                  The full Picks rankings — <strong>{PICK_VISIBLE_LIMITS.free}</strong> companies per reading instead of{' '}
-                  <strong>{PICK_VISIBLE_LIMITS.anonymous}</strong>
-                </>,
+                <>A dashboard with the latest changes on the tickers you saved</>,
               ]}
               note="No card, no trial."
               actions={(

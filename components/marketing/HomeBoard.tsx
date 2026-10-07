@@ -6,7 +6,9 @@ import {
   PICK_READING_CONTENT,
   PICK_READING_KEYS,
   PICK_READING_TO_SLUG,
+  PICK_DISCLOSURE,
   PICK_SCORE_CAVEAT,
+  formatSnapshotDate,
   type PickReadingKey,
 } from '@/lib/picks-content'
 import styles from './HomeBoard.module.css'
@@ -26,19 +28,7 @@ export async function loadHomeBoardData(): Promise<HomeBoardData> {
 export function homeBoardHasData(data: HomeBoardData): boolean {
   return PICK_READING_KEYS.some((key) => {
     const result = data[key]
-    return result.status === 'ok' && result.items.length > 0
-  })
-}
-
-function formatAsOf(asOf: string | null): string | null {
-  if (!asOf) return null
-  const parsed = new Date(`${asOf}T00:00:00Z`)
-  if (Number.isNaN(parsed.getTime())) return null
-  return parsed.toLocaleDateString('en-US', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
+    return result.status === 'ok' && result.totalRanked > 0
   })
 }
 
@@ -47,7 +37,7 @@ function ReadingColumn({ reading, result }: { reading: PickReadingKey; result: V
   const readingHref = `/picks/${PICK_READING_TO_SLUG[reading]}`
   const stateMessage = result.status === 'unavailable'
     ? 'Temporarily unavailable.'
-    : result.items.length === 0
+    : result.totalRanked === 0
       ? 'Nothing qualified today.'
       : null
 
@@ -62,6 +52,13 @@ function ReadingColumn({ reading, result }: { reading: PickReadingKey; result: V
 
       {stateMessage ? (
         <p className={styles.state}>{stateMessage}</p>
+      ) : result.status === 'ok' && result.items.length === 0 ? (
+        // Below Pro the tier cut sends a count and no names; say so rather than
+        // leaving an empty column.
+        <p className={styles.state} data-home-board-locked="">
+          <span className="numeric-tabular">{result.totalRanked}</span> companies ranked.{' '}
+          <Link href={readingHref} className={styles.caveatLink}>The current order is part of a paid plan.</Link>
+        </p>
       ) : result.status === 'ok' ? (
         <div className={styles.rows}>
           {/* Homepage presentation cap, not an entitlement cut. */}
@@ -94,7 +91,11 @@ export default async function HomeBoard({ data }: { data: HomeBoardData }) {
     .map((key) => data[key])
     .find((result) => result.status === 'ok' && result.asOf)
   const asOf = datedResult?.status === 'ok' ? datedResult.asOf : null
-  const asOfLabel = formatAsOf(asOf)
+  const asOfLabel = formatSnapshotDate(asOf)
+  const showsNames = PICK_READING_KEYS.some((key) => {
+    const result = data[key]
+    return result.status === 'ok' && result.items.length > 0
+  })
 
   return (
     <section className={styles.section} aria-labelledby="home-board-heading" data-home-board="">
@@ -114,7 +115,22 @@ export default async function HomeBoard({ data }: { data: HomeBoardData }) {
           </div>
         </div>
 
-        <p className={styles.caveat}>{PICK_SCORE_CAVEAT}</p>
+        <p className={styles.caveat}>
+          Free to everyone:{' '}
+          <Link href="/picks/weekly" className={styles.caveatLink} data-analytics-id="home_board_weekly">
+            this week&apos;s ranking
+          </Link>
+          , and where any single company stands on its own page.
+        </p>
+        {showsNames ? (
+          <>
+            <p className={styles.caveat}>{PICK_SCORE_CAVEAT}</p>
+            <p className={styles.caveat} data-pick-disclosure="">
+              {PICK_DISCLOSURE.producer} {PICK_DISCLOSURE.general} {PICK_DISCLOSURE.risk}{' '}
+              <Link href="/product#methodology" className={styles.caveatLink}>Methodology</Link>
+            </p>
+          </>
+        ) : null}
       </div>
     </section>
   )

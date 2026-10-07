@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 const CONTENT = PICK_READING_CONTENT.longTerm
 
 export const metadata: Metadata = {
-  title: `${CONTENT.label} picks — ${CONTENT.headline}`,
+  title: `${CONTENT.label} ranking — ${CONTENT.headline}`,
   description: CONTENT.subtitle,
   alternates: { canonical: '/picks/long-term' },
 }

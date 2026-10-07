@@ -20,41 +20,31 @@ const RANKING = Array.from({ length: PICK_FULL_LIST }, (_, index) => ({
   score: 100 - index,
 }))
 
-test('an anonymous viewer receives five rows and no more', () => {
-  const cut = cutToTier(RANKING, 'anonymous')
-
-  assert.equal(cut.items.length, 5)
-  assert.equal(cut.lockedCount, 20)
-  assert.equal(cut.totalRanked, PICK_FULL_LIST)
-})
-
-test('the rows above the cut are absent, not merely unrendered', () => {
-  // The defect this guards against is returning the full list alongside a count
-  // and trusting the view to stop at five. Anything in the returned object reaches
-  // the browser, so the sixth symbol must not appear anywhere in it.
-  const cut = cutToTier(RANKING, 'anonymous')
-  const serialized = JSON.stringify(cut)
-
-  assert.doesNotMatch(serialized, /SYM6(?:"|,)/)
-  for (const row of RANKING.slice(5)) {
-    assert.equal(
-      cut.items.some((item) => item.symbol === row.symbol),
-      false,
-      `${row.symbol} must not survive the cut`
-    )
-  }
-})
-
-test('signing in unlocks the full list', () => {
-  for (const tier of ['free', 'pro'] as PickTier[]) {
+test('only a Pro viewer receives ranked rows', () => {
+  for (const tier of ['anonymous', 'free'] as PickTier[]) {
     const cut = cutToTier(RANKING, tier)
-    assert.equal(cut.items.length, PICK_FULL_LIST)
-    assert.equal(cut.lockedCount, 0)
+    assert.equal(cut.items.length, 0, `${tier} must receive no rows`)
+    assert.equal(cut.lockedCount, PICK_FULL_LIST)
+    assert.equal(cut.totalRanked, PICK_FULL_LIST)
+  }
+
+  const pro = cutToTier(RANKING, 'pro')
+  assert.equal(pro.items.length, PICK_FULL_LIST)
+  assert.equal(pro.lockedCount, 0)
+})
+
+test('the rows a tier may not see are absent, not merely unrendered', () => {
+  // The defect this guards against is returning the full list alongside a count
+  // and trusting the view to render nothing. Anything in the returned object
+  // reaches the browser, so no symbol may appear anywhere in it.
+  for (const tier of ['anonymous', 'free'] as PickTier[]) {
+    const serialized = JSON.stringify(cutToTier(RANKING, tier))
+    assert.doesNotMatch(serialized, /SYM\d/, `${tier} payload must carry no symbol`)
   }
 })
 
 test('a short ranking never reports negative locked rows', () => {
-  const cut = cutToTier(RANKING.slice(0, 4), 'anonymous')
+  const cut = cutToTier(RANKING.slice(0, 4), 'pro')
 
   assert.equal(cut.items.length, 4)
   assert.equal(cut.lockedCount, 0)
@@ -64,12 +54,11 @@ test('a short ranking never reports negative locked rows', () => {
 test('no tier is allowed to see more than the ranking holds', () => {
   for (const [tier, limit] of Object.entries(PICK_VISIBLE_LIMITS)) {
     assert.ok(limit <= PICK_FULL_LIST, `${tier} may not exceed the fetched list`)
-    assert.ok(limit > 0, `${tier} must see something`)
+    assert.ok(limit >= 0, `${tier} cannot see a negative number of rows`)
   }
-  assert.ok(
-    PICK_VISIBLE_LIMITS.anonymous < PICK_VISIBLE_LIMITS.free,
-    'the gate does nothing if an anonymous viewer sees as much as a member'
-  )
+  assert.equal(PICK_VISIBLE_LIMITS.anonymous, 0)
+  assert.equal(PICK_VISIBLE_LIMITS.free, 0)
+  assert.ok(PICK_VISIBLE_LIMITS.pro > 0, 'Pro is the tier the ranking is for')
 })
 
 test('viewer state maps to the intended tier', () => {

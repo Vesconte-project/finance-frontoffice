@@ -86,6 +86,21 @@ const server = createServer((request, response) => {
     return
   }
 
+  // A company's standing in each ranking; free on the ticker page.
+  const readingsMatch = path.match(/^\/tickers\/([^/]+)\/readings$/)
+  if (readingsMatch) {
+    send(response, 200, {
+      ticker: decodeURIComponent(readingsMatch[1]).toUpperCase(),
+      asOf: '2026-10-03',
+      readings: [
+        { reading: 'longTerm', status: 'ranked', standing: { position: 42, universeSize: 684 }, absenceReason: null },
+        { reading: 'income', status: 'ranked', standing: { position: 310, universeSize: 500 }, absenceReason: null },
+        { reading: 'shortTerm', status: 'absent', standing: null, absenceReason: 'insufficient_coverage' },
+      ],
+    })
+    return
+  }
+
   if (path === '/network/atlas') {
     send(response, 200, atlasFixture(window, view))
     return
