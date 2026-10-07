@@ -107,8 +107,8 @@ type FrameInput = {
 
 /**
  * One frame of the universe: the homepage's look at k = 0, easing into the
- * faint band at k = 1. Returns the veil still over the field and how much of
- * the homepage's labelling remains, for the orb drawn above it.
+ * faint band at k = 1. Returns how much of the homepage's labelling remains,
+ * for the orb drawn above it.
  */
 export function drawUniverseFrame(g: CanvasRenderingContext2D, input: FrameInput) {
   const { universe, handoff, ownLinksFrom, projected, k, done, width, height, bandBottom, palette } = input
@@ -186,6 +186,15 @@ export function drawUniverseFrame(g: CanvasRenderingContext2D, input: FrameInput
   g.fillRect(0, 0, width, height)
   g.globalCompositeOperation = 'source-over'
 
+  // The homepage's focus mode veils its field (#hc-focusDim); the veil lifts
+  // as the camera turns, so the first frame matches the homepage's last.
+  // The node's own links are drawn above it, as the homepage draws them.
+  const veil = handoff && !done ? handoff.veil * (1 - k) : 0
+  if (veil > 0) {
+    g.globalAlpha = veil; g.fillStyle = bg
+    g.fillRect(0, 0, width, height); g.globalAlpha = 1
+  }
+
   // The ticker's own links leave the node in the accent, fading outward.
   // A searched node's links start plain and light up on the way.
   const litLinks = handoff ? handoff.focusLinks : 1
@@ -201,14 +210,7 @@ export function drawUniverseFrame(g: CanvasRenderingContext2D, input: FrameInput
     g.beginPath(); g.moveTo(f.sx, f.sy); g.lineTo(o.sx, o.sy); g.stroke()
   }
 
-  // The homepage's focus mode veils its field (#hc-focusDim); the veil lifts
-  // as the camera turns, so the first frame matches the homepage's last.
-  const veil = handoff && !done ? handoff.veil * (1 - k) : 0
-  if (veil > 0) {
-    g.globalAlpha = veil; g.fillStyle = bg
-    g.fillRect(0, 0, width, height); g.globalAlpha = 1
-  }
-  return { veil, labels }
+  return { labels }
 }
 
 /** The identity node the flight lands on, as the ticker page draws it. */
@@ -218,9 +220,9 @@ export type RestNode = { x: number; y: number; bandBottom: number; outer: number
 export function placeOrb(
   orb: HTMLElement,
   label: HTMLElement,
-  input: { handoff: UniverseHandoff; k: number; x: number; y: number; rest: RestNode; palette: Palette; veil: number; labels: number },
+  input: { handoff: UniverseHandoff; k: number; x: number; y: number; rest: RestNode; palette: Palette; labels: number },
 ) {
-  const { handoff, k, x, y, rest, palette, veil, labels } = input
+  const { handoff, k, x, y, rest, palette, labels } = input
   const from = handoff.orb
   // A searched node starts as the plain node it was; the focus card's orb
   // starts in the accent.
@@ -233,7 +235,6 @@ export function placeOrb(
     borderWidth: Math.min(outer, lerp(from.ring, rest.ring, k)) + 'px', borderColor: 'rgb(' + toneMix + ')',
     background: k < 0.5 ? palette.surface : palette.bg,
     boxShadow: from.glow > 0 ? '0 0 0 ' + Math.max(0, from.glow * (1 - 0.6 * k) - outer) + 'px rgba(' + palette.accent + ',' + 0.28 * (1 - k) + ')' : 'none',
-    opacity: String(1 - veil),
   })
   label.style.opacity = String(from.label ? labels : 0)
 }
@@ -351,13 +352,13 @@ export function startFlight(handoff: UniverseHandoff) {
     g.setTransform(dpr, 0, 0, dpr, 0, 0)
     g.globalCompositeOperation = 'source-over'
     g.clearRect(0, 0, width, height)
-    const { veil, labels } = drawUniverseFrame(g, { universe, handoff, ownLinksFrom, projected, k, done: false, width, height, bandBottom: rest.bandBottom, palette })
+    const { labels } = drawUniverseFrame(g, { universe, handoff, ownLinksFrom, projected, k, done: false, width, height, bandBottom: rest.bandBottom, palette })
     // The overlay stands in for the homepage, so it is opaque.
     g.globalCompositeOperation = 'destination-over'
     g.fillStyle = palette.bg
     g.fillRect(0, 0, width, height)
     g.globalCompositeOperation = 'source-over'
-    placeOrb(orb, orbLabel, { handoff, k, x, y, rest, palette, veil, labels })
+    placeOrb(orb, orbLabel, { handoff, k, x, y, rest, palette, labels })
     idle += 0.00026
     overlay.rafId = requestAnimationFrame(frame)
   }

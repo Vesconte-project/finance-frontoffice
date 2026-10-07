@@ -83,7 +83,7 @@ for (const viewport of viewports) {
   })
 }
 
-test('homepage owns one narrative scroll runtime with a reversible pinned scene', async ({ page }) => {
+test('homepage turns the field while the sections scroll over it, reversibly', async ({ page }) => {
   await page.route('**/api/tickers/index', (route) =>
     route.fulfill({
       status: 200,
@@ -105,11 +105,15 @@ test('homepage owns one narrative scroll runtime with a reversible pinned scene'
     const progress = document.querySelector<HTMLElement>('#hc-prog')
     return {
       progress: progress ? Number.parseFloat(progress.style.width) : 0,
-      stageTop: stage?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY,
+      stageTop: stage?.getBoundingClientRect().top ?? 0,
+      pinned: stage?.parentElement?.classList.contains('pin-spacer') ?? false,
     }
   })
-  expect(Math.abs(forwardState.stageTop)).toBeLessThanOrEqual(1)
+  // The stage is not pinned: the sections rise over the field while it turns.
+  expect(forwardState.pinned).toBe(false)
+  expect(forwardState.stageTop).toBeLessThan(-100)
   expect(forwardState.progress).toBeGreaterThan(0)
+  expect(forwardState.progress).toBeLessThan(100)
 
   await page.mouse.wheel(0, -900)
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(20)
