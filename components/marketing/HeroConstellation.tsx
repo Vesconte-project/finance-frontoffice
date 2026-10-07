@@ -19,6 +19,7 @@ type HcNode = {
 }
 
 const CSS = `
+@media(prefers-reduced-motion:no-preference){@view-transition{navigation:auto}}
 .hc-root{
   --text-2:var(--text-muted);--text-3:var(--text-muted);
   --spark:var(--accent);--spark-2:var(--accent);
@@ -558,6 +559,36 @@ export default function HeroConstellation() {
     fDim.addEventListener('click', closeFocus)
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && focus.i >= 0) closeFocus() }
     window.addEventListener('keydown', onKey)
+
+    // Opening the focused node's full page hands the orb to the ticker page:
+    // the browser morphs it into the page's identity node while the page opens
+    // from where the orb sat (cross-document view transition). Every other
+    // navigation away from the homepage keeps the plain page load.
+    let handoffOrb: HTMLElement | null = null
+    const removeHandoffOrb = () => { handoffOrb?.remove(); handoffOrb = null }
+    const onPageSwap = (event: PageSwapEvent) => {
+      const transition = event.viewTransition
+      if (!transition) return
+      const fn = focus.i >= 0 ? nodes[focus.i] : null
+      const target = event.activation?.entry?.url
+      const path = target ? new URL(target).pathname : ''
+      if (!fn?.label || focus.t < 0.99 || path !== '/stocks/' + encodeURIComponent(fn.label)) { transition.skipTransition(); return }
+      // Same geometry as orb() at focus.t = 1: a 23px ring with a 14px hole.
+      const outer = 23.1, hole = 13.9
+      removeHandoffOrb()
+      handoffOrb = document.createElement('span')
+      handoffOrb.setAttribute('aria-hidden', 'true')
+      Object.assign(handoffOrb.style, {
+        position: 'fixed', left: (W * 0.30 - outer) + 'px', top: (H * 0.5 - outer) + 'px',
+        width: outer * 2 + 'px', height: outer * 2 + 'px', boxSizing: 'border-box', borderRadius: '50%',
+        border: (outer - hole) + 'px solid ' + spark, background: themeColor('--surface'),
+        pointerEvents: 'none', zIndex: '80', viewTransitionName: 'ticker-node',
+      })
+      document.body.append(handoffOrb)
+    }
+    window.addEventListener('pageswap', onPageSwap)
+    // Coming back through the history cache must not leave the handoff behind.
+    window.addEventListener('pageshow', removeHandoffOrb)
     let pendingFocus = false
     const openAfterChromeSettles = (idx: number) => {
       if (pendingFocus || focus.i >= 0) return
@@ -627,6 +658,7 @@ export default function HeroConstellation() {
       window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseout', onOut); window.removeEventListener('resize', onResize)
       window.removeEventListener('pointerdown', finishReveal); window.removeEventListener('keydown', finishReveal); window.removeEventListener('wheel', finishReveal); window.removeEventListener('touchstart', finishReveal); window.removeEventListener('focusin', finishReveal)
       window.removeEventListener('keydown', onKey); window.removeEventListener('click', onClick, true)
+      window.removeEventListener('pageswap', onPageSwap); window.removeEventListener('pageshow', removeHandoffOrb); removeHandoffOrb()
       window.removeEventListener('mousedown', onDown, true); window.removeEventListener('meridian:search-focus', onSearchFocus)
       window.removeEventListener('wheel', onWheel, true); window.removeEventListener('touchstart', onTouchStart, true); window.removeEventListener('touchmove', onTouchMove, true)
       backBtn.removeEventListener('click', closeFocus); fDim.removeEventListener('click', closeFocus)

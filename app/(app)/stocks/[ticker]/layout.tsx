@@ -1,4 +1,5 @@
 import StockTabsAuto from '@/components/stocks/StockTabsAuto'
+import TickerOpenTransition from '@/components/stocks/TickerOpenTransition'
 import { getStockTickerChromeData } from '@/lib/stock-ticker-chrome'
 import styles from './StockTickerLayout.module.css'
 
@@ -12,6 +13,7 @@ export default function StockTickerLayout({ children, params }: StockTickerLayou
 
   return (
     <div className={styles.page} data-stock-ticker-layout="">
+      <TickerOpenTransition />
       <StockTabsAuto chromeData={chromeData} />
       <div className={styles.content}>{children}</div>
     </div>
