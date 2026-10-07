@@ -3656,6 +3656,8 @@ html.chrome-scrolled .dock-search {
   --down: #C2362B;
   --btn-primary-bg: #2557D6;
   --btn-primary-fg: #FFFFFF;
+  /* Homepage network nodes and links; the ETF light along the links uses --accent. */
+  --network-node: #7A879A;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -3673,6 +3675,7 @@ html.chrome-scrolled .dock-search {
     --down: #D07565;
     --btn-primary-bg: #ECE6DA;
     --btn-primary-fg: #0F1620;
+    --network-node: #ECE6DA;
     color-scheme: dark;
   }
 }
@@ -3691,6 +3694,7 @@ html.chrome-scrolled .dock-search {
   --down: #D07565;
   --btn-primary-bg: #ECE6DA;
   --btn-primary-fg: #0F1620;
+  --network-node: #ECE6DA;
   color-scheme: dark;
 }
 
