@@ -17,6 +17,7 @@ export default function PickDisclosure({ asOfLabel }: { asOfLabel: string | null
       term: 'Basis',
       detail: asOfLabel ? `${PICK_DISCLOSURE.basis} Data as of ${asOfLabel}.` : PICK_DISCLOSURE.basis,
     },
+    { term: 'Conflicts of interest', detail: PICK_DISCLOSURE.conflicts },
     { term: 'Risk', detail: PICK_DISCLOSURE.risk },
   ]
 

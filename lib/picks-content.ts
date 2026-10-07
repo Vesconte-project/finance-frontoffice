@@ -123,5 +123,7 @@ export const PICK_DISCLOSURE = {
     'The same ranking for every reader. It does not take your circumstances, objectives or holdings into account, and it is not personal advice or an instruction to buy or sell.',
   basis:
     'Built from reported financial statements, dividend records and market prices, scored on the criteria described on this page.',
+  conflicts:
+    'None. Vesconte receives no payment from the companies ranked, and no one at Vesconte holds a position in them.',
   risk: 'Shares can lose value, including all of it. A high rank today says nothing certain about future returns.',
 } as const
