@@ -48,9 +48,11 @@ const CSS = `
 .hc-root #hc-focusDim{position:absolute;inset:0;background:color-mix(in srgb,var(--bg) 70%,transparent)}
 .hc-root #hc-focusFront{position:absolute;top:0;left:0;pointer-events:none}
 .hc-root #hc-focusCard{position:absolute;left:54%;top:50%;width:min(360px,46vw);padding:22px;border-radius:6px;background:var(--surface);color:var(--text);border:1px solid var(--line)}
-.hc-root #hc-focusBack{background:none;border:none;color:var(--focus-muted);font-family:var(--font-mono);font-size:12px;cursor:pointer;padding:0;margin-bottom:14px}
+.hc-root #hc-focusBack{display:block;background:none;border:none;color:var(--focus-muted);font-family:var(--font-mono);font-size:12px;cursor:pointer;padding:0;margin-bottom:14px}
 .hc-root #hc-focusBack:hover{color:var(--text)}
+.hc-root .hc-fc-backIcon{display:none}
 .hc-root #hc-focusBack:focus-visible,.hc-root .hc-fc-open:focus-visible,.hc-root .hc-fc-connections a:focus-visible{outline:2px solid var(--spark-2);outline-offset:4px}
+.hc-root #hc-focusCard[data-opened-by-pointer] #hc-focusBack:focus-visible{outline:none}
 .hc-root .hc-fc-ticker{font-family:var(--font-mono);font-weight:500;font-size:36px;line-height:1;color:var(--accent)}
 .hc-root .hc-fc-name{color:var(--focus-muted);font-size:13px;margin-top:3px}
 .hc-root .hc-fc-connections{margin-top:18px}
@@ -61,7 +63,17 @@ const CSS = `
 .hc-root .hc-fc-open{display:inline-block;margin-top:18px;font-weight:500;font-size:14px;color:var(--text);text-decoration:none}
 .hc-root .hc-fc-open:hover{text-decoration:underline;text-underline-offset:4px}
 @media(max-width:767px){.hc-root .hc-fieldcaption{display:none}}
-@media(max-width:720px){.hc-root #hc-focusCard{left:12px;right:12px;top:auto;bottom:16px;width:auto;padding:20px}.hc-root .hc-fc-ticker{font-size:30px}}
+@media(max-width:720px){
+.hc-root #hc-focusCard{left:0;right:0;top:auto;bottom:0;width:auto;padding:22px 20px calc(20px + env(safe-area-inset-bottom));border-radius:16px 16px 0 0;border-bottom:none}
+.hc-root .hc-fc-ticker{font-size:30px;padding-right:48px}
+.hc-root #hc-focusBack{position:absolute;top:10px;right:10px;width:44px;height:44px;margin:0;display:grid;place-items:center;border-radius:999px;color:var(--text)}
+.hc-root .hc-fc-backText{display:none}
+.hc-root .hc-fc-backIcon{display:block}
+.hc-root .hc-fc-connections ul{gap:0 6px;margin:4px 0 0 -8px}
+.hc-root .hc-fc-connections a{display:inline-block;padding:10px 8px;font-size:14px}
+.hc-root .hc-fc-open{display:flex;align-items:center;justify-content:center;min-height:48px;margin-top:16px;border-radius:8px;background:var(--text);color:var(--bg);font-size:15px}
+.hc-root .hc-fc-open:hover{text-decoration:none}
+}
 .hc-root[data-reduced-motion="true"] #hc-focusCard{transition:none}
 .hc-root[data-reduced-motion="true"] #hc-stage{height:auto;min-height:0}
 .hc-root[data-reduced-motion="true"] .hc-beat{position:relative;inset:auto;min-height:0;padding-block:clamp(48px,8vh,80px);opacity:1!important;transform:none!important}
@@ -553,7 +565,17 @@ export default function HeroConstellation() {
       const narrow = window.matchMedia('(max-width:720px)').matches
       fCard.style.transform = (narrow ? 'translateY(0)' : 'translateY(-50%)') + ' translateX(' + ((1 - focus.t) * -20) + 'px)'
     }
+    // Focus moves to the back button when the card opens, so a keyboard user
+    // lands inside it. Opened by a tap or click, its ring would only look like
+    // a selection, so it stays hidden until the reader reaches for the keys.
+    let openedByKey = false
+    const noteKey = () => { openedByKey = true; delete fCard.dataset.openedByPointer }
+    const notePointer = () => { openedByKey = false }
+    window.addEventListener('keydown', noteKey, true)
+    window.addEventListener('pointerdown', notePointer, true)
     const openFocus = (idx: number) => {
+      if (openedByKey) delete fCard.dataset.openedByPointer
+      else fCard.dataset.openedByPointer = ''
       gsap.killTweensOf(focus)
       const n = nodes[idx]; if (!n.label) n.label = TICKERS[idx % TICKERS.length]
       const ticker = n.label
@@ -744,6 +766,7 @@ export default function HeroConstellation() {
       window.removeEventListener('mousedown', onDown, true); window.removeEventListener('meridian:search-focus', onSearchFocus)
       window.removeEventListener('wheel', onWheel, true); window.removeEventListener('touchstart', onTouchStart, true); window.removeEventListener('touchmove', onTouchMove, true)
       backBtn.removeEventListener('click', closeFocus); fDim.removeEventListener('click', closeFocus)
+      window.removeEventListener('keydown', noteKey, true); window.removeEventListener('pointerdown', notePointer, true)
       focusAbort?.abort()
       releaseScrollLock?.()
       unregisterScrollScene()
@@ -770,7 +793,10 @@ export default function HeroConstellation() {
         <div id="hc-focusDim" />
         <canvas id="hc-focusFront" aria-hidden="true" />
         <div id="hc-focusCard" role="dialog" aria-modal="true" aria-labelledby="hc-fcT" aria-describedby="hc-fcN">
-          <button id="hc-focusBack" type="button">← back</button>
+          <button id="hc-focusBack" type="button" aria-label="Back to the network">
+            <span className="hc-fc-backText" aria-hidden="true">← back</span>
+            <svg className="hc-fc-backIcon" aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M5 5l10 10M15 5L5 15" /></svg>
+          </button>
           <div className="hc-fc-ticker" id="hc-fcT" />
           <div className="hc-fc-name" id="hc-fcN" />
           <div className="hc-fc-connections" id="hc-fcC" />
