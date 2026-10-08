@@ -32,7 +32,7 @@ for (const width of [375, 1440]) {
 
     const calendar = page.getByRole('region', { name: 'Event calendar' })
     // The page opens on the week itself, with no introductory copy above it.
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^This week · [A-Z][a-z]{2} \d{1,2} – .+ · \d+ events$/)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^[A-Z][a-z]{2} \d{1,2} – .+ · \d+ events$/)
     // Every earnings group says what it counts, and the long day opens in place.
     await expect(calendar.getByRole('heading', { name: /^Earnings \d+$/ }).first()).toBeVisible()
     const showAll = calendar.locator('summary', { hasText: /^Show all \d+ earnings$/ })
@@ -72,7 +72,7 @@ test('another week is locked and carries no events', async ({ page, request }) =
     await page.screenshot({ path: 'test-results/calendar-locked-1440.png', fullPage: true })
   }
   await page.getByRole('link', { name: 'Back to this week' }).click()
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^This week · /)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/ · \d+ events$/)
   expect(errors).toEqual([])
 })
 

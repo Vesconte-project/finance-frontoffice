@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { ArrowLeft, ArrowRight, Lock } from 'lucide-react'
 import EventCalendar from '@/components/calendar/EventCalendar'
 import WeekBoard, { WeekSilhouette } from '@/components/calendar/WeekBoard'
-import RankingsUniverse from '@/components/picks/RankingsUniverse'
+import CalendarUniverse from '@/components/calendar/CalendarUniverse'
 import { buttonClass } from '@/components/ui/Button'
 import { isViewerSignedIn } from '@/lib/auth'
 import { getPublicCalendarRange, type CalendarResult } from '@/lib/calendar-events'
@@ -44,7 +44,6 @@ export default async function CalendarLanding({ category, query }: { category: C
   const href = (view: CalendarView, overrides: { week?: string; month?: string; day?: string } = {}, targetCategory = category, targetFocus = focusQuery) =>
     calendarHref({ category: targetCategory, view, week: overrides.week ?? shown.week, month: overrides.month ?? shown.month, day: overrides.day, focus: targetFocus })
   const isMonth = shown.view === 'month'
-  const isThisWeek = !isMonth && shown.week === shown.thisWeek
   const thisMonth = shown.thisWeek.slice(0, 7)
   const step = isMonth
     ? { previous: href('month', { month: shiftMonth(shown.month, -1) }), current: href('month', { month: thisMonth }), next: href('month', { month: shiftMonth(shown.month, 1) }), unit: 'month', currentLabel: 'This month' }
@@ -53,7 +52,7 @@ export default async function CalendarLanding({ category, query }: { category: C
 
   return (
     <div className={styles.stage}>
-      <RankingsUniverse seed={`calendar-${shown.view}-${isMonth ? shown.month : shown.week}`} />
+      <CalendarUniverse seed="calendar" />
       <div className={styles.page}>
         <header className={styles.head} data-rankings-band="">
           <nav className={styles.categories} aria-label="Event type">
@@ -63,7 +62,6 @@ export default async function CalendarLanding({ category, query }: { category: C
           </nav>
           <div className={styles.controls}>
             <h1 className={styles.range}>
-              {isThisWeek ? <span>This week · </span> : null}
               {isMonth ? monthTitle(shown.month) : humanWeek(shown.week)}
               {result ? <span> · {result.events.length} {result.events.length === 1 ? 'event' : 'events'}</span> : null}
             </h1>
