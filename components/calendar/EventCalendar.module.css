@@ -1,7 +1,8 @@
 .calendar { container: event-calendar / inline-size; display: grid; gap: 22px; min-width: 0; }
-.toolbar { display: flex; align-items: end; justify-content: space-between; gap: 20px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 20px; }
 .toolbar h2 { margin: 0; font-size: clamp(1.7rem, 3vw, 2.45rem); font-weight: 500; }
 .toolbar p { margin: 5px 0 0; color: var(--text-small); font-size: .86rem; }
+.toolbarControls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .monthControls { display: flex; align-items: center; gap: 4px; }
 .monthControls a { display: grid; min-width: 40px; min-height: 40px; place-items: center; padding: 0 11px; border: 1px solid var(--line-soft); border-radius: 6px; color: var(--text); font-size: .83rem; text-decoration: none; }
 .monthControls a:hover { background: var(--surface-soft); }
@@ -20,7 +21,6 @@
 .day[data-outside='true'] { color: var(--text-muted); background: var(--surface-soft); }
 .day time { align-self: flex-end; font-family: var(--font-mono), monospace; font-size: .8rem; }
 .day[aria-current='date'] time { color: var(--accent); }
-.count { position: absolute; top: 9px; left: 9px; color: var(--text-small); font-family: var(--font-mono), monospace; font-size: .7rem; }
 .dayEvents { display: grid; gap: 4px; min-width: 0; }
 .dayEvent { display: block; overflow: hidden; padding-left: 6px; border-left: 1px solid var(--line-strong); color: var(--text-body); font-size: .7rem; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
 .more { color: var(--text-small); font-size: .7rem; }
@@ -33,6 +33,7 @@
 .agenda strong { color: var(--text); font-size: .92rem; font-weight: 500; }
 .agenda li a { display: inline-flex; align-items: center; gap: 4px; width: fit-content; color: var(--text-body); font-family: var(--font-mono), monospace; font-size: .78rem; text-decoration: none; }
 .agenda li a:hover { color: var(--accent); }
+.agendaName { margin-left: 6px; color: var(--text-small); font-family: var(--font-body), sans-serif; }
 .agenda li p, .empty { margin: 0; color: var(--text-small); font-size: .78rem; line-height: 1.5; }
 .empty { margin-top: 18px; }
 @container event-calendar (max-width: 940px) { .layout { grid-template-columns: 1fr; } .agenda { margin-top: 4px; } }

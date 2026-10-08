@@ -4,7 +4,8 @@
  * The Market Universe page fetches its atlas server-side, so a Playwright
  * page.route() mock cannot reach it. This serves the relationship endpoints
  * from repository-owned synthetic data, an explicitly empty Picks ranking
- * needed by the homepage smoke test, and three synthetic ticker pages. Browser QA needs no external backend
+ * needed by the homepage smoke test, three synthetic ticker pages and a synthetic
+ * public calendar. Browser QA needs no external backend
  * infrastructure or credentials.
  *
  * Every other path answers 503, which is what the app already sees when no
@@ -18,6 +19,7 @@ import {
   neighborhoodFixture,
   tickerIndexFixture,
 } from '../e2e/fixtures/market-atlas.mjs'
+import { calendarFixture, calendarNetworkFixture, calendarRelationshipsFixture } from '../e2e/fixtures/calendar.mjs'
 import {
   isFixtureTicker,
   tickerCorporateActionsFixture,
@@ -71,6 +73,28 @@ const server = createServer((request, response) => {
   if (path === '/tickers/index') {
     send(response, 200, tickerIndexFixture())
     return
+  }
+
+  // The public calendar, for whatever range the page asks for.
+  if (path === '/site/calendar' && url.searchParams.get('startDate') && url.searchParams.get('endDate') && !url.searchParams.get('symbol')) {
+    send(response, 200, calendarFixture(url.searchParams.get('startDate'), url.searchParams.get('endDate'), url.searchParams.get('category') || 'all'))
+    return
+  }
+
+  // The market network, for the calendar's sector filter.
+  if (path === '/network' && !url.searchParams.get('focus')) {
+    send(response, 200, calendarNetworkFixture())
+    return
+  }
+
+  // Atlas relationships for the calendar's "around" filter, synthetic symbols only.
+  const relationshipsRoute = path.match(/^\/relationships\/([^/]+)$/)
+  if (relationshipsRoute) {
+    const payload = calendarRelationshipsFixture(decodeURIComponent(relationshipsRoute[1]).toUpperCase())
+    if (payload) {
+      send(response, 200, payload)
+      return
+    }
   }
 
   // Homepage reads all three rankings server-side. A successful empty fixture

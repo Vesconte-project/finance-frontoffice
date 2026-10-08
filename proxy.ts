@@ -21,6 +21,8 @@ export const config = {
   matcher: [
     '/dashboard(.*)',
     '/stocks(.*)',
+    // The calendar reads the viewer to decide how much of it is open.
+    '/calendar(.*)',
     '/api/watchlist(.*)',
     '/api/research/synthetic(.*)',
     '/api/export-signals(.*)',

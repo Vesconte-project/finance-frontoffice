@@ -1,0 +1,188 @@
+/* The public calendar, in the site's identity: the market universe turns behind
+   the header band as it does on Rankings, and each company on a day is a node on
+   a hairline, the way the homepage network draws it. No header node: the page is
+   not a company. The accent marks today, selection and focus only. Motion is
+   CSS-only; reduced motion shows the end state. */
+
+/* As on a company page: the stage runs up under the fixed header by the space
+   the app shell reserves for it, so the universe starts at the top of the
+   window, and the header is transparent over it. */
+.stage { --calendar-header-offset: 72px; position: relative; isolation: isolate; overflow-x: clip; margin-top: calc(var(--calendar-header-offset) * -1); }
+:global(.app-shell:has([data-calendar-stage]) .app-header__inner) { border-bottom-color: transparent; background: transparent; }
+.page { display: grid; gap: 1.25rem; width: 100%; max-width: 1400px; margin-inline: auto; padding: var(--calendar-header-offset) 1.25rem 4rem; }
+@media (min-width: 768px) { .page { gap: 1.5rem; padding: var(--calendar-header-offset) 2.5rem 5rem; } }
+/* The universe's pivot: a point at the start of the header line. */
+.pivot { position: absolute; left: 0; top: 50%; width: 0; height: 0; }
+/* The type list scrolls inside its own track; it must never widen the page. */
+.page > * { min-width: 0; }
+
+/* The band the universe shows behind: the header line and the companies bar. */
+.band { display: grid; gap: 1.25rem; padding-bottom: 1rem; }
+.band > * { min-width: 0; }
+@media (min-width: 768px) { .band { gap: 1.5rem; } }
+
+/* ---- Header band: one line on wide screens, types on the left, the window and its
+   controls on the right, on one hairline. The universe turns behind it. ---- */
+.head { position: relative; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1.5rem; padding-top: .25rem; border-bottom: 1px solid var(--line); }
+.stampDot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: breathe 2.8s ease-in-out infinite; }
+
+.controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .5rem .625rem; margin-left: auto; padding-bottom: .5rem; }
+/* The window shown, small, beside the view and week controls. */
+.range { margin: 0 .25rem 0 0; color: var(--text-small); font-family: var(--font-mono); font-size: .75rem; font-weight: 400; letter-spacing: .04em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.viewSwitch, .stepper { display: flex; align-items: center; gap: 4px; }
+.viewSwitch a, .stepper a { display: inline-flex; min-width: 40px; min-height: 40px; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--text); font-size: .83rem; text-decoration: none; transition: border-color var(--motion-fast) ease; }
+.viewSwitch a:hover, .stepper a:hover { border-color: var(--line-strong); }
+.viewSwitch a[aria-current='page'] { border-color: var(--accent); }
+
+/* Type navigation: the Rankings switcher, a 2px accent rule under the current type. */
+.categories { display: flex; flex: 1 1 auto; align-self: flex-end; gap: .25rem; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.categories::-webkit-scrollbar { display: none; }
+.categories a { position: relative; flex: none; padding: 1.125rem .875rem 1.25rem; color: var(--text-muted); font-size: .925rem; text-decoration: none; transition: color var(--motion-normal) var(--motion-ease-standard); }
+.categories a:first-child { padding-left: 0; }
+.categories a::after { content: ''; position: absolute; right: .875rem; bottom: -1px; left: .875rem; height: 2px; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform var(--motion-slow) var(--motion-ease-soft); }
+.categories a:first-child::after { left: 0; }
+.categories a:hover, .categories a[aria-current='page'] { color: var(--text); }
+.categories a[aria-current='page']::after { transform: scaleX(1); }
+
+.viewSwitch a:focus-visible, .stepper a:focus-visible, .categories a:focus-visible, .entry:focus-visible, .row:focus-visible, .moreDetails summary:focus-visible, .openNote a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+/* ---- Companies: all, the reader's watchlist, or around one company in the atlas ---- */
+.focusBar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
+.focusLabel { color: var(--text-small); font-family: var(--font-mono); font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; }
+.aroundForm { display: flex; align-items: center; gap: .375rem; }
+.aroundForm label { color: var(--text-small); font-size: .83rem; }
+.aroundForm input { width: 9.5rem; min-height: 40px; padding: 0 .75rem; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--text); font-family: var(--font-mono); font-size: .83rem; text-transform: uppercase; }
+.aroundForm input::placeholder { color: var(--text-muted); font-family: var(--font-body), sans-serif; text-transform: none; }
+.aroundForm input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+.aroundForm button { min-height: 40px; padding: 0 .875rem; border: 1px solid var(--text); border-radius: 6px; background: transparent; color: var(--text); font-size: .83rem; cursor: pointer; }
+.aroundForm button:hover { background: var(--surface); }
+.aroundForm button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sectorForm { display: flex; align-items: center; gap: .375rem; }
+.sectorForm label { color: var(--text-small); font-size: .83rem; }
+.sectorForm select { min-height: 40px; max-width: 16rem; padding: 0 2rem 0 .75rem; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--text); font-size: .83rem; }
+.sectorForm select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+@media (pointer: coarse) { .sectorForm select { min-height: 44px; } }
+.focusNote { max-width: 60rem; margin: -.5rem 0 0; color: var(--text-body); font-size: .86rem; line-height: 1.5; }
+.focusNote strong { color: var(--text); font-family: var(--font-mono); font-weight: 500; }
+.focusNote a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
+@media (pointer: coarse) { .aroundForm input, .aroundForm button { min-height: 44px; } }
+
+.calendar { container: calendar-week / inline-size; display: grid; gap: 1.25rem; min-width: 0; }
+.coverage, .unavailable { margin: 0; color: var(--text-small); font-size: .82rem; }
+.unavailable { padding: 1.75rem 0; border-top: 1px solid var(--line); }
+
+/* ---- The week: days as columns on hairlines ---- */
+.board { display: grid; grid-template-columns: repeat(var(--days, 5), minmax(0, 1fr)); align-items: stretch; border-bottom: 1px solid var(--line); }
+.column { display: grid; align-content: start; gap: 1.25rem; min-width: 0; min-height: 16rem; padding: 1.125rem 1rem 1.5rem; border-left: 1px solid var(--line-soft); scroll-margin-top: 5rem; }
+.column:first-child { padding-left: 0; border-left: 0; }
+.columnHead { display: flex; align-items: baseline; gap: .625rem; margin: 0; font-weight: 400; }
+.weekday { color: var(--text-small); font-family: var(--font-mono); font-size: .68rem; letter-spacing: .16em; text-transform: uppercase; }
+.date { color: var(--text); font-family: var(--font-display); font-size: 1.75rem; font-variant-numeric: tabular-nums; font-weight: 500; line-height: 1; letter-spacing: -.02em; }
+.column[data-today='true'] .date { color: var(--accent); }
+.todayMark { display: inline-flex; align-items: center; gap: .375rem; margin-left: auto; color: var(--accent); font-family: var(--font-mono); font-size: .66rem; letter-spacing: .12em; text-transform: uppercase; }
+.none { margin: 0; color: var(--text-small); font-size: .82rem; }
+
+.group { display: grid; gap: .625rem; min-width: 0; }
+/* Light along the group's hairline as the week arrives, the network's gesture (H9). */
+.groupLabel { position: relative; display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; margin: 0; padding-bottom: .5rem; overflow: hidden; border-bottom: 1px solid var(--line-soft); color: var(--text-small); font-family: var(--font-mono); font-size: .66rem; font-weight: 400; letter-spacing: .14em; text-transform: uppercase; }
+.groupLabel::after { content: ''; position: absolute; bottom: 0; left: 0; width: 40%; height: 1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0; pointer-events: none; animation: light 1500ms var(--motion-ease-standard) 380ms both; }
+.groupLabel span { color: var(--text); letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+
+/* A company on the day: its node, ticker and name. */
+.entries { display: grid; grid-template-columns: repeat(auto-fill, minmax(6.25rem, 1fr)); gap: .125rem .5rem; margin: 0; padding: 0; list-style: none; }
+.entries > li { min-width: 0; animation: rise var(--motion-xslow) var(--motion-ease-soft) both; animation-delay: calc(min(var(--i, 0), 14) * 28ms); }
+.entry { display: grid; grid-template-columns: 9px minmax(0, 1fr); align-items: center; column-gap: .5rem; padding: .375rem .25rem; border-radius: 4px; color: var(--text); text-decoration: none; }
+.entryNode { width: 9px; height: 9px; border: 1.5px solid var(--network-node, var(--text-muted)); border-radius: 50%; background: var(--bg); transition: background var(--motion-fast) ease, border-color var(--motion-fast) ease; }
+.entrySymbol { overflow: hidden; font-family: var(--font-mono); font-size: .8rem; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; transition: color var(--motion-fast) ease; }
+.entryName { grid-column: 2; overflow: hidden; color: var(--text-small); font-size: .7rem; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+.entry:hover .entryNode, .entry:focus-visible .entryNode { border-color: var(--accent); background: var(--accent); }
+.entry:hover .entrySymbol, .entry:focus-visible .entrySymbol { color: var(--accent); }
+.entryRelation { grid-column: 2; overflow: hidden; color: var(--text-muted); font-family: var(--font-mono); font-size: .62rem; letter-spacing: .02em; text-overflow: ellipsis; white-space: nowrap; }
+/* The company the calendar is narrowed around: its node lit, like the identity node on its own page. */
+.entry[data-center='true'] .entryNode { border-color: var(--accent); background: var(--accent); }
+
+.rows { display: grid; gap: .125rem; margin: 0; padding: 0; list-style: none; }
+.row { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: .5rem; row-gap: .125rem; padding: .375rem .25rem; border-radius: 4px; color: var(--text-body); font-size: .78rem; line-height: 1.35; text-decoration: none; }
+a.row:hover .rowSymbol { color: var(--accent); }
+.rowSymbol { color: var(--text); font-family: var(--font-mono); font-weight: 500; transition: color var(--motion-fast) ease; }
+.rowTitle { grid-column: 2; min-width: 0; overflow-wrap: anywhere; }
+.row > .rowTitle:first-child { grid-column: 1 / -1; }
+.rowName { color: var(--text-small); }
+.rowDetail { grid-column: 1 / -1; color: var(--text-small); font-family: var(--font-mono); font-size: .68rem; }
+
+.moreDetails { display: grid; gap: .375rem; }
+.moreDetails summary { width: fit-content; padding: .25rem 0; color: var(--text); font-size: .78rem; cursor: pointer; text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+
+.openNote { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: 0; color: var(--text-body); font-size: .84rem; }
+.openNote a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---- Locked: the week in silhouette, one solid offer over it ---- */
+.locked { display: grid; min-width: 0; }
+.locked > * { grid-area: 1 / 1; }
+.locked .board { pointer-events: none; user-select: none; }
+.locked .column { min-height: 22rem; }
+.ghostBar { display: block; height: .625rem; border-radius: 3px; background: var(--line-soft); }
+.ghostEntry { display: grid; grid-template-columns: 9px minmax(0, 1fr); align-items: center; gap: .5rem; padding: .5rem .25rem; }
+.ghostEntry .entryNode { border-color: var(--line); }
+.offer { z-index: 1; align-self: center; justify-self: center; display: grid; justify-items: center; gap: .75rem; width: min(100% - 2rem, 27rem); margin-block: 2rem; padding: 1.75rem 1.5rem 1.5rem; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); text-align: center; animation: rise var(--motion-xslow) var(--motion-ease-soft) 200ms both; }
+.offerIcon { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border: 1px solid var(--line); border-radius: 50%; color: var(--text); }
+.offerTitle { margin: .25rem 0 0; color: var(--text); font-family: var(--font-display); font-size: 1.5rem; font-weight: 500; line-height: 1.15; letter-spacing: -.01em; }
+.offerText { max-width: 22rem; margin: 0; color: var(--text-body); font-size: .9rem; line-height: 1.5; }
+.offerActions { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; margin-top: .5rem; }
+.offerSignIn { margin: .25rem 0 0; color: var(--text-muted); font-size: .8rem; }
+.offerSignIn a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+
+/* The week at a glance, for narrow screens only. */
+.dayStrip { display: none; }
+.dayStrip a { display: grid; justify-items: center; gap: .125rem; padding: .5rem 0 .625rem; border-bottom: 2px solid transparent; color: var(--text); text-decoration: none; }
+.dayStrip a[data-today='true'] { border-bottom-color: var(--accent); }
+.dayStrip a[data-today='true'] .stripDate { color: var(--accent); }
+.dayStrip a[data-empty='true'] { color: var(--text-muted); }
+.dayStrip a:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; }
+.stripDay { color: var(--text-small); font-family: var(--font-mono); font-size: .62rem; letter-spacing: .14em; text-transform: uppercase; }
+.stripDate { font-family: var(--font-display); font-size: 1.25rem; font-weight: 500; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stripCount { color: var(--text-small); font-family: var(--font-mono); font-size: .66rem; font-variant-numeric: tabular-nums; }
+
+/* Below 1100px: the window and its controls first, still on the right, the types under them. */
+@media (max-width: 1100px) {
+  .head { padding-top: .5rem; }
+  .controls { order: -1; flex-basis: 100%; justify-content: flex-end; padding-bottom: 0; }
+  .categories a { padding-block: .75rem; }
+}
+/* Phones: the window on its own line, the view and week controls under it at
+   either edge, and the company filters on one line that scrolls sideways. */
+@media (max-width: 640px) {
+  .band { gap: .875rem; padding-bottom: .5rem; }
+  .range { flex-basis: 100%; text-align: right; margin-right: 0; }
+  .controls { justify-content: space-between; }
+  .viewSwitch a, .stepper a { padding-inline: 10px; }
+  .focusBar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: -1.25rem; padding-inline: 1.25rem; }
+  .focusBar::-webkit-scrollbar { display: none; }
+  .focusBar > * { flex: none; }
+  .focusLabel { display: none; }
+}
+/* Narrow space: the strip, then the days stacked, each with its companies across. */
+@container calendar-week (max-width: 52rem) {
+  .dayStrip { display: grid; grid-template-columns: repeat(var(--days, 5), minmax(0, 1fr)); border-bottom: 1px solid var(--line); }
+  .board { grid-template-columns: minmax(0, 1fr); border-bottom: 0; }
+  .column { min-height: 0; gap: 1rem; padding: 1.25rem 0 1.5rem; border-left: 0; border-bottom: 1px solid var(--line-soft); }
+  /* A day with nothing on it is one short line, not a section. */
+  .column[data-empty='true'] { display: flex; align-items: baseline; gap: 1rem; padding-block: .875rem; }
+  .column[data-empty='true'] .date { font-size: 1.125rem; }
+  .entries { grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); }
+  .locked .column:nth-child(n + 3) { display: none; }
+}
+@media (pointer: coarse) {
+  .viewSwitch a, .stepper a { min-width: 44px; min-height: 44px; }
+  .entry, .row { padding-block: .625rem; }
+  .moreDetails summary { padding-block: .625rem; }
+}
+
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+@keyframes breathe { 50% { opacity: .35; } }
+@keyframes light { 0% { opacity: 0; transform: translateX(-40%); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateX(260%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .stampDot, .entries > li, .groupLabel::after, .offer { animation: none; }
+  .categories a, .categories a::after, .entryNode, .entrySymbol, .rowSymbol, .viewSwitch a, .stepper a { transition: none; }
+}

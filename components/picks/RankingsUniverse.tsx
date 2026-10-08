@@ -12,7 +12,15 @@ import styles from './Rankings.module.css'
  * own node (`[data-rankings-anchor]`). Decorative and seeded per page, so each
  * reading has its own sky. Reduced motion draws one still frame.
  */
-export default function RankingsUniverse({ seed }: { seed: string }) {
+export default function RankingsUniverse({ seed, subject = true }: {
+  seed: string
+  /**
+   * False for a page about no company (the calendar): the seeded node still
+   * pivots the camera at the anchor, as everywhere else, but has no links of
+   * its own, so nothing on screen is the subject.
+   */
+  subject?: boolean
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const { reducedMotion } = useScrollRuntime()
 
@@ -23,7 +31,17 @@ export default function RankingsUniverse({ seed }: { seed: string }) {
     if (!canvas || !g || !root) return
     const palette = readPalette(g)
     const universe = createUniverse(seed, root.clientWidth, window.innerHeight)
-    const ownLinksFrom = ensureOwnLinks(universe)
+    if (!subject) {
+      const { pairs, pairLengths, focus } = universe
+      universe.pairs = []
+      universe.pairLengths = []
+      for (let p = 0; p < pairs.length; p += 2) {
+        if (pairs[p] === focus || pairs[p + 1] === focus) continue
+        universe.pairs.push(pairs[p], pairs[p + 1])
+        universe.pairLengths.push(pairLengths[p / 2])
+      }
+    }
+    const ownLinksFrom = subject ? ensureOwnLinks(universe) : universe.pairs.length
     const plan = planCamera(universe, null)
     const projected: ProjectedNode[] = []
     let idle = 0
@@ -85,7 +103,7 @@ export default function RankingsUniverse({ seed }: { seed: string }) {
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('resize', onResize)
     }
-  }, [seed, reducedMotion])
+  }, [seed, subject, reducedMotion])
 
   return <canvas ref={canvasRef} className={styles.universe} aria-hidden="true" data-rankings-universe="" />
 }
