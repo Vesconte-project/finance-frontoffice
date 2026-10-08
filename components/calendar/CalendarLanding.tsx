@@ -41,13 +41,9 @@ export default async function CalendarLanding({ category, query }: { category: C
       <div className={styles.page}>
         <header className={styles.head} data-rankings-band="">
           <div className={styles.titleRow}>
-            <div>
-              <div className={styles.eyebrowRow}>
-                <span className={styles.node} data-rankings-anchor="" aria-hidden="true" />
-                <p className={styles.eyebrow}>{eyebrow}</p>
-              </div>
-              <h1 className={styles.title}>{isMonth ? monthTitle(shown.month) : humanWeek(shown.week)}</h1>
-              {result ? <p className={styles.stamp}><span className={styles.stampDot} aria-hidden="true" />{result.events.length} {result.events.length === 1 ? 'event' : 'events'}</p> : null}
+            <div className={styles.eyebrowRow}>
+              <span className={styles.node} data-rankings-anchor="" aria-hidden="true" />
+              <p className={styles.eyebrow}>{eyebrow}</p>
             </div>
             <div className={styles.controls}>
               <div className={styles.viewSwitch} aria-label="Calendar view">
@@ -61,6 +57,10 @@ export default async function CalendarLanding({ category, query }: { category: C
                 <Link href={step.current}>{step.currentLabel}</Link>
                 <Link href={step.next} aria-label={`Next ${step.unit}`}><ArrowRight size={17} strokeWidth={1.5} /></Link>
               </div>
+              <h1 className={styles.range}>
+                {isMonth ? monthTitle(shown.month) : humanWeek(shown.week)}
+                {result ? <span> · {result.events.length} {result.events.length === 1 ? 'event' : 'events'}</span> : null}
+              </h1>
             </div>
           </div>
           <nav className={styles.categories} aria-label="Event type">

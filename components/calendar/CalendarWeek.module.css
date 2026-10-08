@@ -5,21 +5,22 @@
    Motion is CSS-only; reduced motion shows the end state. */
 
 .stage { position: relative; isolation: isolate; overflow-x: clip; }
-.page { display: grid; gap: 2rem; width: 100%; max-width: 1400px; margin-inline: auto; padding: .5rem 1.25rem 4rem; }
-@media (min-width: 768px) { .page { gap: 2.25rem; padding: 1rem 2.5rem 5rem; } }
+.page { display: grid; gap: 1.25rem; width: 100%; max-width: 1400px; margin-inline: auto; padding: 0 1.25rem 4rem; }
+@media (min-width: 768px) { .page { gap: 1.5rem; padding: 0 2.5rem 5rem; } }
 
 /* ---- Header band ---- */
-.head { display: grid; gap: 1.75rem; padding-top: 1.75rem; }
-@media (min-width: 768px) { .head { gap: 2.25rem; padding-top: 3rem; } }
-.titleRow { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 1.25rem 1.5rem; }
-.eyebrowRow { display: flex; align-items: center; gap: .625rem; margin: 0 0 .875rem; }
+.head { display: grid; gap: 1rem; padding-top: .25rem; }
+@media (min-width: 768px) { .head { gap: 1.25rem; padding-top: .5rem; } }
+.titleRow { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 1.25rem 1.5rem; }
+.eyebrowRow { display: flex; align-items: center; gap: .625rem; min-height: 40px; margin: 0; }
 .node { flex: none; width: 13px; height: 13px; border: 2px solid var(--accent); border-radius: 50%; background: var(--bg); animation: pop var(--motion-slow) var(--motion-ease-soft) 120ms both; }
 .eyebrow { margin: 0; color: var(--text-small); font-family: var(--font-mono); font-size: .72rem; letter-spacing: .16em; text-transform: uppercase; }
-.title { margin: 0; color: var(--text); font-family: var(--font-display); font-size: clamp(2.25rem, 1.5rem + 3vw, 3.75rem); font-weight: 500; line-height: 1; letter-spacing: -.025em; animation: rise var(--motion-xslow) var(--motion-ease-soft) both; }
-.stamp { display: inline-flex; align-items: center; gap: .5rem; margin: 1rem 0 0; color: var(--text-small); font-family: var(--font-mono); font-size: .72rem; letter-spacing: .04em; }
 .stampDot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: breathe 2.8s ease-in-out infinite; }
 
-.controls { display: flex; flex-wrap: wrap; align-items: center; gap: .625rem; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .625rem; }
+/* The window shown, small, under the view and week controls. */
+.range { flex-basis: 100%; margin: 0; color: var(--text-small); font-family: var(--font-mono); font-size: .75rem; font-weight: 400; letter-spacing: .04em; text-align: right; font-variant-numeric: tabular-nums; }
+.range span { color: var(--text-small); }
 .viewSwitch, .stepper { display: flex; align-items: center; gap: 4px; }
 .viewSwitch a, .stepper a { display: inline-flex; min-width: 40px; min-height: 40px; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--text); font-size: .83rem; text-decoration: none; transition: border-color var(--motion-fast) ease; }
 .viewSwitch a:hover, .stepper a:hover { border-color: var(--line-strong); }
@@ -42,7 +43,7 @@
 .unavailable { padding: 1.75rem 0; border-top: 1px solid var(--line); }
 
 /* ---- The week: days as columns on hairlines ---- */
-.board { display: grid; grid-template-columns: repeat(var(--days, 5), minmax(0, 1fr)); align-items: stretch; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.board { display: grid; grid-template-columns: repeat(var(--days, 5), minmax(0, 1fr)); align-items: stretch; border-bottom: 1px solid var(--line); }
 .column { display: grid; align-content: start; gap: 1.25rem; min-width: 0; min-height: 16rem; padding: 1.125rem 1rem 1.5rem; border-left: 1px solid var(--line-soft); }
 .column:first-child { padding-left: 0; border-left: 0; }
 .columnHead { display: flex; align-items: baseline; gap: .625rem; margin: 0; font-weight: 400; }
@@ -100,6 +101,7 @@ a.row:hover .rowSymbol { color: var(--accent); }
 .offerSignIn a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
 
 /* Narrow space: the days stack, each day a band with its companies across. */
+@media (max-width: 640px) { .controls { justify-content: flex-start; } .range { text-align: left; } }
 @container calendar-week (max-width: 52rem) {
   .board { grid-template-columns: minmax(0, 1fr); }
   .column { min-height: 0; padding-inline: 0; border-left: 0; border-top: 1px solid var(--line-soft); }
@@ -118,6 +120,6 @@ a.row:hover .rowSymbol { color: var(--accent); }
 @keyframes light { 0% { opacity: 0; transform: translateX(-40%); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateX(260%); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .node, .title, .stampDot, .entries > li, .groupLabel::after, .offer { animation: none; }
+  .node, .stampDot, .entries > li, .groupLabel::after, .offer { animation: none; }
   .categories a, .categories a::after, .entryNode, .entrySymbol, .rowSymbol, .viewSwitch a, .stepper a { transition: none; }
 }

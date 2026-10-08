@@ -32,7 +32,7 @@ for (const width of [375, 1440]) {
 
     const calendar = page.getByRole('region', { name: 'Event calendar' })
     await expect(page.getByText('Calendar · This week')).toBeVisible()
-    await expect(page.getByText(/^\d+ events$/)).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(/ · \d+ events$/)
     // The page opens on the week itself, with no introductory copy above it.
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^[A-Z][a-z]{2} \d{1,2} – /)
     // Every earnings group says what it counts, and the long day opens in place.

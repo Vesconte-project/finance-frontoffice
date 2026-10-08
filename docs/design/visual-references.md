@@ -211,7 +211,7 @@ Vesconte transformation: the magnification is a second, clipped copy of the labe
 
 The public calendar (`/calendar`, `/calendar/[category]`) opens on a week board (`components/calendar/WeekBoard.tsx`, `CalendarLanding.tsx`, `CalendarWeek.module.css`). The founder pointed to earnings-calendar sites that show a week of company tiles. Only the idea of reading a week of companies at a glance was taken; no layout, colours, logos or code were copied.
 
-- **Header band:** the Rankings frame. `RankingsUniverse` turns behind the band around the header's own node. The eyebrow names the type and the window ("Calendar · This week"), the title is the week or month itself, and a stamp gives the event count. There is no introductory copy (founder, 2026-10-08).
+- **Header band:** the Rankings frame. `RankingsUniverse` turns behind the band around the header's own node. The eyebrow names the type and the window ("Calendar · This week"). The dates and event count sit small, in Plex Mono, under the view and week controls. There is no large title and no introductory copy (founder, 2026-10-08).
 - **Type navigation:** the Rankings switcher, with a 2px accent rule under the current type.
 - **Days are columns on hairlines,** Monday to Friday. A weekend day appears only when something falls on it. Below 52rem of container width the days stack.
 - **Each day groups its events by type** under a mono label with its count ("EARNINGS 18"). Accent light runs along the label's hairline as the week arrives.
