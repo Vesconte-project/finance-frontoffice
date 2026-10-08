@@ -15,9 +15,9 @@ import styles from './Rankings.module.css'
 export default function RankingsUniverse({ seed, subject = true }: {
   seed: string
   /**
-   * False for a page about no company (the calendar): the seeded node and its
-   * links are removed, and the field is centred in the band instead of turning
-   * around the header's node.
+   * False for a page about no company (the calendar): the seeded node keeps its
+   * place and camera, so the field looks exactly as on Rankings, but it has no
+   * links and is never drawn, so nothing on screen is the subject.
    */
   subject?: boolean
 }) {
@@ -32,7 +32,7 @@ export default function RankingsUniverse({ seed, subject = true }: {
     const palette = readPalette(g)
     const universe = createUniverse(seed, root.clientWidth, window.innerHeight)
     if (!subject) {
-      // The seeded node becomes the field's invisible centre, with no links of its own.
+      // The seeded node stays as the camera's invisible pivot, with no links of its own.
       const { pairs, pairLengths, focus } = universe
       universe.pairs = []
       universe.pairLengths = []
@@ -41,7 +41,6 @@ export default function RankingsUniverse({ seed, subject = true }: {
         universe.pairs.push(pairs[p], pairs[p + 1])
         universe.pairLengths.push(pairLengths[p / 2])
       }
-      Object.assign(universe.nodes[focus], { x: 0, y: 0, z: 0 })
     }
     const ownLinksFrom = subject ? ensureOwnLinks(universe) : universe.pairs.length
     const plan = planCamera(universe, null)
@@ -64,9 +63,10 @@ export default function RankingsUniverse({ seed, subject = true }: {
         canvas!.style.height = height + 'px'
         canvas!.width = Math.round(width * dpr); canvas!.height = Math.round(height * dpr)
       }
-      const anchor = subject ? root!.querySelector<HTMLElement>('[data-rankings-anchor]')?.getBoundingClientRect() : null
-      const x = anchor ? anchor.left + anchor.width / 2 - box.left : subject ? 40 : width / 2
-      const y = anchor ? anchor.top + anchor.height / 2 - box.top : subject ? 120 : height / 2
+      // Without a subject the pivot sits where the header's node would: at the start of the band.
+      const anchor = root!.querySelector<HTMLElement>(subject ? '[data-rankings-anchor]' : '[data-rankings-band]')?.getBoundingClientRect()
+      const x = anchor ? anchor.left + (subject ? anchor.width / 2 : 0) - box.left : 40
+      const y = anchor ? anchor.top + (subject ? anchor.height / 2 : 0) - box.top : 120
       projectUniverse(universe, viewAt(plan, 1, idle, x, y), projected)
       g!.setTransform(dpr, 0, 0, dpr, 0, 0)
       g!.clearRect(0, 0, width, height)
