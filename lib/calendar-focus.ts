@@ -11,7 +11,7 @@ export type CalendarFocus =
   | {
       kind: 'around'
       center: string
-      status: 'ok' | 'unavailable'
+      status: 'ok' | 'signed-out' | 'unavailable'
       /** Related symbols and how each relates to the centre, from the relationship atlas. */
       relations: Record<string, string[]>
     }
@@ -22,7 +22,7 @@ export type CalendarFocus =
  * Neither is cached across viewers in a way that leaks: the watchlist is read per
  * request with the viewer's own id, and the relationship read is public.
  */
-export async function resolveCalendarFocus(focus: CalendarFocusQuery): Promise<CalendarFocus> {
+export async function resolveCalendarFocus(focus: CalendarFocusQuery, signedIn: boolean): Promise<CalendarFocus> {
   if (focus.list === 'watchlist') {
     const userId = await getViewerUserId()
     if (!userId) return { kind: 'watchlist', status: 'signed-out', symbols: [] }
@@ -35,6 +35,8 @@ export async function resolveCalendarFocus(focus: CalendarFocusQuery): Promise<C
   }
   if (focus.around) {
     const center = focus.around
+    // Related companies are an account feature: nothing is read for a signed-out viewer.
+    if (!signedIn) return { kind: 'around', center, status: 'signed-out', relations: {} }
     try {
       const relationships = await getTickerRelationships(center, { topK: 25 })
       const relations: Record<string, string[]> = {}
@@ -60,6 +62,7 @@ export async function resolveCalendarFocus(focus: CalendarFocusQuery): Promise<C
 /** The symbols a focus keeps, or null when every company is kept. */
 export function focusSymbols(focus: CalendarFocus): Set<string> | null {
   if (focus.kind === 'all') return null
+  if (focus.status === 'signed-out') return null
   if (focus.kind === 'watchlist') return new Set(focus.symbols)
   return new Set([focus.center, ...Object.keys(focus.relations)])
 }

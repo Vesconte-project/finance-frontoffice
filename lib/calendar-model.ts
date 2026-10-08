@@ -170,18 +170,22 @@ export function calendarHref({ category, view, week, month, day, focus = {} }: {
 }
 
 /** Narrowing the calendar to some companies: the reader's watchlist, or a company and what surrounds it in the atlas. */
-export type CalendarFocusQuery = { list?: 'watchlist'; around?: string }
+export type CalendarFocusQuery = { list?: 'watchlist'; around?: string; sector?: string }
 
-export function calendarFocus(raw: { list?: string | null; around?: string | null }): CalendarFocusQuery {
-  if (raw.list === 'watchlist') return { list: 'watchlist' }
+export function calendarFocus(raw: { list?: string | null; around?: string | null; sector?: string | null }): CalendarFocusQuery {
+  const sector = calendarSector(raw.sector)
+  const withSector = sector ? { sector } : {}
+  if (raw.list === 'watchlist') return { list: 'watchlist', ...withSector }
   const around = typeof raw.around === 'string' ? raw.around.trim().toUpperCase() : ''
-  return /^[A-Z0-9][A-Z0-9.\-]{0,14}$/.test(around) ? { around } : {}
+  return /^[A-Z0-9][A-Z0-9.\-]{0,14}$/.test(around) ? { around, ...withSector } : withSector
 }
 
 export function focusParams(focus: CalendarFocusQuery): Record<string, string> {
-  if (focus.list) return { list: focus.list }
-  if (focus.around) return { around: focus.around }
-  return {}
+  const params: Record<string, string> = {}
+  if (focus.list) params.list = focus.list
+  else if (focus.around) params.around = focus.around
+  if (focus.sector) params.sector = focus.sector
+  return params
 }
 
 /**
@@ -191,4 +195,25 @@ export function focusParams(focus: CalendarFocusQuery): Record<string, string> {
 export function keepCompanies<T extends { symbol: string | null }>(events: T[], symbols: Set<string> | null): T[] {
   if (!symbols) return events
   return events.filter((event) => !event.symbol || symbols.has(event.symbol.toUpperCase()))
+}
+
+export function calendarSector(raw: string | null | undefined): string | null {
+  const sector = typeof raw === 'string' ? raw.trim() : ''
+  return sector && sector.length <= 60 && /^[\p{L}\p{N} &,.'/-]+$/u.test(sector) ? sector : null
+}
+
+/** Sectors present among the window's company events, busiest first. */
+export function sectorCounts(events: Array<{ symbol: string | null }>, sectors: Map<string, string>): Array<{ sector: string; count: number }> {
+  const counts = new Map<string, number>()
+  for (const event of events) {
+    const sector = event.symbol ? sectors.get(event.symbol.toUpperCase()) : undefined
+    if (sector) counts.set(sector, (counts.get(sector) ?? 0) + 1)
+  }
+  return [...counts].map(([sector, count]) => ({ sector, count })).sort((a, b) => b.count - a.count || a.sector.localeCompare(b.sector))
+}
+
+/** Keep company events in one sector; economic releases stay. */
+export function keepSector<T extends { symbol: string | null }>(events: T[], sector: string | null, sectors: Map<string, string> | null): T[] {
+  if (!sector || !sectors) return events
+  return events.filter((event) => !event.symbol || sectors.get(event.symbol.toUpperCase()) === sector)
 }

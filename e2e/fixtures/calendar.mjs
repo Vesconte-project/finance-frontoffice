@@ -50,3 +50,15 @@ export function calendarRelationshipsFixture(ticker) {
     probableSpurious: [],
   }
 }
+
+/** A synthetic market network: only nodes with a sector, for the calendar's sector filter. */
+export function calendarNetworkFixture() {
+  const sectorFor = (symbol) => symbol.startsWith('FXA') ? 'Technology' : symbol.startsWith('FXB') ? 'Consumer Defensive' : 'Healthcare'
+  return {
+    asOf: '2026-10-02',
+    window: 252,
+    focus: null,
+    nodes: tickerIndexFixture().items.map((item) => ({ ticker: item.symbol, name: item.name, sector: sectorFor(item.symbol), country: null, region: null, marketCap: null, degree: 1 })),
+    edges: [],
+  }
+}

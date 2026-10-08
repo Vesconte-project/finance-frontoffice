@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
-import { calendarFocus, calendarHref, humanWeek, keepCompanies, readableTitle, resolveCalendarWindow, weekStart } from '../lib/calendar-model'
+import { calendarFocus, calendarHref, humanWeek, keepCompanies, keepSector, readableTitle, sectorCounts, resolveCalendarWindow, weekStart } from '../lib/calendar-model'
 
 const TODAY = '2026-10-08' // a Thursday
 
@@ -80,7 +80,21 @@ test('narrowing keeps the named companies and every economic release', () => {
   ]
   assert.deepEqual(keepCompanies(events, null).map((event) => event.id), ['1', '2', '3', '4'])
   assert.deepEqual(keepCompanies(events, new Set(['LLY', 'NVO'])).map((event) => event.id), ['1', '2', '4'])
-  // The watchlist comes from the viewer's own session, read on the server.
-  assert.match(readRepoFile('lib/calendar-focus.ts'), /^import 'server-only'/)
+  // The watchlist comes from the viewer's own session, read on the server, and
+  // related companies are not read at all for a signed-out viewer.
+  const focus = readRepoFile('lib/calendar-focus.ts')
+  assert.match(focus, /^import 'server-only'/)
+  assert.ok(focus.indexOf("if (!signedIn) return { kind: 'around'") < focus.indexOf('getTickerRelationships(center'))
   assert.match(readRepoFile('components/calendar/CalendarLanding.tsx'), /keepCompanies\(fetched\.events, kept\)/)
+})
+
+test('a sector keeps its companies and the economic releases', () => {
+  const sectors = new Map([['AAPL', 'Technology'], ['MSFT', 'Technology'], ['KO', 'Consumer Defensive']])
+  const events = [{ symbol: 'AAPL' }, { symbol: 'KO' }, { symbol: 'MSFT' }, { symbol: 'TCS.NS' }, { symbol: null }]
+  assert.deepEqual(sectorCounts(events, sectors), [{ sector: 'Technology', count: 2 }, { sector: 'Consumer Defensive', count: 1 }])
+  assert.deepEqual(keepSector(events, 'Technology', sectors).map((event) => event.symbol), ['AAPL', 'MSFT', null])
+  assert.equal(keepSector(events, 'Technology', null).length, 5)
+  assert.deepEqual(calendarFocus({ sector: 'Consumer Defensive', list: 'watchlist' }), { list: 'watchlist', sector: 'Consumer Defensive' })
+  assert.deepEqual(calendarFocus({ sector: '<b>' }), {})
+  assert.equal(calendarHref({ category: 'all', view: 'week', week: '2026-10-05', focus: { sector: 'Technology' } }), '/calendar?sector=Technology&week=2026-10-05')
 })

@@ -19,7 +19,7 @@ import {
   neighborhoodFixture,
   tickerIndexFixture,
 } from '../e2e/fixtures/market-atlas.mjs'
-import { calendarFixture, calendarRelationshipsFixture } from '../e2e/fixtures/calendar.mjs'
+import { calendarFixture, calendarNetworkFixture, calendarRelationshipsFixture } from '../e2e/fixtures/calendar.mjs'
 import {
   isFixtureTicker,
   tickerCorporateActionsFixture,
@@ -78,6 +78,12 @@ const server = createServer((request, response) => {
   // The public calendar, for whatever range the page asks for.
   if (path === '/site/calendar' && url.searchParams.get('startDate') && url.searchParams.get('endDate') && !url.searchParams.get('symbol')) {
     send(response, 200, calendarFixture(url.searchParams.get('startDate'), url.searchParams.get('endDate'), url.searchParams.get('category') || 'all'))
+    return
+  }
+
+  // The market network, for the calendar's sector filter.
+  if (path === '/network' && !url.searchParams.get('focus')) {
+    send(response, 200, calendarNetworkFixture())
     return
   }
 

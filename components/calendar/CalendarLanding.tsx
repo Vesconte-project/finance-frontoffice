@@ -8,7 +8,9 @@ import { isViewerSignedIn } from '@/lib/auth'
 import { getPublicCalendarRange, type CalendarResult } from '@/lib/calendar-events'
 import { focusSymbols, resolveCalendarFocus } from '@/lib/calendar-focus'
 import { getCalendarNames } from '@/lib/calendar-names'
-import { CALENDAR_CATEGORIES, calendarFocus, calendarHref, focusParams as focusParamsFor, keepCompanies, humanWeek, resolveCalendarWindow, shiftDay, shiftMonth, type CalendarCategory, type CalendarView } from '@/lib/calendar-model'
+import { getCalendarSectors } from '@/lib/calendar-sectors'
+import SectorSelect from '@/components/calendar/SectorSelect'
+import { CALENDAR_CATEGORIES, calendarFocus, calendarHref, focusParams as focusParamsFor, keepCompanies, keepSector, sectorCounts, humanWeek, resolveCalendarWindow, shiftDay, shiftMonth, type CalendarCategory, type CalendarView } from '@/lib/calendar-model'
 import styles from './CalendarWeek.module.css'
 
 export type CalendarQuery = { view?: string; week?: string; month?: string; day?: string; list?: string; around?: string }
@@ -22,16 +24,22 @@ export default async function CalendarLanding({ category, query }: { category: C
   const shown = resolveCalendarWindow({ ...query, signedIn, today })
   // A locked window is never fetched: the page carries no events beyond what the viewer can read.
   const focusQuery = calendarFocus(query)
-  const [fetched, focus] = await Promise.all([
+  const [fetched, focus, sectors] = await Promise.all([
     shown.locked ? Promise.resolve(null) : getPublicCalendarRange(shown, category),
-    resolveCalendarFocus(focusQuery),
+    resolveCalendarFocus(focusQuery, signedIn),
+    shown.locked ? Promise.resolve(null) : getCalendarSectors(),
   ])
   // The narrowing happens here, on the server: a focused page carries only the companies it names.
   const kept = focusSymbols(focus)
-  const result: CalendarResult | null = fetched ? { ...fetched, events: keepCompanies(fetched.events, kept) } : null
+  const companies = fetched ? keepCompanies(fetched.events, kept) : []
+  const sectorChoices = sectors ? sectorCounts(companies, sectors) : []
+  const sector = sectors ? focusQuery.sector ?? null : null
+  const result: CalendarResult | null = fetched ? { ...fetched, events: keepSector(companies, sector, sectors) } : null
+  const narrowed = Boolean(kept || sector)
+  const sectorOnly = sector ? { sector } : {}
   const names = result ? await getCalendarNames([...result.events.flatMap((event) => event.symbol ? [event.symbol] : []), ...(focus.kind === 'around' ? [focus.center] : [])]) : {}
   const relations = focus.kind === 'around' ? focus.relations : {}
-  const center = focus.kind === 'around' ? focus.center : null
+  const center = focus.kind === 'around' && focus.status !== 'signed-out' ? focus.center : null
 
   const href = (view: CalendarView, overrides: { week?: string; month?: string; day?: string } = {}, targetCategory = category, targetFocus = focusQuery) =>
     calendarHref({ category: targetCategory, view, week: overrides.week ?? shown.week, month: overrides.month ?? shown.month, day: overrides.day, focus: targetFocus })
@@ -76,39 +84,61 @@ export default async function CalendarLanding({ category, query }: { category: C
         <div className={styles.focusBar}>
           <span className={styles.focusLabel}>Companies</span>
           <div className={styles.viewSwitch} aria-label="Companies shown">
-            <Link href={href(shown.view, {}, category, {})} aria-current={focus.kind === 'all' ? 'page' : undefined}>All</Link>
-            <Link href={signedIn ? href(shown.view, {}, category, { list: 'watchlist' }) : signUp(shown.view)} aria-current={focus.kind === 'watchlist' ? 'page' : undefined} data-analytics-id="calendar_focus_watchlist">
+            <Link href={href(shown.view, {}, category, sectorOnly)} aria-current={focus.kind === 'all' ? 'page' : undefined}>All</Link>
+            <Link href={signedIn ? href(shown.view, {}, category, { list: 'watchlist', ...sectorOnly }) : signUp(shown.view)} aria-current={focus.kind === 'watchlist' ? 'page' : undefined} data-analytics-id="calendar_focus_watchlist">
               {signedIn ? null : <Lock size={13} strokeWidth={1.5} aria-label="Needs an account" />}My watchlist
             </Link>
           </div>
-          <form className={styles.aroundForm} action={calendarHref({ category, view: shown.view, week: shown.week, month: shown.month })} method="get" role="search" aria-label="Companies around a ticker">
-            {isMonth ? <><input type="hidden" name="view" value="month" /><input type="hidden" name="month" value={shown.month} /></> : <input type="hidden" name="week" value={shown.week} />}
-            <label htmlFor="calendar-around">Around</label>
-            <input id="calendar-around" name="around" defaultValue={center ?? ''} placeholder="Ticker, e.g. LLY" autoCapitalize="characters" autoComplete="off" spellCheck={false} maxLength={15} />
-            <button type="submit" data-analytics-id="calendar_focus_around">Show</button>
-          </form>
+          {signedIn ? (
+            <form className={styles.aroundForm} action={calendarHref({ category, view: shown.view })} method="get" role="search" aria-label="Companies related to a ticker">
+              {isMonth ? <><input type="hidden" name="view" value="month" /><input type="hidden" name="month" value={shown.month} /></> : <input type="hidden" name="week" value={shown.week} />}
+              {sector ? <input type="hidden" name="sector" value={sector} /> : null}
+              <label htmlFor="calendar-related">Related to</label>
+              <input id="calendar-related" name="around" defaultValue={center ?? ''} placeholder="Ticker, e.g. LLY" autoCapitalize="characters" autoComplete="off" spellCheck={false} maxLength={15} />
+              <button type="submit" data-analytics-id="calendar_focus_related">Show</button>
+            </form>
+          ) : (
+            <div className={styles.viewSwitch}>
+              <Link href={signUp(shown.view)} data-analytics-id="calendar_focus_related_locked" data-analytics-event="auth_start" data-analytics-intent="sign_up">
+                <Lock size={13} strokeWidth={1.5} aria-label="Needs an account" />Related to a company
+              </Link>
+            </div>
+          )}
+          {sectors && result ? (
+            <SectorSelect
+              className={styles.sectorForm}
+              action={calendarHref({ category, view: shown.view })}
+              hidden={{ ...(isMonth ? { view: 'month', month: shown.month } : { week: shown.week }), ...focusParamsFor({ ...focusQuery, sector: undefined }) }}
+              sectors={sectorChoices}
+              value={sector}
+            />
+          ) : null}
         </div>
 
         {focus.kind === 'around' ? (
           <p className={styles.focusNote}>
-            {focus.status === 'ok'
-              ? <><strong>{center}</strong>{center && names[center] ? ` ${names[center]}` : ''} and {Object.keys(relations).length} related {Object.keys(relations).length === 1 ? 'company' : 'companies'} from the atlas. </>
-              : <>Companies around <strong>{center}</strong> did not load, so only its own dates are shown. </>}
-            <Link href={href(shown.view, {}, category, {})}>Show all companies</Link>
+            {focus.status === 'ok' ? (
+              <><strong>{focus.center}</strong>{names[focus.center] ? ` ${names[focus.center]}` : ''} and {Object.keys(relations).length} related {Object.keys(relations).length === 1 ? 'company' : 'companies'}: in the same investment theme, or with a share price that moves with it, before it or after it. </>
+            ) : focus.status === 'signed-out' ? (
+              <>Companies related to <strong>{focus.center}</strong> open with a free account. <Link href={signUp(shown.view)} data-analytics-id="calendar_related_sign_up" data-analytics-event="auth_start" data-analytics-intent="sign_up">Create free account</Link> </>
+            ) : (
+              <>Companies related to <strong>{focus.center}</strong> did not load, so only its own dates are shown. </>
+            )}
+            <Link href={href(shown.view, {}, category, sectorOnly)}>Show all companies</Link>
           </p>
         ) : null}
         {focus.kind === 'watchlist' && focus.status !== 'ok' ? (
-          <p className={styles.focusNote}>{focus.status === 'signed-out' ? 'Sign in to narrow the calendar to your watchlist.' : 'Your watchlist did not load. Nothing is wrong with your account.'} <Link href={href(shown.view, {}, category, {})}>Show all companies</Link></p>
+          <p className={styles.focusNote}>{focus.status === 'signed-out' ? 'Sign in to narrow the calendar to your watchlist.' : 'Your watchlist did not load. Nothing is wrong with your account.'} <Link href={href(shown.view, {}, category, sectorOnly)}>Show all companies</Link></p>
         ) : null}
         {focus.kind === 'watchlist' && focus.status === 'ok' && focus.symbols.length === 0 ? (
-          <p className={styles.focusNote}>Your watchlist is empty. Add companies with the star on their page. <Link href={href(shown.view, {}, category, {})}>Show all companies</Link></p>
+          <p className={styles.focusNote}>Your watchlist is empty. Add companies with the star on their page. <Link href={href(shown.view, {}, category, sectorOnly)}>Show all companies</Link></p>
         ) : null}
 
         <section className={styles.calendar} aria-label="Event calendar">
           {result && result.unavailableDomains.length > 0 && result.available ? (
             <p className={styles.coverage}>Partial coverage: some event sources are unavailable for this {step.unit}.</p>
           ) : null}
-          {result?.truncated ? <p className={styles.coverage}>{kept ? 'This window has more than 500 events and only the first 500 were read, so some dates for these companies may be missing. Narrow the event type to see them.' : 'Showing the first 500 events. Narrow the event type to see more.'}</p> : null}
+          {result?.truncated ? <p className={styles.coverage}>{narrowed ? 'This window has more than 500 events and only the first 500 were read, so some dates for these companies may be missing. Narrow the event type to see them.' : 'Showing the first 500 events. Narrow the event type to see more.'}</p> : null}
 
           {!result ? (
             <WeekSilhouette>
