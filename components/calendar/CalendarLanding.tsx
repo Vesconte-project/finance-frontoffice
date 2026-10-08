@@ -31,8 +31,6 @@ export default async function CalendarLanding({ category, query }: { category: C
   const step = isMonth
     ? { previous: href('month', { month: shiftMonth(shown.month, -1) }), current: href('month', { month: thisMonth }), next: href('month', { month: shiftMonth(shown.month, 1) }), unit: 'month', currentLabel: 'This month' }
     : { previous: href('week', { week: shiftDay(shown.week, -7) }), current: href('week', { week: shown.thisWeek }), next: href('week', { week: shiftDay(shown.week, 7) }), unit: 'week', currentLabel: 'This week' }
-  const categoryLabel = CALENDAR_CATEGORIES.find((item) => item.key === category)?.label ?? 'All events'
-  const eyebrow = [category === 'all' ? 'Calendar' : categoryLabel, isThisWeek ? 'This week' : isMonth ? 'Month' : 'Week'].join(' · ')
   const signUp = (view: CalendarView) => `/sign-up?redirect_url=${encodeURIComponent(href(view))}`
 
   return (
@@ -40,34 +38,29 @@ export default async function CalendarLanding({ category, query }: { category: C
       <RankingsUniverse seed={`calendar-${shown.view}-${isMonth ? shown.month : shown.week}`} />
       <div className={styles.page}>
         <header className={styles.head} data-rankings-band="">
-          <div className={styles.titleRow}>
-            <div className={styles.eyebrowRow}>
-              <span className={styles.node} data-rankings-anchor="" aria-hidden="true" />
-              <p className={styles.eyebrow}>{eyebrow}</p>
-            </div>
-            <div className={styles.controls}>
-              <div className={styles.viewSwitch} aria-label="Calendar view">
-                <Link href={href('week', { week: isMonth ? (shown.month === thisMonth ? shown.thisWeek : `${shown.month}-01`) : shown.week })} aria-current={!isMonth ? 'page' : undefined}>Week</Link>
-                <Link href={href('month', { month: isMonth ? shown.month : shown.week.slice(0, 7) })} aria-current={isMonth ? 'page' : undefined}>
-                  {signedIn ? null : <Lock size={13} strokeWidth={1.5} aria-label="Needs an account" />}Month
-                </Link>
-              </div>
-              <div className={styles.stepper} aria-label={`Change ${step.unit}`}>
-                <Link href={step.previous} aria-label={`Previous ${step.unit}`}><ArrowLeft size={17} strokeWidth={1.5} /></Link>
-                <Link href={step.current}>{step.currentLabel}</Link>
-                <Link href={step.next} aria-label={`Next ${step.unit}`}><ArrowRight size={17} strokeWidth={1.5} /></Link>
-              </div>
-              <h1 className={styles.range}>
-                {isMonth ? monthTitle(shown.month) : humanWeek(shown.week)}
-                {result ? <span> · {result.events.length} {result.events.length === 1 ? 'event' : 'events'}</span> : null}
-              </h1>
-            </div>
-          </div>
           <nav className={styles.categories} aria-label="Event type">
             {CALENDAR_CATEGORIES.map((item) => (
               <Link key={item.key} href={href(shown.view, {}, item.key)} aria-current={item.key === category ? 'page' : undefined}>{item.label}</Link>
             ))}
           </nav>
+          <div className={styles.controls}>
+            <h1 className={styles.range}>
+              {isThisWeek ? <span>This week · </span> : null}
+              {isMonth ? monthTitle(shown.month) : humanWeek(shown.week)}
+              {result ? <span> · {result.events.length} {result.events.length === 1 ? 'event' : 'events'}</span> : null}
+            </h1>
+            <div className={styles.viewSwitch} aria-label="Calendar view">
+              <Link href={href('week', { week: isMonth ? (shown.month === thisMonth ? shown.thisWeek : `${shown.month}-01`) : shown.week })} aria-current={!isMonth ? 'page' : undefined}>Week</Link>
+              <Link href={href('month', { month: isMonth ? shown.month : shown.week.slice(0, 7) })} aria-current={isMonth ? 'page' : undefined}>
+                {signedIn ? null : <Lock size={13} strokeWidth={1.5} aria-label="Needs an account" />}Month
+              </Link>
+            </div>
+            <div className={styles.stepper} aria-label={`Change ${step.unit}`}>
+              <Link href={step.previous} aria-label={`Previous ${step.unit}`}><ArrowLeft size={17} strokeWidth={1.5} /></Link>
+              <Link href={step.current}>{step.currentLabel}</Link>
+              <Link href={step.next} aria-label={`Next ${step.unit}`}><ArrowRight size={17} strokeWidth={1.5} /></Link>
+            </div>
+          </div>
         </header>
 
         <section className={styles.calendar} aria-label="Event calendar">

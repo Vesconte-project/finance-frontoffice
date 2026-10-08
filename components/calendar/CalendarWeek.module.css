@@ -1,35 +1,32 @@
 /* The public calendar, in the site's identity: the market universe turns behind
-   the header band as it does on Rankings and a company page, the header has its
-   own node, and each company on a day is a node on a hairline, the way the
-   homepage network draws it. The accent marks today, selection and focus only.
-   Motion is CSS-only; reduced motion shows the end state. */
+   the header band as it does on Rankings, and each company on a day is a node on
+   a hairline, the way the homepage network draws it. No header node: the page is
+   not a company. The accent marks today, selection and focus only. Motion is
+   CSS-only; reduced motion shows the end state. */
 
 .stage { position: relative; isolation: isolate; overflow-x: clip; }
 .page { display: grid; gap: 1.25rem; width: 100%; max-width: 1400px; margin-inline: auto; padding: 0 1.25rem 4rem; }
 @media (min-width: 768px) { .page { gap: 1.5rem; padding: 0 2.5rem 5rem; } }
+/* The type list scrolls inside its own track; it must never widen the page. */
+.page > * { min-width: 0; }
 
-/* ---- Header band ---- */
-.head { display: grid; gap: 1rem; padding-top: .25rem; }
-@media (min-width: 768px) { .head { gap: 1.25rem; padding-top: .5rem; } }
-.titleRow { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 1.25rem 1.5rem; }
-.eyebrowRow { display: flex; align-items: center; gap: .625rem; min-height: 40px; margin: 0; }
-.node { flex: none; width: 13px; height: 13px; border: 2px solid var(--accent); border-radius: 50%; background: var(--bg); animation: pop var(--motion-slow) var(--motion-ease-soft) 120ms both; }
-.eyebrow { margin: 0; color: var(--text-small); font-family: var(--font-mono); font-size: .72rem; letter-spacing: .16em; text-transform: uppercase; }
+/* ---- Header band: one line on wide screens, types on the left, the window and its
+   controls on the right, on one hairline. The universe turns behind it. ---- */
+.head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1.5rem; padding-top: .25rem; border-bottom: 1px solid var(--line); }
 .stampDot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: breathe 2.8s ease-in-out infinite; }
 
-.controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .625rem; }
-/* The window shown, small, under the view and week controls. */
-.range { flex-basis: 100%; margin: 0; color: var(--text-small); font-family: var(--font-mono); font-size: .75rem; font-weight: 400; letter-spacing: .04em; text-align: right; font-variant-numeric: tabular-nums; }
-.range span { color: var(--text-small); }
+.controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .5rem .625rem; padding-bottom: .5rem; }
+/* The window shown, small, beside the view and week controls. */
+.range { margin: 0 .25rem 0 0; color: var(--text-small); font-family: var(--font-mono); font-size: .75rem; font-weight: 400; letter-spacing: .04em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .viewSwitch, .stepper { display: flex; align-items: center; gap: 4px; }
 .viewSwitch a, .stepper a { display: inline-flex; min-width: 40px; min-height: 40px; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--text); font-size: .83rem; text-decoration: none; transition: border-color var(--motion-fast) ease; }
 .viewSwitch a:hover, .stepper a:hover { border-color: var(--line-strong); }
 .viewSwitch a[aria-current='page'] { border-color: var(--accent); }
 
 /* Type navigation: the Rankings switcher, a 2px accent rule under the current type. */
-.categories { display: flex; gap: .25rem; overflow-x: auto; border-bottom: 1px solid var(--line); scrollbar-width: none; }
+.categories { display: flex; flex: 1 1 auto; align-self: flex-end; gap: .25rem; min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .categories::-webkit-scrollbar { display: none; }
-.categories a { position: relative; flex: none; padding: .75rem .875rem; color: var(--text-muted); font-size: .925rem; text-decoration: none; transition: color var(--motion-normal) var(--motion-ease-standard); }
+.categories a { position: relative; flex: none; padding: 1.125rem .875rem 1.25rem; color: var(--text-muted); font-size: .925rem; text-decoration: none; transition: color var(--motion-normal) var(--motion-ease-standard); }
 .categories a:first-child { padding-left: 0; }
 .categories a::after { content: ''; position: absolute; right: .875rem; bottom: -1px; left: .875rem; height: 2px; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform var(--motion-slow) var(--motion-ease-soft); }
 .categories a:first-child::after { left: 0; }
@@ -101,7 +98,13 @@ a.row:hover .rowSymbol { color: var(--accent); }
 .offerSignIn a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
 
 /* Narrow space: the days stack, each day a band with its companies across. */
-@media (max-width: 640px) { .controls { justify-content: flex-start; } .range { text-align: left; } }
+/* Narrow: the window and controls first, the types under them on the hairline. */
+@media (max-width: 1100px) {
+  .head { padding-top: .5rem; }
+  .controls { order: -1; flex-basis: 100%; justify-content: flex-start; padding-bottom: 0; }
+  .range { flex-basis: 100%; }
+  .categories a { padding-block: .75rem; }
+}
 @container calendar-week (max-width: 52rem) {
   .board { grid-template-columns: minmax(0, 1fr); }
   .column { min-height: 0; padding-inline: 0; border-left: 0; border-top: 1px solid var(--line-soft); }
@@ -115,11 +118,10 @@ a.row:hover .rowSymbol { color: var(--accent); }
 }
 
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
-@keyframes pop { from { opacity: 0; scale: .3; } }
 @keyframes breathe { 50% { opacity: .35; } }
 @keyframes light { 0% { opacity: 0; transform: translateX(-40%); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateX(260%); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .node, .stampDot, .entries > li, .groupLabel::after, .offer { animation: none; }
+  .stampDot, .entries > li, .groupLabel::after, .offer { animation: none; }
   .categories a, .categories a::after, .entryNode, .entrySymbol, .rowSymbol, .viewSwitch a, .stepper a { transition: none; }
 }

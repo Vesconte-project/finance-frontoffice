@@ -31,10 +31,8 @@ for (const width of [375, 1440]) {
     expect(response?.status()).toBe(200)
 
     const calendar = page.getByRole('region', { name: 'Event calendar' })
-    await expect(page.getByText('Calendar · This week')).toBeVisible()
-    await expect(page.getByRole('heading', { level: 1 })).toContainText(/ · \d+ events$/)
     // The page opens on the week itself, with no introductory copy above it.
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^[A-Z][a-z]{2} \d{1,2} – /)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^This week · [A-Z][a-z]{2} \d{1,2} – .+ · \d+ events$/)
     // Every earnings group says what it counts, and the long day opens in place.
     await expect(calendar.getByRole('heading', { name: /^Earnings \d+$/ }).first()).toBeVisible()
     const showAll = calendar.locator('summary', { hasText: /^Show all \d+ earnings$/ })
@@ -47,7 +45,14 @@ for (const width of [375, 1440]) {
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
     expect(overflow).toBeLessThanOrEqual(0)
-    if (process.env.PLAYWRIGHT_CAPTURE) await page.screenshot({ path: `test-results/calendar-week-${width}.png`, fullPage: true })
+    // The stage clips sideways, so also check that nothing is cut off by it.
+    const rightmost = await calendar.evaluate((node) => Math.max(...[...node.querySelectorAll('*')].map((child) => child.getBoundingClientRect().right)))
+    expect(rightmost).toBeLessThanOrEqual(width)
+    if (process.env.PLAYWRIGHT_CAPTURE) {
+      // A screenshot hides the caret with an inline style; taken before hydration it reads as a mismatch.
+      await page.waitForLoadState('networkidle')
+      await page.screenshot({ path: `test-results/calendar-week-${width}.png`, fullPage: true })
+    }
     expect(errors).toEqual([])
   })
 }
@@ -62,9 +67,12 @@ test('another week is locked and carries no events', async ({ page, request }) =
   await page.goto(path)
   await expect(page.getByRole('heading', { name: 'Every week, every month' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Create free account' })).toHaveAttribute('href', /^\/sign-up\?redirect_url=/)
-  if (process.env.PLAYWRIGHT_CAPTURE) await page.screenshot({ path: 'test-results/calendar-locked-1440.png', fullPage: true })
+  if (process.env.PLAYWRIGHT_CAPTURE) {
+    await page.waitForLoadState('networkidle')
+    await page.screenshot({ path: 'test-results/calendar-locked-1440.png', fullPage: true })
+  }
   await page.getByRole('link', { name: 'Back to this week' }).click()
-  await expect(page.getByText('Calendar · This week')).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^This week · /)
   expect(errors).toEqual([])
 })
 
