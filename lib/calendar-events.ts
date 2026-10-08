@@ -31,6 +31,10 @@ export type CalendarResult = {
 }
 
 export async function getPublicCalendar(month: string, category: CalendarCategory, symbol?: string): Promise<CalendarResult> {
+  return getPublicCalendarRange(monthBounds(month), category, symbol)
+}
+
+export async function getPublicCalendarRange({ start, end }: { start: string; end: string }, category: CalendarCategory, symbol?: string): Promise<CalendarResult> {
   if (category === 'holidays') return {
     available: false,
     reason: 'Verified country holiday calendars are not connected yet. Exchange closures and national holidays are different schedules, so no dates are inferred here.',
@@ -38,7 +42,6 @@ export async function getPublicCalendar(month: string, category: CalendarCategor
     truncated: false,
     events: [],
   }
-  const { start, end } = monthBounds(month)
   const params = new URLSearchParams({ startDate: start, endDate: end, category })
   if (symbol && category !== 'macro') params.set('symbol', symbol)
   try {

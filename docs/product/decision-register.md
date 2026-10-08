@@ -16,6 +16,7 @@ This register contains approved durable decisions only. GitHub is the durable re
   5. the approved paper/shadow observation requirement passes; and
   6. eligibility, activation, monitoring, rollback, and runtime ownership are approved.
   Exact numerical thresholds and the paper/shadow duration remain unresolved; no implementation may invent them.
+- **Calendar entitlement (founder request, 2026-10-08):** the public calendar opens on the current week (Monday–Sunday, UTC) for everyone. Other weeks and the month view need a signed-in account of any plan. The rule lives in `resolveCalendarWindow` (`lib/calendar-model.ts`) and is applied before the backend is called, so a signed-out page never carries events outside the current week. Product and visual acceptance of the implementation are still pending founder review on Preview.
 
 ## Acceptance and measurement
 

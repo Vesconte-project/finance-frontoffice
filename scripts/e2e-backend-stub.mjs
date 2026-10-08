@@ -4,7 +4,8 @@
  * The Market Universe page fetches its atlas server-side, so a Playwright
  * page.route() mock cannot reach it. This serves the relationship endpoints
  * from repository-owned synthetic data, an explicitly empty Picks ranking
- * needed by the homepage smoke test, and three synthetic ticker pages. Browser QA needs no external backend
+ * needed by the homepage smoke test, three synthetic ticker pages and a synthetic
+ * public calendar. Browser QA needs no external backend
  * infrastructure or credentials.
  *
  * Every other path answers 503, which is what the app already sees when no
@@ -18,6 +19,7 @@ import {
   neighborhoodFixture,
   tickerIndexFixture,
 } from '../e2e/fixtures/market-atlas.mjs'
+import { calendarFixture } from '../e2e/fixtures/calendar.mjs'
 import {
   isFixtureTicker,
   tickerCorporateActionsFixture,
@@ -70,6 +72,12 @@ const server = createServer((request, response) => {
   // keeps the browser console clean without weakening any assertion.
   if (path === '/tickers/index') {
     send(response, 200, tickerIndexFixture())
+    return
+  }
+
+  // The public calendar, for whatever range the page asks for.
+  if (path === '/site/calendar' && url.searchParams.get('startDate') && url.searchParams.get('endDate') && !url.searchParams.get('symbol')) {
+    send(response, 200, calendarFixture(url.searchParams.get('startDate'), url.searchParams.get('endDate'), url.searchParams.get('category') || 'all'))
     return
   }
 

@@ -1,6 +1,7 @@
 import Link from 'next/link'
+import type { ReactNode } from 'react'
 import { ArrowLeft, ArrowRight, CalendarDays } from 'lucide-react'
-import { CALENDAR_CATEGORIES, calendarDay, humanDate, monthBounds, shiftMonth, type CalendarCategory, type CalendarEvent } from '@/lib/calendar-model'
+import { CALENDAR_CATEGORIES, calendarDay, humanDate, monthBounds, readableTitle, shiftMonth, type CalendarCategory, type CalendarEvent } from '@/lib/calendar-model'
 import styles from './EventCalendar.module.css'
 
 type Props = {
@@ -14,6 +15,17 @@ type Props = {
   reason?: string | null
   unavailableDomains?: string[]
   truncated?: boolean
+  /** Company names by upper-case symbol, shown beside tickers where known. */
+  names?: Record<string, string>
+  /** Query parameters every link keeps (the global month view keeps `view=month`). */
+  extraParams?: Record<string, string>
+  toolbarExtra?: ReactNode
+}
+
+function remainderLabel(rest: CalendarEvent[]): string {
+  const kinds = new Set(rest.map((event) => event.category))
+  const label = kinds.size === 1 ? CALENDAR_CATEGORIES.find((item) => item.key === rest[0].category)?.label.toLowerCase() : null
+  return `+${rest.length} more ${label ?? (rest.length === 1 ? 'event' : 'events')}`
 }
 
 const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -27,7 +39,7 @@ function monthDays(month: string): string[] {
     new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), index - offset + 1)).toISOString().slice(0, 10))
 }
 
-export default function EventCalendar({ month, selectedDay, category, events, scope, basePath, available, reason, unavailableDomains = [], truncated = false }: Props) {
+export default function EventCalendar({ month, selectedDay, category, events, scope, basePath, available, reason, unavailableDomains = [], truncated = false, names = {}, extraParams = {}, toolbarExtra }: Props) {
   const bounds = monthBounds(month)
   const today = new Date().toISOString().slice(0, 10)
   const selected = calendarDay(selectedDay, month) ?? (today.startsWith(month) ? today : events[0]?.date ?? bounds.start)
@@ -37,7 +49,7 @@ export default function EventCalendar({ month, selectedDay, category, events, sc
   const monthTitle = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${month}-01T12:00:00Z`))
   const href = (targetMonth: string, day?: string, targetCategory = category) => {
     const path = scope === 'global' ? `/calendar${targetCategory === 'all' ? '' : `/${targetCategory}`}` : basePath
-    const params = new URLSearchParams({ month: targetMonth })
+    const params = new URLSearchParams({ ...extraParams, month: targetMonth })
     if (day) params.set('day', day)
     if (scope === 'ticker' && targetCategory !== 'all') params.set('type', targetCategory)
     return `${path}?${params}`
@@ -51,10 +63,13 @@ export default function EventCalendar({ month, selectedDay, category, events, sc
           <h2>{monthTitle}</h2>
           {scope === 'global' ? <p>{events.length} {events.length === 1 ? 'event' : 'events'} in this view</p> : null}
         </div>
-        <div className={styles.monthControls} aria-label="Change month">
-          <Link href={href(shiftMonth(month, -1))} aria-label="Previous month"><ArrowLeft size={17} /></Link>
-          <Link href={href(today.slice(0, 7))}>Today</Link>
-          <Link href={href(shiftMonth(month, 1))} aria-label="Next month"><ArrowRight size={17} /></Link>
+        <div className={styles.toolbarControls}>
+          {toolbarExtra}
+          <div className={styles.monthControls} aria-label="Change month">
+            <Link href={href(shiftMonth(month, -1))} aria-label="Previous month"><ArrowLeft size={17} /></Link>
+            <Link href={href(today.slice(0, 7))}>Today</Link>
+            <Link href={href(shiftMonth(month, 1))} aria-label="Next month"><ArrowRight size={17} /></Link>
+          </div>
         </div>
       </div>
 
@@ -89,10 +104,9 @@ export default function EventCalendar({ month, selectedDay, category, events, sc
                   aria-current={date === today ? 'date' : undefined}
                 >
                   <time dateTime={date}>{Number(date.slice(8))}</time>
-                  {dayEvents.length > 0 ? <span className={styles.count}>{dayEvents.length}</span> : null}
                   <span className={styles.dayEvents}>
-                    {dayEvents.slice(0, 2).map((event) => <span key={event.id} className={styles.dayEvent} data-category={event.category}>{event.symbol ? `${event.symbol} · ` : ''}{event.title}</span>)}
-                    {dayEvents.length > 2 ? <span className={styles.more}>+{dayEvents.length - 2} more</span> : null}
+                    {dayEvents.slice(0, 2).map((event) => <span key={event.id} className={styles.dayEvent} data-category={event.category}>{event.symbol ? `${event.symbol} · ` : ''}{readableTitle(event.title)}</span>)}
+                    {dayEvents.length > 2 ? <span className={styles.more}>{remainderLabel(dayEvents.slice(2))}</span> : null}
                   </span>
                 </Link>
               )
@@ -106,8 +120,8 @@ export default function EventCalendar({ month, selectedDay, category, events, sc
             <ol>{agenda.map((event) => (
               <li key={event.id}>
                 <span className={styles.eventType} data-category={event.category}>{CALENDAR_CATEGORIES.find((item) => item.key === event.category)?.label}</span>
-                <strong>{event.title}</strong>
-                {event.symbol ? <Link href={`/stocks/${encodeURIComponent(event.symbol)}/events`}>{event.symbol} <ArrowRight size={14} /></Link> : null}
+                <strong>{readableTitle(event.title)}</strong>
+                {event.symbol ? <Link href={`/stocks/${encodeURIComponent(event.symbol)}/events`}>{event.symbol}{names[event.symbol.toUpperCase()] ? <span className={styles.agendaName}>{names[event.symbol.toUpperCase()]}</span> : null} <ArrowRight size={14} /></Link> : null}
                 {event.detail ? <p>{event.detail}</p> : null}
                 {/* A ticker page names no data source (Spec PRD-78: no internal language). */}
                 {event.source && scope === 'global' ? <p>Source: {event.source.replaceAll('_', ' ')}</p> : null}

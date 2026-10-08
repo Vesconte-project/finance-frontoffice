@@ -206,3 +206,16 @@ Do not add an external reference merely to justify a predetermined visual. State
 | `components/ui/ExpandingSelector.tsx` (2026-07-21 study above) | Pointer capture with a direction threshold, so vertical page scroll still wins; controlled commit owned by the parent | The reel layout, which stays specific to that selector |
 
 Vesconte transformation: the magnification is a second, clipped copy of the labels inside the drop, counter-scaled against the drop's own stretch so text grows uniformly and works the same in every engine. The drop's geometry, lift and stretch are driven by damped springs in script; commit goes through the option's own click so selection and telemetry match a tap. The track is a solid `--surface` capsule; only the drop is translucent. No external code or assets were copied.
+
+## Events calendar week view — 2026-10-08
+
+The public calendar (`/calendar`, `/calendar/[category]`) opens on a week board (`components/calendar/WeekBoard.tsx`, `CalendarWeek.module.css`). The founder pointed to earnings-calendar sites that show a week of company tiles; only the idea of a week of tiles was taken, with no layout, colours, logos or code copied.
+
+- **Days are columns** on hairlines, Monday to Friday. A weekend day appears only when something falls on it. Below 52rem of container width the days stack.
+- **Each day groups its events by type** and labels each group with its count ("Earnings 18"), so no number appears without saying what it counts.
+- **Earnings are tiles:** ticker in Plex Mono and the company name from the ticker index (`lib/calendar-names.ts`, server-only, fails open to tickers alone). There are no logos, because no logo source exists. After twelve tiles a native `<details>` opens the rest in place.
+- **The accent marks today only:** a 2px top rule and the date.
+- **Locked weeks and the month view** use the Rankings pattern: a silhouette built from nothing, with one solid offer panel over it.
+- **The month grid** (`EventCalendar`, shared with the ticker Events tab) drops the bare count in the corner and names what remains, for example "+50 more earnings". Where names are passed, the agenda shows them.
+
+Known gaps, not filled in the frontend: earnings timing (before open / after close) is not exposed by `/site/calendar`. The backend earnings read model has `report_time`, but the public projection leaves it out and the data-ops source currently writes it empty. Company logos have no source.
