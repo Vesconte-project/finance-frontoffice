@@ -6,7 +6,7 @@ import styles from './CalendarWeek.module.css'
 type EventKind = CalendarEvent['category']
 
 const GROUP_ORDER: EventKind[] = ['earnings', 'dividends', 'company', 'macro']
-const TILES_SHOWN = 12
+const TILES_SHOWN = 14
 const ROWS_SHOWN = 5
 
 const groupLabel = (kind: EventKind) => CALENDAR_CATEGORIES.find((item) => item.key === kind)?.label ?? kind
@@ -15,14 +15,15 @@ function bySymbol(a: CalendarEvent, b: CalendarEvent) {
   return (a.symbol ?? a.title).localeCompare(b.symbol ?? b.title)
 }
 
-function EarningsTile({ event, name }: { event: CalendarEvent; name?: string }) {
+function EarningsTile({ event, name, index }: { event: CalendarEvent; name?: string; index: number }) {
   const symbol = event.symbol ?? ''
   const label = `${symbol}${name ? `, ${name}` : ''}: ${readableTitle(event.title)}`
   return (
-    <li>
-      <Link className={styles.tile} href={`/stocks/${encodeURIComponent(symbol)}/events`} title={label} aria-label={label}>
-        <span className={styles.tileSymbol}>{symbol}</span>
-        <span className={styles.tileName}>{name ?? readableTitle(event.title)}</span>
+    <li style={{ '--i': index } as CSSProperties}>
+      <Link className={styles.entry} href={`/stocks/${encodeURIComponent(symbol)}/events`} title={label} aria-label={label}>
+        <span className={styles.entryNode} aria-hidden="true" />
+        <span className={styles.entrySymbol}>{symbol}</span>
+        {name ? <span className={styles.entryName}>{name}</span> : null}
       </Link>
     </li>
   )
@@ -49,10 +50,10 @@ function EventRow({ event, name }: { event: CalendarEvent; name?: string }) {
 function Group({ kind, events, names }: { kind: EventKind; events: CalendarEvent[]; names: Record<string, string> }) {
   const tiles = kind === 'earnings' && events.every((event) => event.symbol)
   const shown = tiles ? TILES_SHOWN : ROWS_SHOWN
-  const render = (event: CalendarEvent) => tiles
-    ? <EarningsTile key={event.id} event={event} name={event.symbol ? names[event.symbol.toUpperCase()] : undefined} />
+  const render = (event: CalendarEvent, index: number) => tiles
+    ? <EarningsTile key={event.id} event={event} index={index} name={event.symbol ? names[event.symbol.toUpperCase()] : undefined} />
     : <EventRow key={event.id} event={event} name={event.symbol ? names[event.symbol.toUpperCase()] : undefined} />
-  const listClass = tiles ? styles.tiles : styles.rows
+  const listClass = tiles ? styles.entries : styles.rows
   return (
     <section className={styles.group} data-kind={kind}>
       <h4 className={styles.groupLabel}>{groupLabel(kind)} <span>{events.length}</span></h4>
@@ -75,9 +76,11 @@ export function WeekSilhouette({ children }: { children: ReactNode }) {
         {Array.from({ length: 5 }, (_, day) => (
           <div key={day} className={styles.column}>
             <div className={styles.columnHead}><span className={styles.ghostBar} style={{ width: '2rem' }} /><span className={styles.ghostBar} style={{ width: '1.5rem', height: '1.25rem' }} /></div>
-            <div className={styles.ghostTiles}>
-              {Array.from({ length: 3 + ((day * 2) % 5) }, (_, tile) => <span key={tile} className={styles.ghostTile} />)}
-            </div>
+            <ul className={styles.entries}>
+              {Array.from({ length: 4 + ((day * 3) % 7) }, (_, entry) => (
+                <li key={entry} className={styles.ghostEntry}><span className={styles.entryNode} /><span className={styles.ghostBar} style={{ width: `${2 + ((entry + day) % 3) * 0.6}rem` }} /></li>
+              ))}
+            </ul>
           </div>
         ))}
       </div>
@@ -116,7 +119,7 @@ export default function WeekBoard({ week, today, events, names, category, availa
             <h3 className={styles.columnHead}>
               <span className={styles.weekday}>{new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`))}</span>
               <time dateTime={date} className={styles.date}>{Number(date.slice(8))}</time>
-              {isToday ? <span className={styles.todayMark}>Today</span> : null}
+              {isToday ? <span className={styles.todayMark}><span className={styles.stampDot} aria-hidden="true" />Today</span> : null}
             </h3>
             {groups.length
               ? groups.map(({ kind, items }) => <Group key={kind} kind={kind} events={items} names={names} />)

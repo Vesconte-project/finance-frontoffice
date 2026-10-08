@@ -31,7 +31,10 @@ for (const width of [375, 1440]) {
     expect(response?.status()).toBe(200)
 
     const calendar = page.getByRole('region', { name: 'Event calendar' })
-    await expect(calendar.getByText(/^This week · \d+ events$/)).toBeVisible()
+    await expect(page.getByText('Calendar · This week')).toBeVisible()
+    await expect(page.getByText(/^\d+ events$/)).toBeVisible()
+    // The page opens on the week itself, with no introductory copy above it.
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^[A-Z][a-z]{2} \d{1,2} – /)
     // Every earnings group says what it counts, and the long day opens in place.
     await expect(calendar.getByRole('heading', { name: /^Earnings \d+$/ }).first()).toBeVisible()
     const showAll = calendar.locator('summary', { hasText: /^Show all \d+ earnings$/ })
@@ -61,7 +64,7 @@ test('another week is locked and carries no events', async ({ page, request }) =
   await expect(page.getByRole('link', { name: 'Create free account' })).toHaveAttribute('href', /^\/sign-up\?redirect_url=/)
   if (process.env.PLAYWRIGHT_CAPTURE) await page.screenshot({ path: 'test-results/calendar-locked-1440.png', fullPage: true })
   await page.getByRole('link', { name: 'Back to this week' }).click()
-  await expect(page.getByText(/^This week · \d+ events$/)).toBeVisible()
+  await expect(page.getByText('Calendar · This week')).toBeVisible()
   expect(errors).toEqual([])
 })
 

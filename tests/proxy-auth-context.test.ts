@@ -42,6 +42,12 @@ test('ticker pages run clerkMiddleware so the viewer resolves', () => {
   )
 })
 
+test('the calendar runs clerkMiddleware so a signed-in reader is not locked out', () => {
+  const source = readProxySource()
+  assert.ok(matcherRoutes(source).includes('/calendar(.*)'), 'the calendar calls isViewerSignedIn(); without a matcher entry every reader is rendered signed out')
+  assert.ok(!protectedRoutes(source).some((route) => route.startsWith('/calendar')), 'the current week stays public')
+})
+
 test('ticker pages stay public', () => {
   const source = readProxySource()
   const guarded = protectedRoutes(source)

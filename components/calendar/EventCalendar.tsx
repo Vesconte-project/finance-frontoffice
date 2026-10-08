@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import type { ReactNode } from 'react'
 import { ArrowLeft, ArrowRight, CalendarDays } from 'lucide-react'
 import { CALENDAR_CATEGORIES, calendarDay, humanDate, monthBounds, readableTitle, shiftMonth, type CalendarCategory, type CalendarEvent } from '@/lib/calendar-model'
 import styles from './EventCalendar.module.css'
@@ -19,7 +18,8 @@ type Props = {
   names?: Record<string, string>
   /** Query parameters every link keeps (the global month view keeps `view=month`). */
   extraParams?: Record<string, string>
-  toolbarExtra?: ReactNode
+  /** The page draws its own header and type navigation; render the grid and agenda only. */
+  bare?: boolean
 }
 
 function remainderLabel(rest: CalendarEvent[]): string {
@@ -39,7 +39,7 @@ function monthDays(month: string): string[] {
     new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), index - offset + 1)).toISOString().slice(0, 10))
 }
 
-export default function EventCalendar({ month, selectedDay, category, events, scope, basePath, available, reason, unavailableDomains = [], truncated = false, names = {}, extraParams = {}, toolbarExtra }: Props) {
+export default function EventCalendar({ month, selectedDay, category, events, scope, basePath, available, reason, unavailableDomains = [], truncated = false, names = {}, extraParams = {}, bare = false }: Props) {
   const bounds = monthBounds(month)
   const today = new Date().toISOString().slice(0, 10)
   const selected = calendarDay(selectedDay, month) ?? (today.startsWith(month) ? today : events[0]?.date ?? bounds.start)
@@ -58,13 +58,13 @@ export default function EventCalendar({ month, selectedDay, category, events, sc
 
   return (
     <section className={styles.calendar} aria-label="Event calendar">
+      {bare ? null : <>
       <div className={styles.toolbar}>
         <div>
           <h2>{monthTitle}</h2>
           {scope === 'global' ? <p>{events.length} {events.length === 1 ? 'event' : 'events'} in this view</p> : null}
         </div>
         <div className={styles.toolbarControls}>
-          {toolbarExtra}
           <div className={styles.monthControls} aria-label="Change month">
             <Link href={href(shiftMonth(month, -1))} aria-label="Previous month"><ArrowLeft size={17} /></Link>
             <Link href={href(today.slice(0, 7))}>Today</Link>
@@ -80,6 +80,7 @@ export default function EventCalendar({ month, selectedDay, category, events, sc
           </Link>
         ))}
       </nav>
+      </>}
 
       {unavailableDomains.length > 0 && available ? (
         <p className={styles.coverage}>Partial coverage: some event sources are unavailable for this month.</p>
