@@ -8,11 +8,14 @@ import styles from '@/components/picks/Rankings.module.css'
 
 // Further back than a company page's rest camera (REST_ZOOM 1.6): a wide field with no subject.
 const FAR_ZOOM = 1.25
+// How much of the sphere's height survives: a disc seen nearly edge-on.
+const FLATTEN = 0.2
 
 /**
- * The seeded universe with no subject: the focus node's links are removed, and
- * the ETF nodes lose their accent and the light along their links, so no point
- * on screen draws the eye.
+ * The seeded universe with no subject: the focus node's links are removed. The
+ * ETF nodes keep their accent and the light along their links, as on every other
+ * page. The sphere is flattened into a wide disc so the whole field fits the
+ * header band, which is much lower than a company page's.
  */
 function withoutFocus(universe: Universe): Universe {
   const pairs: number[] = []
@@ -22,7 +25,7 @@ function withoutFocus(universe: Universe): Universe {
     pairs.push(universe.pairs[p], universe.pairs[p + 1])
     pairLengths.push(universe.pairLengths[p / 2])
   }
-  const nodes = universe.nodes.map((node) => ({ ...node, signal: false, light: 0 }))
+  const nodes = universe.nodes.map((node) => ({ ...node, y: node.y * FLATTEN }))
   return { ...universe, nodes, pairs, pairLengths }
 }
 
@@ -63,7 +66,7 @@ export default function CalendarUniverse({ seed }: { seed: string }) {
         canvas!.style.height = height + 'px'
         canvas!.width = Math.round(width * dpr); canvas!.height = Math.round(height * dpr)
       }
-      projectUniverse(universe, { ax: REST_PITCH, ay: 0.6 + idle, zoom: FAR_ZOOM, x: width / 2, y: height * 0.6 }, projected)
+      projectUniverse(universe, { ax: REST_PITCH, ay: 0.6 + idle, zoom: FAR_ZOOM, x: width / 2, y: height * 0.55 }, projected)
       g!.setTransform(dpr, 0, 0, dpr, 0, 0)
       g!.clearRect(0, 0, width, height)
       drawUniverseFrame(g!, { universe, handoff: null, ownLinksFrom: universe.pairs.length, projected, k: 1, done: true, width, height, bandBottom, palette })

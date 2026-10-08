@@ -10,6 +10,10 @@
 /* The type list scrolls inside its own track; it must never widen the page. */
 .page > * { min-width: 0; }
 
+/* The band the universe shows behind: the header line and the companies bar. */
+.band { display: grid; gap: 1.25rem; padding-bottom: 1rem; }
+@media (min-width: 768px) { .band { gap: 1.5rem; } }
+
 /* ---- Header band: one line on wide screens, types on the left, the window and its
    controls on the right, on one hairline. The universe turns behind it. ---- */
 .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1.5rem; padding-top: .25rem; border-bottom: 1px solid var(--line); }
@@ -36,7 +40,7 @@
 .viewSwitch a:focus-visible, .stepper a:focus-visible, .categories a:focus-visible, .entry:focus-visible, .row:focus-visible, .moreDetails summary:focus-visible, .openNote a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 
 /* ---- Companies: all, the reader's watchlist, or around one company in the atlas ---- */
-.focusBar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; margin-top: -.5rem; }
+.focusBar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
 .focusLabel { color: var(--text-small); font-family: var(--font-mono); font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; }
 .aroundForm { display: flex; align-items: center; gap: .375rem; }
 .aroundForm label { color: var(--text-small); font-size: .83rem; }

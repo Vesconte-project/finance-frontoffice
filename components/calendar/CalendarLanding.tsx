@@ -54,7 +54,8 @@ export default async function CalendarLanding({ category, query }: { category: C
     <div className={styles.stage}>
       <CalendarUniverse seed="calendar" />
       <div className={styles.page}>
-        <header className={styles.head} data-rankings-band="">
+        <div className={styles.band} data-rankings-band="">
+        <header className={styles.head}>
           <nav className={styles.categories} aria-label="Event type">
             {CALENDAR_CATEGORIES.map((item) => (
               <Link key={item.key} href={href(shown.view, {}, item.key)} aria-current={item.key === category ? 'page' : undefined}>{item.label}</Link>
@@ -111,6 +112,8 @@ export default async function CalendarLanding({ category, query }: { category: C
               value={sector}
             />
           ) : null}
+        </div>
+
         </div>
 
         {focus.kind === 'around' ? (
