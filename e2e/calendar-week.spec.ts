@@ -42,6 +42,18 @@ for (const width of [375, 1440]) {
     // Tiles carry the company name from the ticker index.
     await expect(calendar.locator('a[href^="/stocks/"]').first()).toHaveAttribute('aria-label', /^[A-Z0-9.]+, .+: Earnings/)
     await expect(calendar.getByText('Other weeks and the month view open with a free account.')).toBeVisible()
+    // On a phone the week is a strip of days that jumps to each one; on a wide screen the columns are the week.
+    const strip = calendar.getByRole('navigation', { name: 'Days of the week' })
+    if (width < 600) {
+      await expect(strip).toBeVisible()
+      const wednesday = strip.getByRole('link', { name: /^Wednesday, / })
+      const target = await wednesday.getAttribute('href')
+      await wednesday.click()
+      await expect(page).toHaveURL(new RegExp(`${target}$`))
+      await expect(page.locator(target!)).toBeInViewport()
+    } else {
+      await expect(strip).toBeHidden()
+    }
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
     expect(overflow).toBeLessThanOrEqual(0)

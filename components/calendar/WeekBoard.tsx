@@ -115,7 +115,23 @@ export default function WeekBoard({ week, today, events, names, relations = {}, 
 
   if (!available) return <p className={styles.unavailable}>{reason ?? 'This calendar source is unavailable.'}</p>
 
+  const weekday = (date: string) => new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`))
+
   return (
+    <>
+    {/* On a narrow screen the days stack; this strip shows the whole week at a glance and jumps to a day. */}
+    <nav className={styles.dayStrip} aria-label="Days of the week" style={{ '--days': days.length } as CSSProperties}>
+      {days.map((date) => {
+        const count = byDay.get(date)?.length ?? 0
+        return (
+          <a key={date} href={`#day-${date}`} data-today={date === today || undefined} data-empty={count === 0 || undefined} aria-label={`${humanDate(date, { weekday: 'long' })}: ${count} ${count === 1 ? 'event' : 'events'}`}>
+            <span className={styles.stripDay}>{weekday(date)}</span>
+            <span className={styles.stripDate}>{Number(date.slice(8))}</span>
+            <span className={styles.stripCount}>{count || '–'}</span>
+          </a>
+        )
+      })}
+    </nav>
     <div className={styles.board} style={{ '--days': days.length } as CSSProperties}>
       {days.map((date) => {
         const dayEvents = byDay.get(date) ?? []
@@ -126,9 +142,9 @@ export default function WeekBoard({ week, today, events, names, relations = {}, 
         })
         const isToday = date === today
         return (
-          <section key={date} className={styles.column} data-today={isToday || undefined} aria-label={`${humanDate(date, { weekday: 'long' })}; ${dayEvents.length} ${dayEvents.length === 1 ? 'event' : 'events'}`}>
+          <section key={date} id={`day-${date}`} className={styles.column} data-today={isToday || undefined} data-empty={groups.length === 0 || undefined} aria-label={`${humanDate(date, { weekday: 'long' })}; ${dayEvents.length} ${dayEvents.length === 1 ? 'event' : 'events'}`}>
             <h3 className={styles.columnHead}>
-              <span className={styles.weekday}>{new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`))}</span>
+              <span className={styles.weekday}>{weekday(date)}</span>
               <time dateTime={date} className={styles.date}>{Number(date.slice(8))}</time>
               {isToday ? <span className={styles.todayMark}><span className={styles.stampDot} aria-hidden="true" />Today</span> : null}
             </h3>
@@ -139,5 +155,6 @@ export default function WeekBoard({ week, today, events, names, relations = {}, 
         )
       })}
     </div>
+    </>
   )
 }
