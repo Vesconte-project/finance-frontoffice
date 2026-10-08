@@ -12,7 +12,15 @@ import styles from './Rankings.module.css'
  * own node (`[data-rankings-anchor]`). Decorative and seeded per page, so each
  * reading has its own sky. Reduced motion draws one still frame.
  */
-export default function RankingsUniverse({ seed }: { seed: string }) {
+export default function RankingsUniverse({ seed, subject = true }: {
+  seed: string
+  /**
+   * False for a page about no company (the calendar): the seeded node and its
+   * links are removed, and the field is centred in the band instead of turning
+   * around the header's node.
+   */
+  subject?: boolean
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const { reducedMotion } = useScrollRuntime()
 
@@ -23,7 +31,19 @@ export default function RankingsUniverse({ seed }: { seed: string }) {
     if (!canvas || !g || !root) return
     const palette = readPalette(g)
     const universe = createUniverse(seed, root.clientWidth, window.innerHeight)
-    const ownLinksFrom = ensureOwnLinks(universe)
+    if (!subject) {
+      // The seeded node becomes the field's invisible centre, with no links of its own.
+      const { pairs, pairLengths, focus } = universe
+      universe.pairs = []
+      universe.pairLengths = []
+      for (let p = 0; p < pairs.length; p += 2) {
+        if (pairs[p] === focus || pairs[p + 1] === focus) continue
+        universe.pairs.push(pairs[p], pairs[p + 1])
+        universe.pairLengths.push(pairLengths[p / 2])
+      }
+      Object.assign(universe.nodes[focus], { x: 0, y: 0, z: 0 })
+    }
+    const ownLinksFrom = subject ? ensureOwnLinks(universe) : universe.pairs.length
     const plan = planCamera(universe, null)
     const projected: ProjectedNode[] = []
     let idle = 0
@@ -44,9 +64,9 @@ export default function RankingsUniverse({ seed }: { seed: string }) {
         canvas!.style.height = height + 'px'
         canvas!.width = Math.round(width * dpr); canvas!.height = Math.round(height * dpr)
       }
-      const anchor = root!.querySelector<HTMLElement>('[data-rankings-anchor]')?.getBoundingClientRect()
-      const x = anchor ? anchor.left + anchor.width / 2 - box.left : 40
-      const y = anchor ? anchor.top + anchor.height / 2 - box.top : 120
+      const anchor = subject ? root!.querySelector<HTMLElement>('[data-rankings-anchor]')?.getBoundingClientRect() : null
+      const x = anchor ? anchor.left + anchor.width / 2 - box.left : subject ? 40 : width / 2
+      const y = anchor ? anchor.top + anchor.height / 2 - box.top : subject ? 120 : height / 2
       projectUniverse(universe, viewAt(plan, 1, idle, x, y), projected)
       g!.setTransform(dpr, 0, 0, dpr, 0, 0)
       g!.clearRect(0, 0, width, height)
@@ -85,7 +105,7 @@ export default function RankingsUniverse({ seed }: { seed: string }) {
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('resize', onResize)
     }
-  }, [seed, reducedMotion])
+  }, [seed, subject, reducedMotion])
 
   return <canvas ref={canvasRef} className={styles.universe} aria-hidden="true" data-rankings-universe="" />
 }

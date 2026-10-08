@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { ArrowLeft, ArrowRight, Lock } from 'lucide-react'
 import EventCalendar from '@/components/calendar/EventCalendar'
 import WeekBoard, { WeekSilhouette } from '@/components/calendar/WeekBoard'
-import CalendarUniverse from '@/components/calendar/CalendarUniverse'
+import RankingsUniverse from '@/components/picks/RankingsUniverse'
 import { buttonClass } from '@/components/ui/Button'
 import { isViewerSignedIn } from '@/lib/auth'
 import { getPublicCalendarRange, type CalendarResult } from '@/lib/calendar-events'
@@ -52,7 +52,7 @@ export default async function CalendarLanding({ category, query }: { category: C
 
   return (
     <div className={styles.stage}>
-      <CalendarUniverse seed="calendar" />
+      <RankingsUniverse seed="calendar" subject={false} />
       <div className={styles.page}>
         <div className={styles.band} data-rankings-band="">
         <header className={styles.head}>
