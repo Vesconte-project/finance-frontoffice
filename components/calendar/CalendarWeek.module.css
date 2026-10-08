@@ -4,9 +4,15 @@
    not a company. The accent marks today, selection and focus only. Motion is
    CSS-only; reduced motion shows the end state. */
 
-.stage { position: relative; isolation: isolate; overflow-x: clip; }
-.page { display: grid; gap: 1.25rem; width: 100%; max-width: 1400px; margin-inline: auto; padding: 0 1.25rem 4rem; }
-@media (min-width: 768px) { .page { gap: 1.5rem; padding: 0 2.5rem 5rem; } }
+/* As on a company page: the stage runs up under the fixed header by the space
+   the app shell reserves for it, so the universe starts at the top of the
+   window, and the header is transparent over it. */
+.stage { --calendar-header-offset: 72px; position: relative; isolation: isolate; overflow-x: clip; margin-top: calc(var(--calendar-header-offset) * -1); }
+:global(.app-shell:has([data-calendar-stage]) .app-header__inner) { border-bottom-color: transparent; background: transparent; }
+.page { display: grid; gap: 1.25rem; width: 100%; max-width: 1400px; margin-inline: auto; padding: var(--calendar-header-offset) 1.25rem 4rem; }
+@media (min-width: 768px) { .page { gap: 1.5rem; padding: var(--calendar-header-offset) 2.5rem 5rem; } }
+/* The universe's pivot: a point at the start of the header line. */
+.pivot { position: absolute; left: 0; top: 50%; width: 0; height: 0; }
 /* The type list scrolls inside its own track; it must never widen the page. */
 .page > * { min-width: 0; }
 
@@ -16,7 +22,7 @@
 
 /* ---- Header band: one line on wide screens, types on the left, the window and its
    controls on the right, on one hairline. The universe turns behind it. ---- */
-.head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1.5rem; padding-top: .25rem; border-bottom: 1px solid var(--line); }
+.head { position: relative; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1.5rem; padding-top: .25rem; border-bottom: 1px solid var(--line); }
 .stampDot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: breathe 2.8s ease-in-out infinite; }
 
 .controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .5rem .625rem; margin-left: auto; padding-bottom: .5rem; }

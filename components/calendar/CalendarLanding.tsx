@@ -51,11 +51,13 @@ export default async function CalendarLanding({ category, query }: { category: C
   const signUp = (view: CalendarView) => `/sign-up?redirect_url=${encodeURIComponent(href(view))}`
 
   return (
-    <div className={styles.stage}>
+    <div className={styles.stage} data-calendar-stage="">
       <RankingsUniverse seed="calendar" subject={false} />
       <div className={styles.page}>
         <div className={styles.band} data-rankings-band="">
         <header className={styles.head}>
+          {/* Where the universe pivots, as the identity node does on a company page; nothing is drawn here. */}
+          <span className={styles.pivot} data-rankings-anchor="" aria-hidden="true" />
           <nav className={styles.categories} aria-label="Event type">
             {CALENDAR_CATEGORIES.map((item) => (
               <Link key={item.key} href={href(shown.view, {}, item.key)} aria-current={item.key === category ? 'page' : undefined}>{item.label}</Link>

@@ -15,9 +15,9 @@ import styles from './Rankings.module.css'
 export default function RankingsUniverse({ seed, subject = true }: {
   seed: string
   /**
-   * False for a page about no company (the calendar): the seeded node keeps its
-   * place and camera, so the field looks exactly as on Rankings, but it has no
-   * links and is never drawn, so nothing on screen is the subject.
+   * False for a page about no company (the calendar): the seeded node still
+   * pivots the camera at the anchor, as everywhere else, but has no links of
+   * its own, so nothing on screen is the subject.
    */
   subject?: boolean
 }) {
@@ -32,7 +32,6 @@ export default function RankingsUniverse({ seed, subject = true }: {
     const palette = readPalette(g)
     const universe = createUniverse(seed, root.clientWidth, window.innerHeight)
     if (!subject) {
-      // The seeded node stays as the camera's invisible pivot, with no links of its own.
       const { pairs, pairLengths, focus } = universe
       universe.pairs = []
       universe.pairLengths = []
@@ -63,10 +62,9 @@ export default function RankingsUniverse({ seed, subject = true }: {
         canvas!.style.height = height + 'px'
         canvas!.width = Math.round(width * dpr); canvas!.height = Math.round(height * dpr)
       }
-      // Without a subject the pivot sits where the header's node would: at the start of the band.
-      const anchor = root!.querySelector<HTMLElement>(subject ? '[data-rankings-anchor]' : '[data-rankings-band]')?.getBoundingClientRect()
-      const x = anchor ? anchor.left + (subject ? anchor.width / 2 : 0) - box.left : 40
-      const y = anchor ? anchor.top + (subject ? anchor.height / 2 : 0) - box.top : 120
+      const anchor = root!.querySelector<HTMLElement>('[data-rankings-anchor]')?.getBoundingClientRect()
+      const x = anchor ? anchor.left + anchor.width / 2 - box.left : 40
+      const y = anchor ? anchor.top + anchor.height / 2 - box.top : 120
       projectUniverse(universe, viewAt(plan, 1, idle, x, y), projected)
       g!.setTransform(dpr, 0, 0, dpr, 0, 0)
       g!.clearRect(0, 0, width, height)
