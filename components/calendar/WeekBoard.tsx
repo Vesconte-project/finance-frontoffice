@@ -15,22 +15,29 @@ function bySymbol(a: CalendarEvent, b: CalendarEvent) {
   return (a.symbol ?? a.title).localeCompare(b.symbol ?? b.title)
 }
 
-function EarningsTile({ event, name, index }: { event: CalendarEvent; name?: string; index: number }) {
+type Context = { names: Record<string, string>; relations: Record<string, string[]>; center: string | null }
+
+function EarningsTile({ event, context, index }: { event: CalendarEvent; context: Context; index: number }) {
   const symbol = event.symbol ?? ''
-  const label = `${symbol}${name ? `, ${name}` : ''}: ${readableTitle(event.title)}`
+  const name = context.names[symbol.toUpperCase()]
+  const relation = context.relations[symbol.toUpperCase()]?.join(' · ')
+  const isCenter = symbol.toUpperCase() === context.center
+  const label = `${symbol}${name ? `, ${name}` : ''}: ${readableTitle(event.title)}${relation ? `. ${relation}` : ''}`
   return (
     <li style={{ '--i': index } as CSSProperties}>
-      <Link className={styles.entry} href={`/stocks/${encodeURIComponent(symbol)}/events`} title={label} aria-label={label}>
+      <Link className={styles.entry} href={`/stocks/${encodeURIComponent(symbol)}/events`} title={label} aria-label={label} data-center={isCenter || undefined}>
         <span className={styles.entryNode} aria-hidden="true" />
         <span className={styles.entrySymbol}>{symbol}</span>
         {name ? <span className={styles.entryName}>{name}</span> : null}
+        {relation ? <span className={styles.entryRelation}>{relation}</span> : null}
       </Link>
     </li>
   )
 }
 
-function EventRow({ event, name }: { event: CalendarEvent; name?: string }) {
+function EventRow({ event, context }: { event: CalendarEvent; context: Context }) {
   const title = readableTitle(event.title)
+  const name = event.symbol ? context.names[event.symbol.toUpperCase()] : undefined
   const body = (
     <>
       {event.symbol ? <span className={styles.rowSymbol}>{event.symbol}</span> : null}
@@ -47,12 +54,12 @@ function EventRow({ event, name }: { event: CalendarEvent; name?: string }) {
   )
 }
 
-function Group({ kind, events, names }: { kind: EventKind; events: CalendarEvent[]; names: Record<string, string> }) {
+function Group({ kind, events, context }: { kind: EventKind; events: CalendarEvent[]; context: Context }) {
   const tiles = kind === 'earnings' && events.every((event) => event.symbol)
   const shown = tiles ? TILES_SHOWN : ROWS_SHOWN
   const render = (event: CalendarEvent, index: number) => tiles
-    ? <EarningsTile key={event.id} event={event} index={index} name={event.symbol ? names[event.symbol.toUpperCase()] : undefined} />
-    : <EventRow key={event.id} event={event} name={event.symbol ? names[event.symbol.toUpperCase()] : undefined} />
+    ? <EarningsTile key={event.id} event={event} index={index} context={context} />
+    : <EventRow key={event.id} event={event} context={context} />
   const listClass = tiles ? styles.entries : styles.rows
   return (
     <section className={styles.group} data-kind={kind}>
@@ -89,11 +96,14 @@ export function WeekSilhouette({ children }: { children: ReactNode }) {
   )
 }
 
-export default function WeekBoard({ week, today, events, names, category, available, reason }: {
+export default function WeekBoard({ week, today, events, names, relations = {}, center = null, category, available, reason }: {
   week: string
   today: string
   events: CalendarEvent[]
   names: Record<string, string>
+  /** How each company relates to `center` when the calendar is narrowed around one. */
+  relations?: Record<string, string[]>
+  center?: string | null
   category: CalendarCategory
   available: boolean
   reason?: string | null
@@ -110,7 +120,8 @@ export default function WeekBoard({ week, today, events, names, category, availa
       {days.map((date) => {
         const dayEvents = byDay.get(date) ?? []
         const groups = GROUP_ORDER.flatMap((kind) => {
-          const items = dayEvents.filter((event) => event.category === kind).sort(bySymbol)
+          // The company the calendar is narrowed around comes first on its day.
+          const items = dayEvents.filter((event) => event.category === kind).sort((a, b) => Number(b.symbol === center) - Number(a.symbol === center) || bySymbol(a, b))
           return items.length ? [{ kind, items }] : []
         })
         const isToday = date === today
@@ -122,7 +133,7 @@ export default function WeekBoard({ week, today, events, names, category, availa
               {isToday ? <span className={styles.todayMark}><span className={styles.stampDot} aria-hidden="true" />Today</span> : null}
             </h3>
             {groups.length
-              ? groups.map(({ kind, items }) => <Group key={kind} kind={kind} events={items} names={names} />)
+              ? groups.map(({ kind, items }) => <Group key={kind} kind={kind} events={items} context={{ names, relations, center }} />)
               : <p className={styles.none}>{category === 'all' ? 'No events' : `No ${groupLabel(category as EventKind).toLowerCase()}`}</p>}
           </section>
         )

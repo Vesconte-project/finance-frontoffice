@@ -83,3 +83,29 @@ test('the month view is locked for a signed-out reader', async ({ request }) => 
     expect(body.match(STOCK_EVENT_LINK) ?? []).toEqual([])
   }
 })
+
+test('narrowing around a company keeps it and what surrounds it in the atlas', async ({ page, request }) => {
+  const errors = watchConsole(page)
+  const related = ['FXA1', 'FXA2', 'FXA3', 'FXA4', 'FXA5', 'FXA6']
+  // Only the named companies reach the browser.
+  const body = await (await request.get('/calendar?around=FXA1')).text()
+  const linked = [...new Set([...body.matchAll(STOCK_EVENT_LINK)].map((match) => match[0].split('/')[2]))]
+  expect(linked.length).toBeGreaterThan(0)
+  expect(linked.filter((symbol) => !related.includes(symbol))).toEqual([])
+
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/calendar')
+  await page.getByLabel('Around', { exact: true }).fill('fxa1')
+  await page.getByRole('button', { name: 'Show' }).click()
+  await expect(page).toHaveURL(/around=FXA1/i)
+  await expect(page.getByText(/and 5 related companies from the atlas/)).toBeVisible()
+  await expect(page.getByRole('link', { name: /^FXA2, .*Theme: Synthetic theme$/ }).first()).toBeVisible()
+  await expect(page.getByRole('link', { name: 'My watchlist' })).toHaveAttribute('href', /^\/sign-up\?redirect_url=/)
+  // Changing the type keeps the narrowing.
+  await expect(page.getByRole('link', { name: 'Earnings', exact: true })).toHaveAttribute('href', /around=FXA1/)
+  if (process.env.PLAYWRIGHT_CAPTURE) {
+    await page.waitForLoadState('networkidle')
+    await page.screenshot({ path: 'test-results/calendar-around-1440.png', fullPage: true })
+  }
+  expect(errors).toEqual([])
+})

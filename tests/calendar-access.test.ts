@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
-import { calendarHref, humanWeek, readableTitle, resolveCalendarWindow, weekStart } from '../lib/calendar-model'
+import { calendarFocus, calendarHref, humanWeek, keepCompanies, readableTitle, resolveCalendarWindow, weekStart } from '../lib/calendar-model'
 
 const TODAY = '2026-10-08' // a Thursday
 
@@ -57,8 +57,30 @@ test('calendar links keep the view and the week', () => {
 
 test('a locked window is never fetched and the full index stays on the server', () => {
   const landing = readRepoFile('components/calendar/CalendarLanding.tsx')
-  assert.match(landing, /shown\.locked \? null : await getPublicCalendarRange\(shown, category\)/)
+  assert.match(landing, /shown\.locked \? Promise\.resolve\(null\) : getPublicCalendarRange\(shown, category\)/)
   assert.match(readRepoFile('lib/calendar-names.ts'), /^import 'server-only'/)
   // The month grid no longer shows a bare count without saying what it counts.
   assert.doesNotMatch(readRepoFile('components/calendar/EventCalendar.tsx'), /styles\.count/)
+})
+
+test('the companies filter reads only a watchlist or a well-formed ticker', () => {
+  assert.deepEqual(calendarFocus({ list: 'watchlist' }), { list: 'watchlist' })
+  assert.deepEqual(calendarFocus({ around: ' lly ' }), { around: 'LLY' })
+  assert.deepEqual(calendarFocus({ around: 'TCS.NS' }), { around: 'TCS.NS' })
+  for (const around of ['', '<script>', 'A B', 'X'.repeat(20)]) assert.deepEqual(calendarFocus({ around }), {})
+  assert.equal(calendarHref({ category: 'earnings', view: 'week', week: '2026-10-05', focus: { around: 'LLY' } }), '/calendar/earnings?around=LLY&week=2026-10-05')
+})
+
+test('narrowing keeps the named companies and every economic release', () => {
+  const events = [
+    { id: '1', symbol: 'LLY' },
+    { id: '2', symbol: 'NVO' },
+    { id: '3', symbol: 'AAPL' },
+    { id: '4', symbol: null },
+  ]
+  assert.deepEqual(keepCompanies(events, null).map((event) => event.id), ['1', '2', '3', '4'])
+  assert.deepEqual(keepCompanies(events, new Set(['LLY', 'NVO'])).map((event) => event.id), ['1', '2', '4'])
+  // The watchlist comes from the viewer's own session, read on the server.
+  assert.match(readRepoFile('lib/calendar-focus.ts'), /^import 'server-only'/)
+  assert.match(readRepoFile('components/calendar/CalendarLanding.tsx'), /keepCompanies\(fetched\.events, kept\)/)
 })

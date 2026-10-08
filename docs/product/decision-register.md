@@ -17,6 +17,7 @@ This register contains approved durable decisions only. GitHub is the durable re
   6. eligibility, activation, monitoring, rollback, and runtime ownership are approved.
   Exact numerical thresholds and the paper/shadow duration remain unresolved; no implementation may invent them.
 - **Calendar entitlement (founder request, 2026-10-08):** the public calendar opens on the current week (Monday–Sunday, UTC) for everyone. Other weeks and the month view need a signed-in account of any plan. The rule lives in `resolveCalendarWindow` (`lib/calendar-model.ts`) and is applied before the backend is called, so a signed-out page never carries events outside the current week. Product and visual acceptance of the implementation are still pending founder review on Preview.
+- **Calendar companies filter (founder request, 2026-10-08):** the calendar can be narrowed to the reader's watchlist (signed-in only) or to one company and its atlas relationships (`/relationships/{ticker}`: same theme, moves with it, moves before or after it). Economic releases stay visible. The narrowing happens on the server, after the window rule. A filter by sector and by supplier/customer links is not built: `/site/calendar` carries no sector, and no supply-chain source exists.
 
 ## Acceptance and measurement
 

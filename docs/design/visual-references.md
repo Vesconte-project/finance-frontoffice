@@ -220,4 +220,6 @@ The public calendar (`/calendar`, `/calendar/[category]`) opens on a week board 
 - **Locked weeks and the month view** use the Rankings silhouette: ghost nodes built from nothing, with one solid offer panel over them.
 - **The month grid** (`EventCalendar`, shared with the ticker Events tab) drops the bare count in the corner and names what remains, for example "+50 more earnings". On `/calendar` it renders `bare`, under the same header band.
 
-Known gaps, not filled in the frontend: earnings timing (before open / after close) is not exposed by `/site/calendar`. The backend earnings read model has `report_time`, but the public projection leaves it out and the data-ops source currently writes it empty. Company logos have no source.
+- **Companies bar** under the header: All · My watchlist · Around [ticker]. Around is a plain GET form with no suggestions, so it adds no lookup path. The company in focus has its node lit in the accent and comes first on its day. Every related company shows how it relates in small mono ("Theme: …", "Moves with it", "Moves before it").
+
+Known gaps, not filled in the frontend: a sector filter (`/site/calendar` rows carry no sector, although the backend holds one per company), supplier/customer links (no source), and earnings timing (before open / after close) is not exposed by `/site/calendar`. The backend earnings read model has `report_time`, but the public projection leaves it out and the data-ops source currently writes it empty. Company logos have no source.

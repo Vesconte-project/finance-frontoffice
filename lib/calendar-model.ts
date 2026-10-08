@@ -148,15 +148,16 @@ export function readableTitle(title: string): string {
   return spaced ? spaced[0].toUpperCase() + spaced.slice(1) : spaced
 }
 
-export function calendarHref({ category, view, week, month, day }: {
+export function calendarHref({ category, view, week, month, day, focus = {} }: {
   category: CalendarCategory
   view: CalendarView
   week?: string | null
   month?: string | null
   day?: string | null
+  focus?: CalendarFocusQuery
 }): string {
   const path = `/calendar${category === 'all' ? '' : `/${category}`}`
-  const params = new URLSearchParams()
+  const params = new URLSearchParams(focusParams(focus))
   if (view === 'month') {
     params.set('view', 'month')
     if (month) params.set('month', month)
@@ -166,4 +167,28 @@ export function calendarHref({ category, view, week, month, day }: {
   }
   const query = params.toString()
   return query ? `${path}?${query}` : path
+}
+
+/** Narrowing the calendar to some companies: the reader's watchlist, or a company and what surrounds it in the atlas. */
+export type CalendarFocusQuery = { list?: 'watchlist'; around?: string }
+
+export function calendarFocus(raw: { list?: string | null; around?: string | null }): CalendarFocusQuery {
+  if (raw.list === 'watchlist') return { list: 'watchlist' }
+  const around = typeof raw.around === 'string' ? raw.around.trim().toUpperCase() : ''
+  return /^[A-Z0-9][A-Z0-9.\-]{0,14}$/.test(around) ? { around } : {}
+}
+
+export function focusParams(focus: CalendarFocusQuery): Record<string, string> {
+  if (focus.list) return { list: focus.list }
+  if (focus.around) return { around: focus.around }
+  return {}
+}
+
+/**
+ * Keep company events for the given symbols. Events without a company (economic
+ * releases) stay: they bear on every company in the selection.
+ */
+export function keepCompanies<T extends { symbol: string | null }>(events: T[], symbols: Set<string> | null): T[] {
+  if (!symbols) return events
+  return events.filter((event) => !event.symbol || symbols.has(event.symbol.toUpperCase()))
 }

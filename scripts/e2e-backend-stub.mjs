@@ -19,7 +19,7 @@ import {
   neighborhoodFixture,
   tickerIndexFixture,
 } from '../e2e/fixtures/market-atlas.mjs'
-import { calendarFixture } from '../e2e/fixtures/calendar.mjs'
+import { calendarFixture, calendarRelationshipsFixture } from '../e2e/fixtures/calendar.mjs'
 import {
   isFixtureTicker,
   tickerCorporateActionsFixture,
@@ -79,6 +79,16 @@ const server = createServer((request, response) => {
   if (path === '/site/calendar' && url.searchParams.get('startDate') && url.searchParams.get('endDate') && !url.searchParams.get('symbol')) {
     send(response, 200, calendarFixture(url.searchParams.get('startDate'), url.searchParams.get('endDate'), url.searchParams.get('category') || 'all'))
     return
+  }
+
+  // Atlas relationships for the calendar's "around" filter, synthetic symbols only.
+  const relationshipsRoute = path.match(/^\/relationships\/([^/]+)$/)
+  if (relationshipsRoute) {
+    const payload = calendarRelationshipsFixture(decodeURIComponent(relationshipsRoute[1]).toUpperCase())
+    if (payload) {
+      send(response, 200, payload)
+      return
+    }
   }
 
   // Homepage reads all three rankings server-side. A successful empty fixture
