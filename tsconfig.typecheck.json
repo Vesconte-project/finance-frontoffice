@@ -3,5 +3,11 @@
   "compilerOptions": {
     "incremental": false
   },
-  "exclude": ["node_modules", "tests", ".next-playwright"]
+  "exclude": [
+    "node_modules",
+    "tests",
+    ".next-playwright",
+    ".next-local",
+    ".next/dev"
+  ]
 }

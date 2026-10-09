@@ -1,6 +1,8 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useAuth } from '@clerk/nextjs'
+import { createResearchClient, ResearchReadError as ReadError } from '@/lib/synthetic-research-client'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Badge from '@/components/ui/Badge'
@@ -38,33 +40,6 @@ const modelLabel = (model: Model | null) =>
       ? 'Random forest classifier'
       : 'Not recorded'
 const active = (run: Run) => run.status === 'queued' || run.status === 'running'
-class ReadError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message)
-  }
-}
-async function api(path: string, body?: ComparisonRequest): Promise<Record<string, unknown>> {
-  const response = await fetch(`/api/research/synthetic/${path}`, {
-    method: body ? 'POST' : 'GET',
-    cache: 'no-store',
-    signal: AbortSignal.timeout(35000),
-    ...(body
-      ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }
-      : {}),
-  })
-  const payload = await response.json()
-  if (!response.ok)
-    throw new ReadError(
-      typeof payload.error === 'string'
-        ? payload.error
-        : 'Research is unavailable. Try refreshing.',
-      response.status,
-    )
-  return payload
-}
 function time(value: string | null) {
   return value ? new Date(value).toLocaleString() : 'Not recorded'
 }
@@ -246,6 +221,12 @@ export function MetricsComparison({ runs }: { runs: Run[] }) {
   )
 }
 export default function SyntheticComparison() {
+  const { getToken, isLoaded } = useAuth()
+  const api = useCallback((path: string, body?: ComparisonRequest) => createResearchClient({
+    mode: process.env.NEXT_PUBLIC_RESEARCH_AUTH_MODE || 'bff',
+    baseUrl: process.env.NEXT_PUBLIC_RESEARCH_API_BASE_URL,
+    getToken,
+  })(path, body), [getToken])
   const [form, setForm] = useState<ComparisonRequest>(defaultRequest)
   const [runs, setRuns] = useState<Run[]>([]),
     [selected, setSelected] = useState<string[]>([])
@@ -278,7 +259,7 @@ export default function SyntheticComparison() {
     return failure instanceof Error ? failure.message : 'Research is unavailable. Try refreshing.'
   }, [])
   const refresh = useCallback(async () => {
-    if (busy.current) return
+    if (!isLoaded || busy.current) return
     busy.current = true
     try {
       const result = await api('experiments?limit=50')
@@ -294,7 +275,7 @@ export default function SyntheticComparison() {
       busy.current = false
       setLoading(false)
     }
-  }, [onReadError])
+  }, [api, isLoaded, onReadError])
   useEffect(() => {
     void refresh()
   }, [refresh])
@@ -357,7 +338,7 @@ export default function SyntheticComparison() {
     return () => {
       cancelled = true
     }
-  }, [selectedKey, refreshVersion, signedOut, onReadError])
+  }, [api, selectedKey, refreshVersion, signedOut, onReadError])
   async function submit(event: React.FormEvent) {
     event.preventDefault()
     if (submitLock.current || unknown || loading || isActive || signedOut) return

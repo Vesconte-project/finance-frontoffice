@@ -1,7 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { createRequire } from 'node:module'
-import { mkdtemp, readFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { mkdir, mkdtemp, readFile } from 'node:fs/promises'
 import path from 'node:path'
 const require = createRequire(path.resolve('package.json'))
 let bundle: string
@@ -35,11 +34,16 @@ test.beforeAll(async () => {
   // Test-only bundle of the actual client component. No app route, identity bypass,
   // secret or mock viewer is added to the shipped Next runtime.
   const { webpack } = require('next/dist/compiled/webpack/webpack')
-  const output = await mkdtemp(path.join(tmpdir(), 'synthetic-component-'))
+  await mkdir(path.resolve('test-results'), { recursive: true })
+  const output = await mkdtemp(path.resolve('test-results/synthetic-component-'))
   await new Promise<void>((resolve, reject) =>
     webpack(
       {
         mode: 'development',
+        plugins: [new (require('next/dist/compiled/webpack/webpack').webpack.DefinePlugin)({
+          'process.env.NEXT_PUBLIC_RESEARCH_AUTH_MODE': JSON.stringify('bff'),
+          'process.env.NEXT_PUBLIC_RESEARCH_API_BASE_URL': JSON.stringify(''),
+        })],
         devtool: false,
         entry: path.resolve('e2e/fixtures/synthetic/mount.tsx'),
         output: { path: output, filename: 'component.js' },
@@ -47,6 +51,7 @@ test.beforeAll(async () => {
           extensions: ['.tsx', '.ts', '.js'],
           alias: {
             '@': process.cwd(),
+            '@clerk/nextjs': path.resolve('e2e/fixtures/synthetic/clerk.ts'),
             'next/link': path.resolve('e2e/fixtures/synthetic/link.tsx'),
           },
         },

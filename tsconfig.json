@@ -30,7 +30,14 @@
     ".next/dev/types/**/*.ts",
     ".next-playwright/types/**/*.ts",
     ".next-playwright/dev/types/**/*.ts",
-    "**/*.mts"
+    "**/*.mts",
+    ".next-local/types/**/*.ts",
+    ".next-local/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    ".next-local",
+    ".next/dev",
+    ".next-playwright"
+  ]
 }

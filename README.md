@@ -321,3 +321,104 @@ Important notes:
 - Extend the AI analyst panel with follow-up Q&A and memory per ticker.
 - Add social/news momentum inputs (for example X/Reddit trend context) into AI analysis.
 - Add ads/sponsored placements in the ticker News section (clear labeling, frequency caps, non-intrusive placement).
+
+
+## Synthetic research authentication (ENG-185)
+
+Only `/site/research/synthetic/*` migrates. `NEXT_PUBLIC_RESEARCH_AUTH_MODE`
+accepts `bff` (default) or `clerk_jwt`; an unknown mode fails closed.
+BFF uses `/api/research/synthetic/*`, server-side Clerk verification,
+`RESEARCH_BFF_SECRET`, `BACKEND_SHARED_SECRET` and optional `CF_ACCESS_CLIENT_ID` /
+`CF_ACCESS_CLIENT_SECRET`. These secrets and the BFF remain until rollout verification.
+`RESEARCH_SYNTHETIC_ENABLED=true` gates the frontend; Vercel Production stays disabled.
+
+In `clerk_jwt`, set `NEXT_PUBLIC_RESEARCH_API_BASE_URL` to the Backend origin
+(no route prefix). The browser sends a default Clerk session token via Authorization,
+obtained per request with `getToken()`. A 401 forces exactly one fresh token with
+`skipCache: true`, then requests sign-in. There is no BFF fallback, cookies, forwarded
+viewer ID, service secret or Cloudflare service token in direct requests. The client
+preserves 403/404, 422 and 503 errors and validates public response shapes. An uncertain
+submission is not automatically retried; refresh recent runs before submitting again.
+See [Clerk token refresh](https://clerk.com/docs/guides/sessions/force-token-refresh).
+
+| Environment | Research mode | API origin | Clerk |
+| --- | --- | --- | --- |
+| Production | BFF retained, research disabled | server `BACKEND_BASE_URL` | Production |
+| Preview today | BFF default | server `BACKEND_BASE_URL` | Development |
+| Preview after operator rollout | `clerk_jwt` | `https://backend-dev.vesconte.com` | Development |
+| PC | `clerk_jwt` via `dev:local` | `http://127.0.0.1:18095` | Development |
+
+Public variables are bundled at build time: make a new Preview after changing them.
+Activation order: review/integrate frontend and local profile PRs; validate fully
+locally; operator changes Cloudflare Access for direct browser requests while
+protecting origin; operator configures Backend dev JWT issuer/public key and exact
+Preview authorized origins, then sets Preview public mode/URL; verify a new Preview.
+Only after verification across environments remove BFF code in both repositories,
+its proxy, `RESEARCH_USER_AUTH_MODE`, `NEXT_PUBLIC_RESEARCH_AUTH_MODE`,
+`RESEARCH_BFF_SECRET`, and `CF_ACCESS_*` if no other server calls need them.
+ENG-185 remains open until this final cleanup. No deployment is part of these PRs.
+
+## Complete local development (ENG-184)
+
+Follow [the infra local profile README](../finance-infra/dev-local/README.md).
+With Docker, Python 3.12, Node 22, sibling checkouts and `.env.local` configured:
+
+```bash
+npm ci
+npm run dev:local
+npm run dev:local:status
+npm run dev:local:down
+npm run dev:local:reset -- --confirm-project=finance-local
+```
+
+The startup command waits for PostgreSQL, synthetic bootstrap, Backend and worker
+before serving http://localhost:3000. Use `/dashboard/research/synthetic`. `FINANCE_REPOS_DIR`
+selects the sibling root; `FINANCE_BACKEND_PORT` defaults to 18095;
+`FINANCE_POSTGRES_PORT` optionally publishes the DB on loopback. The launcher overrides
+Backend and research endpoints for local work and removes Cloudflare headers from
+its child environment. `.env.local` needs only these Clerk settings (fake examples):
+
+```dotenv
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_FAKE_EXAMPLE
+CLERK_SECRET_KEY=sk_test_FAKE_EXAMPLE
+CLERK_JWT_ISSUER=https://example-development.clerk.accounts.dev
+CLERK_JWT_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nFAKE_RSA_PUBLIC_KEY\n-----END PUBLIC KEY-----"
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+Internal passwords and service tokens are generated locally. Do not copy production
+settings. Other product routes may have no data in this synthetic research profile;
+errors/empty states must remain honest. Local execution runs two models per comparison.
+
+### Backend call inventory
+
+| Call family / owning helpers | Credentials today |
+| --- | --- |
+| Synthetic comparisons, experiment list/detail, events, artifacts (`synthetic-research-proxy`) | Server shared secret + BFF secret + verified Clerk viewer; optional CF Access |
+| Ticker index/profile/OHLC/scorecard, financial statements, market metrics, corporate actions, capital/disclosure/events/readings (`finance`, `ticker-data`, `canonical-research`, `scorecard`, ticker proxies) | Server `BACKEND_SHARED_SECRET`; optional CF Access |
+| Screener, signals/flips, picks (`signals`, `picks`) | Same server credentials |
+| Network graph, atlas/detail, relationships (`network`, `relationships`) | Same server credentials |
+| Site watchlist, calendar, alerts and AI research history/feedback (`watchlist`, `calendar-events`, `alerts`, `ai-research`) | Same server credentials; applicable user identity supplied by existing server code |
+
+All use `lib/backend.ts` with `BACKEND_BASE_URL` (legacy `FINANCE_BACKEND_URL`
+fallback), except direct synthetic research in JWT mode. The Clerk secret stays
+server-side. Optional analyst provider, email, billing and cron keys have separate
+roles and are outside this research migration. No other Backend call was migrated.
+
+### Local authenticated browser proof
+
+After configuring `.env.local`, run `npm run qa:local`. Its separate Playwright
+configuration owns http://localhost:3000 and starts the same `dev:local` command;
+stop a manually running frontend before starting this check. It uses official
+`@clerk/testing` helpers, creates two `+clerk_test` Development identities if absent,
+then deletes only identities created by that run. No emails are delivered for these
+test addresses. It submits real baseline/forest jobs, waits up to 30 minutes, checks
+events and artifact metadata, confirms direct JWT requests contain no cookies or
+service secrets, and verifies 404 isolation with a second real browser session.
+Results are saved in gitignored `test-results/local/research-proof.json`.
+
+The ordinary `qa:browser` suite excludes this live test; it does not need Docker or
+Clerk account operations. This is local validation, not an ENG-19 Watchlist CI rollout.
+Clerk keys and session state must never be uploaded as CI artifacts. Traces/videos
+are disabled in the authenticated local profile. Docker remains up after QA, and
+`npm run dev:local:down` stops it while preserving synthetic jobs.
