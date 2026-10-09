@@ -41,6 +41,7 @@ const appServer = useProductionServer
 
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: '**/local/**',
   outputDir: 'test-results',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
