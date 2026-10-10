@@ -117,7 +117,7 @@ export default function NativeComparison() {
     if (epoch.current === generation) setEvidence({ identity, jobId, value: { variants: result.variants, events: events.events, artifacts: artifacts.artifacts } })
   }
 
-  async function download(artifactId: string, revalidate: boolean) {
+  async function download(artifactId: string, revalidate: boolean, kind: string) {
     if (!current) return
     const path = `/artifacts/${artifactId}/${revalidate ? 'content' : 'download'}?account_id=${current.account.id}`
     const response = await request(path)
@@ -135,7 +135,8 @@ export default function NativeComparison() {
       return
     }
     const href = URL.createObjectURL(blob)
-    const anchor = document.createElement('a'); anchor.href = href; anchor.download = `${artifactId}.json`; anchor.click()
+    const extension = kind === 'execution_bundle' ? 'zip' : kind === 'model_summary' ? 'json' : 'bin'
+    const anchor = document.createElement('a'); anchor.href = href; anchor.download = `${artifactId}.${extension}`; anchor.click()
     setTimeout(() => URL.revokeObjectURL(href), 1000)
   }
 
@@ -189,7 +190,7 @@ export default function NativeComparison() {
         <div><h3 className="mb-3 font-medium">Execution events</h3><ol className="space-y-2">{evidence.value.events.map((event, i) => <li key={i}>{event.event_type.replaceAll('_', ' ')} · {new Date(event.created_at).toLocaleString()}</li>)}</ol></div>
         <div><h3 className="mb-3 font-medium">Artefacts</h3><ul className="space-y-4">{evidence.value.artifacts.map(artifact => <li key={artifact.id} className="space-y-2">
           <p>{artifact.kind.replaceAll('_', ' ')} · {artifact.size_bytes.toLocaleString()} bytes</p><p className="break-all text-xs">SHA-256: {artifact.sha256}</p>
-          <Button variant="secondary" disabled={busy} onClick={() => void action(() => download(artifact.id, artifact.requires_revalidation))}>Download artefact</Button>
+          <Button variant="secondary" disabled={busy} onClick={() => void action(() => download(artifact.id, artifact.requires_revalidation, artifact.kind))}>Download artefact</Button>
         </li>)}</ul></div>
       </section>}
     </>}

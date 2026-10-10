@@ -313,6 +313,14 @@ test cleanup tool. Traces and videos are disabled to avoid storing session state
 or signed URLs. This proof does not validate production configuration, all stock
 routes, or the backoffice UI.
 
+New native jobs require two complete execution ZIPs in addition to the two model
+summaries. Each ZIP contains every authorized row of predictions, strategy state,
+daily backtest results, positions and symbol summaries as NDJSON, with a SHA-256
+manifest. Configurations, credentials, machine paths and internal metadata are
+excluded. All uploaded bytes count against the job and account storage policy;
+missing exports prevent completion and a definitive failure returns the quota.
+The new Backend export contract and matching worker must be reviewed together.
+
 ## Legacy Stripe Pro Plan Activation
 
 The app now supports Stripe-driven Pro gating for screener full results and CSV export.

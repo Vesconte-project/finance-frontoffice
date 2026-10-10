@@ -3,7 +3,7 @@ import { clerk, clerkSetup } from '@clerk/testing/playwright'
 import { createClerkClient } from '@clerk/backend'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
-import { execFile } from 'node:child_process'
+import { execFile, execFileSync } from 'node:child_process'
 import { promisify } from 'node:util'
 import { resolve } from 'node:path'
 
@@ -294,7 +294,9 @@ test('Stripe TEST checkout activates verified rights and a native comparison com
   const events = await request(page, `/research/jobs/${job.id}/events?account_id=${account.id}`)
   const artifacts = await request(page, `/research/jobs/${job.id}/artifacts?account_id=${account.id}`)
   expect(events.status).toBe(200); expect(events.body.events.length).toBeGreaterThan(0)
-  expect(artifacts.status).toBe(200); expect(artifacts.body.artifacts).toHaveLength(2)
+  expect(artifacts.status).toBe(200); expect(artifacts.body.artifacts).toHaveLength(4)
+  expect(artifacts.body.artifacts.filter((a: { kind: string }) => a.kind === 'execution_bundle')).toHaveLength(2)
+  const datasets: { name: string; rows: number; size_bytes: number }[][] = []
   for (const artifact of artifacts.body.artifacts) {
     const link = await request(page, `/artifacts/${artifact.id}/download?account_id=${account.id}`)
     expect(link.status).toBe(200); expect(link.body.expires_in).toBe(60)
@@ -302,6 +304,23 @@ test('Stripe TEST checkout activates verified rights and a native comparison com
     expect(object.status).toBe(200)
     const bytes = Buffer.from(await object.arrayBuffer())
     expect(createHash('sha256').update(bytes).digest('hex')).toBe(artifact.sha256)
+    if (artifact.kind === 'execution_bundle') {
+      expect(object.headers.get('content-type')).toContain('application/zip')
+      const verified = execFileSync('python3', ['-c', `
+import hashlib,io,json,sys,zipfile
+with zipfile.ZipFile(io.BytesIO(sys.stdin.buffer.read())) as archive:
+ manifest=json.loads(archive.read('manifest.json'))
+ assert manifest['contract_version']=='research_download_bundle.v1'
+ assert set(archive.namelist())=={r['name'] for r in manifest['files']}|{'manifest.json'}
+ for row in manifest['files']:
+  data=archive.read(row['name'])
+  assert len(data)==row['size_bytes'] and hashlib.sha256(data).hexdigest()==row['sha256']
+  assert len(data.splitlines())==row['rows']
+  if row['name']!='backtest-symbol-summary.ndjson': assert row['rows']>0
+ print(json.dumps([{k:r[k] for k in ('name','rows','size_bytes')} for r in manifest['files']]))
+`], { input: bytes })
+      datasets.push(JSON.parse(verified.toString('utf8')))
+    }
     const anonymous = new URL(link.body.url); anonymous.search = ''
     expect([401, 403, 404]).toContain((await fetch(anonymous, { redirect: 'error', credentials: 'omit' })).status)
   }
@@ -309,7 +328,7 @@ test('Stripe TEST checkout activates verified rights and a native comparison com
   await expect(page.getByRole('button', { name: 'Inspect comparison' })).toBeEnabled()
   await page.getByRole('button', { name: 'Inspect comparison' }).click()
   await expect(page.getByRole('heading', { name: 'Execution events' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Download artefact' })).toHaveCount(2)
+  await expect(page.getByRole('button', { name: 'Download artefact' })).toHaveCount(4)
   const context = await browser.newContext()
   try {
     const other = await context.newPage(); await other.goto('/')
@@ -322,6 +341,6 @@ test('Stripe TEST checkout activates verified rights and a native comparison com
   writeFileSync('test-results/platform/paid-research-proof.json', JSON.stringify({
     stripe: 'TEST Checkout; signed webhook and current-state reconciliation',
     clerk: 'Development, two real browser sessions', status: 'completed', models: 2,
-    events: events.body.events.length, artifacts: artifacts.body.artifacts.length, accountIsolation: 'PASS',
+    events: events.body.events.length, artifacts: artifacts.body.artifacts.length, datasets, accountIsolation: 'PASS',
   }, null, 2))
 })
