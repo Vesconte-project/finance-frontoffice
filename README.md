@@ -251,7 +251,69 @@ Runtime analytics smoke tests should exercise the local analytics route and its
 `finance-backend` proxy. The removed Supabase client smoke script is not part of
 the frontoffice workflow.
 
-## Stripe Pro Plan Activation
+## Native account API migration (local validation)
+
+The account API uses Clerk only for identity. FastAPI resolves the personal or
+active Clerk organization account and authorizes features using its PostgreSQL
+projection of Stripe Billing and Entitlements. A Checkout success redirect does
+not grant access. Clerk plan metadata is not an authority in this mode.
+
+The migration is opt-in. `NEXT_PUBLIC_PLATFORM_API_ENABLED=true` selects the native
+client; unset or `false` keeps the existing path while environments are validated.
+`NEXT_PUBLIC_PLATFORM_API_BASE_URL` is the Backend origin, without `/v1`.
+Unknown mode values and API errors never fall back to legacy authentication.
+The browser sends a fresh default Clerk session JWT, omits cookies, and retries
+401 once with a refreshed token. Internal secrets remain server-side.
+
+From this checkout, with sibling repositories and private Development/test inputs
+prepared according to [the stack README](../finance-infra/platform-local/README.md):
+
+```sh
+npm run dev:platform
+npm run dev:platform:status
+npm run dev:platform:down
+npm run dev:platform:reset -- --confirm-project=finance-platform-local
+npm run qa:platform
+```
+
+`dev:platform` starts the new isolated PostgreSQL, RabbitMQ, private S3-compatible
+storage, Backend and continuous workers, then Next.js at `http://localhost:3000`.
+The synthetic comparison page provides account selection, server-created Checkout
+and Portal sessions, basic history, cancellation, execution evidence and authorized
+downloads. Free users cannot create comparisons or download premium content.
+The existing `dev:local` command remains available during this migration.
+
+`.env.local` stays ignored and private. Example names and fake values:
+
+```dotenv
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_fake
+CLERK_SECRET_KEY=sk_test_fake
+NEXT_PUBLIC_PLATFORM_API_ENABLED=true
+NEXT_PUBLIC_PLATFORM_API_BASE_URL=http://127.0.0.1:18095
+```
+
+`FINANCE_REPOS_DIR` can select the sibling checkout directory;
+`FINANCE_PLATFORM_INPUTS` can select the private stack input file. The launcher
+checks that the frontend and Backend use the same Clerk Development instance.
+Only the publishable key and public API settings reach browser code.
+
+Validation is local only. This change does not activate Cloudflare, Vercel or
+production configuration. Native CSV and paid ranking lists are authorized by
+FastAPI, without a shared cache of authenticated responses. Remaining stock data
+paths are being migrated separately. Preserve the existing shared-secret,
+BFF and legacy Stripe handlers until their replacements have been verified in
+every environment. Do not treat the opt-in mode as a completed production cutover.
+
+Local proof on 2026-10-10: the hosted Stripe TEST Checkout, signed webhook and
+verified commercial projection authorized a real Clerk Development session.
+The synthetic comparison completed both models; the browser verified 20 events,
+two private artifacts and their SHA-256 hashes, and denied a second account access
+to the job and artifacts. The run's subscription was canceled using the guarded
+test cleanup tool. Traces and videos are disabled to avoid storing session state
+or signed URLs. This proof does not validate production configuration, all stock
+routes, or the backoffice UI.
+
+## Legacy Stripe Pro Plan Activation
 
 The app now supports Stripe-driven Pro gating for screener full results and CSV export.
 

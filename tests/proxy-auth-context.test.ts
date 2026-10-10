@@ -60,6 +60,14 @@ test('ticker pages stay public', () => {
   }
 })
 
+test('paid ranking lists establish auth context without protecting marketing or weekly routes', () => {
+  const source = readProxySource()
+  for (const route of ['/picks/long-term', '/picks/income', '/picks/short-term'])
+    assert.ok(matcherRoutes(source).includes(route))
+  assert.ok(!matcherRoutes(source).includes('/picks(.*)'))
+  assert.ok(!protectedRoutes(source).some(route => route.startsWith('/picks')))
+})
+
 test('the existing protected routes remain protected', () => {
   const guarded = protectedRoutes(readProxySource())
 

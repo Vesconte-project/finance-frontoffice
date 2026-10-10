@@ -8,6 +8,7 @@
     "tests",
     ".next-playwright",
     ".next-local",
+    ".next-platform",
     ".next/dev"
   ]
 }

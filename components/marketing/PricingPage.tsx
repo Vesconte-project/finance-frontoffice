@@ -45,7 +45,7 @@ function FutureStatus() {
 }
 
 export default async function PricingPage() {
-  const viewer = await getViewerAccess()
+  const viewer = await getViewerAccess({ publicPage: true })
   const freeHref = viewer.isSignedIn ? '/dashboard' : '/sign-up?redirect_url=/dashboard'
   const freeLabel = viewer.isSignedIn ? 'Open workspace' : 'Explore free access'
 

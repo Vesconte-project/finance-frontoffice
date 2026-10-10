@@ -1,4 +1,5 @@
 import RetryButton from '@/components/ui/RetryButton'
+import Link from 'next/link'
 import PickCard from '@/components/picks/PickCard'
 import PickDisclosure from '@/components/picks/PickDisclosure'
 import PickLockedRows from '@/components/picks/PickLockedRows'
@@ -35,6 +36,19 @@ export default async function PicksReadingPage({ reading }: { reading: PickReadi
       stamp={asOfLabel}
       active={reading}
     />
+  )
+
+  if (result.status === 'locked') return (
+    <RankingsStage seed={content.label}>
+      {head}
+      <div className={styles.empty}>
+        <h2 className={styles.emptyTitle}>This ranking requires Pro access</h2>
+        <p className={styles.emptyText}>Choose an account with Pro access to view this ranking.</p>
+        <Link href="/dashboard/research/synthetic" className="underline">
+          {result.tier === 'anonymous' ? 'Sign in to view account access' : 'View account and subscription'}
+        </Link>
+      </div>
+    </RankingsStage>
   )
 
   if (result.status === 'unavailable') {

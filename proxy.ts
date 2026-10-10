@@ -23,6 +23,10 @@ export const config = {
     '/stocks(.*)',
     // The calendar reads the viewer to decide how much of it is open.
     '/calendar(.*)',
+    // These account-aware paid lists call auth() but keep their locked view public.
+    '/picks/long-term',
+    '/picks/income',
+    '/picks/short-term',
     '/api/watchlist(.*)',
     '/api/research/synthetic(.*)',
     '/api/export-signals(.*)',
