@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getStripeUpgradeUrl, getViewerAccess } from '@/lib/billing'
 import { getSignalHistoryForTicker } from '@/lib/signals'
 import type { Signal } from '@/lib/types'
+import { platformEnabled, platformSession } from '@/lib/platform-server'
+import { PlatformError } from '@/lib/platform-client'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -54,6 +56,21 @@ function toCsv(signals: Signal[]): string {
 }
 
 export async function GET(request: NextRequest) {
+  if (platformEnabled()) {
+    try {
+      const ticker = normalizeTicker(request.nextUrl.searchParams.get('ticker'))
+      if (!ticker) return NextResponse.json({ error: 'ticker query param is required.' }, { status: 400 })
+      const session = await platformSession()
+      const upstream = await session.request('/signals/export', { method: 'POST', body: { account_id: session.account.id, ticker } })
+      return new Response(await upstream.text(), { status: 200, headers: {
+        'Content-Type': 'text/csv; charset=utf-8', 'Cache-Control': 'private, no-store',
+        'Content-Disposition': upstream.headers.get('Content-Disposition') || 'attachment; filename="signals.csv"',
+      } })
+    } catch (problem) {
+      return NextResponse.json({ error: problem instanceof PlatformError ? problem.message : 'Signal export is unavailable.' },
+        { status: problem instanceof PlatformError ? problem.status : 503, headers: { 'Cache-Control': 'private, no-store' } })
+    }
+  }
   const viewer = await getViewerAccess()
   if (!viewer.userId) {
     return NextResponse.json({ error: 'Authentication required.' }, { status: 401 })

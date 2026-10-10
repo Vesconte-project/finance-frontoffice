@@ -1,4 +1,5 @@
 import 'server-only'
+import { platformAccess, platformEnabled } from './platform-server'
 
 export type BillingPlan = 'free' | 'pro'
 
@@ -61,7 +62,19 @@ async function readPlanFromClerkUser(userId: string): Promise<BillingPlan | null
   }
 }
 
-export async function getViewerAccess(): Promise<ViewerAccess> {
+export async function getViewerAccess(options: { publicPage?: boolean } = {}): Promise<ViewerAccess> {
+  // Marketing pages deliberately have no Clerk middleware or per-user access.
+  if (options.publicPage) return DEFAULT_ACCESS
+  if (platformEnabled()) {
+    const { auth } = await import('@clerk/nextjs/server')
+    const state = await auth()
+    if (!state.userId) return DEFAULT_ACCESS
+    // Preserve an unavailable authority as an error; do not present an
+    // authenticated paid customer as signed out or Free when the API fails.
+    const { access } = await platformAccess()
+    const isPro = access.features['research.ai']?.allowed === true
+    return { userId: state.userId, isSignedIn: true, plan: isPro ? 'pro' : 'free', isPro }
+  }
   try {
     const { auth } = await import('@clerk/nextjs/server')
     const state = await auth()
@@ -93,6 +106,7 @@ export async function getViewerAccess(): Promise<ViewerAccess> {
 }
 
 export function getStripeUpgradeUrl(userId?: string | null): string | null {
+  if (platformEnabled()) return '/dashboard/research/synthetic'
   const raw = process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK?.trim()
   if (!raw) return null
 

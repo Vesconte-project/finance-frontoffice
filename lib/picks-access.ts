@@ -1,7 +1,9 @@
 import 'server-only'
 
 import { getViewerAccess } from './billing'
-import { getPickRanking, type PickFilters, type PickItem } from './picks'
+import { getPickRanking, normalizePickRanking, type PickFilters, type PickItem } from './picks'
+import { platformAccess, platformEnabled } from './platform-server'
+import { PlatformError } from './platform-client'
 import { cutToTier, tierFor, type PickTier } from './picks-access-rules'
 import type { PickReadingKey } from './picks-content'
 
@@ -22,6 +24,7 @@ export type { PickTier } from './picks-access-rules'
 export { PICK_VISIBLE_LIMITS } from './picks-access-rules'
 
 export type VisiblePicks =
+  | { status: 'locked'; reading: PickReadingKey; tier: 'anonymous' | 'free' }
   | {
       status: 'ok'
       reading: PickReadingKey
@@ -47,8 +50,25 @@ export type VisiblePicks =
  * against the live session, and is never cached. Pages calling this must be dynamic:
  * a cached page would hand one viewer's HTML to the next.
  */
-export async function resolveVisiblePicks(reading: PickReadingKey): Promise<VisiblePicks> {
-  const viewer = await getViewerAccess()
+export async function resolveVisiblePicks(reading: PickReadingKey, options: { publicPage?: boolean } = {}): Promise<VisiblePicks> {
+  if (platformEnabled() && !options.publicPage) {
+    try {
+      const { account, access, request } = await platformAccess()
+      if (access.features['rankings.read']?.allowed !== true) return { status: 'locked', reading, tier: 'free' }
+      const response = await request(`/rankings?account_id=${account.id}&reading=${reading}&limit=25`)
+      const ranking = normalizePickRanking(await response.json(), reading)
+      if (!ranking) return { status: 'unavailable', reading, tier: 'pro' }
+      // FastAPI has authorized this account's exact feature. No shared cache,
+      // Clerk plan metadata or frontend tier arithmetic grants access here.
+      return { status: 'ok', reading, tier: 'pro', asOf: ranking.asOf,
+        filters: ranking.filters, items: ranking.items, lockedCount: 0, totalRanked: ranking.items.length }
+    } catch (error) {
+      if (error instanceof PlatformError && [401, 403].includes(error.status))
+        return { status: 'locked', reading, tier: error.status === 401 ? 'anonymous' : 'free' }
+      return { status: 'unavailable', reading, tier: 'anonymous' }
+    }
+  }
+  const viewer = await getViewerAccess(options)
   const tier = tierFor(viewer)
 
   let ranking: Awaited<ReturnType<typeof getPickRanking>> = null

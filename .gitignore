@@ -50,3 +50,5 @@ next-env.d.ts
 /.test-build/
 
 /.next-local/
+/.next-platform/
+/.platform-qa/

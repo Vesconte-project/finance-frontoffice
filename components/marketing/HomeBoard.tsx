@@ -17,9 +17,9 @@ export type HomeBoardData = Record<PickReadingKey, VisiblePicks>
 
 export async function loadHomeBoardData(): Promise<HomeBoardData> {
   const [longTerm, income, shortTerm] = await Promise.all([
-    resolveVisiblePicks('longTerm'),
-    resolveVisiblePicks('income'),
-    resolveVisiblePicks('shortTerm'),
+    resolveVisiblePicks('longTerm', { publicPage: true }),
+    resolveVisiblePicks('income', { publicPage: true }),
+    resolveVisiblePicks('shortTerm', { publicPage: true }),
   ])
 
   return { longTerm, income, shortTerm }
@@ -37,6 +37,8 @@ function ReadingColumn({ reading, result }: { reading: PickReadingKey; result: V
   const readingHref = `/picks/${PICK_READING_TO_SLUG[reading]}`
   const stateMessage = result.status === 'unavailable'
     ? 'Temporarily unavailable.'
+    : result.status === 'locked'
+      ? 'Pro access is required.'
     : result.totalRanked === 0
       ? 'Nothing qualified today.'
       : null
