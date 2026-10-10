@@ -207,6 +207,8 @@ export async function getTickerEquityCapitalEvents(
   )
 }
 
+// Public read models only: share repeated reads for one minute. Viewer-scoped
+// research and mutations retain the no-store default in lib/backend.ts.
 export async function getTickerEvents(
   tickerRaw: string,
   options: { startDate?: string; endDate?: string; latestOnly?: boolean; limit?: number } = {},
@@ -219,7 +221,7 @@ export async function getTickerEvents(
       latestOnly: options.latestOnly ?? true,
       limit: options.limit ?? 200,
     })}`,
-    { context: `ticker.events.${ticker}` },
+    { context: `ticker.events.${ticker}`, init: { cache: 'force-cache', next: { revalidate: 60 } } },
   )
 }
 
@@ -233,7 +235,7 @@ export async function getTickerDisclosures(
       latestOnly: options.latestOnly ?? true,
       limit: options.limit ?? 100,
     })}`,
-    { context: `ticker.disclosures.${ticker}` },
+    { context: `ticker.disclosures.${ticker}`, init: { cache: 'force-cache', next: { revalidate: 60 } } },
   )
 }
 

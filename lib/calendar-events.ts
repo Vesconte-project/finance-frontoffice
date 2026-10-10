@@ -47,7 +47,7 @@ export async function getPublicCalendarRange({ start, end }: { start: string; en
   try {
     const payload = await fetchBackendJson<PublicCalendarPayload>(`/site/calendar?${params}`, {
       context: `site.calendar.${category}`,
-      init: { next: { revalidate: 300 } },
+      init: { cache: 'force-cache', next: { revalidate: 300 } },
     })
     return {
       available: payload.available,

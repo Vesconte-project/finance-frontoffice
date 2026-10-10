@@ -60,7 +60,7 @@ export default async function CalendarLanding({ category, query }: { category: C
           <span className={styles.pivot} data-rankings-anchor="" aria-hidden="true" />
           <nav className={styles.categories} aria-label="Event type">
             {CALENDAR_CATEGORIES.map((item) => (
-              <Link key={item.key} href={href(shown.view, {}, item.key)} aria-current={item.key === category ? 'page' : undefined}>{item.label}</Link>
+              <Link prefetch={false} key={item.key} href={href(shown.view, {}, item.key)} aria-current={item.key === category ? 'page' : undefined}>{item.label}</Link>
             ))}
           </nav>
           <div className={styles.controls}>
@@ -69,15 +69,15 @@ export default async function CalendarLanding({ category, query }: { category: C
               {result ? <span> · {result.events.length} {result.events.length === 1 ? 'event' : 'events'}</span> : null}
             </h1>
             <div className={styles.viewSwitch} aria-label="Calendar view">
-              <Link href={href('week', { week: isMonth ? (shown.month === thisMonth ? shown.thisWeek : `${shown.month}-01`) : shown.week })} aria-current={!isMonth ? 'page' : undefined}>Week</Link>
-              <Link href={href('month', { month: isMonth ? shown.month : shown.week.slice(0, 7) })} aria-current={isMonth ? 'page' : undefined}>
+              <Link prefetch={false} href={href('week', { week: isMonth ? (shown.month === thisMonth ? shown.thisWeek : `${shown.month}-01`) : shown.week })} aria-current={!isMonth ? 'page' : undefined}>Week</Link>
+              <Link prefetch={false} href={href('month', { month: isMonth ? shown.month : shown.week.slice(0, 7) })} aria-current={isMonth ? 'page' : undefined}>
                 {signedIn ? null : <Lock size={13} strokeWidth={1.5} aria-label="Needs an account" />}Month
               </Link>
             </div>
             <div className={styles.stepper} aria-label={`Change ${step.unit}`}>
-              <Link href={step.previous} aria-label={`Previous ${step.unit}`}><ArrowLeft size={17} strokeWidth={1.5} /></Link>
-              <Link href={step.current}>{step.currentLabel}</Link>
-              <Link href={step.next} aria-label={`Next ${step.unit}`}><ArrowRight size={17} strokeWidth={1.5} /></Link>
+              <Link prefetch={false} href={step.previous} aria-label={`Previous ${step.unit}`}><ArrowLeft size={17} strokeWidth={1.5} /></Link>
+              <Link prefetch={false} href={step.current}>{step.currentLabel}</Link>
+              <Link prefetch={false} href={step.next} aria-label={`Next ${step.unit}`}><ArrowRight size={17} strokeWidth={1.5} /></Link>
             </div>
           </div>
         </header>
@@ -85,8 +85,8 @@ export default async function CalendarLanding({ category, query }: { category: C
         <div className={styles.focusBar}>
           <span className={styles.focusLabel}>Companies</span>
           <div className={styles.viewSwitch} aria-label="Companies shown">
-            <Link href={href(shown.view, {}, category, sectorOnly)} aria-current={focus.kind === 'all' ? 'page' : undefined}>All</Link>
-            <Link href={signedIn ? href(shown.view, {}, category, { list: 'watchlist', ...sectorOnly }) : signUp(shown.view)} aria-current={focus.kind === 'watchlist' ? 'page' : undefined} data-analytics-id="calendar_focus_watchlist">
+            <Link prefetch={false} href={href(shown.view, {}, category, sectorOnly)} aria-current={focus.kind === 'all' ? 'page' : undefined}>All</Link>
+            <Link prefetch={false} href={signedIn ? href(shown.view, {}, category, { list: 'watchlist', ...sectorOnly }) : signUp(shown.view)} aria-current={focus.kind === 'watchlist' ? 'page' : undefined} data-analytics-id="calendar_focus_watchlist">
               {signedIn ? null : <Lock size={13} strokeWidth={1.5} aria-label="Needs an account" />}My watchlist
             </Link>
           </div>
@@ -100,7 +100,7 @@ export default async function CalendarLanding({ category, query }: { category: C
             </form>
           ) : (
             <div className={styles.viewSwitch}>
-              <Link href={signUp(shown.view)} data-analytics-id="calendar_focus_related_locked" data-analytics-event="auth_start" data-analytics-intent="sign_up">
+              <Link prefetch={false} href={signUp(shown.view)} data-analytics-id="calendar_focus_related_locked" data-analytics-event="auth_start" data-analytics-intent="sign_up">
                 <Lock size={13} strokeWidth={1.5} aria-label="Needs an account" />Related to a company
               </Link>
             </div>
@@ -123,18 +123,18 @@ export default async function CalendarLanding({ category, query }: { category: C
             {focus.status === 'ok' ? (
               <><strong>{focus.center}</strong>{names[focus.center] ? ` ${names[focus.center]}` : ''} and {Object.keys(relations).length} related {Object.keys(relations).length === 1 ? 'company' : 'companies'}: in the same investment theme, or with a share price that moves with it, before it or after it. </>
             ) : focus.status === 'signed-out' ? (
-              <>Companies related to <strong>{focus.center}</strong> open with a free account. <Link href={signUp(shown.view)} data-analytics-id="calendar_related_sign_up" data-analytics-event="auth_start" data-analytics-intent="sign_up">Create free account</Link> </>
+              <>Companies related to <strong>{focus.center}</strong> open with a free account. <Link prefetch={false} href={signUp(shown.view)} data-analytics-id="calendar_related_sign_up" data-analytics-event="auth_start" data-analytics-intent="sign_up">Create free account</Link> </>
             ) : (
               <>Companies related to <strong>{focus.center}</strong> did not load, so only its own dates are shown. </>
             )}
-            <Link href={href(shown.view, {}, category, sectorOnly)}>Show all companies</Link>
+            <Link prefetch={false} href={href(shown.view, {}, category, sectorOnly)}>Show all companies</Link>
           </p>
         ) : null}
         {focus.kind === 'watchlist' && focus.status !== 'ok' ? (
-          <p className={styles.focusNote}>{focus.status === 'signed-out' ? 'Sign in to narrow the calendar to your watchlist.' : 'Your watchlist did not load. Nothing is wrong with your account.'} <Link href={href(shown.view, {}, category, sectorOnly)}>Show all companies</Link></p>
+          <p className={styles.focusNote}>{focus.status === 'signed-out' ? 'Sign in to narrow the calendar to your watchlist.' : 'Your watchlist did not load. Nothing is wrong with your account.'} <Link prefetch={false} href={href(shown.view, {}, category, sectorOnly)}>Show all companies</Link></p>
         ) : null}
         {focus.kind === 'watchlist' && focus.status === 'ok' && focus.symbols.length === 0 ? (
-          <p className={styles.focusNote}>Your watchlist is empty. Add companies with the star on their page. <Link href={href(shown.view, {}, category, sectorOnly)}>Show all companies</Link></p>
+          <p className={styles.focusNote}>Your watchlist is empty. Add companies with the star on their page. <Link prefetch={false} href={href(shown.view, {}, category, sectorOnly)}>Show all companies</Link></p>
         ) : null}
 
         <section className={styles.calendar} aria-label="Event calendar">
@@ -150,10 +150,10 @@ export default async function CalendarLanding({ category, query }: { category: C
                 <h2 className={styles.offerTitle}>Every week, every month</h2>
                 <p className={styles.offerText}>This week is open to everyone. A free account opens the weeks ahead, past weeks and the month view.</p>
                 <div className={styles.offerActions}>
-                  <Link href={signUp(shown.view)} className={buttonClass({ variant: 'primary' })} data-analytics-id="calendar_locked_sign_up" data-analytics-event="auth_start" data-analytics-intent="sign_up">Create free account</Link>
-                  <Link href={href('week', { week: shown.thisWeek })} className={buttonClass({ variant: 'secondary' })} data-analytics-id="calendar_locked_this_week">Back to this week</Link>
+                  <Link prefetch={false} href={signUp(shown.view)} className={buttonClass({ variant: 'primary' })} data-analytics-id="calendar_locked_sign_up" data-analytics-event="auth_start" data-analytics-intent="sign_up">Create free account</Link>
+                  <Link prefetch={false} href={href('week', { week: shown.thisWeek })} className={buttonClass({ variant: 'secondary' })} data-analytics-id="calendar_locked_this_week">Back to this week</Link>
                 </div>
-                <p className={styles.offerSignIn}>Already a member? <Link href={`/sign-in?redirect_url=${encodeURIComponent(href(shown.view))}`} data-analytics-id="calendar_locked_sign_in" data-analytics-event="auth_start" data-analytics-intent="sign_in">Sign in</Link></p>
+                <p className={styles.offerSignIn}>Already a member? <Link prefetch={false} href={`/sign-in?redirect_url=${encodeURIComponent(href(shown.view))}`} data-analytics-id="calendar_locked_sign_in" data-analytics-event="auth_start" data-analytics-intent="sign_in">Sign in</Link></p>
               </div>
             </WeekSilhouette>
           ) : isMonth ? (
@@ -180,7 +180,7 @@ export default async function CalendarLanding({ category, query }: { category: C
             <p className={styles.openNote}>
               <Lock size={14} strokeWidth={1.5} aria-hidden="true" />
               <span>Other weeks and the month view open with a free account.</span>
-              <Link href={signUp('week')} data-analytics-id="calendar_week_sign_up" data-analytics-event="auth_start" data-analytics-intent="sign_up">Create free account</Link>
+              <Link prefetch={false} href={signUp('week')} data-analytics-id="calendar_week_sign_up" data-analytics-event="auth_start" data-analytics-intent="sign_up">Create free account</Link>
             </p>
           ) : null}
         </section>
