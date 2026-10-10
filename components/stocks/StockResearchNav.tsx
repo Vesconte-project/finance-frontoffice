@@ -52,6 +52,7 @@ export default function StockResearchNav({ ticker }: { ticker: string }) {
             return (
               <div key={item.key} className={styles.item} data-active={selected}>
                 <Link
+                  prefetch={false}
                   href={stockResearchHref(ticker, item)}
                   aria-current={selected ? 'page' : undefined}
                   className={styles.link}

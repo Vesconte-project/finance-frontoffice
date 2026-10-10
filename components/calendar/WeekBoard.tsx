@@ -25,7 +25,7 @@ function EarningsTile({ event, context, index }: { event: CalendarEvent; context
   const label = `${symbol}${name ? `, ${name}` : ''}: ${readableTitle(event.title)}${relation ? `. ${relation}` : ''}`
   return (
     <li style={{ '--i': index } as CSSProperties}>
-      <Link className={styles.entry} href={`/stocks/${encodeURIComponent(symbol)}/events`} title={label} aria-label={label} data-center={isCenter || undefined}>
+      <Link prefetch={false} className={styles.entry} href={`/stocks/${encodeURIComponent(symbol)}/events`} title={label} aria-label={label} data-center={isCenter || undefined}>
         <span className={styles.entryNode} aria-hidden="true" />
         <span className={styles.entrySymbol}>{symbol}</span>
         {name ? <span className={styles.entryName}>{name}</span> : null}
@@ -48,7 +48,7 @@ function EventRow({ event, context }: { event: CalendarEvent; context: Context }
   return (
     <li>
       {event.symbol
-        ? <Link className={styles.row} href={`/stocks/${encodeURIComponent(event.symbol)}/events`}>{body}</Link>
+        ? <Link prefetch={false} className={styles.row} href={`/stocks/${encodeURIComponent(event.symbol)}/events`}>{body}</Link>
         : <span className={styles.row}>{body}</span>}
     </li>
   )

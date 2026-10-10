@@ -52,8 +52,7 @@ export default function TickerTabSwipe() {
 
     const previousHref = previous ? stockResearchHref(ticker, previous) : null
     const nextHref = next ? stockResearchHref(ticker, next) : null
-    if (previousHref) router.prefetch(previousHref)
-    if (nextHref) router.prefetch(nextHref)
+    // Fetch the destination when a swipe commits, rather than on every page mount.
 
     const html = document.documentElement
     const previousOverscroll = html.style.overscrollBehaviorX

@@ -66,16 +66,16 @@ export default function EventCalendar({ month, selectedDay, category, events, sc
         </div>
         <div className={styles.toolbarControls}>
           <div className={styles.monthControls} aria-label="Change month">
-            <Link href={href(shiftMonth(month, -1))} aria-label="Previous month"><ArrowLeft size={17} /></Link>
-            <Link href={href(today.slice(0, 7))}>Today</Link>
-            <Link href={href(shiftMonth(month, 1))} aria-label="Next month"><ArrowRight size={17} /></Link>
+            <Link prefetch={false} href={href(shiftMonth(month, -1))} aria-label="Previous month"><ArrowLeft size={17} /></Link>
+            <Link prefetch={false} href={href(today.slice(0, 7))}>Today</Link>
+            <Link prefetch={false} href={href(shiftMonth(month, 1))} aria-label="Next month"><ArrowRight size={17} /></Link>
           </div>
         </div>
       </div>
 
       <nav className={styles.categories} aria-label="Event type">
         {categories.map((item) => (
-          <Link key={item.key} href={href(month, undefined, item.key)} aria-current={item.key === category ? 'page' : undefined}>
+          <Link prefetch={false} key={item.key} href={href(month, undefined, item.key)} aria-current={item.key === category ? 'page' : undefined}>
             {item.label}
           </Link>
         ))}
@@ -87,6 +87,7 @@ export default function EventCalendar({ month, selectedDay, category, events, sc
       ) : null}
       {truncated ? <p className={styles.coverage}>Showing the first 500 events. Narrow the type or ticker to see more.</p> : null}
 
+      {/* Each day/filter is a separate dynamic URL. Fetch only when selected. */}
       <div className={styles.layout}>
         <div className={styles.gridWrap}>
           <div className={styles.grid} aria-label={monthTitle}>
@@ -96,6 +97,7 @@ export default function EventCalendar({ month, selectedDay, category, events, sc
               const inMonth = date.startsWith(month)
               return (
                 <Link
+                  prefetch={false}
                   key={date}
                   href={href(date.slice(0, 7), date)}
                   className={styles.day}
@@ -122,7 +124,7 @@ export default function EventCalendar({ month, selectedDay, category, events, sc
               <li key={event.id}>
                 <span className={styles.eventType} data-category={event.category}>{CALENDAR_CATEGORIES.find((item) => item.key === event.category)?.label}</span>
                 <strong>{readableTitle(event.title)}</strong>
-                {event.symbol ? <Link href={`/stocks/${encodeURIComponent(event.symbol)}/events`}>{event.symbol}{names[event.symbol.toUpperCase()] ? <span className={styles.agendaName}>{names[event.symbol.toUpperCase()]}</span> : null} <ArrowRight size={14} /></Link> : null}
+                {event.symbol ? <Link prefetch={false} href={`/stocks/${encodeURIComponent(event.symbol)}/events`}>{event.symbol}{names[event.symbol.toUpperCase()] ? <span className={styles.agendaName}>{names[event.symbol.toUpperCase()]}</span> : null} <ArrowRight size={14} /></Link> : null}
                 {event.detail ? <p>{event.detail}</p> : null}
                 {/* A ticker page names no data source (Spec PRD-78: no internal language). */}
                 {event.source && scope === 'global' ? <p>Source: {event.source.replaceAll('_', ' ')}</p> : null}
