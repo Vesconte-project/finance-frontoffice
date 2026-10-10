@@ -30,10 +30,18 @@ test.beforeAll(async () => {
   writeFileSync('test-results/platform/owned-test-users.json', JSON.stringify({ run, users }), { mode: 0o600 })
 })
 
-test('real Clerk sessions require an expiring explicit administrative grant and lose access on revocation', async ({ page }) => {
+test('real Clerk sessions require an expiring explicit administrative grant and lose access on revocation', async ({ page, browser }) => {
   await page.goto('/'); await clerk.signIn({ page, emailAddress: emails[0] })
   await request(page, '/me')
   expect((await request(page, '/admin/me')).status).toBe(403)
+  const backofficeContext = process.env.PLATFORM_BACKOFFICE_QA === 'true' ? await browser.newContext() : null
+  const backoffice = backofficeContext ? await backofficeContext.newPage() : null
+  if (backoffice) {
+    await backoffice.goto('http://localhost:3101/sign-in')
+    await clerk.signIn({ page: backoffice, emailAddress: emails[0] })
+    await backoffice.waitForFunction(subject => (window as unknown as { Clerk?: { user?: { id?: string } } }).Clerk?.user?.id === subject, users[0])
+    expect((await backoffice.request.get('http://localhost:3101/api/sidebar-state')).status()).toBe(403)
+  }
   const repos = resolve(process.env.FINANCE_REPOS_DIR || '..')
   const admin = async (...args: string[]) => execute('python3', [
     resolve(repos, 'finance-infra/platform-local/admin.py'), '--repos-dir', repos, ...args,
@@ -52,13 +60,24 @@ test('real Clerk sessions require an expiring explicit administrative grant and 
     expect((await request(page, '/admin/me')).status).toBe(200)
     expect((await request(page, '/admin/admin/contracts')).status).toBe(200)
     expect((await request(page, '/admin/admin/data-control/calendar')).status).toBe(403)
+    if (backoffice) {
+      await backoffice.goto('http://localhost:3101/')
+      await expect(backoffice.getByRole('heading', { name: 'Next actions' })).toBeVisible()
+      await backoffice.goto('http://localhost:3101/contracts')
+      await expect(backoffice.getByRole('heading', { name: 'Live Backend Operations', exact: true })).toBeVisible()
+      await expect(backoffice.getByText(/^Contract .+ \| API /)).toBeVisible()
+    }
   } finally {
     await admin('revoke', '--grant-id', grant!, '--reason', 'Local QA grant cleanup')
   }
   expect((await request(page, '/admin/me')).status).toBe(403)
+  if (backoffice) {
+    expect((await backoffice.request.get('http://localhost:3101/api/sidebar-state')).status()).toBe(403)
+    await backofficeContext!.close()
+  }
   writeFileSync('test-results/platform/admin-rbac-proof.json', JSON.stringify({
     clerk: 'Real Development session', explicitGrant: 'PASS', leastPrivilege: 'PASS',
-    immediateRevocation: 'PASS', scope: 'Backend administrative API; backoffice browser remains separate',
+    immediateRevocation: 'PASS', scope: backoffice ? 'Backend API and real backoffice browser' : 'Backend administrative API; backoffice browser remains separate',
   }, null, 2))
 })
 test.afterAll(async () => {
@@ -94,6 +113,9 @@ test('real Clerk identities receive internal accounts; Free and cross-account re
   for (const feature of ['signals.export', 'rankings.read', 'research.ai']) expect(access.body.features[feature].allowed).toBe(false)
   expect((await request(page, '/signals/export', { account_id: account.id, ticker: 'ACME' })).status).toBe(403)
   expect((await request(page, `/rankings?account_id=${account.id}&reading=growth`)).status).toBe(403)
+  expect((await page.request.get('/api/export-signals?ticker=ACME')).status()).toBe(403)
+  await page.goto('/picks/long-term')
+  await expect(page.getByRole('heading', { name: 'This ranking requires Pro access' })).toBeVisible()
   expect((await request(page, '/research/jobs', { account_id: account.id, comparison: {
     experiment_name: 'native_local_proof', fixture: 'synthetic-market-v1', variants: [
       { name: 'baseline', model: 'logistic_regression', probability_threshold: 0.5 },

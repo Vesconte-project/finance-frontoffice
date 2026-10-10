@@ -11,6 +11,13 @@ export default defineConfig({
   outputDir: 'test-results/platform', reporter: 'line',
   use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:3000', actionTimeout: 30_000,
     navigationTimeout: 60_000, trace: 'off', video: 'off', screenshot: 'off' },
-  webServer: { command: 'npm run dev:platform', url: 'http://localhost:3000', reuseExistingServer: false,
-    timeout: 20 * 60_000, stdout: 'pipe', stderr: 'pipe', gracefulShutdown: { signal: 'SIGTERM', timeout: 10_000 } },
+  webServer: [
+    { command: 'npm run dev:platform', url: 'http://localhost:3000', reuseExistingServer: false,
+      timeout: 20 * 60_000, stdout: 'pipe', stderr: 'pipe', gracefulShutdown: { signal: 'SIGTERM', timeout: 10_000 } },
+    ...(process.env.PLATFORM_BACKOFFICE_QA === 'true' ? [{
+      command: 'node ../finance-backoffice/scripts/dev-platform.mjs', url: 'http://localhost:3101/sign-in',
+      reuseExistingServer: false, timeout: 120_000, stdout: 'pipe' as const, stderr: 'pipe' as const,
+      gracefulShutdown: { signal: 'SIGTERM' as const, timeout: 10_000 },
+    }] : []),
+  ],
 })
