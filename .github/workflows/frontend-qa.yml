@@ -2,6 +2,7 @@ name: Frontend QA
 
 on:
   pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
   push:
     branches: [main]
 
@@ -14,6 +15,7 @@ concurrency:
 
 jobs:
   candidate:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Frontend candidate
     runs-on: ubuntu-latest
     steps:
