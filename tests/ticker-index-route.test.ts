@@ -4,6 +4,8 @@ import { GET } from '../app/api/tickers/index/route'
 
 function preserveEnv() {
   const original = {
+    CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     BACKEND_BASE_URL: process.env.BACKEND_BASE_URL,
     BACKEND_SHARED_SECRET: process.env.BACKEND_SHARED_SECRET,
     CF_ACCESS_CLIENT_ID: process.env.CF_ACCESS_CLIENT_ID,
@@ -11,6 +13,10 @@ function preserveEnv() {
     FINANCE_BACKEND_URL: process.env.FINANCE_BACKEND_URL,
   }
 
+  // This unit case is explicitly anonymous, without a Next.js request context.
+  // Real configured sessions and the BFF are exercised by qa:local.
+  delete process.env.CLERK_SECRET_KEY
+  delete process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
   return () => {
     for (const [key, value] of Object.entries(original)) {
       if (value === undefined) {
@@ -22,7 +28,7 @@ function preserveEnv() {
   }
 }
 
-test('ticker index route proxies backend with shared secret and Cloudflare Access headers', async () => {
+test('ticker index route uses /v1 and Access without forwarding an obsolete shared secret', async () => {
   const restoreEnv = preserveEnv()
   const originalFetch = globalThis.fetch
 
@@ -65,10 +71,11 @@ test('ticker index route proxies backend with shared secret and Cloudflare Acces
     assert.equal(response.status, 200)
     assert.equal(response.headers.get('etag'), '"ticker-index-v1"')
     assert.deepEqual(payload.items.map((item: { symbol: string }) => item.symbol), ['GME'])
-    assert.equal(requestedUrl, 'https://backend.example.test/tickers/index')
+    assert.equal(requestedUrl, 'https://backend.example.test/v1/tickers/index')
     assert.ok(requestedHeaders)
     assert.equal(requestedHeaders.get('accept'), 'application/json')
-    assert.equal(requestedHeaders.get('x-backend-shared-secret'), 'shared-secret')
+    assert.equal(requestedHeaders.get('x-backend-shared-secret'), null)
+    assert.equal(requestedHeaders.get('Authorization'), null)
     assert.equal(requestedHeaders.get('CF-Access-Client-Id'), 'cf-client-id')
     assert.equal(requestedHeaders.get('CF-Access-Client-Secret'), 'cf-client-secret')
     assert.equal(requestedHeaders.get('If-None-Match'), '"previous"')

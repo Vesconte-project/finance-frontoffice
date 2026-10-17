@@ -1,50 +1,21 @@
-# Available Frontend-Backend Integrations
+# Contratos consumidos pelo frontoffice
 
-Code is authoritative. This inventory records observed local routes and server helpers; verify the referenced implementation before changing a contract. Browser code should call local `/api/*` routes, while server helpers use `finance-backend` through `lib/backend.ts`.
+Fonte executável: `finance-backend/docs/api-contract.json` e `docs/openapi.json`.
+Inventário método/caminho, ficheiro, autenticação e origem:
+`finance-infra/docs/eng196/consumidores.csv`.
 
-Any pull request that creates, removes, or changes a route or its observable contract must update this inventory in the same diff. Unknown or unconfirmed behavior stays explicitly marked as such.
+| Família | Backend | Origem / autenticação |
+|---|---|---|
+| Preços e empresa | `/v1/tickers/{ticker}/*`, `/v1/tickers/index` | SSR/BFF, sessão opcional + Access no servidor |
+| Calendário | `/v1/calendar` | SSR, público, mesmos tetos nos três níveis |
+| Rankings reduzidos | `/v1/screener/rankings` | SSR, top 10: posição/ticker/score |
+| Ranking completo | `/v1/rankings` | BFF, sessão + `rankings.read` |
+| Mapa | `/v1/network*`, `/v1/relationships/*` | SSR/BFF, sessão obrigatória |
+| Conta/research/artefactos/billing | `/v1/me`, `/v1/accounts/*`, `/v1/research/*`, `/v1/artifacts/*`, `/v1/billing/*` | `/api/platform/*` ou SSR, sessão obrigatória |
+| Watchlist | `/v1/watchlist` | BFF, GET/POST/DELETE, owner da sessão |
+| AI e feedback | `/v1/ai-research/*` | BFF, sessão; geração também `research.ai` |
+| Analytics | `/v1/analytics/events` | BFF, só sessão; telemetria anónima fica no frontoffice |
 
-## Local route handlers
-
-| Method and route | Purpose / consumer | Auth | Confirmed contract and errors | Relevant files |
-| --- | --- | --- | --- | --- |
-| `GET /api/tickers/index` | Sole runtime source for ticker autocomplete | Public browser route; shared secret and optional CF Access upstream | `TickerIndexPayload`; ETag/304; 502/503 error codes for backend configuration/access/availability | `app/api/tickers/index/route.ts`, `lib/ticker-search.ts`, `components/search/TickerSearchCombobox.tsx` |
-| `POST /api/tickers/request` | Request ticker onboarding | Public; server authenticates upstream | Body `{ticker, region, exchange?}`; region `us|eu|apac`; backend failures may intentionally return 202 with status. Success shape is not fully confirmed here | `app/api/tickers/request/route.ts`, `lib/ticker-onboarding.ts` |
-| `GET /api/tickers/status` | Poll onboarding status | Public; server authenticates upstream | Query `ticker`, `region`, `exchange?`; input 400; backend failures can return 200 status objects. Normal success beyond `status` is unknown | `app/api/tickers/status/route.ts`, `lib/ticker-onboarding.ts` |
-| `GET /api/stocks/relationship-comparison` | Load recent price history for the two tickers selected in the Relationships comparison panel | Public ticker-page route; finance-backend credentials remain server-side | Query `base`, `peer`, `periodDays`; 400 for invalid/equal symbols, 502 when history is unavailable; success returns separate canonical history arrays for both tickers | `app/api/stocks/relationship-comparison/route.ts`, `lib/finance.ts`, `components/RelationshipComparisonChart.tsx` |
-| `GET /api/network/atlas` | Load the community-level market universe without company nodes | Public browser route; finance-backend credentials remain server-side | Query `window=126|252`, `view=market|residual|timing|theme`; communities include additive `displayLabel`, `displayName`, `description`, and `scopeLabel` read-model fields while `label` remains the canonical materialized label; 502 when the materialized atlas is unavailable | `app/api/network/atlas/route.ts`, `lib/network.ts`, `components/MarketUniverse.tsx` |
-| `GET /api/network/atlas/communities/:communityId` | Expand one market community into its bounded company graph | Public browser route; finance-backend credentials remain server-side | Query `window`, `view`, `limit`, optional `asOf=YYYY-MM-DD` to pin the overview snapshot; 400 invalid id/date, 502 unavailable; success is `RelationshipAtlasDetail` | `app/api/network/atlas/communities/[communityId]/route.ts`, `lib/network.ts`, `components/MarketUniverse.tsx` |
-| `GET /api/network/atlas/neighborhoods/:ticker` | Load one ticker's bounded atlas neighborhood | Public browser route; finance-backend credentials remain server-side | Query `window`, `view`, `limit`, optional `asOf=YYYY-MM-DD` to pin the overview snapshot; 400 invalid ticker/date, 502 unavailable; success is `RelationshipAtlasDetail` | `app/api/network/atlas/neighborhoods/[ticker]/route.ts`, `lib/network.ts` |
-| `POST`, `DELETE /api/watchlist` | Add/remove a ticker | Clerk user | Body `{ticker}`; success `{ok:true,ticker}`; 400/401/500/502 `{error}` | `app/api/watchlist/route.ts`, `components/WatchlistButton.tsx`, `lib/watchlist.ts` |
-| `GET /api/export-signals?ticker=` | Download signal history CSV | Clerk user plus Pro plan | CSV success; 400/401/403/404/502 JSON error, 403 may include `upgradeUrl` | `app/api/export-signals/route.ts`, `lib/signals.ts`, `lib/types.ts` |
-| `POST /api/models/validate` | Validate a single-stock model against history | No handler auth confirmed | Input based on `ModelDraftInput`; success `{model: ModelRecord}`; 400/422/500 `{error}` | `app/api/models/validate/route.ts`, `lib/model-builder.ts`, `lib/model-store-client.ts` |
-| `POST /api/ai-analyst` | Stream Perplexity analysis | Public request; optional Clerk user for run persistence; server API key | Ticker/signal/news/question input; SSE stream plus `run_id`; 400/502/503 JSON before streaming. Perplexity request has no explicit local timeout | `app/api/ai-analyst/route.ts`, `components/AiAnalystPanel.tsx`, `lib/ai-research.ts` |
-| `POST /api/ai-analyst/feedback` | Save research feedback | Clerk user | `{ticker, category, note?, runId?}`; `{ok:true}` or 400/401/500 `{error}` | `app/api/ai-analyst/feedback/route.ts`, `lib/ai-research.ts` |
-| `POST /api/analytics/event` | Forward product analytics | Public; backend service auth | Input normalized in route; 400 invalid JSON. Missing backend and upstream failures intentionally fail open as 204 | `app/api/analytics/event/route.ts`, `lib/analytics.ts` |
-| `GET /api/market/refresh` | Read/aggregate market data for requested tickers | Bearer token only when `MARKET_REFRESH_TOKEN` is configured | Query `tickers`, `periodDays`; 401 or `{ok,tickers,periodDays,refreshedAt,results}`. Current helper does not call a distinct backend refresh route | `app/api/market/refresh/route.ts`, `lib/finance.ts` |
-| `GET /api/cron/check-signals` | Detect flips and send alert email | Required bearer `SIGNAL_ALERT_CRON_TOKEN`; no refresh fallback; successful backend reservation required before email | Query `date`, `dryRun=1`; response variants are defined in route, not a shared type | `app/api/cron/check-signals/route.ts`, `lib/alerts.ts`, `lib/watchlist.ts` |
-| `POST /api/webhooks/stripe` | Activate Pro metadata after checkout | Stripe HMAC signature and timestamp tolerance | Handles `checkout.session.completed`; 400/500 `{error}`; success `{received,eventId}` | `app/api/webhooks/stripe/route.ts`, `lib/billing.ts` |
-
-## Server-side backend paths
-
-`lib/backend.ts` applies a default 9-second timeout, no-store by default, `x-backend-shared-secret`, and optional Cloudflare Access headers. The following paths are present in current helpers:
-
-| Area | Observed paths | Types/consumers |
-| --- | --- | --- |
-| Tickers | `GET /tickers/index`, `/tickers/:ticker/summary`, `/profile`, `/scorecard`, `/history`, `/ohlc` | `lib/ticker-search.ts`, `ticker-data.ts`, `finance.ts`, `scorecard.ts`, `ohlc-data.ts` |
-| Canonical ticker research | `GET /tickers/:ticker/financial-statements`, `/market-metrics`, `/events`, `/disclosures` | Server-only `lib/canonical-research.ts`; shared, audience-neutral ticker resources used by Financials, Valuation and Events. This server authenticates with the shared-secret boundary and never calls `/analyst/*` |
-| Signals | `GET /signals/history/:ticker`, `/signals/last-flips`, `/signals/flips`, `/screener/signals` | `lib/signals.ts`, `lib/types.ts` |
-| Scorecard rankings | `GET /screener/rankings?reading=longTerm\|income\|shortTerm&limit=25` | `lib/picks.ts` (server-only, `unstable_cache` 300s), gated by `lib/picks-access.ts`, rendered by the three routes under `app/(app)/picks/`. Only Pro receives rows; everyone else gets the count (`PICK_VISIBLE_LIMITS`). Ranks the universe by one reading in a single request; `/tickers/:ticker/scorecard` would need 686. Response is `{asOf, reading, filters, items[]}` with `capitalPerThousandIncome` present on `income` only. An unknown reading is a 422, not an empty list. Coverage (0.6) and non-company filters are applied upstream by default and are **not** exposed as options here — turning them off puts a score built from a quarter of the model at the top, and a bond ETF fourth on the income list. The `readings` are ordering, not calibrated marks |
-| Weekly sector cut (**pending backend**) | `GET /screener/rankings?reading=…&sector=…&limit=10` | `getSectorCut` in `lib/picks.ts`, rendered free by `app/(app)/picks/weekly/page.tsx`; rotation in `lib/picks-weekly.ts`. Expects the backend to filter to the sector and echo it as `filters.sector`. Until it does, the parameter is ignored and `isSectorCutValid` rejects the whole-market list, so the page reads "not published yet" rather than mislabelling it. Sector names assumed: see `WEEKLY_SECTORS` |
-| Ticker reading standings | `GET /tickers/:ticker/readings` | `getTickerReadingsPayload` in `lib/canonical-research.ts`, parsed by `lib/ticker-readings.ts`, rendered free by `app/(app)/stocks/[ticker]/rankings/page.tsx` as `Top/Bottom N%` and a position out of the ranked population |
-| Market network | `GET /network`, `GET /relationships/:ticker`, `GET /network/atlas`, `GET /network/communities/:id`, `GET /network/neighborhoods/:ticker` | `lib/network.ts`, `lib/relationships.ts`; the progressive atlas is preferred by the global map. `/network` remains a temporary fail-open source that is collapsed server-side into community previews when atlas materialization is unavailable |
-| Watchlists | `GET/POST/DELETE /site/watchlist`, plus `/all-tickers` and `/subscriptions` | `lib/watchlist.ts`, dashboard/server views |
-| AI research | `POST/GET /site/ai-research/runs`, `GET/PATCH /runs/:id`, `POST /feedback` | `lib/ai-research.ts` |
-| Alerts | `POST /site/alerts/reserve`, `/record` | `lib/alerts.ts` |
-| Analytics | `POST /site/analytics/events` | local analytics route |
-
-## Contract status
-
-Contracts are handwritten TypeScript plus tolerant normalizers; there is no OpenAPI document, shared runtime schema, or generated client in this repository. Several upstream payloads enter as `unknown` and are normalized, while some are asserted directly. The request/status success payloads and some cron result variants are not fully specified here.
-
-OpenAPI or generated types would be useful after `finance-backend` publishes a stable canonical schema and ownership/versioning are agreed. Adding generation now would create a second, potentially divergent source of truth. Prefer focused contract tests around existing high-risk routes in the meantime.
+As rotas antigas dão 404, incluindo cron/CSV/direcionais/synthetic legado.
+As páginas de sinais apresentam indisponibilidade sem fallback; watchlist continua.
+Nenhuma chamada de browser recebe Access, chave IP ou credencial de serviço.

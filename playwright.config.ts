@@ -19,13 +19,8 @@ const stubBaseUrl = `http://127.0.0.1:${process.env.E2E_BACKEND_STUB_PORT || 310
 // before.
 const useProductionServer = process.env.PLAYWRIGHT_SERVER_MODE?.trim() === 'production'
 
-// Shared by both modes. BACKEND_SHARED_SECRET is not a credential: the proxy
-// routes require it to be present before they will call upstream at all, and
-// the fixture backend never reads it.
-const appServerEnv = {
-  BACKEND_BASE_URL: stubBaseUrl,
-  BACKEND_SHARED_SECRET: 'e2e-fixture-not-a-secret',
-}
+// The synthetic origin exposes native contracts; it has no shared-secret mode.
+const appServerEnv = { BACKEND_BASE_URL: stubBaseUrl }
 
 const appServer = useProductionServer
   ? {

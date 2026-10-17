@@ -25,36 +25,16 @@ function readTicker(row: Record<string, unknown>): string | null {
   return candidate ?? null
 }
 
-async function readTickerSignalsFromBackend(): Promise<TickerSignal[]> {
-  try {
-    const data = await fetchBackendJson<unknown>('/screener/signals?limit=500', {
-      context: 'backend.sitemap.screener_signals',
-      timeoutMs: SITEMAP_SOURCE_TIMEOUT_MS,
-    })
-    if (!Array.isArray(data) || data.length === 0) return []
-
-    return data
-      .map((row) => {
-        if (!row || typeof row !== 'object') return null
-        const typedRow = row as Record<string, unknown>
-        const ticker = readTicker(typedRow)
-        if (!ticker) return null
-        return {
-          ticker,
-          signalDate:
-            readString(typedRow.signalDate) ??
-            readString(typedRow.signal_date) ??
-            readString(typedRow.as_of_date),
-        }
-      })
-      .filter((row): row is TickerSignal => row !== null)
-  } catch {
-    return []
-  }
-}
-
 async function readTickerSignals(): Promise<TickerSignal[]> {
-  return readTickerSignalsFromBackend()
+  try {
+    const payload=await fetchBackendJson<{ items?: unknown[] }>('/v1/tickers/index', {
+      context:'backend.sitemap.ticker_index',timeoutMs:SITEMAP_SOURCE_TIMEOUT_MS })
+    return (payload.items ?? []).flatMap(row => {
+      if (!row || typeof row!=='object') return []
+      const ticker=readTicker(row as Record<string,unknown>)
+      return ticker ? [{ticker,signalDate:null}] : []
+    })
+  } catch { return [] }
 }
 
 function toDate(value: string | null): Date | undefined {

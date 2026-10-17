@@ -32,7 +32,6 @@ import type { ExpandedChartDialogProps } from './ExpandedChartDialog'
 // The expanded chart's code loads only when a reader opens it.
 const ExpandedChartDialog = dynamic(() => import('./ExpandedChartDialog'), { ssr: false })
 
-type SignalDirection = 'bullish' | 'neutral' | 'bearish'
 type ChartTimeframe = '1D' | '5D' | '1M' | '3M' | 'YTD' | '1Y' | '5Y' | '10Y' | 'ALL'
 type HistoricalChartState = 'loaded' | 'empty' | 'error'
 type FullHistoryState = 'idle' | 'loading' | 'loaded' | 'error'
@@ -75,28 +74,11 @@ type OverviewEarnings = {
   fiscalPeriod: string | null
 }
 
-type OverviewSignal = {
-  direction: SignalDirection
-  conviction: number | null
-  horizon: number | null
-  signalDate: string | null
-}
-
-type OverviewRegimePoint = {
-  signal_date: string
-  direction: SignalDirection
-  prob_side: number | null
-  prediction_horizon: number
-  episode_return: number | null
-  episode_status: string | null
-}
-
 type StockOverviewClientProps = {
   ticker: string
   currency: string
   /** From the registry's instrument type (Spec "Instrument type as the single source V1"). */
   isFund: boolean
-  latestSignal: OverviewSignal | null
   historicalData: PricePoint[]
   historicalChartState: HistoricalChartState
   ohlcData: OhlcPoint[]
@@ -108,7 +90,6 @@ type StockOverviewClientProps = {
   relatedAssets: Promise<OverviewRelatedAsset[]>
   /** Company events for the expanded chart; resolves to null when unavailable. */
   chartEvents: Promise<EventMarker[] | null>
-  regimeSignals: OverviewRegimePoint[]
   scorecard: Scorecard
   /** Reported annual revenue, oldest first, the same series the Fundamentals tab draws; null when unavailable. */
   revenue: Promise<ReportedPoint[] | null>
@@ -134,24 +115,6 @@ function formatDate(value: string | null, options?: Intl.DateTimeFormatOptions):
 
 function formatCompactPercent(value: number): string {
   return `${value > 0 ? '+' : value < 0 ? '−' : ''}${Math.abs(value).toFixed(2)}%`
-}
-
-function formatConviction(value: number): string {
-  const scaled = Math.abs(value) <= 1 ? value * 100 : value
-  return `${scaled.toFixed(0)}%`
-}
-
-/** The model signal's direction, as the prototype writes it: "Bearish · 62% conviction". */
-function directionCopy(direction: SignalDirection): string {
-  if (direction === 'bullish') return 'Bullish'
-  if (direction === 'bearish') return 'Bearish'
-  return 'Neutral'
-}
-
-function directionTone(direction: SignalDirection | undefined): string | undefined {
-  if (direction === 'bullish') return styles.positiveText
-  if (direction === 'bearish') return styles.negativeText
-  return undefined
 }
 
 function scorecardReadinessMessage(scorecard: Scorecard): string | null {
@@ -502,7 +465,6 @@ export default function StockOverviewClient({
   ticker,
   currency,
   isFund,
-  latestSignal,
   historicalData,
   historicalChartState,
   ohlcData,
@@ -617,16 +579,6 @@ export default function StockOverviewClient({
   }
 
   const researchVerdicts = [
-    {
-      label: 'Model signal',
-      value: latestSignal ? directionCopy(latestSignal.direction) : 'Unavailable',
-      tone: directionTone(latestSignal?.direction),
-      detail: latestSignal?.conviction !== null
-        && latestSignal?.conviction !== undefined
-        && Number.isFinite(latestSignal.conviction)
-        ? `${formatConviction(latestSignal.conviction)} conviction`
-        : null,
-    },
     {
       label: `Technical · ${signalTimeframe}`,
       value: hasTechnicalData ? technicalSummary.gauges.summary.verdict : 'Not enough price history',

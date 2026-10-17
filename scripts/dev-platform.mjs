@@ -36,12 +36,10 @@ if (action === 'up') {
 const stack = spawnSync('python3', args, { cwd: root, stdio: 'inherit' })
 if (stack.error || stack.status !== 0) process.exit(stack.status || 1)
 if (action === 'up') {
-  const shared = readFileSync(resolve(infra, '.state/secrets/shared'), 'utf8').trim()
-  const env = { ...process.env, BACKEND_BASE_URL: `http://127.0.0.1:${port}`, FINANCE_BACKEND_URL: '',
-    BACKEND_SHARED_SECRET: shared, CF_ACCESS_CLIENT_ID: '', CF_ACCESS_CLIENT_SECRET: '',
-    NEXT_PUBLIC_PLATFORM_API_ENABLED: 'true', NEXT_PUBLIC_PLATFORM_API_BASE_URL: `http://127.0.0.1:${port}`,
-    RESEARCH_SYNTHETIC_ENABLED: 'true', NEXT_PUBLIC_RESEARCH_AUTH_MODE: 'clerk_jwt',
-    NEXT_PUBLIC_RESEARCH_API_BASE_URL: `http://127.0.0.1:${port}`, VERCEL_ENV: 'development', NEXT_DIST_DIR: '.next-platform' }
+  const env = { ...process.env, BACKEND_BASE_URL: `http://127.0.0.1:${port}`,
+    CF_ACCESS_CLIENT_ID: '', CF_ACCESS_CLIENT_SECRET: '',
+    NEXT_PUBLIC_PLATFORM_API_ENABLED: 'true',
+    VERCEL_ENV: 'development', NEXT_DIST_DIR: '.next-platform' }
   const next = spawn(process.execPath, [resolve(root, 'node_modules/next/dist/bin/next'), 'dev', '--hostname', 'localhost', '--port', '3000'],
     { cwd: root, env, stdio: 'inherit' })
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => next.kill(signal))

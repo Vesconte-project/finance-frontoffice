@@ -1,8 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
 /**
- * The public calendar: this week for everyone, other weeks and the month view with
- * an account. Runs anonymously against the synthetic calendar served by the fixture
+ * The public calendar: week and month views for everyone. Runs anonymously against the synthetic calendar served by the fixture
  * backend (e2e/fixtures/calendar.mjs). The lock is checked in the bytes sent to the
  * browser, not only on screen.
  */
@@ -41,7 +40,7 @@ for (const width of [375, 1440]) {
     await expect(showAll.locator('xpath=..').locator('a').first()).toBeVisible()
     // Tiles carry the company name from the ticker index.
     await expect(calendar.locator('a[href^="/stocks/"]').first()).toHaveAttribute('aria-label', /^[A-Z0-9.]+, .+: Earnings/)
-    await expect(calendar.getByText('Other weeks and the month view open with a free account.')).toBeVisible()
+    await expect(calendar.getByText('Other weeks and the month view open with a free account.')).toHaveCount(0)
     // On a phone the week is a strip of days that jumps to each one; on a wide screen the columns are the week.
     const strip = calendar.getByRole('navigation', { name: 'Days of the week' })
     if (width < 600) {
@@ -69,30 +68,15 @@ for (const width of [375, 1440]) {
   })
 }
 
-test('another week is locked and carries no events', async ({ page, request }) => {
-  const errors = watchConsole(page)
-  const path = `/calendar?week=${monday(1)}`
-  const body = await (await request.get(path)).text()
-  expect(body.match(STOCK_EVENT_LINK) ?? []).toEqual([])
-
-  await page.setViewportSize({ width: 1440, height: 900 })
-  await page.goto(path)
-  await expect(page.getByRole('heading', { name: 'Every week, every month' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Create free account' })).toHaveAttribute('href', /^\/sign-up\?redirect_url=/)
-  if (process.env.PLAYWRIGHT_CAPTURE) {
-    await page.waitForLoadState('networkidle')
-    await page.screenshot({ path: 'test-results/calendar-locked-1440.png', fullPage: true })
-  }
-  await page.getByRole('link', { name: 'Back to this week' }).click()
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/ · \d+ events$/)
-  expect(errors).toEqual([])
-})
-
-test('the month view is locked for a signed-out reader', async ({ request }) => {
-  for (const path of ['/calendar?view=month', '/calendar/earnings?view=month&month=2026-11']) {
-    const body = await (await request.get(path)).text()
-    expect(body).toContain('Every week, every month')
-    expect(body.match(STOCK_EVENT_LINK) ?? []).toEqual([])
+test('another week and month are public without an account', async ({page,request}) => {
+  for (const path of [`/calendar?week=${monday(1)}`, '/calendar?view=month']) {
+    const body=await(await request.get(path)).text()
+    expect(body).not.toContain('Every week, every month')
+    if (path.includes('view=month')) expect(body).toMatch(/aria-label="[^"]+; [1-9][0-9]* events"/)
+    else expect(body.match(STOCK_EVENT_LINK)?.length ?? 0).toBeGreaterThan(0)
+    await page.goto(path)
+    await expect(page.getByRole('heading',{level:1})).toBeVisible()
+    await expect(page.getByRole('link',{name:'Create free account',exact:true})).toHaveCount(0)
   }
 })
 
@@ -114,25 +98,8 @@ test('related companies and the watchlist need an account', async ({ page }) => 
   expect(errors).toEqual([])
 })
 
-test('the sector list narrows the week to one sector', async ({ page, request }) => {
-  const errors = watchConsole(page)
-  const body = await (await request.get('/calendar?sector=Technology')).text()
-  const linked = [...new Set([...body.matchAll(STOCK_EVENT_LINK)].map((match) => match[0].split('/')[2]))]
-  expect(linked.length).toBeGreaterThan(0)
-  expect(linked.every((symbol) => symbol.startsWith('FXA'))).toBe(true)
-
-  await page.setViewportSize({ width: 1440, height: 900 })
-  await page.goto('/calendar')
-  await page.waitForLoadState('networkidle')
-  await page.getByRole('combobox', { name: 'Sector' }).selectOption('Consumer Defensive')
-  await expect(page).toHaveURL(/sector=Consumer\+Defensive/)
-  await expect(page.locator('a[href^="/stocks/FXA"]')).toHaveCount(0)
-  await expect(page.locator('a[href^="/stocks/FXB"]').first()).toBeVisible()
-  // The type tabs keep the sector.
-  await expect(page.getByRole('link', { name: 'Earnings', exact: true })).toHaveAttribute('href', /sector=Consumer/)
-  if (process.env.PLAYWRIGHT_CAPTURE) {
-    await page.waitForLoadState('networkidle')
-    await page.screenshot({ path: 'test-results/calendar-sector-1440.png' })
-  }
-  expect(errors).toEqual([])
+test('anonymous calendar never reads the session-only map for sectors',async({page})=>{
+  await page.goto('/calendar?sector=Technology')
+  await expect(page.getByRole('heading',{level:1})).toBeVisible()
+  await expect(page.getByRole('combobox',{name:'Sector'})).toHaveCount(0)
 })

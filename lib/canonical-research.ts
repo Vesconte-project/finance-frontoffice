@@ -154,7 +154,7 @@ export async function getTickerFinancialStatements(
 ): Promise<FinancialStatementsPayload> {
   const ticker = normalizedTicker(tickerRaw)
   return fetchBackendJson<FinancialStatementsPayload>(
-    `/tickers/${encodeURIComponent(ticker)}/financial-statements${queryString({
+    `/v1/tickers/${encodeURIComponent(ticker)}/financial-statements${queryString({
       statementType: options.statementType,
       periodType: options.periodType,
       limit: options.limit ?? 500,
@@ -169,7 +169,7 @@ export async function getTickerMarketMetrics(
 ): Promise<MarketMetricsPayload> {
   const ticker = normalizedTicker(tickerRaw)
   return fetchBackendJson<MarketMetricsPayload>(
-    `/tickers/${encodeURIComponent(ticker)}/market-metrics${queryString({
+    `/v1/tickers/${encodeURIComponent(ticker)}/market-metrics${queryString({
       metric: options.metric,
       latestOnly: options.latestOnly ?? false,
       limit: options.limit ?? 250,
@@ -184,7 +184,7 @@ export async function getTickerCorporateActions(
 ): Promise<CorporateActionsPayload> {
   const ticker = normalizedTicker(tickerRaw)
   return fetchBackendJson<CorporateActionsPayload>(
-    `/tickers/${encodeURIComponent(ticker)}/corporate-actions${queryString({
+    `/v1/tickers/${encodeURIComponent(ticker)}/corporate-actions${queryString({
       actionType: options.actionType,
       latestOnly: true,
       limit: options.limit ?? 200,
@@ -199,7 +199,7 @@ export async function getTickerEquityCapitalEvents(
 ): Promise<EquityCapitalEventsPayload> {
   const ticker = normalizedTicker(tickerRaw)
   return fetchBackendJson<EquityCapitalEventsPayload>(
-    `/tickers/${encodeURIComponent(ticker)}/equity-capital-events${queryString({
+    `/v1/tickers/${encodeURIComponent(ticker)}/equity-capital-events${queryString({
       latestOnly: true,
       limit: options.limit ?? 500,
     })}`,
@@ -215,13 +215,13 @@ export async function getTickerEvents(
 ): Promise<EventCalendarPayload> {
   const ticker = normalizedTicker(tickerRaw)
   return fetchBackendJson<EventCalendarPayload>(
-    `/tickers/${encodeURIComponent(ticker)}/events${queryString({
+    `/v1/tickers/${encodeURIComponent(ticker)}/events${queryString({
       startDate: options.startDate,
       endDate: options.endDate,
       latestOnly: options.latestOnly ?? true,
       limit: options.limit ?? 200,
     })}`,
-    { context: `ticker.events.${ticker}`, init: { cache: 'force-cache', next: { revalidate: 60 } } },
+    { context: `ticker.events.${ticker}`, init: { cache: 'no-store', next: { revalidate: 60 } } },
   )
 }
 
@@ -231,21 +231,21 @@ export async function getTickerDisclosures(
 ): Promise<DisclosurePayload> {
   const ticker = normalizedTicker(tickerRaw)
   return fetchBackendJson<DisclosurePayload>(
-    `/tickers/${encodeURIComponent(ticker)}/disclosures${queryString({
+    `/v1/tickers/${encodeURIComponent(ticker)}/disclosures${queryString({
       latestOnly: options.latestOnly ?? true,
       limit: options.limit ?? 100,
     })}`,
-    { context: `ticker.disclosures.${ticker}`, init: { cache: 'force-cache', next: { revalidate: 60 } } },
+    { context: `ticker.disclosures.${ticker}`, init: { cache: 'no-store', next: { revalidate: 60 } } },
   )
 }
 
 /**
- * Raw `/tickers/{ticker}/readings` payload. Validation happens in
+ * Raw `/v1/tickers/{ticker}/readings` payload. Validation happens in
  * `lib/ticker-readings.ts`. Free to every reader: one company's standing, never a list.
  */
 export async function getTickerReadingsPayload(tickerRaw: string): Promise<unknown> {
   const ticker = normalizedTicker(tickerRaw)
-  return fetchBackendJson<unknown>(`/tickers/${encodeURIComponent(ticker)}/readings`, {
+  return fetchBackendJson<unknown>(`/v1/tickers/${encodeURIComponent(ticker)}/readings`, {
     context: `ticker.readings.${ticker}`,
   })
 }

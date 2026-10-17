@@ -24,7 +24,7 @@ function setup(options = {}) {
   const account = randomUUID(), user = randomUUID(), runId = randomUUID()
   const token = randomBytes(32).toString('base64url')
   const env = { NEXT_PUBLIC_PLATFORM_API_ENABLED: 'true',
-    NEXT_PUBLIC_PLATFORM_API_BASE_URL: 'https://backend.example.invalid',
+    BACKEND_BASE_URL: 'https://backend.example.invalid',
     PERPLEXITY_API_KEY: randomUUID(), ...options.env }
   const calls = [], logs = []
   const fetch = async (url, init) => {
@@ -53,7 +53,7 @@ function setup(options = {}) {
     return Response.json(parsed.pathname === '/v1/watchlist' && init.method === 'GET' ? { tickers: ['SYNTH'] } : { ok: true })
   }
   const platform = load('lib/platform-client.ts', {}, env, fetch)
-  const session = load('lib/platform-server.ts', { 'server-only': {}, './platform-client': platform,
+  const session = load('lib/platform-server.ts', { 'server-only': {}, './platform-client': platform, './backend-origin': {backendOriginHeaders:async()=>({})},
     '@clerk/nextjs/server': { auth: async () => ({ userId: options.anonymous ? null : 'user_synthetic001',
       orgId: options.org, getToken: async () => options.anonymous ? null : token }) } }, env, fetch)
   const personal = load('lib/personal-server.ts', { 'server-only': {}, './platform-server': session,

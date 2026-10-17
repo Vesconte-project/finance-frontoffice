@@ -1,3 +1,5 @@
+import Link from 'next/link'
+import { getViewerUserId } from '@/lib/auth'
 import type { Metadata } from 'next'
 import EmptyState from '@/components/ui/EmptyState'
 import RetryButton from '@/components/ui/RetryButton'
@@ -65,6 +67,9 @@ export default async function RelationshipsPage({
   params: Promise<{ ticker: string }>
   searchParams: Promise<Record<string, QueryValue>>
 }) {
+  if (!(await getViewerUserId())) return <EmptyState title="Sign in to explore relationships"
+    description="The relationship map is available to signed-in users."
+    action={<Link href="/sign-in">Sign in</Link>} />
   const { ticker: rawTicker } = await params
   const ticker = rawTicker.toUpperCase()
   const query = await searchParams

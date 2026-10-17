@@ -1,4 +1,4 @@
-import { unstable_cache } from 'next/cache'
+import { cache } from 'react'
 import { BackendDataError, fetchBackendJson } from './backend'
 import {
   buildFixtureScorecard,
@@ -17,11 +17,11 @@ async function fetchTickerScorecardFromBackend(tickerRaw: string): Promise<Score
   if (!ticker) return buildFixtureScorecard('UNKNOWN')
 
   const payload = await fetchBackendJson<unknown>(
-    `/tickers/${encodeURIComponent(ticker)}/scorecard`,
+    `/v1/tickers/${encodeURIComponent(ticker)}/scorecard`,
     {
       context: 'backend.tickers.scorecard',
       init: {
-        cache: 'force-cache',
+        cache: 'no-store',
         next: {
           revalidate: SCORECARD_REVALIDATE_SECONDS,
           tags: [`ticker-scorecard:${ticker}`],
@@ -36,8 +36,7 @@ async function fetchTickerScorecardFromBackend(tickerRaw: string): Promise<Score
   return scorecard
 }
 
-export const getTickerScorecard = unstable_cache(
-  async (ticker: string): Promise<Scorecard> => {
+export const getTickerScorecard = cache(async (ticker: string): Promise<Scorecard> => {
     try {
       return await fetchTickerScorecardFromBackend(ticker)
     } catch (error) {
@@ -46,10 +45,7 @@ export const getTickerScorecard = unstable_cache(
       }
       throw error
     }
-  },
-  ['ticker-scorecard-v1'],
-  { revalidate: SCORECARD_REVALIDATE_SECONDS }
-)
+  })
 
 export async function getTickerScorecards(tickers: string[]): Promise<Record<string, Scorecard>> {
   const normalizedTickers = [...new Set(tickers.map(normalizeTicker).filter(Boolean))]

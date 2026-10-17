@@ -171,24 +171,10 @@ test.describe('signed-out watchlist account prompt', () => {
   }
 })
 
-test('signed-out export opens its own prompt instead of a panel in the hero', async ({ page }) => {
-  const exportRequests: string[] = []
-  page.on('request', (request) => {
-    if (request.url().includes('/api/export-signals')) exportRequests.push(request.url())
-  })
+test('withdrawn directional CSV has no control and its route is gone', async ({page})=>{
   await openTickerPage(page)
-  const heroBefore = await page.locator('[data-ticker-hero]').boundingBox()
-  const exportButton = page.getByRole('button', { name: 'Download signal history CSV' })
-  await exportButton.click()
-  const dialog = page.getByRole('dialog', { name: 'Signal export is a Pro feature' })
-  await expect(dialog).toBeVisible()
-  await expect(dialog).toContainText('signal history as a CSV is part of Pro.')
-  // Signed out, the prompt opens without asking the protected route.
-  expect(exportRequests).toEqual([])
-  expect(await page.locator('[data-ticker-hero]').boundingBox()).toEqual(heroBefore)
-  await page.keyboard.press('Escape')
-  await expect(dialog).toHaveCount(0)
-  await expect(exportButton).toBeFocused()
+  await expect(page.getByRole('button',{name:'Download signal history CSV'})).toHaveCount(0)
+  expect((await page.request.get('/api/export-signals?ticker=ACME')).status()).toBe(404)
 })
 
 /**

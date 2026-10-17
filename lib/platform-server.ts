@@ -1,4 +1,5 @@
 import 'server-only'
+import { backendOriginHeaders } from './backend-origin'
 import { auth } from '@clerk/nextjs/server'
 import { createPlatformClient, PlatformError } from './platform-client'
 
@@ -25,7 +26,8 @@ export function platformEnabled() {
 export async function platformSession() {
   const session = await auth()
   if (!session.userId) throw new PlatformError(401)
-  const request = createPlatformClient({ baseUrl: process.env.NEXT_PUBLIC_PLATFORM_API_BASE_URL || '',
+  const request = createPlatformClient({ baseUrl: process.env.BACKEND_BASE_URL || '',
+    originHeaders: backendOriginHeaders,
     // Server auth has no skipCache option. An explicit lifetime requests a new
     // default session token from Clerk on the single 401 retry, never a template.
     getToken: options => session.getToken(options?.skipCache ? { expiresInSeconds: 60 } : undefined) })

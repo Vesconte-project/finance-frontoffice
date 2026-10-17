@@ -1,7 +1,8 @@
 import 'server-only'
 
 import Link from 'next/link'
-import { unstable_cache } from 'next/cache'
+import { cache } from 'react'
+import { getViewerUserId } from '@/lib/auth'
 import type { PickItem } from '@/lib/picks'
 import { PICK_READING_CONTENT } from '@/lib/picks-content'
 import {
@@ -14,7 +15,7 @@ import styles from './HomeNeighborhood.module.css'
 
 const MAP_NODE_LIMIT = 10
 
-const getCachedNeighborhood = unstable_cache(
+const getCachedNeighborhood = cache(
   async (symbol: string, utcDate: string): Promise<RelationshipAtlasDetail> => {
     void utcDate
     return getRelationshipAtlasNeighborhood(symbol, {
@@ -22,9 +23,7 @@ const getCachedNeighborhood = unstable_cache(
       view: 'market',
       limit: MAP_NODE_LIMIT,
     })
-  },
-  ['home-neighborhood-v2'],
-  { revalidate: 3600 }
+  }
 )
 
 type FocusConnection = {
@@ -201,6 +200,7 @@ function NeighborhoodMap({ detail, connections }: {
 }
 
 export default async function HomeNeighborhood({ items }: { items: PickItem[] }) {
+  if (!(await getViewerUserId())) return <section className={styles.section}><p>Sign in to explore company relationships.</p><Link href="/sign-in">Sign in</Link></section>
   const subject = await loadHomeNeighborhood(items)
   if (!subject) return null
   const { detail, item } = subject

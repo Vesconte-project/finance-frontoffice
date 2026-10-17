@@ -443,7 +443,7 @@ test('conformance with the accepted ticker Spec (PRD-78): the items the review f
   const flow = readRepoFile('components/stocks/financials/SalesFlowChapter.tsx')
   const nav = readRepoFile('components/stocks/stock-nav-config.ts')
   const methodology = readRepoFile('components/stocks/StockMethodologyResearch.tsx')
-  const signalsTab = readRepoFile('components/stocks/StockSignalsResearch.tsx')
+  const signalsTab = readRepoFile('app/(app)/stocks/[ticker]/signals/page.tsx')
   const ask = readRepoFile('components/stocks/ai/AskQuestion.tsx')
 
   // Questions worth asking: the take buttons are visible and answer explicitly; nothing is saved.
@@ -484,7 +484,6 @@ test('every ticker tab renders without a page header, on the research chapters',
     'components/stocks/StockFundamentalsResearch.tsx',
     'components/stocks/StockFinancialsResearch.tsx',
     'components/stocks/StockValuationResearch.tsx',
-    'components/stocks/StockSignalsResearch.tsx',
     'components/stocks/StockEventsResearch.tsx',
     'components/stocks/StockBusinessResearch.tsx',
     'components/stocks/StockOwnershipResearch.tsx',
@@ -500,12 +499,9 @@ test('Signals, Events, Relationships, AI Research and Methodology are research c
     assert.ok(positions.every((index) => index >= 0), `${name}: every chapter is rendered (${tokens.join(', ')})`)
     assert.deepEqual([...positions].sort((a, b) => a - b), positions, `${name}: chapters follow the set order`)
   }
-  const signals = readRepoFile('components/stocks/StockSignalsResearch.tsx')
-  const timeline = readRepoFile('components/stocks/signals/SignalTimelineChapter.tsx')
-  inOrder(signals, ['<SignalTimelineChapter', 'id="technicals"', 'id="market-context"', 'id="regime-history"', 'id="signal-history"'], 'Signals')
-  // Names and numbers are page text over the chart; each signal is a point to pick; no static range pill or loose legend.
-  assert.doesNotMatch(signals + timeline, /<text\b|timelineRange|Signal direction legend/)
-  assert.match(timeline, /aria-pressed=\{selected === marker\.id\}/)
+  const retiredSignals = readRepoFile('app/(app)/stocks/[ticker]/signals/page.tsx')
+  assert.match(retiredSignals, /Directional signals are currently unavailable/)
+  assert.doesNotMatch(retiredSignals, /getSignalResearchData|fetch\(/)
 
   const events = readRepoFile('components/stocks/StockEventsResearch.tsx')
   inOrder(events, ['id="next-event"', 'id="calendar"', 'id="reported-against-estimate"', 'id="documents"'], 'Events')

@@ -25,52 +25,13 @@ test.describe('ticker Signals & Events Phase 2 slice', () => {
   test.skip(!runLiveTickerQa, 'Set RUN_TICKER_LIVE_QA=1 to exercise finance-backend coverage states.')
   test.describe.configure({ mode: 'serial', timeout: 240_000 })
 
-  test('Signals consolidates indicator families and redirects the legacy indicators route', async ({ page }, testInfo) => {
+  test('directional signals are withdrawn while the events page remains public', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/stocks/AAPL/signals')
-    await expectResearchContext(page, 'Signals')
-    await expect(page.getByRole('heading', { name: 'Model signal', exact: true })).toBeVisible()
-    await expect(page.locator('#signal-timeline')).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Summary', exact: true })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Oscillators', exact: true })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Moving averages', exact: true })).toBeVisible()
-    // Spec PRD-78 global rules: no loose legend, no static range pill.
-    await expect(page.getByLabel('Signal direction legend')).toHaveCount(0)
-    await expect(page.getByRole('heading', { name: 'Signal history', exact: true })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Regime history', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Directional signals', exact: true })).toBeVisible()
+    await expect(page.getByText('Directional signals are currently unavailable. Price history and company research remain available.')).toBeVisible()
     await expectNoHorizontalOverflow(page)
-    await capture(page, testInfo, 'phase2-signals-aapl-trade-desktop')
-
-    await page.goto('/stocks/AAPL/signals?family=oscillators')
-    await expectResearchContext(page, 'Signals')
-    await expect(page).toHaveURL(/family=oscillators/)
-    await expect(page.locator('details[open]').filter({ hasText: 'Each indicator' })).toHaveCount(1)
-    await capture(page, testInfo, 'phase2-signals-aapl-long-desktop')
-
-    await page.goto('/stocks/AAPL/indicators?family=moving-averages')
-    await expect(page).toHaveURL(/\/stocks\/AAPL\/signals\?family=moving-averages/)
-    await expect(page.getByRole('heading', { name: 'Model signal', exact: true })).toBeVisible()
-
-    await page.setViewportSize({ width: 390, height: 844 })
-    await expectNoHorizontalOverflow(page)
-    await capture(page, testInfo, 'phase2-signals-aapl-mobile')
-
-    await page.setViewportSize({ width: 1440, height: 900 })
-    await page.evaluate(() => { document.documentElement.style.zoom = '2' })
-    await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).zoom)).toBe('2')
-    await expectNoHorizontalOverflow(page)
-    await capture(page, testInfo, 'phase2-signals-aapl-200-zoom')
-  })
-
-  test('Signals and Events keep asset-aware partial states', async ({ page }, testInfo) => {
-    await page.setViewportSize({ width: 1366, height: 768 })
-    await page.goto('/stocks/0005.HK/signals')
-    await expectResearchContext(page, 'Signals')
-    await expect(page.getByRole('heading', { name: 'Model signal', exact: true })).toBeVisible()
-    await expect(page.getByText(/Unavailable|Partial coverage|Not enough price history|Being built/).first()).toBeVisible()
-    await expectNoHorizontalOverflow(page)
-    await capture(page, testInfo, 'phase2-signals-partial-equity')
-
+    await capture(page,testInfo,'directional-signals-withdrawn')
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/stocks/AAPL/events')
     await expectResearchContext(page, 'Events')

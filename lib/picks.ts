@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { unstable_cache } from 'next/cache'
+import { cache } from 'react'
 import { fetchBackendJson } from './backend'
 import { PICK_FULL_LIST } from './picks-access-rules'
 import type { PickReadingKey } from './picks-content'
@@ -10,9 +10,9 @@ import { parseEligibilityRule, type EligibilityRule } from './reading-eligibilit
 /**
  * Top-N rankings for one scorecard reading.
  *
- * `finance-backend` exposes `GET /screener/rankings?reading=…&limit=…`, which reads
- * the scorecard snapshot once and sorts it. `/tickers/{ticker}/scorecard` answers for
- * a single symbol, so building a top 25 from it would mean 686 requests.
+ * `finance-backend` exposes reduced `GET /v1/screener/rankings?reading=…&limit=…`, which reads
+ * the scorecard snapshot once and sorts it. `/v1/tickers/{ticker}/scorecard` answers for
+ * a single symbol, so public lists use the approved top ten without component enrichment.
  *
  * Two filters are applied upstream by default and are NOT exposed here as options.
  * Without them a score built from a quarter of the model once topped the long-term
@@ -106,7 +106,7 @@ function normalizeItem(raw: unknown): PickItem | null {
   const record = asRecord(raw)
   if (!record) return null
 
-  const symbol = readString(record, 'symbol')
+  const symbol = readString(record, 'symbol') ?? readString(record, 'ticker')
   const score = readFiniteNumber(record, 'score')
   // A row with no symbol or no score cannot be ranked, so it is dropped rather
   // than rendered as a gap in a numbered list.
@@ -157,23 +157,14 @@ export function normalizePickRanking(raw: unknown, reading: PickReadingKey): Pic
 
 async function loadPickRanking(reading: PickReadingKey): Promise<PickRanking | null> {
   const payload = await fetchBackendJson<unknown>(
-    `/screener/rankings?reading=${encodeURIComponent(reading)}&limit=${PICK_FETCH_LIMIT}`,
+    `/v1/screener/rankings?reading=${encodeURIComponent(reading)}&limit=${PICK_FETCH_LIMIT}`,
     { context: 'backend.screener.rankings' }
   )
   return normalizePickRanking(payload, reading)
 }
 
-/**
- * Caches the FULL upstream ranking. This is safe to share between viewers because it
- * never leaves the server: the per-viewer cut happens after this read, in
- * `lib/picks-access.ts`. Caching an already-cut list here would serve one viewer's
- * entitlement to another.
- */
-export const getPickRanking = unstable_cache(
-  async (reading: PickReadingKey): Promise<PickRanking | null> => loadPickRanking(reading),
-  ['picks-ranking-cache-v1'],
-  { revalidate: 300 }
-)
+/** Request-local memoization; upstream admission remains per viewer. */
+export const getPickRanking = cache(async (reading: PickReadingKey): Promise<PickRanking | null> => loadPickRanking(reading))
 
 /**
  * The weekly free cut: the top ten of one reading inside one sector.
@@ -190,7 +181,7 @@ export type SectorCut =
 
 async function loadSectorCut(reading: PickReadingKey, sector: string): Promise<SectorCut> {
   const payload = await fetchBackendJson<unknown>(
-    `/screener/rankings?reading=${encodeURIComponent(reading)}&sector=${encodeURIComponent(sector)}&limit=${WEEKLY_CUT_SIZE}`,
+    `/v1/screener/rankings?reading=${encodeURIComponent(reading)}&sector=${encodeURIComponent(sector)}&limit=${WEEKLY_CUT_SIZE}`,
     { context: 'backend.screener.rankings.sector' }
   )
   const ranking = normalizePickRanking(payload, reading)
@@ -203,8 +194,4 @@ async function loadSectorCut(reading: PickReadingKey, sector: string): Promise<S
 }
 
 /** Free to every reader by design, so the cached value is safe to share as is. */
-export const getSectorCut = unstable_cache(
-  async (reading: PickReadingKey, sector: string): Promise<SectorCut> => loadSectorCut(reading, sector),
-  ['picks-sector-cut-v1'],
-  { revalidate: 300 }
-)
+export const getSectorCut = cache(async (reading: PickReadingKey, sector: string): Promise<SectorCut> => loadSectorCut(reading, sector))

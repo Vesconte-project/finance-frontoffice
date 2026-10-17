@@ -76,12 +76,12 @@ function relationshipPath(ticker: string, options: Required<Pick<TickerRelations
   params.set('window', String(options.window))
   if (options.topK !== undefined) params.set('topK', String(options.topK))
   if (options.layers && options.layers.length > 0) params.set('layers', options.layers.join(','))
-  return `/relationships/${encodeURIComponent(ticker)}?${params.toString()}`
+  return `/v1/relationships/${encodeURIComponent(ticker)}?${params.toString()}`
 }
 
 function cachedRelationshipInit(ticker: string): RequestInit & { next: { revalidate: number; tags: string[] } } {
   return {
-    cache: 'force-cache',
+    cache: 'no-store',
     next: {
       revalidate: RELATIONSHIP_REVALIDATE_SECONDS,
       tags: ['relationships', `relationships:${ticker}`],
