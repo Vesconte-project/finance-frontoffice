@@ -32,7 +32,6 @@ import {
   rankTickerRelationshipCandidates,
   type TickerRelationships,
 } from '@/lib/relationships'
-import { getCachedLatestScreenerRow, getCachedSignalHistoryForTicker } from '@/lib/signals'
 import {
   getTickerPageSummary,
   type SymbolCoverageRow,
@@ -302,23 +301,11 @@ export default async function TickerPage({
       return buildEventMarkers([...payload.rows, ...guidance], today)
     })
   )
-  const [ohlcResult, recentSignals, latestScreenerRows, fundamentals] = await runWithBackendRequestLogContext(
+  const [ohlcResult, fundamentals] = await runWithBackendRequestLogContext(
     requestLogContext,
     () =>
       Promise.all([
         loadStockOhlcDataset(requestLogContext, tickerSummary.coverage),
-        loadOptionalStockDataset(
-          requestLogContext,
-          `/signals/history/${ticker}`,
-          [],
-          () => getCachedSignalHistoryForTicker(ticker, 180)
-        ),
-        loadOptionalStockDataset(
-          requestLogContext,
-          `/screener/signals?tickers=${ticker}`,
-          [],
-          () => getCachedLatestScreenerRow(ticker)
-        ),
         loadOptionalStockDataset<TickerFundamentals | null>(
           requestLogContext,
           `/tickers/${ticker}/profile`,
@@ -334,8 +321,6 @@ export default async function TickerPage({
     ohlcStatus: ohlcResult.status,
     ohlcReason: ohlcResult.reason,
     ohlcCacheKey: ohlcResult.cacheKey,
-    signalRows: recentSignals.length,
-    screenerRows: latestScreenerRows.length,
     scorecardReadiness: scorecard.readiness,
   })
   const historicalData = ohlcData.map((point) => ({ date: point.date, close: point.close }))
@@ -400,25 +385,6 @@ export default async function TickerPage({
   })
   const isEtf = resolvedAsset.kind === 'fund'
 
-  const latestHistorySignal = recentSignals[0] ?? null
-  const latestScreenerSignal = latestScreenerRows[0] ?? null
-  const latestSignal =
-    latestScreenerSignal && latestScreenerSignal.signalDate
-      ? {
-          direction: latestScreenerSignal.direction,
-          conviction: latestScreenerSignal.conviction,
-          horizon: latestScreenerSignal.predictionHorizon ?? 20,
-          signalDate: latestScreenerSignal.signalDate,
-        }
-      : latestHistorySignal
-        ? {
-            direction: latestHistorySignal.direction,
-            conviction: latestHistorySignal.prob_side,
-            horizon: latestHistorySignal.prediction_horizon,
-            signalDate: latestHistorySignal.signal_date,
-          }
-        : null
-
   const canonicalStats = canonicalTickerStats({
     snapshotProfileMarketCap: tickerSummary.profile?.marketCap,
     fundamentalsMarketCap: fundamentalsSummary?.marketCap,
@@ -457,7 +423,6 @@ export default async function TickerPage({
         ticker={ticker}
         currency={currency}
         isFund={isEtf}
-        latestSignal={latestSignal}
         historicalData={historicalData}
         historicalChartState={historicalChartState}
         ohlcData={ohlcData}
@@ -471,14 +436,6 @@ export default async function TickerPage({
         } : null}
         relatedAssets={relatedAssetsPromise}
         chartEvents={chartEventsPromise}
-        regimeSignals={recentSignals.map((signal) => ({
-          signal_date: signal.signal_date,
-          direction: signal.direction,
-          prob_side: signal.prob_side,
-          prediction_horizon: signal.prediction_horizon,
-          episode_return: signal.live_episode_return_to_date ?? signal.realized_return,
-          episode_status: signal.live_episode_status,
-        }))}
         scorecard={scorecard}
         revenue={revenuePromise}
         operatingMargin={overviewFigure(summaryPercent(latestFundamentals, /operating\s+margin/i), summaryDate(latestFundamentals, /operating\s+margin/i))}

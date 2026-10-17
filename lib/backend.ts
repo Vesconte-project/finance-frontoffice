@@ -1,4 +1,6 @@
 import 'server-only'
+import { backendOriginHeaders } from './backend-origin'
+import { auth } from '@clerk/nextjs/server'
 import { backendErrorDetails, logBackendRequestEvent } from './backend-request-log'
 
 export class BackendDataError extends Error {
@@ -14,12 +16,8 @@ export class BackendDataError extends Error {
 }
 
 export function backendBaseUrl(): string {
-  const raw = process.env.BACKEND_BASE_URL || process.env.FINANCE_BACKEND_URL || ''
+  const raw = process.env.BACKEND_BASE_URL || ''
   return raw.trim().replace(/\/+$/, '')
-}
-
-export function backendSharedSecret(): string {
-  return (process.env.BACKEND_SHARED_SECRET || '').trim()
 }
 
 function backendCfAccessConfig(): {
@@ -42,16 +40,12 @@ function backendCfAccessConfig(): {
 
 export function backendConfigSnapshot(): {
   hasBackendBaseUrl: boolean
-  hasFinanceBackendUrl: boolean
-  hasBackendSharedSecret: boolean
   hasCfAccessClientId: boolean
   hasCfAccessClientSecret: boolean
 } {
   const cfAccess = backendCfAccessConfig()
   return {
     hasBackendBaseUrl: (process.env.BACKEND_BASE_URL || '').trim().length > 0,
-    hasFinanceBackendUrl: (process.env.FINANCE_BACKEND_URL || '').trim().length > 0,
-    hasBackendSharedSecret: backendSharedSecret().length > 0,
     hasCfAccessClientId: Boolean(cfAccess?.clientId),
     hasCfAccessClientSecret: Boolean(cfAccess?.clientSecret),
   }
@@ -69,9 +63,6 @@ export function backendHeaders(
   if (options.includeContentType) {
     headers['content-type'] = 'application/json'
   }
-
-  const secret = backendSharedSecret()
-  if (secret) headers['x-backend-shared-secret'] = secret
 
   const cfAccess = backendCfAccessConfig()
   if (cfAccess) {
@@ -168,17 +159,37 @@ export async function fetchBackendResponse(
     throw new BackendDataError(context, 'BACKEND_BASE_URL is not configured')
   }
 
+  const url = new URL(`${base}${path}`)
+  const outgoing = new Headers(backendHeaders({ includeContentType: init?.body !== undefined }))
+  const supplied = new Headers(init?.headers)
+  // Caller input cannot select identity, Access credentials or an IP proof.
+  for (const name of ['if-none-match', 'if-modified-since'])
+    if (supplied.has(name)) outgoing.set(name, supplied.get(name)!)
+  for (const [name,value] of Object.entries(await backendOriginHeaders(url, init?.method || 'GET')))
+    outgoing.set(name,value)
+  if (process.env.CLERK_SECRET_KEY && process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+    try {
+      const session = await auth()
+      if (session.userId) {
+        const token = await session.getToken()
+        if (!token) throw new BackendDataError(context, 'Backend session is unavailable', 401)
+        outgoing.set('Authorization', `Bearer ${token}`)
+      }
+    } catch (error) {
+      if (error instanceof BackendDataError) throw error
+      throw new BackendDataError(context, 'Backend session is unavailable', 503)
+    }
+  }
   const startedAt = Date.now()
   let response: Response
   try {
     response = await withTimeout(
       fetch(`${base}${path}`, {
-        cache: 'no-store',
         ...init,
-        headers: backendHeaders({
-          includeContentType: init?.body !== undefined,
-          headers: init?.headers,
-        }),
+        cache: 'no-store',
+        next: undefined,
+        headers: outgoing,
+        redirect: 'error',
       }),
       timeoutMs,
       context

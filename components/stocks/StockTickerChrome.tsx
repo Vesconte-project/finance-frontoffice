@@ -2,7 +2,6 @@
 
 import { use } from 'react'
 import StockResearchNav from '@/components/stocks/StockResearchNav'
-import TickerExportButton from '@/components/stocks/TickerExportButton'
 import StockTickerIdentity from '@/components/stocks/StockTickerIdentity'
 import WatchlistButton from '@/components/WatchlistButton'
 import { assetMetadataParts } from '@/lib/asset-metadata'
@@ -64,7 +63,6 @@ export default function StockTickerChrome({
           metadata={metadata}
           actions={(
             <>
-              <TickerExportButton ticker={resolved.ticker} signedIn={resolved.watchlist.signedIn} />
               <WatchlistButton
                 ticker={resolved.ticker}
                 initialInWatchlist={resolved.watchlist.initialInWatchlist}

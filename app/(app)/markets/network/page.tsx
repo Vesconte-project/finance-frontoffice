@@ -1,3 +1,5 @@
+import Link from 'next/link'
+import { getViewerUserId } from '@/lib/auth'
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import AtlasImmersiveMode from '@/components/AtlasImmersiveMode'
@@ -34,6 +36,9 @@ export default async function MarketNetworkPage({
 }: {
   searchParams: Promise<{ window?: string | string[]; view?: string | string[] }>
 }) {
+  if (!(await getViewerUserId())) return <EmptyState title="Sign in to explore relationships"
+    description="The relationship map is available to signed-in users."
+    action={<Link href="/sign-in">Sign in</Link>} />
   const resolved = await searchParams
   const window = evidenceWindow(singleSearchParam(resolved.window))
   const view = atlasView(singleSearchParam(resolved.view))

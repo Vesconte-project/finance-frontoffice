@@ -1,8 +1,7 @@
-import { unstable_cache } from 'next/cache'
+import { cache } from 'react'
 import { BackendDataError, fetchBackendJson } from './backend'
 import {
   normalizeOhlcPayload,
-  STOCK_OHLC_CACHE_KEY,
   type OhlcLoadResult,
 } from './ohlc-data'
 import { getCachedTickerSummary } from './ticker-data'
@@ -65,17 +64,6 @@ interface FormattedValue {
   longFmt?: string | null
 }
 
-type FundamentalsSource = 'backend'
-
-export interface RefreshTickerResult {
-  ticker: string
-  quoteSource: null
-  quoteUpdated: boolean
-  historicalUpdated: boolean
-  fundamentalsSource: FundamentalsSource | null
-  fundamentalsUpdated: boolean
-  errors: string[]
-}
 
 function normalizeTicker(ticker: string): string {
   return ticker.trim().toUpperCase()
@@ -472,10 +460,10 @@ function normalizeBackendProfilePayload(
 
 async function fetchBackendTickerProfile(ticker: string): Promise<unknown | null> {
   try {
-    return await fetchBackendJson<unknown>(`/tickers/${encodeURIComponent(ticker)}/profile`, {
+    return await fetchBackendJson<unknown>(`/v1/tickers/${encodeURIComponent(ticker)}/profile`, {
       context: 'backend.tickers.profile',
       init: {
-        cache: 'force-cache',
+        cache: 'no-store',
         next: {
           revalidate: FUNDAMENTALS_FRESH_MS / 1000,
           tags: [`ticker-profile:${ticker}`],
@@ -516,7 +504,7 @@ async function loadHistorical(tickerRaw: string, periodDays: number): Promise<Pr
     ? Math.max(30, Math.min(periodDays, BACKEND_HISTORY_PERIOD_DAYS_MAX))
     : 0
   const payload = await fetchBackendJson<Array<{ date?: string; close?: number }>>(
-    `/tickers/${encodeURIComponent(ticker)}/history?period_days=${safeDays}`,
+    `/v1/tickers/${encodeURIComponent(ticker)}/history?period_days=${safeDays}`,
     { context: 'backend.tickers.history' }
   )
   if (!Array.isArray(payload)) return []
@@ -540,7 +528,7 @@ async function loadOhlc(
     ? Math.max(30, Math.min(periodDays, BACKEND_HISTORY_PERIOD_DAYS_MAX))
     : 0
   const payload = await fetchBackendJson<unknown>(
-    `/tickers/${encodeURIComponent(ticker)}/ohlc?period_days=${safeDays}`,
+    `/v1/tickers/${encodeURIComponent(ticker)}/ohlc?period_days=${safeDays}`,
     { context: 'backend.tickers.ohlc' }
   )
   return normalizeOhlcPayload(payload, { coverageExpectsPrices })
@@ -567,50 +555,15 @@ async function loadTickerFundamentals(tickerRaw: string): Promise<TickerFundamen
   return buildFallbackFundamentalsFromBackendSummary(summary)
 }
 
-export async function refreshTickerMarketData(
-  tickerRaw: string,
-  _periodDays: number = 120
-): Promise<RefreshTickerResult> {
-  const ticker = normalizeTicker(tickerRaw)
-  const quote = await loadQuote(ticker)
-  const historical = await loadHistorical(ticker, Math.max(1, _periodDays))
-  const fundamentals = await loadTickerFundamentals(ticker)
-  return {
-    ticker,
-    quoteSource: null,
-    quoteUpdated: quote !== null,
-    historicalUpdated: historical.length > 0,
-    fundamentalsSource: hasMeaningfulFundamentalsData(fundamentals) ? 'backend' : null,
-    fundamentalsUpdated: Boolean(fundamentals.snapshot.length || fundamentals.profile.length),
-    errors: [],
-  }
-}
+export const getStockQuote = cache(async (ticker: string): Promise<StockQuote | null> => loadQuote(ticker))
 
-export const getStockQuote = unstable_cache(
-  async (ticker: string): Promise<StockQuote | null> => loadQuote(ticker),
-  ['stock-quote-cache-v2'],
-  { revalidate: 60 }
-)
+export const getHistoricalData = cache(async (ticker: string, periodDays: number = 30): Promise<PricePoint[]> =>
+    loadHistorical(ticker, periodDays))
 
-export const getHistoricalData = unstable_cache(
-  async (ticker: string, periodDays: number = 30): Promise<PricePoint[]> =>
-    loadHistorical(ticker, periodDays),
-  ['stock-historical-cache-v2'],
-  { revalidate: 3600 }
-)
-
-export const getOhlcData = unstable_cache(
-  async (
+export const getOhlcData = cache(async (
     ticker: string,
     periodDays: number = 1825,
     coverageExpectsPrices: boolean = false
-  ): Promise<OhlcLoadResult> => loadOhlc(ticker, periodDays, coverageExpectsPrices),
-  [STOCK_OHLC_CACHE_KEY],
-  { revalidate: 3600 }
-)
+  ): Promise<OhlcLoadResult> => loadOhlc(ticker, periodDays, coverageExpectsPrices))
 
-export const getTickerFundamentals = unstable_cache(
-  async (ticker: string): Promise<TickerFundamentals> => loadTickerFundamentals(ticker),
-  ['stock-fundamentals-cache-v6'],
-  { revalidate: 21600 }
-)
+export const getTickerFundamentals = cache(async (ticker: string): Promise<TickerFundamentals> => loadTickerFundamentals(ticker))

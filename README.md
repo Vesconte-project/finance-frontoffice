@@ -38,32 +38,14 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
-## Deployment TODO (Vercel)
+## Ativação Vercel
 
-Use this checklist when you're ready to move from local/dev to production:
-
-1. Add production env vars in Vercel:
-   - `BACKEND_BASE_URL` (or `FINANCE_BACKEND_URL`)
-   - `BACKEND_SHARED_SECRET`
-   - `CF_ACCESS_CLIENT_ID` (required when `BACKEND_BASE_URL` is behind Cloudflare Access)
-   - `CF_ACCESS_CLIENT_SECRET` (required when `BACKEND_BASE_URL` is behind Cloudflare Access)
-   - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
-   - `CLERK_SECRET_KEY`
-   - `NEXT_PUBLIC_APP_URL`
-   - `NEXT_PUBLIC_STRIPE_PAYMENT_LINK`
-   - `STRIPE_WEBHOOK_SECRET`
-   - `SIGNAL_ALERT_CRON_TOKEN`
-   - `RESEND_API_KEY`
-   - `SIGNAL_ALERT_FROM_EMAIL`
-2. Confirm that the separately operated `finance-backend` and data-ops deployment
-   has applied the required database migrations. The SQL under `supabase/sql/`
-   is not loaded or executed by this site at runtime.
-3. Deploy to Vercel (`vercel --prod` or your main-branch auto-deploy flow).
-4. Verify cron config from `vercel.json` is active in production.
-5. Run a cron smoke test:
-   - `GET /api/cron/check-signals?dryRun=1` with `Authorization: Bearer <SIGNAL_ALERT_CRON_TOKEN>`
-6. Run one real delivery test on a known flip date:
-   - `GET /api/cron/check-signals?date=YYYY-MM-DD`
+A produção permanece desligada até concluir o manifesto
+`finance-infra/docs/eng196/ATIVACAO.md`. Não usar promoção automática durante o corte.
+Só Francisco faz merges e promove os deployments Production verificados.
+`.env.example` contém apenas nomes; Clerk produção é `https://clerk.vesconte.com`.
+Nenhum cron de alertas fica instalado. Consultar o manifesto para chaves novas,
+controlo de aliases, verificação, rollback e remoção final das variáveis antigas.
 
 ## Backend Data Contract
 
@@ -80,8 +62,7 @@ See `DATA_SOURCE_POLICY.md` before changing ticker autocomplete, stock-page data
 
 ### Required runtime env vars
 
-- `BACKEND_BASE_URL` (or `FINANCE_BACKEND_URL`)
-- `BACKEND_SHARED_SECRET`
+- `BACKEND_BASE_URL`
 - `CF_ACCESS_CLIENT_ID` (required when `finance-backend` is behind Cloudflare Access)
 - `CF_ACCESS_CLIENT_SECRET` (required when `finance-backend` is behind Cloudflare Access)
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
@@ -109,99 +90,14 @@ snapshot only and must not fetch or substitute later source data.
 
 Watchlist persistence is now served through `finance-backend` `/site/*` endpoints. The underlying tables still live in Supabase, but this site does not access them directly.
 
-## Signal Flip Alerts (Cron + Email)
+## Sinais direcionais, CSV e alertas retirados
 
-O cron `GET /api/cron/check-signals` exige `SIGNAL_ALERT_CRON_TOKEN`; não aceita
-`MARKET_REFRESH_TOKEN`. Usa exclusivamente a identidade `ALERT_SERVICE_TOKEN`
-no contrato `/internal/alerts/*` do backend, sem segredo partilhado nem userId
-enviado pelo cliente. A configuração continua só no servidor.
-
-O backend prepara páginas limitadas de subscrições e reserva os eventos numa
-transação antes de devolver o destinatário. Sem reserva válida não há consulta
-de utilizadores no Clerk nem email. O envio usa `alerts/<id-da-reserva>` como
-chave idempotente no Resend e confirma depois do sucesso. Reservas pendentes são
-retomadas com a mesma chave e eventos, apenas enquanto válidas. Após expiração
-o evento não é readmitido: uma falha prolongada pode perder um envio.
-
-Parâmetros: `date=YYYY-MM-DD` (dia atual em New York por omissão), `dryRun=1`
-(não reserva, não resolve contactos nem envia) e `cursor=UUID` para continuar
-um lote. Há no máximo 100 páginas por invocação; o resultado só contém contagens
-e erros genéricos e é privado/no-store.
-
-**Efeito do merge:** o cron antigo deixa de ser usado e a página Community fica
-indisponível, pois a agregação de watchlists foi retirada. Sem a nova credencial,
-o emissor e a migração V6 do backend, o cron recusa e não envia. As subscrições
-novas só são criadas no passo seguinte, pelas rotas pessoais /v1; não há leitura
-nem migração de watchlists legadas pelo job. A indisponibilidade é intencional
-durante o corte autorizado, inclusive com `PLATFORM_API_ENABLED=false`.
-
-Configuração posterior, pelo Francisco: `ALERT_SERVICE_TOKEN` dedicado,
-`SIGNAL_ALERT_CRON_TOKEN` distinto, `RESEND_API_KEY`, remetente verificado em
-`SIGNAL_ALERT_FROM_EMAIL`, Clerk e `NEXT_PUBLIC_APP_URL`. Não aplicar o antigo
-SQL `signal_alert_dispatches.sql` para este fluxo. A V6 pertence ao backend;
-o manifesto infra será coordenado apenas quando a ativação /v1 estiver planeada,
-fora das janelas de 19 e 20/10. Nenhuma configuração de produção é aplicada aqui.
-
-Contrato e limitações completos: finance-backend `docs/ALERT_SERVICE.md`.
-
-### Vercel Cron
-
-`vercel.json` includes:
-
-- `GET /api/cron/check-signals` on weekdays (`10 21 * * 1-5`, UTC)
-
-### Cron Strategy
-
-Call `/api/market/refresh` every 1-5 minutes for quotes and periodically (for example hourly) for historicals. This decouples user requests from provider throttling.
-
-### Optional: Seed From Local Finance Cache
-
-You can bootstrap Supabase from your existing local Finance repo parquet cache:
-
-```bash
-/home/franciscosantos/Finance/.venv/bin/python scripts/seed_market_cache_from_finance.py --tickers SPY
-```
-
-This is a maintenance utility for direct Supabase cache seeding. It is not part of the site runtime path.
-
-## Multi-Ticker Signal Source (Screener/Dashboard)
-
-Use this to power `/screener`, `/dashboard`, and signal-history/export with cross-ticker rows.
-
-### Setup
-
-1. Run SQL: `supabase/sql/market_signals.sql`
-2. Batch upsert model outputs into `market_signals` (one row per ticker/day).
-3. `latest_signals_view` will automatically expose the newest row per ticker.
-
-### Batch Upsert Utility
-
-Use `scripts/upsert_market_signals.py` with CSV input:
-
-```bash
-python scripts/upsert_market_signals.py --csv data/signals.csv
-```
-
-Expected CSV columns:
-
-- `ticker`
-- `signal_date` (`YYYY-MM-DD`)
-- `direction` (`bullish|neutral|bearish`)
-- `prob_side` (0-1 or 0-100)
-- `prediction_horizon`
-
-Optional columns:
-
-- `source`
-- `model_version_id`
-- `retrain_id`
-- `metadata` (JSON string)
-
-Dry-run parser check:
-
-```bash
-python scripts/upsert_market_signals.py --csv data/signals.csv --dry-run
-```
+O cron, reserva/entrega, CSV e contratos direcionais foram apagados, incluindo o
+script antigo de upload de sinais. Não instalar tokens nem preparar o cron.
+O regresso depende da ENG-230. Watchlist e páginas de preços/fundamentais mantêm-se;
+`/stocks/[ticker]/signals` e `/markets` explicam a indisponibilidade. O painel
+cross-sectional só mostra score/rank publicados em produção, sem inventar direção.
+As tabelas históricas ficam na base de dados.
 
 ## AI Analyst Integration (Perplexity)
 
@@ -242,25 +138,12 @@ The short version:
 - Set `NEXT_PUBLIC_ANALYTICS_DEBUG=1`, or append `?analytics_debug=1` to a URL, to
   mirror every event to the browser console.
 
-### Backend persistence
+### Persistência no backend
 
-To persist product-loop analytics used by `/api/analytics/event`, run:
-
-1. `supabase/sql/analytics_events.sql`
-
-The site forwards analytics events to `finance-backend`, which writes the underlying rows and stores:
-
-- `event_name`
-- `payload`
-- `session_id`
-- `anonymous_id`
-- `pathname`
-- `referrer`
-- `occurred_at`
-
-Runtime analytics smoke tests should exercise the local analytics route and its
-`finance-backend` proxy. The removed Supabase client smoke script is not part of
-the frontoffice workflow.
+Só eventos com sessão autenticada são enviados a `/v1/analytics/events`, com owner
+da sessão verificada. Visitantes anónimos continuam apenas na telemetria própria
+do frontoffice; os seus eventos deixam de existir no backend. Não há owner
+inventado nem caminho anónimo de persistência. Não aplicar SQL Supabase antigo.
 
 ## Native account API migration (local validation)
 
@@ -300,7 +183,6 @@ The existing `dev:local` command remains available during this migration.
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_fake
 CLERK_SECRET_KEY=sk_test_fake
 NEXT_PUBLIC_PLATFORM_API_ENABLED=true
-NEXT_PUBLIC_PLATFORM_API_BASE_URL=http://127.0.0.1:18095
 ```
 
 `FINANCE_REPOS_DIR` can select the sibling checkout directory;
@@ -308,12 +190,9 @@ NEXT_PUBLIC_PLATFORM_API_BASE_URL=http://127.0.0.1:18095
 checks that the frontend and Backend use the same Clerk Development instance.
 Only the publishable key and public API settings reach browser code.
 
-Validation is local only. This change does not activate Cloudflare, Vercel or
-production configuration. Native CSV and paid ranking lists are authorized by
-FastAPI, without a shared cache of authenticated responses. Remaining stock data
-paths are being migrated separately. Preserve the existing shared-secret,
-BFF and legacy Stripe handlers until their replacements have been verified in
-every environment. Do not treat the opt-in mode as a completed production cutover.
+A validação é local. A ativação de produção segue exclusivamente o manifesto infra;
+este código não altera Cloudflare, Vercel nem o servidor. Rankings pagos são
+autorizados no backend e nunca entram em cache partilhada. CSV foi retirado.
 
 Local proof on 2026-10-10: the hosted Stripe TEST Checkout, signed webhook and
 verified commercial projection authorized a real Clerk Development session.
@@ -404,40 +283,15 @@ Important notes:
 - Add ads/sponsored placements in the ticker News section (clear labeling, frequency caps, non-intrusive placement).
 
 
-## Synthetic research authentication (ENG-185)
+## Autenticação nativa e transporte
 
-Only `/site/research/synthetic/*` migrates. `NEXT_PUBLIC_RESEARCH_AUTH_MODE`
-accepts `bff` (default) or `clerk_jwt`; an unknown mode fails closed.
-BFF uses `/api/research/synthetic/*`, server-side Clerk verification,
-`RESEARCH_BFF_SECRET`, `BACKEND_SHARED_SECRET` and optional `CF_ACCESS_CLIENT_ID` /
-`CF_ACCESS_CLIENT_SECRET`. These secrets and the BFF remain until rollout verification.
-`RESEARCH_SYNTHETIC_ENABLED=true` gates the frontend; Vercel Production stays disabled.
+Browser → BFF Next.js → backend `/v1`. A sessão Clerk segue em JWT; as credenciais
+Cloudflare Access e a prova IP ficam só no servidor. A organização ativa, owner,
+suspensão e direitos são verificados pelo backend. Não existem shared secret,
+modo BFF alternativo, PEM fixada ou base de API pública no browser.
 
-In `clerk_jwt`, set `NEXT_PUBLIC_RESEARCH_API_BASE_URL` to the Backend origin
-(no route prefix). The browser sends a default Clerk session token via Authorization,
-obtained per request with `getToken()`. A 401 forces exactly one fresh token with
-`skipCache: true`, then requests sign-in. There is no BFF fallback, cookies, forwarded
-viewer ID, service secret or Cloudflare service token in direct requests. The client
-preserves 403/404, 422 and 503 errors and validates public response shapes. An uncertain
-submission is not automatically retried; refresh recent runs before submitting again.
-See [Clerk token refresh](https://clerk.com/docs/guides/sessions/force-token-refresh).
-
-| Environment | Research mode | API origin | Clerk |
-| --- | --- | --- | --- |
-| Production | BFF retained, research disabled | server `BACKEND_BASE_URL` | Production |
-| Preview today | BFF default | server `BACKEND_BASE_URL` | Development |
-| Preview after operator rollout | `clerk_jwt` | `https://backend-dev.vesconte.com` | Development |
-| PC | `clerk_jwt` via `dev:local` | `http://127.0.0.1:18095` | Development |
-
-Public variables are bundled at build time: make a new Preview after changing them.
-Activation order: review/integrate frontend and local profile PRs; validate fully
-locally; operator changes Cloudflare Access for direct browser requests while
-protecting origin; operator configures Backend dev JWT issuer/public key and exact
-Preview authorized origins, then sets Preview public mode/URL; verify a new Preview.
-Only after verification across environments remove BFF code in both repositories,
-its proxy, `RESEARCH_USER_AUTH_MODE`, `NEXT_PUBLIC_RESEARCH_AUTH_MODE`,
-`RESEARCH_BFF_SECRET`, and `CF_ACCESS_*` if no other server calls need them.
-ENG-185 remains open until this final cleanup. No deployment is part of these PRs.
+Ver [docs/api/authentication.md](docs/api/authentication.md). Os contratos do mapa
+exigem sessão até à ENG-228; o frontoffice apresenta login a visitantes anónimos.
 
 ## Complete local development (ENG-184)
 
@@ -463,7 +317,6 @@ its child environment. `.env.local` needs only these Clerk settings (fake exampl
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_FAKE_EXAMPLE
 CLERK_SECRET_KEY=sk_test_FAKE_EXAMPLE
 CLERK_JWT_ISSUER=https://example-development.clerk.accounts.dev
-CLERK_JWT_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nFAKE_RSA_PUBLIC_KEY\n-----END PUBLIC KEY-----"
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
@@ -471,39 +324,13 @@ Internal passwords and service tokens are generated locally. Do not copy product
 settings. Other product routes may have no data in this synthetic research profile;
 errors/empty states must remain honest. Local execution runs two models per comparison.
 
-### Backend call inventory
+### Inventário e prova local
 
-| Call family / owning helpers | Credentials today |
-| --- | --- |
-| Synthetic comparisons, experiment list/detail, events, artifacts (`synthetic-research-proxy`) | Server shared secret + BFF secret + verified Clerk viewer; optional CF Access |
-| Ticker index/profile/OHLC/scorecard, financial statements, market metrics, corporate actions, capital/disclosure/events/readings (`finance`, `ticker-data`, `canonical-research`, `scorecard`, ticker proxies) | Server `BACKEND_SHARED_SECRET`; optional CF Access |
-| Screener, signals/flips, picks (`signals`, `picks`) | Same server credentials |
-| Network graph, atlas/detail, relationships (`network`, `relationships`) | Same server credentials |
-| Rotas pessoais legadas de watchlist, calendário, alertas e AI | Credenciais existentes até ao corte do passo seguinte; o cron já não as usa |
-| Job de alertas (`/internal/alerts/*`) | Identidade própria `ALERT_SERVICE_TOKEN`, sem segredo partilhado ou owner do pedido |
-
-All use `lib/backend.ts` with `BACKEND_BASE_URL` (legacy `FINANCE_BACKEND_URL`
-fallback), except direct synthetic research in JWT mode. The Clerk secret stays
-server-side. Optional analyst provider, email, billing and cron keys have separate
-roles and are outside this research migration. No other Backend call was migrated.
-
-### Local authenticated browser proof
-
-After configuring `.env.local`, run `npm run qa:local`. Its separate Playwright
-configuration owns http://localhost:3000 and starts the same `dev:local` command;
-stop a manually running frontend before starting this check. It uses official
-`@clerk/testing` helpers, creates two `+clerk_test` Development identities if absent,
-then deletes only identities created by that run. No emails are delivered for these
-test addresses. It submits real baseline/forest jobs, waits up to 30 minutes, checks
-events and artifact metadata, confirms direct JWT requests contain no cookies or
-service secrets, and verifies 404 isolation with a second real browser session.
-Results are saved in gitignored `test-results/local/research-proof.json`.
-
-The ordinary `qa:browser` suite excludes this live test; it does not need Docker or
-Clerk account operations. This is local validation, not an ENG-19 Watchlist CI rollout.
-Clerk keys and session state must never be uploaded as CI artifacts. Traces/videos
-are disabled in the authenticated local profile. Docker remains up after QA, and
-`npm run dev:local:down` stops it while preserving synthetic jobs.
+O inventário completo, por método/caminho, ficheiro, autenticação e origem está em
+`finance-infra/docs/eng196/consumidores.csv`; o contrato executável do backend está
+em `finance-backend/docs/api-contract.json`. `npm run qa:local` usa o perfil local,
+Clerk Development e dados sintéticos. Não se usa produção nem se guardam sessões
+em traces/videos. Consultar o manifesto infra para resultados e SHAs exatos.
 
 ## Recursos pessoais autenticados
 

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import {randomBytes} from 'node:crypto'
 import { createPlatformClient, PlatformError } from '../lib/platform-client'
 
 test('native requests contain only a fresh session token and omit cookies', async () => {
@@ -42,7 +43,7 @@ test('idempotency key survives session refresh without automatic network retry',
 })
 
 test('unsafe bases, unsupported routes and missing idempotency never fetch', async () => {
-  for (const baseUrl of ['http://api.example.com', 'https://user:password@api.example.com', 'https://api.example.com/path'])
+  for (const baseUrl of ['http://api.example.com', `https://${randomBytes(8).toString('hex')}:${randomBytes(8).toString('hex')}@api.example.com`, 'https://api.example.com/path'])
     assert.throws(() => createPlatformClient({ baseUrl, getToken: async () => 'fixture' }), PlatformError)
   const client = createPlatformClient({ baseUrl: 'https://api.example.com', getToken: async () => 'fixture',
     fetcher: async () => { throw Error('must not fetch') } })
@@ -56,4 +57,27 @@ test('quota errors preserve safe Retry-After without provider response details',
     fetcher: async () => new Response('private-provider-details', { status: 429, headers: { 'Retry-After': '45' } }) })
   await assert.rejects(client('/me'), (error: unknown) => error instanceof PlatformError &&
     error.retryAfter === 45 && !error.message.includes('private-provider'))
+})
+
+test('browser native requests use the same-origin BFF with no origin credentials', async () => {
+  const client=createPlatformClient({ baseUrl:'same-origin', getToken:async ()=>'synthetic-session',
+    fetcher:async (url, options) => {
+      assert.equal(url, '/api/platform/me')
+      assert.deepEqual(options?.headers, { Authorization:'Bearer synthetic-session' })
+      return new Response('{}')
+    } })
+  await client('/me')
+})
+
+test('server native requests add origin transport separately from the session', async () => {
+  const client=createPlatformClient({ baseUrl:'https://backend.example.test', getToken:async ()=>'synthetic-session',
+    originHeaders:async (url, method) => {
+      assert.equal(url.pathname, '/v1/me'); assert.equal(method, 'GET')
+      return { 'CF-Access-Client-Id':'synthetic-access-id', 'CF-Access-Client-Secret':'synthetic-access-secret' }
+    }, fetcher:async (_url, options) => {
+      assert.equal(new Headers(options?.headers).get('authorization'), 'Bearer synthetic-session')
+      assert.equal(new Headers(options?.headers).get('CF-Access-Client-Id'), 'synthetic-access-id')
+      return new Response('{}')
+    } })
+  await client('/me')
 })

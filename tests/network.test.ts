@@ -14,7 +14,7 @@ import {
 test('forwards global-map source controls to the backend endpoint', () => {
   assert.equal(
     marketNetworkPath({ window: '252', minAbsCorrelation: 0, topK: 50 }),
-    '/network?window=252&minAbsCorrelation=0&topK=50'
+    '/v1/network?window=252&minAbsCorrelation=0&topK=50'
   )
 })
 
@@ -102,14 +102,14 @@ test('preserves latest-metadata provenance for network node sizing/display', () 
 })
 
 test('builds progressive atlas paths without exposing backend credentials to the browser', () => {
-  assert.equal(marketAtlasPath(126, 'timing'), '/network/atlas?window=126&view=timing')
+  assert.equal(marketAtlasPath(126, 'timing'), '/v1/network/atlas?window=126&view=timing')
   assert.equal(
     marketAtlasCommunityPath('timing-abc', { window: 126, view: 'timing', limit: 40, asOf: '2026-07-31' }),
-    '/network/communities/timing-abc?window=126&view=timing&limit=40&asOf=2026-07-31'
+    '/v1/network/communities/timing-abc?window=126&view=timing&limit=40&asOf=2026-07-31'
   )
   assert.equal(
     marketAtlasNeighborhoodPath('aapl', { view: 'residual', asOf: '2026-07-31' }),
-    '/network/neighborhoods/AAPL?window=252&view=residual&limit=28&asOf=2026-07-31'
+    '/v1/network/neighborhoods/AAPL?window=252&view=residual&limit=28&asOf=2026-07-31'
   )
 })
 

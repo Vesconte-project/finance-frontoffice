@@ -45,9 +45,9 @@ export async function getPublicCalendarRange({ start, end }: { start: string; en
   const params = new URLSearchParams({ startDate: start, endDate: end, category })
   if (symbol && category !== 'macro') params.set('symbol', symbol)
   try {
-    const payload = await fetchBackendJson<PublicCalendarPayload>(`/site/calendar?${params}`, {
+    const payload = await fetchBackendJson<PublicCalendarPayload>(`/v1/calendar?${params}`, {
       context: `site.calendar.${category}`,
-      init: { cache: 'force-cache', next: { revalidate: 300 } },
+      init: { cache: 'no-store', next: { revalidate: 300 } },
     })
     return {
       available: payload.available,

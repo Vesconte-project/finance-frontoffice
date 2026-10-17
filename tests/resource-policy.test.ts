@@ -20,13 +20,9 @@ test('calendar and research tab links fetch only on navigation', () => {
   assert.match(source('components/stocks/TickerTabSwipe.tsx'), /router\.push\(/)
 })
 
-test('bounded data caching is limited to public calendar, events and disclosures', () => {
-  assert.match(source('lib/calendar-events.ts'), /cache: 'force-cache', next: \{ revalidate: 300 \}/)
-  const canonical = source('lib/canonical-research.ts')
-  assert.equal((canonical.match(/cache: 'force-cache'/g) ?? []).length, 2)
-  for (const context of ['events', 'disclosures']) {
-    assert.ok(canonical.includes('context: `ticker.' + context + '.${ticker}`, init: { cache: \'force-cache\', next: { revalidate: 60 } }'))
-  }
+test('market readers do not share session-dependent Next caches', () => {
+  for(const file of ['lib/calendar-events.ts','lib/canonical-research.ts','lib/relationships.ts'])
+    assert.doesNotMatch(source(file), /force-cache|unstable_cache/)
 })
 
 test('backend calls remain uncached by default, including authenticated mutations', async () => {
@@ -43,17 +39,17 @@ test('backend calls remain uncached by default, including authenticated mutation
     return new Response('{}', { headers: { 'Content-Type': 'application/json' } })
   }
   try {
-    await fetchBackendResponse('/site/research/synthetic/comparisons', {
+    await fetchBackendResponse('/v1/research/jobs', {
       context: 'test.private', init: { method: 'POST', body: '{}', headers: { 'x-research-viewer-id': 'user_fixture' } },
     })
-    await fetchBackendResponse('/tickers/ACME/events', {
+    await fetchBackendResponse('/v1/tickers/ACME/events', {
       context: 'test.public', init: { cache: 'force-cache', next: { revalidate: 60 } },
     })
     assert.equal(calls[0]?.cache, 'no-store')
     assert.equal(calls[0]?.method, 'POST')
-    assert.equal(new Headers(calls[0]?.headers).get('x-research-viewer-id'), 'user_fixture')
-    assert.equal(calls[1]?.cache, 'force-cache')
-    assert.equal((calls[1] as RequestInit & { next: { revalidate: number } }).next.revalidate, 60)
+    assert.equal(new Headers(calls[0]?.headers).get('x-research-viewer-id'), null)
+    assert.equal(calls[1]?.cache, 'no-store')
+    assert.equal((calls[1] as RequestInit & { next?: unknown }).next, undefined)
   } finally {
     globalThis.fetch = originalFetch
     for (const [key, value] of Object.entries({ BACKEND_BASE_URL: originalBase, CF_ACCESS_CLIENT_ID: originalId, CF_ACCESS_CLIENT_SECRET: originalSecret })) {

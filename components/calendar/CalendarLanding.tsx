@@ -1,9 +1,8 @@
 import Link from 'next/link'
 import { ArrowLeft, ArrowRight, Lock } from 'lucide-react'
 import EventCalendar from '@/components/calendar/EventCalendar'
-import WeekBoard, { WeekSilhouette } from '@/components/calendar/WeekBoard'
+import WeekBoard from '@/components/calendar/WeekBoard'
 import RankingsUniverse from '@/components/picks/RankingsUniverse'
-import { buttonClass } from '@/components/ui/Button'
 import { isViewerSignedIn } from '@/lib/auth'
 import { getPublicCalendarRange, type CalendarResult } from '@/lib/calendar-events'
 import { focusSymbols, resolveCalendarFocus } from '@/lib/calendar-focus'
@@ -21,20 +20,19 @@ const monthTitle = (month: string) =>
 export default async function CalendarLanding({ category, query }: { category: CalendarCategory; query: CalendarQuery }) {
   const today = new Date().toISOString().slice(0, 10)
   const signedIn = await isViewerSignedIn()
-  const shown = resolveCalendarWindow({ ...query, signedIn, today })
-  // A locked window is never fetched: the page carries no events beyond what the viewer can read.
+  const shown = resolveCalendarWindow({ ...query, today })
   const focusQuery = calendarFocus(query)
   const [fetched, focus, sectors] = await Promise.all([
-    shown.locked ? Promise.resolve(null) : getPublicCalendarRange(shown, category),
+    getPublicCalendarRange(shown, category),
     resolveCalendarFocus(focusQuery, signedIn),
-    shown.locked ? Promise.resolve(null) : getCalendarSectors(),
+    getCalendarSectors(),
   ])
   // The narrowing happens here, on the server: a focused page carries only the companies it names.
   const kept = focusSymbols(focus)
   const companies = fetched ? keepCompanies(fetched.events, kept) : []
   const sectorChoices = sectors ? sectorCounts(companies, sectors) : []
   const sector = sectors ? focusQuery.sector ?? null : null
-  const result: CalendarResult | null = fetched ? { ...fetched, events: keepSector(companies, sector, sectors) } : null
+  const result: CalendarResult = { ...fetched, events: keepSector(companies, sector, sectors) }
   const narrowed = Boolean(kept || sector)
   const sectorOnly = sector ? { sector } : {}
   const names = result ? await getCalendarNames([...result.events.flatMap((event) => event.symbol ? [event.symbol] : []), ...(focus.kind === 'around' ? [focus.center] : [])]) : {}
@@ -71,7 +69,7 @@ export default async function CalendarLanding({ category, query }: { category: C
             <div className={styles.viewSwitch} aria-label="Calendar view">
               <Link prefetch={false} href={href('week', { week: isMonth ? (shown.month === thisMonth ? shown.thisWeek : `${shown.month}-01`) : shown.week })} aria-current={!isMonth ? 'page' : undefined}>Week</Link>
               <Link prefetch={false} href={href('month', { month: isMonth ? shown.month : shown.week.slice(0, 7) })} aria-current={isMonth ? 'page' : undefined}>
-                {signedIn ? null : <Lock size={13} strokeWidth={1.5} aria-label="Needs an account" />}Month
+                Month
               </Link>
             </div>
             <div className={styles.stepper} aria-label={`Change ${step.unit}`}>
@@ -143,20 +141,7 @@ export default async function CalendarLanding({ category, query }: { category: C
           ) : null}
           {result?.truncated ? <p className={styles.coverage}>{narrowed ? 'This window has more than 500 events and only the first 500 were read, so some dates for these companies may be missing. Narrow the event type to see them.' : 'Showing the first 500 events. Narrow the event type to see more.'}</p> : null}
 
-          {!result ? (
-            <WeekSilhouette>
-              <div className={styles.offer}>
-                <span className={styles.offerIcon} aria-hidden="true"><Lock size={16} strokeWidth={1.5} /></span>
-                <h2 className={styles.offerTitle}>Every week, every month</h2>
-                <p className={styles.offerText}>This week is open to everyone. A free account opens the weeks ahead, past weeks and the month view.</p>
-                <div className={styles.offerActions}>
-                  <Link prefetch={false} href={signUp(shown.view)} className={buttonClass({ variant: 'primary' })} data-analytics-id="calendar_locked_sign_up" data-analytics-event="auth_start" data-analytics-intent="sign_up">Create free account</Link>
-                  <Link prefetch={false} href={href('week', { week: shown.thisWeek })} className={buttonClass({ variant: 'secondary' })} data-analytics-id="calendar_locked_this_week">Back to this week</Link>
-                </div>
-                <p className={styles.offerSignIn}>Already a member? <Link prefetch={false} href={`/sign-in?redirect_url=${encodeURIComponent(href(shown.view))}`} data-analytics-id="calendar_locked_sign_in" data-analytics-event="auth_start" data-analytics-intent="sign_in">Sign in</Link></p>
-              </div>
-            </WeekSilhouette>
-          ) : isMonth ? (
+          {isMonth ? (
             <EventCalendar
               bare
               month={shown.month}
@@ -176,13 +161,7 @@ export default async function CalendarLanding({ category, query }: { category: C
             <WeekBoard week={shown.week} today={today} events={result.events} names={names} relations={relations} center={center} category={category} available={result.available} reason={result.reason} />
           )}
 
-          {result && !signedIn ? (
-            <p className={styles.openNote}>
-              <Lock size={14} strokeWidth={1.5} aria-hidden="true" />
-              <span>Other weeks and the month view open with a free account.</span>
-              <Link prefetch={false} href={signUp('week')} data-analytics-id="calendar_week_sign_up" data-analytics-event="auth_start" data-analytics-intent="sign_up">Create free account</Link>
-            </p>
-          ) : null}
+
         </section>
       </div>
     </div>

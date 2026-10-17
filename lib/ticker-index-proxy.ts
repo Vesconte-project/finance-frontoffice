@@ -5,10 +5,8 @@ import {
 } from './backend'
 
 const TICKER_INDEX_CONTEXT = 'backend.tickers.index'
-const BODY_PREVIEW_LIMIT = 320
 
 type UpstreamFailureDetails = {
-  bodyPreview: string | null
   cfAccessDomain: string | null
   cfMitigated: string | null
   contentType: string | null
@@ -37,15 +35,9 @@ function jsonResponse(payload: unknown, status: number): Response {
   })
 }
 
-function previewBody(text: string): string | null {
-  const normalized = text.replace(/\s+/g, ' ').trim()
-  if (!normalized) return null
-  return normalized.slice(0, BODY_PREVIEW_LIMIT)
-}
-
-function upstreamFailureDetails(upstream: Response, text: string): UpstreamFailureDetails {
+function upstreamFailureDetails(upstream: Response): UpstreamFailureDetails {
   return {
-    bodyPreview: previewBody(text),
+
     cfAccessDomain: upstream.headers.get('cf-access-domain'),
     cfMitigated: upstream.headers.get('cf-mitigated'),
     contentType: upstream.headers.get('content-type'),
@@ -60,8 +52,6 @@ function logProxyFailure(message: string, details: Record<string, unknown>): voi
 export async function proxyTickerIndex(request: Request): Promise<Response> {
   let config = {
     hasBackendBaseUrl: false,
-    hasFinanceBackendUrl: false,
-    hasBackendSharedSecret: false,
     hasCfAccessClientId: false,
     hasCfAccessClientSecret: false,
   }
@@ -69,15 +59,12 @@ export async function proxyTickerIndex(request: Request): Promise<Response> {
   try {
     config = backendConfigSnapshot()
 
-    if (!config.hasBackendBaseUrl && !config.hasFinanceBackendUrl) {
-      return jsonResponse({ error: 'backend_unconfigured' }, 503)
-    }
-    if (!config.hasBackendSharedSecret) {
+    if (!config.hasBackendBaseUrl) {
       return jsonResponse({ error: 'backend_unconfigured' }, 503)
     }
 
     const ifNoneMatch = request.headers.get('if-none-match')
-    const upstream = await fetchBackendResponse('/tickers/index', {
+    const upstream = await fetchBackendResponse('/v1/tickers/index', {
       context: TICKER_INDEX_CONTEXT,
       timeoutMs: 10000,
       init: {
@@ -91,8 +78,6 @@ export async function proxyTickerIndex(request: Request): Promise<Response> {
     if (upstream instanceof BackendDataError) {
       logProxyFailure('upstream rejected request', {
         hasBackendBaseUrl: config.hasBackendBaseUrl,
-        hasFinanceBackendUrl: config.hasFinanceBackendUrl,
-        hasBackendSharedSecret: config.hasBackendSharedSecret,
         hasCfAccessClientId: config.hasCfAccessClientId,
         hasCfAccessClientSecret: config.hasCfAccessClientSecret,
         status: upstream.status,
@@ -109,11 +94,9 @@ export async function proxyTickerIndex(request: Request): Promise<Response> {
 
     const text = await upstream.text()
     if (!upstream.ok) {
-      const details = upstreamFailureDetails(upstream, text)
+      const details = upstreamFailureDetails(upstream)
       logProxyFailure('upstream unavailable', {
         hasBackendBaseUrl: config.hasBackendBaseUrl,
-        hasFinanceBackendUrl: config.hasFinanceBackendUrl,
-        hasBackendSharedSecret: config.hasBackendSharedSecret,
         hasCfAccessClientId: config.hasCfAccessClientId,
         hasCfAccessClientSecret: config.hasCfAccessClientSecret,
         ...details,
@@ -137,8 +120,6 @@ export async function proxyTickerIndex(request: Request): Promise<Response> {
   } catch (error) {
     logProxyFailure('proxy failed', {
       hasBackendBaseUrl: config.hasBackendBaseUrl,
-      hasFinanceBackendUrl: config.hasFinanceBackendUrl,
-      hasBackendSharedSecret: config.hasBackendSharedSecret,
       hasCfAccessClientId: config.hasCfAccessClientId,
       hasCfAccessClientSecret: config.hasCfAccessClientSecret,
       message: error instanceof Error ? error.message : 'Unknown proxy error',

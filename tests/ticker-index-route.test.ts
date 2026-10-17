@@ -22,7 +22,7 @@ function preserveEnv() {
   }
 }
 
-test('ticker index route proxies backend with shared secret and Cloudflare Access headers', async () => {
+test('ticker index route uses /v1 and Access without forwarding an obsolete shared secret', async () => {
   const restoreEnv = preserveEnv()
   const originalFetch = globalThis.fetch
 
@@ -65,10 +65,10 @@ test('ticker index route proxies backend with shared secret and Cloudflare Acces
     assert.equal(response.status, 200)
     assert.equal(response.headers.get('etag'), '"ticker-index-v1"')
     assert.deepEqual(payload.items.map((item: { symbol: string }) => item.symbol), ['GME'])
-    assert.equal(requestedUrl, 'https://backend.example.test/tickers/index')
+    assert.equal(requestedUrl, 'https://backend.example.test/v1/tickers/index')
     assert.ok(requestedHeaders)
     assert.equal(requestedHeaders.get('accept'), 'application/json')
-    assert.equal(requestedHeaders.get('x-backend-shared-secret'), 'shared-secret')
+    assert.equal(requestedHeaders.get('x-backend-shared-secret'), null)
     assert.equal(requestedHeaders.get('CF-Access-Client-Id'), 'cf-client-id')
     assert.equal(requestedHeaders.get('CF-Access-Client-Secret'), 'cf-client-secret')
     assert.equal(requestedHeaders.get('If-None-Match'), '"previous"')
