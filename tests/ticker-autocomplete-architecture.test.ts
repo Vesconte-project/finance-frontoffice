@@ -160,3 +160,13 @@ test('recent symbols can be hydrated by joining against the ticker index', () =>
     ]
   )
 })
+
+
+test('public ticker onboarding routes and helper are retired', () => {
+  for (const retired of ['app/api/tickers/request/route.ts', 'app/api/tickers/status/route.ts', 'lib/ticker-onboarding.ts']) {
+    assert.equal(fs.existsSync(path.join(process.cwd(), retired)), false, retired)
+  }
+  const source = [...walkFiles('app'), ...walkFiles('components'), ...walkFiles('lib')]
+    .map(file => readRepoFile(file)).join('\n')
+  assert.doesNotMatch(source, /\/api\/tickers\/(request|status)|ensureTickerOnboarding|requestTickerOnboarding/)
+})
