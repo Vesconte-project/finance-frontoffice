@@ -117,7 +117,7 @@ The alert pipeline sends emails when watched tickers flip signal direction on a 
 
 1. Run SQL: `supabase/sql/signal_alert_dispatches.sql`
 2. Add env vars:
-   - `SIGNAL_ALERT_CRON_TOKEN` (recommended, secures cron endpoint)
+   - `SIGNAL_ALERT_CRON_TOKEN` (required; the cron returns 401 when absent or empty)
    - `RESEND_API_KEY`
    - `SIGNAL_ALERT_FROM_EMAIL` (must be a verified sender in Resend)
    - `NEXT_PUBLIC_APP_URL` (used in email links)
@@ -125,10 +125,13 @@ The alert pipeline sends emails when watched tickers flip signal direction on a 
 ### Cron endpoint
 
 - Route: `GET /api/cron/check-signals`
+- Requires its own `SIGNAL_ALERT_CRON_TOKEN`; `MARKET_REFRESH_TOKEN` never authorizes this cron.
+- Email is sent only after a successful backend reservation. An unavailable or malformed reservation sends nothing.
+- This security correction is required before reopening the site (ENG-196 / ENG-214).
 - Optional query params:
   - `date=YYYY-MM-DD` (defaults to current US/Eastern date)
   - `dryRun=1` (no email sends, useful for testing)
-- Auth header (if token configured):
+- Required auth header:
   - `Authorization: Bearer <SIGNAL_ALERT_CRON_TOKEN>`
 
 The endpoint is idempotent per user/ticker/date/direction when `signal_alert_dispatches` table exists.
