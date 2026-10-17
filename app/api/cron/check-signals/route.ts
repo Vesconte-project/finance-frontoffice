@@ -12,8 +12,8 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 function isAuthorized(request: NextRequest): boolean {
-  const token = process.env.SIGNAL_ALERT_CRON_TOKEN || process.env.MARKET_REFRESH_TOKEN
-  if (!token) return true
+  const token = process.env.SIGNAL_ALERT_CRON_TOKEN
+  if (!token?.trim()) return false
 
   const auth = request.headers.get('authorization')
   return auth === `Bearer ${token}`

@@ -82,7 +82,7 @@ export async function reserveUnsentFlipEventsForUser({
     method: 'POST',
     body: JSON.stringify({ userId, events }),
   })
-  return Array.isArray(payload?.events) ? payload!.events : events
+  return Array.isArray(payload?.events) ? payload!.events : []
 }
 
 export async function recordFlipEventsDispatchedForUser({

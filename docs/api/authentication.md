@@ -8,7 +8,8 @@ Authentication is integration-specific; there is no single global API policy.
 | Plan authorization | Clerk public metadata read by `lib/billing.ts` | CSV export requires Pro. Stripe checkout updates Clerk metadata through the signed webhook |
 | Site to `finance-backend` | `x-backend-shared-secret` from `BACKEND_SHARED_SECRET` | Server-side only; never expose in browser code |
 | Cloudflare Access | `CF-Access-Client-Id` and `CF-Access-Client-Secret` | Both must be set together; server-side only |
-| Cron/refresh | Bearer `SIGNAL_ALERT_CRON_TOKEN` or `MARKET_REFRESH_TOKEN` when configured | Current handlers allow unauthenticated access if their token is absent. Preserve or change only through an explicit security task |
+| Alert cron | Required bearer `SIGNAL_ALERT_CRON_TOKEN` | Missing/empty configuration or invalid bearer returns 401; no refresh-token fallback. Failed backend reservation never permits email. |
+| Market refresh | Existing `MARKET_REFRESH_TOKEN` behavior | Separate route; unchanged by the alert-cron correction. |
 | Stripe webhook | `stripe-signature` HMAC with secret and tolerance | Verify raw body before JSON processing |
 | Perplexity / Resend | Server API keys | Used only in route/server code; never return keys to clients |
 | Public local routes | Ticker index/onboarding, model validation, analytics, AI analyst as currently implemented | Public does not mean unbounded or safe to enrich; preserve validation, data-source, and fail-open policies |
