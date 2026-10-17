@@ -25,7 +25,12 @@ test('market readers do not share session-dependent Next caches', () => {
     assert.doesNotMatch(source(file), /force-cache|unstable_cache/)
 })
 
-test('backend calls remain uncached by default, including authenticated mutations', async () => {
+test('backend transport remains uncached and never forwards caller owner headers', async () => {
+  const originalClerk={CLERK_SECRET_KEY:process.env.CLERK_SECRET_KEY,NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+  // Transport unit only: no Next request/session context. Private sessions have
+  // separate native-client and real-BFF integration proofs.
+  delete process.env.CLERK_SECRET_KEY
+  delete process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
   const originalFetch = globalThis.fetch
   const originalBase = process.env.BACKEND_BASE_URL
   const originalId = process.env.CF_ACCESS_CLIENT_ID
@@ -52,7 +57,7 @@ test('backend calls remain uncached by default, including authenticated mutation
     assert.equal((calls[1] as RequestInit & { next?: unknown }).next, undefined)
   } finally {
     globalThis.fetch = originalFetch
-    for (const [key, value] of Object.entries({ BACKEND_BASE_URL: originalBase, CF_ACCESS_CLIENT_ID: originalId, CF_ACCESS_CLIENT_SECRET: originalSecret })) {
+    for (const [key, value] of Object.entries({ ...originalClerk,BACKEND_BASE_URL: originalBase, CF_ACCESS_CLIENT_ID: originalId, CF_ACCESS_CLIENT_SECRET: originalSecret })) {
       if (value === undefined) delete process.env[key]
       else process.env[key] = value
     }
