@@ -14,6 +14,7 @@ if (!existsSync(resolve(infra, 'local.py'))) throw Error('Missing sibling financ
 loadEnvConfig(root, true)
 const port = process.env.FINANCE_BACKEND_PORT || '18095'
 const args = [resolve(infra, 'local.py'), action, '--repos-dir', repos, '--backend-port', port]
+if (process.env.FINANCE_LOCAL_PROJECT) args.push('--project',process.env.FINANCE_LOCAL_PROJECT)
 if (action === 'reset') {
   if (!process.argv.includes('--confirm-project=finance-local')) throw Error('Reset deletes local jobs and artifacts. Pass --confirm-project=finance-local')
   args.push('--confirm-project', 'finance-local')

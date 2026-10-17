@@ -15,7 +15,7 @@ const emails=[0,1].map(i=>`vesconte-cutover-${run}-${i}+clerk_test@example.com`)
 const users:string[]=[]
 const results:Record<string,string>={}
 const profile=resolve(repos,'finance-infra/dev-local')
-const admin=(...args:string[])=>execute('python3',[resolve(profile,'admin.py'),'--repos-dir',repos,...args],{timeout:90_000})
+const admin=(...args:string[])=>execute('python3',[resolve(profile,'admin.py'),'--repos-dir',repos,'--project','finance-local-eng196',...args],{timeout:90_000})
 async function request(page:Page,path:string,method='GET',body?:unknown) {
   return page.evaluate(async({backend,path,method,body})=>{
     const state=window as unknown as {Clerk:{session:{getToken:()=>Promise<string>}}}
@@ -41,6 +41,8 @@ test('public reads, legacy 404s and exact monitor exception',async({page,request
   expect((await raw.get(backend+'/v1/watchlist')).status()).toBe(401)
   const index=await raw.get(backend+'/v1/tickers/index');expect(index.status()).toBe(200)
   expect((await index.json()).items.some((item:{symbol:string})=>item.symbol==='ACME')).toBe(true)
+  const prices=await raw.get(backend+'/v1/tickers/ACME/ohlc?period_days=365')
+  expect(prices.status()).toBe(200);expect((await prices.json()).length).toBeGreaterThan(0)
   for(const path of ['/tickers/index','/signals/history/ACME','/signals/flips','/screener/signals',
     '/network','/relationships/ACME','/site/calendar','/site/watchlist','/site/ai-research/runs',
     '/site/research/synthetic/experiments','/internal/alerts/work','/v1/signals/export'])
@@ -49,6 +51,7 @@ test('public reads, legacy 404s and exact monitor exception',async({page,request
   expect((await raw.get(backend+'/analyst/relationship-map/source-health',{headers:{Authorization:'Bearer '+monitor}})).status()).toBe(200)
   expect((await raw.get(backend+'/analyst/relationship-map/source-health',{headers:{Authorization:'Bearer synthetic-other-service-credential'}})).status()).toBe(403)
   expect((await raw.get(backend+'/v1/admin/me',{headers:{Authorization:'Bearer '+monitor}})).status()).toBe(403)
+  await page.goto('/stocks/ACME');await expect(page.getByRole('heading',{level:1}).first()).toBeVisible()
   await page.goto('/calendar');await expect(page.getByRole('heading',{level:1})).toBeVisible()
   await page.goto('/markets/network');await expect(page.getByRole('heading',{name:'Sign in to explore relationships'})).toBeVisible()
   await page.goto('/stocks/ACME/signals');await expect(page.getByRole('heading',{name:'Directional signals',exact:true})).toBeVisible()
