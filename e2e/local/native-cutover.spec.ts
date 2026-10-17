@@ -61,6 +61,12 @@ test('two real Development sessions keep watchlists private and the BFF works',a
   await page.goto('/');await clerk.signIn({page,emailAddress:emails[0]})
   await page.waitForFunction(()=>Boolean((window as unknown as {Clerk?:{session?:unknown}}).Clerk?.session))
   const me=await request(page,'/v1/me');expect(me.status).toBe(200)
+  const nativeBff=await page.evaluate(async()=>{
+    const token=await (window as unknown as {Clerk:{session:{getToken:()=>Promise<string>}}}).Clerk.session.getToken()
+    return (await fetch('/api/platform/me',{headers:{Authorization:'Bearer '+token},credentials:'omit',cache:'no-store'})).status
+  })
+  expect(nativeBff).toBe(200)
+
   const account=me.body.accounts[0].id as string
   const added=await page.request.post('/api/watchlist',{data:{ticker:'ACME'}});expect(added.status()).toBe(200)
   const own=await request(page,`/v1/watchlist?account_id=${account}`);expect(own.status).toBe(200);expect(own.body.tickers).toContain('ACME')
