@@ -1,143 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSignalFlipsOnDate } from '@/lib/signals'
-import { getAllWatchlistTickers, getWatchlistSubscriptionsForTickers } from '@/lib/watchlist'
-import {
-  getAlertRecipients,
-  recordFlipEventsDispatchedForUser,
-  reserveUnsentFlipEventsForUser,
-  sendSignalFlipAlertEmail,
-} from '@/lib/alerts'
+import { confirmAlertDelivery, getAlertWork, getPendingAlertWork, reserveAlertWork } from '@/lib/alert-service'
+import type { AlertReservation } from '@/lib/alert-service'
+import { getAlertRecipients, sendSignalFlipAlertEmail } from '@/lib/alerts'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-function isAuthorized(request: NextRequest): boolean {
-  const token = process.env.SIGNAL_ALERT_CRON_TOKEN
-  if (!token?.trim()) return false
-
-  const auth = request.headers.get('authorization')
-  return auth === `Bearer ${token}`
-}
-
-function easternDateString(now: Date = new Date()): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/New_York',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(now)
-}
-
-function parseTargetDate(request: NextRequest): string {
-  const dateParam = request.nextUrl.searchParams.get('date')
-  if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) return dateParam
-  return easternDateString()
+function reply(body: unknown, status = 200) {
+  return NextResponse.json(body, { status, headers: { 'Cache-Control': 'private, no-store' } })
 }
 
 export async function GET(request: NextRequest) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-  }
-
-  const targetDate = parseTargetDate(request)
+  const token = process.env.SIGNAL_ALERT_CRON_TOKEN
+  if (!token?.trim() || request.headers.get('authorization') !== `Bearer ${token}`)
+    return reply({ ok: false, error: 'Unauthorized' }, 401)
+  const targetDate = request.nextUrl.searchParams.get('date') ?? new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date())
+  const day = Date.parse(targetDate)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate) || !Number.isFinite(day)
+    || new Date(day).toISOString().slice(0, 10) !== targetDate)
+    return reply({ ok: false, error: 'Invalid date' }, 400)
   const dryRun = request.nextUrl.searchParams.get('dryRun') === '1'
-
-  const watchedTickers = await getAllWatchlistTickers()
-  if (watchedTickers.length === 0) {
-    return NextResponse.json({
-      ok: true,
-      dryRun,
-      targetDate,
-      message: 'No watchlist tickers found.',
-      sent: 0,
-      failed: 0,
-      flips: [],
-    })
-  }
-
-  const flips = await getSignalFlipsOnDate({
-    date: targetDate,
-    tickers: watchedTickers,
-  })
-
-  if (flips.length === 0) {
-    return NextResponse.json({
-      ok: true,
-      dryRun,
-      targetDate,
-      message: 'No signal flips found for target date.',
-      sent: 0,
-      failed: 0,
-      flips: [],
-    })
-  }
-
-  const flippedTickers = [...new Set(flips.map((flip) => flip.ticker))]
-  const subscriptions = await getWatchlistSubscriptionsForTickers(flippedTickers)
-
-  const eventsByUser = new Map<string, typeof flips>()
-  for (const subscription of subscriptions) {
-    const events = flips.filter((flip) => flip.ticker === subscription.ticker)
-    if (events.length === 0) continue
-
-    const current = eventsByUser.get(subscription.userId) ?? []
-    current.push(...events)
-    eventsByUser.set(subscription.userId, current)
-  }
-
-  const recipients = await getAlertRecipients([...eventsByUser.keys()])
-
+  let cursor = request.nextUrl.searchParams.get('cursor') ?? undefined
   let sent = 0
   let failed = 0
-  const failures: Array<{ userId: string; error: string }> = []
-
-  for (const recipient of recipients) {
-    const candidateEvents = eventsByUser.get(recipient.userId) ?? []
-    const dedupedEvents = [...new Map(candidateEvents.map((event) => [`${event.ticker}:${event.signalDate}`, event])).values()]
-    if (dedupedEvents.length === 0) continue
-
-    if (dryRun) {
-      sent += 1
-      continue
-    }
-
-    const sendableEvents = await reserveUnsentFlipEventsForUser({
-      userId: recipient.userId,
-      events: dedupedEvents,
-    })
-
-    if (sendableEvents.length === 0) continue
-
-    const result = await sendSignalFlipAlertEmail({
-      to: recipient.email,
-      firstName: recipient.firstName,
-      events: sendableEvents,
-    })
-
-    if (result.ok) {
-      sent += 1
-      await recordFlipEventsDispatchedForUser({
-        userId: recipient.userId,
-        events: sendableEvents,
-      })
-    } else {
-      failed += 1
-      failures.push({ userId: recipient.userId, error: result.error || 'Failed to send email.' })
+  let candidates = 0
+  const seen = new Set<string>()
+  const deliver = async (reservations: AlertReservation[]) => {
+    for (const reservation of reservations) {
+      if (Date.parse(reservation.expires_at) <= Date.now()) { failed++; continue }
+      const [recipient] = await getAlertRecipients([reservation.recipient_subject])
+      if (!recipient || Date.parse(reservation.expires_at) <= Date.now()) { failed++; continue }
+      const result = await sendSignalFlipAlertEmail({ deliveryId: reservation.id, to: recipient.email,
+        firstName: recipient.firstName, events: reservation.events })
+      if (!result.ok) { failed++; continue }
+      sent++
+      await confirmAlertDelivery(reservation.id)
     }
   }
-
-  return NextResponse.json({
-    ok: failed === 0,
-    dryRun,
-    targetDate,
-    flips,
-    totals: {
-      watchedTickers: watchedTickers.length,
-      flippedTickers: flippedTickers.length,
-      recipients: recipients.length,
-      sent,
-      failed,
-    },
-    failures,
-  })
+  try {
+    if (!dryRun) {
+      let pendingCursor: string | undefined
+      for (let page=0; page<100; page++) {
+        const pending = await getPendingAlertWork(pendingCursor)
+        await deliver(pending.reservations)
+        if (!pending.next_cursor) break
+        if (pending.next_cursor === pendingCursor || seen.has(pending.next_cursor)) throw new Error('Invalid pagination')
+        seen.add(pending.next_cursor)
+        pendingCursor = pending.next_cursor
+        if (page===99) throw new Error('Pending batch limit exceeded')
+      }
+      seen.clear()
+    }
+    for (let page = 0; page < 100; page++) {
+      const work = await getAlertWork(targetDate, cursor)
+      candidates += work.items.length
+      if (!dryRun && work.items.length) {
+        const reservations = await reserveAlertWork(targetDate, work.items.map(item => item.subscription_id))
+        // No provider user lookup, recipient address or email before reservation.
+        await deliver(reservations)
+      }
+      if (!work.next_cursor) return reply({ ok: failed === 0, dryRun, targetDate, candidates, sent, failed })
+      if (seen.has(work.next_cursor) || work.next_cursor === cursor) throw new Error('Invalid pagination')
+      seen.add(work.next_cursor)
+      cursor = work.next_cursor
+    }
+    return reply({ ok: false, dryRun, targetDate, candidates, sent, failed, nextCursor: cursor }, 503)
+  } catch {
+    // Counts only: recipient IDs, email addresses, events and provider errors are private.
+    return reply({ ok: false, dryRun, targetDate, sent, failed, error: 'Alert service unavailable' }, 503)
+  }
 }

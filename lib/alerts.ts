@@ -1,5 +1,4 @@
 import { clerkClient } from '@clerk/nextjs/server'
-import { fetchBackendJson } from '@/lib/backend'
 import { siteBaseUrl } from '@/lib/site-url'
 import type { SignalFlipEvent } from '@/lib/signals'
 
@@ -7,18 +6,6 @@ type AlertRecipient = {
   userId: string
   email: string
   firstName: string | null
-}
-
-async function backendJson<T>(path: string, init?: RequestInit): Promise<T | null> {
-  try {
-    return await fetchBackendJson<T>(path, {
-      context: `backend.alerts${path}`,
-      init,
-      allowEmptyBody: true,
-    })
-  } catch {
-    return null
-  }
 }
 
 function directionLabel(direction: 'bullish' | 'neutral' | 'bearish'): string {
@@ -55,6 +42,7 @@ export async function getAlertRecipients(userIds: string[]): Promise<AlertRecipi
     uniqueUserIds.map(async (userId) => {
       try {
         const user = await client.users.getUser(userId)
+        if (user.id !== userId) return
         const email = resolvePrimaryEmail(user)
         if (!email) return
         recipients.push({
@@ -70,44 +58,19 @@ export async function getAlertRecipients(userIds: string[]): Promise<AlertRecipi
   return recipients
 }
 
-export async function reserveUnsentFlipEventsForUser({
-  userId,
-  events,
-}: {
-  userId: string
-  events: SignalFlipEvent[]
-}): Promise<SignalFlipEvent[]> {
-  if (events.length === 0) return []
-  const payload = await backendJson<{ events?: SignalFlipEvent[] }>('/site/alerts/reserve', {
-    method: 'POST',
-    body: JSON.stringify({ userId, events }),
-  })
-  return Array.isArray(payload?.events) ? payload!.events : []
-}
-
-export async function recordFlipEventsDispatchedForUser({
-  userId,
-  events,
-}: {
-  userId: string
-  events: SignalFlipEvent[]
-}): Promise<void> {
-  if (events.length === 0) return
-  await backendJson('/site/alerts/record', {
-    method: 'POST',
-    body: JSON.stringify({ userId, events }),
-  })
-}
-
 export async function sendSignalFlipAlertEmail({
+  deliveryId,
   to,
   firstName,
   events,
 }: {
+  deliveryId: string
   to: string
   firstName?: string | null
   events: SignalFlipEvent[]
 }): Promise<{ ok: boolean; error?: string }> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(deliveryId))
+    return { ok: false, error: 'Invalid alert reservation.' }
   const apiKey = process.env.RESEND_API_KEY
   const from = process.env.SIGNAL_ALERT_FROM_EMAIL
 
@@ -159,9 +122,11 @@ export async function sendSignalFlipAlertEmail({
 
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
+    signal: AbortSignal.timeout(10000),
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
+      'Idempotency-Key': `alerts/${deliveryId}`,
     },
     body: JSON.stringify({
       from,

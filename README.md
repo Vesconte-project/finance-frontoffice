@@ -111,30 +111,38 @@ Watchlist persistence is now served through `finance-backend` `/site/*` endpoint
 
 ## Signal Flip Alerts (Cron + Email)
 
-The alert pipeline sends emails when watched tickers flip signal direction on a given date.
+O cron `GET /api/cron/check-signals` exige `SIGNAL_ALERT_CRON_TOKEN`; não aceita
+`MARKET_REFRESH_TOKEN`. Usa exclusivamente a identidade `ALERT_SERVICE_TOKEN`
+no contrato `/internal/alerts/*` do backend, sem segredo partilhado nem userId
+enviado pelo cliente. A configuração continua só no servidor.
 
-### Setup
+O backend prepara páginas limitadas de subscrições e reserva os eventos numa
+transação antes de devolver o destinatário. Sem reserva válida não há consulta
+de utilizadores no Clerk nem email. O envio usa `alerts/<id-da-reserva>` como
+chave idempotente no Resend e confirma depois do sucesso. Reservas pendentes são
+retomadas com a mesma chave e eventos, apenas enquanto válidas. Após expiração
+o evento não é readmitido: uma falha prolongada pode perder um envio.
 
-1. Run SQL: `supabase/sql/signal_alert_dispatches.sql`
-2. Add env vars:
-   - `SIGNAL_ALERT_CRON_TOKEN` (required; the cron returns 401 when absent or empty)
-   - `RESEND_API_KEY`
-   - `SIGNAL_ALERT_FROM_EMAIL` (must be a verified sender in Resend)
-   - `NEXT_PUBLIC_APP_URL` (used in email links)
+Parâmetros: `date=YYYY-MM-DD` (dia atual em New York por omissão), `dryRun=1`
+(não reserva, não resolve contactos nem envia) e `cursor=UUID` para continuar
+um lote. Há no máximo 100 páginas por invocação; o resultado só contém contagens
+e erros genéricos e é privado/no-store.
 
-### Cron endpoint
+**Efeito do merge:** o cron antigo deixa de ser usado e a página Community fica
+indisponível, pois a agregação de watchlists foi retirada. Sem a nova credencial,
+o emissor e a migração V6 do backend, o cron recusa e não envia. As subscrições
+novas só são criadas no passo seguinte, pelas rotas pessoais /v1; não há leitura
+nem migração de watchlists legadas pelo job. A indisponibilidade é intencional
+durante o corte autorizado, inclusive com `PLATFORM_API_ENABLED=false`.
 
-- Route: `GET /api/cron/check-signals`
-- Requires its own `SIGNAL_ALERT_CRON_TOKEN`; `MARKET_REFRESH_TOKEN` never authorizes this cron.
-- Email is sent only after a successful backend reservation. An unavailable or malformed reservation sends nothing.
-- This security correction is required before reopening the site (ENG-196 / ENG-214).
-- Optional query params:
-  - `date=YYYY-MM-DD` (defaults to current US/Eastern date)
-  - `dryRun=1` (no email sends, useful for testing)
-- Required auth header:
-  - `Authorization: Bearer <SIGNAL_ALERT_CRON_TOKEN>`
+Configuração posterior, pelo Francisco: `ALERT_SERVICE_TOKEN` dedicado,
+`SIGNAL_ALERT_CRON_TOKEN` distinto, `RESEND_API_KEY`, remetente verificado em
+`SIGNAL_ALERT_FROM_EMAIL`, Clerk e `NEXT_PUBLIC_APP_URL`. Não aplicar o antigo
+SQL `signal_alert_dispatches.sql` para este fluxo. A V6 pertence ao backend;
+o manifesto infra será coordenado apenas quando a ativação /v1 estiver planeada,
+fora das janelas de 19 e 20/10. Nenhuma configuração de produção é aplicada aqui.
 
-The endpoint is idempotent per user/ticker/date/direction when `signal_alert_dispatches` table exists.
+Contrato e limitações completos: finance-backend `docs/ALERT_SERVICE.md`.
 
 ### Vercel Cron
 
@@ -471,7 +479,8 @@ errors/empty states must remain honest. Local execution runs two models per comp
 | Ticker index/profile/OHLC/scorecard, financial statements, market metrics, corporate actions, capital/disclosure/events/readings (`finance`, `ticker-data`, `canonical-research`, `scorecard`, ticker proxies) | Server `BACKEND_SHARED_SECRET`; optional CF Access |
 | Screener, signals/flips, picks (`signals`, `picks`) | Same server credentials |
 | Network graph, atlas/detail, relationships (`network`, `relationships`) | Same server credentials |
-| Site watchlist, calendar, alerts and AI research history/feedback (`watchlist`, `calendar-events`, `alerts`, `ai-research`) | Same server credentials; applicable user identity supplied by existing server code |
+| Rotas pessoais legadas de watchlist, calendário, alertas e AI | Credenciais existentes até ao corte do passo seguinte; o cron já não as usa |
+| Job de alertas (`/internal/alerts/*`) | Identidade própria `ALERT_SERVICE_TOKEN`, sem segredo partilhado ou owner do pedido |
 
 All use `lib/backend.ts` with `BACKEND_BASE_URL` (legacy `FINANCE_BACKEND_URL`
 fallback), except direct synthetic research in JWT mode. The Clerk secret stays
