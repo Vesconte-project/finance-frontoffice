@@ -32,3 +32,10 @@ test('Access pair is independent of the visitor proof and never emitted partiall
   assert.deepEqual(accessHeaders({ CF_ACCESS_CLIENT_ID:id, CF_ACCESS_CLIENT_SECRET:secret }),
     { 'CF-Access-Client-Id':id, 'CF-Access-Client-Secret':secret })
 })
+
+
+test('Vercel IPv6 is canonical before signing and matches the backend address contract',()=>{
+  const env={VERCEL:'1',BFF_IP_PROOF_KEY:randomBytes(48).toString('hex')}
+  for(const ip of ['2001:0DB8:0000:0000:0000:0000:0000:0001','2001:db8::1'])
+    assert.equal(signVisitorIP(ip,'GET','/v1/me',env)['X-Vesconte-Client-IP'],'2001:db8::1')
+})

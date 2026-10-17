@@ -15,6 +15,7 @@ export function signVisitorIP(ip: string | null, method: string, path: string,
   // Only Vercel's production runtime may use the production proof. Local or
   // preview environments need a separate explicit key and never browser XFF.
   if (env.VERCEL !== '1' || !key || Buffer.byteLength(key) < 32 || !ip || !isIP(ip)) return {}
+  if (isIP(ip)===6) ip=new URL(`http://[${ip}]/`).hostname.slice(1,-1)
   const stamp = String(Math.floor(Date.now() / 1000))
   const requestId = randomBytes(16).toString('hex')
   const message = JSON.stringify(['vesconte.ip.v1', ip, stamp, method, path, requestId])
