@@ -43,6 +43,8 @@ test('public reads, legacy 404s and exact monitor exception',async({page,request
   expect((await index.json()).items.some((item:{symbol:string})=>item.symbol==='ACME')).toBe(true)
   const prices=await raw.get(backend+'/v1/tickers/ACME/ohlc?period_days=365')
   expect(prices.status()).toBe(200);expect((await prices.json()).length).toBeGreaterThan(0)
+  const summary=await raw.get(backend+'/v1/tickers/ACME/summary');expect(summary.status()).toBe(200)
+  const summaryBody=await summary.json();expect(summaryBody.ticker).toBe('ACME');expect(summaryBody.quote.price).toBeGreaterThan(0)
   for(const path of ['/tickers/index','/signals/history/ACME','/signals/flips','/screener/signals',
     '/network','/relationships/ACME','/site/calendar','/site/watchlist','/site/ai-research/runs',
     '/site/research/synthetic/experiments','/internal/alerts/work','/v1/signals/export'])
@@ -52,6 +54,7 @@ test('public reads, legacy 404s and exact monitor exception',async({page,request
   expect((await raw.get(backend+'/analyst/relationship-map/source-health',{headers:{Authorization:'Bearer synthetic-other-service-credential'}})).status()).toBe(403)
   expect((await raw.get(backend+'/v1/admin/me',{headers:{Authorization:'Bearer '+monitor}})).status()).toBe(403)
   await page.goto('/stocks/ACME');await expect(page.getByRole('heading',{level:1}).first()).toBeVisible()
+  await expect(page.getByText('Ticker data is temporarily unavailable',{exact:true})).toHaveCount(0)
   await page.goto('/calendar');await expect(page.getByRole('heading',{level:1})).toBeVisible()
   await page.goto('/markets/network');await expect(page.getByRole('heading',{name:'Sign in to explore relationships'})).toBeVisible()
   await page.goto('/stocks/ACME/signals');await expect(page.getByRole('heading',{name:'Directional signals',exact:true})).toBeVisible()
