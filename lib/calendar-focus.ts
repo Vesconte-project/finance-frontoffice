@@ -20,14 +20,14 @@ export type CalendarFocus =
  * Which companies the calendar is narrowed to. Both sources are existing reads:
  * the reader's watchlist, and the atlas relationships the ticker page shows.
  * Neither is cached across viewers in a way that leaks: the watchlist is read per
- * request with the viewer's own id, and the relationship read is public.
+ * request with the viewer's verified session, and the relationship read is public.
  */
 export async function resolveCalendarFocus(focus: CalendarFocusQuery, signedIn: boolean): Promise<CalendarFocus> {
   if (focus.list === 'watchlist') {
     const userId = await getViewerUserId()
     if (!userId) return { kind: 'watchlist', status: 'signed-out', symbols: [] }
     try {
-      return { kind: 'watchlist', status: 'ok', symbols: await getUserWatchlistTickers(userId) }
+      return { kind: 'watchlist', status: 'ok', symbols: await getUserWatchlistTickers() }
     } catch (error) {
       console.error('[calendar] watchlist unavailable', { message: error instanceof Error ? error.message : String(error) })
       return { kind: 'watchlist', status: 'unavailable', symbols: [] }

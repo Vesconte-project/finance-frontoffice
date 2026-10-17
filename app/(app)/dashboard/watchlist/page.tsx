@@ -35,7 +35,7 @@ export default async function DashboardWatchlistPage() {
 
   let workspace: Awaited<ReturnType<typeof getWatchlistWorkspace>>
   try {
-    workspace = await getWatchlistWorkspace(userId)
+    workspace = await getWatchlistWorkspace()
   } catch {
     return (
       <EmptyState

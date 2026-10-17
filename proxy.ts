@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { NextResponse, type NextRequest, type NextFetchEvent } from 'next/server'
 
 const isProtectedRoute = createRouteMatcher([
   '/dashboard(.*)',
@@ -6,10 +7,22 @@ const isProtectedRoute = createRouteMatcher([
   '/api/export-signals(.*)',
 ])
 
-export default clerkMiddleware(async (auth, req) => {
+const sessionMiddleware = clerkMiddleware(async (auth, req) => {
   if (!process.env.CLERK_SECRET_KEY) return
   if (isProtectedRoute(req)) await auth.protect()
 })
+
+export default function proxy(request: NextRequest, event: NextFetchEvent) {
+  // Credential presence only selects the verifier; it never establishes an owner.
+  // Ordinary anonymous telemetry remains independent of Clerk availability.
+  if (request.nextUrl.pathname === '/api/analytics/event') {
+    const hasCredential = request.headers.has('authorization') || request.cookies.getAll().some(
+      cookie => Boolean(cookie.value) && (cookie.name === '__session' || cookie.name.startsWith('__session_')))
+    if (!hasCredential || !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || !process.env.CLERK_SECRET_KEY)
+      return NextResponse.next()
+  }
+  return sessionMiddleware(request, event)
+}
 
 export const config = {
   // clerkMiddleware() has to run wherever server code calls auth(), or auth()
@@ -28,12 +41,10 @@ export const config = {
     '/picks/income',
     '/picks/short-term',
     '/api/watchlist(.*)',
+    '/api/ai-analyst(.*)',
+    '/api/analytics/event',
     '/api/research/synthetic(.*)',
     '/api/export-signals(.*)',
-    // Telemetry ingress is deliberately NOT matched. clerkMiddleware throws
-    // when no publishable key is configured, which would turn every usage
-    // event into a 500 and make analytics an availability risk for the thing
-    // it is measuring. The route reads the viewer opportunistically and logs
-    // an anonymous event when auth context is absent, which it always is here.
+    // Telemetry stays public; only an authenticated session may forward to /v1.
   ],
 }

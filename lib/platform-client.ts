@@ -1,7 +1,7 @@
 /** Native user API. Commercial decisions belong to FastAPI, never Clerk metadata. */
 type GetToken = (options?: { skipCache?: boolean }) => Promise<string | null>
 type Options = { baseUrl: string; getToken: GetToken; fetcher?: typeof fetch }
-type RequestOptions = { method?: 'GET' | 'POST'; body?: unknown; idempotencyKey?: string }
+type RequestOptions = { method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'; body?: unknown; idempotencyKey?: string }
 
 const messages: Record<number, string> = {
   401: 'Sign in again to continue.', 403: 'Your account does not have access to this operation.',
@@ -16,8 +16,8 @@ export class PlatformError extends Error {
 }
 
 const uuid = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
-const reads = new RegExp(`^/(?:me|accounts/${uuid}/access|research/jobs(?:/${uuid}(?:/(?:results|events|artifacts))?)?|artifacts/${uuid}/(?:download|content)|rankings)$`)
-const writes = new RegExp(`^/(?:billing/(?:checkout|portal)|research/jobs(?:/${uuid}/cancel)?|signals/export)$`)
+const reads = new RegExp(`^/(?:me|accounts/${uuid}/access|research/jobs(?:/${uuid}(?:/(?:results|events|artifacts))?)?|artifacts/${uuid}/(?:download|content)|rankings|watchlist|ai-research/runs(?:/${uuid})?)$`)
+const writes = new RegExp(`^/(?:billing/(?:checkout|portal)|research/jobs(?:/${uuid}/cancel)?|signals/export|watchlist|ai-research/(?:runs|feedback)|analytics/events)$`)
 
 export function createPlatformClient({ baseUrl, getToken, fetcher = fetch }: Options) {
   let base: string
@@ -31,8 +31,10 @@ export function createPlatformClient({ baseUrl, getToken, fetcher = fetch }: Opt
   return async (path: string, options: RequestOptions = {}): Promise<Response> => {
     const method = options.method || 'GET'
     const route = path.split('?')[0]
-    if (path.includes('#') || path.includes('%') || !path.startsWith('/') ||
-      !(method === 'GET' ? reads : writes).test(route)) throw new PlatformError(404)
+    if (path.includes('#') || route.includes('%') || !path.startsWith('/') ||
+      !(method === 'GET' ? reads.test(route) : method === 'PATCH'
+        ? new RegExp(`^/ai-research/runs/${uuid}$`).test(route) : method === 'DELETE'
+        ? route === '/watchlist' : writes.test(route))) throw new PlatformError(404)
     if (method === 'GET' && options.body !== undefined) throw new PlatformError(422)
     const requiresKey = method === 'POST' && ['/billing/checkout', '/billing/portal', '/research/jobs'].includes(route)
     if ((requiresKey && !options.idempotencyKey) || (options.idempotencyKey &&

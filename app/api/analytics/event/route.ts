@@ -1,61 +1,22 @@
-/**
- * Telemetry ingress.
- *
- * Two jobs, in this order of importance:
- *   1. Emit one structured JSON line per event so page, feature, and button
- *      usage is queryable in Vercel Runtime Logs and in any Log Drain. This is
- *      the durable record and it runs first, so a backend outage never costs a
- *      usage log.
- *   2. Best-effort forward to `finance-backend` for product analytics, exactly
- *      as before. Failures are swallowed and reported as 204.
- *
- * Accepts a single envelope (legacy shape) or `{ events: [...] }` (batched by
- * the browser tracker). Both are answered the same way.
- */
-
+/** Anonymous telemetry stays in the frontend; only verified sessions may persist in /v1. */
 import { NextResponse } from 'next/server'
-import { backendBaseUrl, backendHeaders } from '@/lib/backend'
+import { personalRequest } from '@/lib/personal-server'
 import { getViewerUserId } from '@/lib/auth'
 import { readEvents, toInsertRow, type AnalyticsInsertRow } from '@/lib/analytics-ingest'
 import { logServerEvent, logTelemetryEvent } from '@/lib/observability/vercel-log'
 
 function errorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) return error.message
-  return String(error)
+  void error
+  return 'Authenticated analytics forwarding unavailable.'
 }
 
 async function forwardToBackend(rows: AnalyticsInsertRow[]): Promise<void> {
-  const base = backendBaseUrl()
-  if (!base) return
-
-  await Promise.all(
-    rows.map(async (row) => {
-      try {
-        const upstream = await fetch(`${base}/site/analytics/events`, {
-          method: 'POST',
-          headers: backendHeaders({ includeContentType: true }),
-          body: JSON.stringify(row),
-          cache: 'no-store',
-        })
-
-        // 404/405 means the backend has not shipped the endpoint yet. That is a
-        // documented fail-open state, not an error worth alerting on.
-        if (upstream.ok || upstream.status === 404 || upstream.status === 405) return
-
-        logServerEvent(
-          'analytics_upstream_rejected',
-          { event: row.event_name, path: row.pathname, status: upstream.status },
-          'warn'
-        )
-      } catch (error) {
-        logServerEvent(
-          'analytics_upstream_failed',
-          { event: row.event_name, path: row.pathname, error: errorMessage(error) },
-          'error'
-        )
-      }
-    })
-  )
+  for (const row of rows) {
+    // Browser identifiers/user agent remain in frontend telemetry, never owners.
+    const { event_name, payload, occurred_at, pathname, referrer } = row
+    await personalRequest('/analytics/events', { method: 'POST',
+      body: { event_name, payload, occurred_at, pathname, referrer } })
+  }
 }
 
 export async function POST(request: Request) {
@@ -72,9 +33,7 @@ export async function POST(request: Request) {
   }
 
   const userAgent = request.headers.get('user-agent')
-  // Opportunistic: the telemetry route is not matched by Clerk middleware, so
-  // this resolves to null today and starts attributing automatically if that
-  // ever changes. It never throws.
+  // Optional session. Anonymous events are logged locally and never forwarded.
   const viewerId = await getViewerUserId()
   const rows = events.map((event) => toInsertRow(event, userAgent))
 
@@ -95,10 +54,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    await forwardToBackend(rows)
+    if (viewerId) await forwardToBackend(rows)
   } catch (error) {
     logServerEvent('analytics_forward_failed', { error: errorMessage(error) }, 'error')
   }
 
-  return new NextResponse(null, { status: 204 })
+  return new NextResponse(null, { status: 204, headers: { 'Cache-Control': 'private, no-store' } })
 }
