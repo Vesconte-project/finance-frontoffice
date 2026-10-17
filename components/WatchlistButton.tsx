@@ -25,6 +25,7 @@ type WatchlistButtonProps = {
   ticker: string
   initialInWatchlist: boolean
   signedIn: boolean
+  unavailable?: boolean
 }
 
 async function callWatchlistApi(method: 'POST' | 'DELETE', ticker: string) {
@@ -44,6 +45,7 @@ export default function WatchlistButton({
   ticker,
   initialInWatchlist,
   signedIn,
+  unavailable = false,
 }: WatchlistButtonProps) {
   const [inWatchlist, setInWatchlist] = useState(initialInWatchlist)
   const [pending, setPending] = useState(false)
@@ -70,6 +72,8 @@ export default function WatchlistButton({
       return
     }
 
+    if (unavailable) return
+
     setPending(true)
     setError(null)
     const nextState = !inWatchlist
@@ -94,7 +98,7 @@ export default function WatchlistButton({
     void onClick()
   }
 
-  const label = inWatchlist ? 'Remove from watchlist' : 'Add to watchlist'
+  const label = unavailable ? 'Watchlist temporarily unavailable' : inWatchlist ? 'Remove from watchlist' : 'Add to watchlist'
 
   return (
     <div className="flex flex-col items-start gap-1.5 md:items-end">
@@ -102,10 +106,10 @@ export default function WatchlistButton({
         ref={starRef}
         type="button"
         onClick={onClick}
-        disabled={pending}
+        disabled={pending || unavailable}
         aria-label={label}
         title={label}
-        aria-pressed={inWatchlist}
+        aria-pressed={unavailable ? undefined : inWatchlist}
         aria-busy={pending}
         aria-haspopup={signedIn ? undefined : 'dialog'}
         aria-expanded={signedIn ? undefined : recoveryOpen}
@@ -122,6 +126,8 @@ export default function WatchlistButton({
           />
         )}
       </button>
+
+      {unavailable && <span className="text-micro text-content-muted" role="status">Watchlist unavailable</span>}
 
       {/* Pending and success outcomes reach assistive technology here; a failure
           opens a dialog that names and describes itself, so nothing is announced twice. */}

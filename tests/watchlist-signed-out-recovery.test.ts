@@ -113,7 +113,7 @@ test('the signed-in mutation path is semantically unchanged', () => {
 test('pending is visible, blocks re-entry, and does not move the surrounding layout', () => {
   const source = readRepoFile('components/WatchlistButton.tsx')
 
-  assert.match(source, /disabled=\{pending\}/, 're-entry is prevented while pending')
+  assert.match(source, /disabled=\{pending \|\| unavailable\}/, 're-entry is prevented while pending')
   assert.match(source, /aria-busy=\{pending\}/)
 
   // Conveyed by a swapped icon inside the fixed-size control, not by dimming
@@ -134,7 +134,7 @@ test('outcomes are announced through polite live regions', () => {
 
   // The control keeps an accurate name and programmatic pressed state.
   assert.match(source, /aria-label=\{label\}/)
-  assert.match(source, /aria-pressed=\{inWatchlist\}/)
+  assert.match(source, /aria-pressed=\{unavailable \? undefined : inWatchlist\}/)
 
   // The dialog trigger is exposed, and only where it exists.
   assert.match(source, /aria-haspopup=\{signedIn \? undefined : 'dialog'\}/)

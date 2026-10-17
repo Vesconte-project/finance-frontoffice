@@ -36,12 +36,12 @@ function timestampOrZero(value: string | null): number {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-export async function getWatchlistWorkspace(userId: string): Promise<WatchlistWorkspaceData> {
-  const tickers = await getUserWatchlistTickers(userId)
+export async function getWatchlistWorkspace(): Promise<WatchlistWorkspaceData> {
+  const tickers = await getUserWatchlistTickers()
   const [{ rows }, lastFlipByTicker, recentAiRuns, scorecardsByTicker] = await Promise.all([
     getScreenerSignals({ tickers, limit: 500 }),
     getLastFlipDatesByTicker(tickers),
-    getRecentAiResearchRuns({ userId, limit: 6 }),
+    getRecentAiResearchRuns({ limit: 6 }),
     getTickerScorecards(tickers),
   ])
 

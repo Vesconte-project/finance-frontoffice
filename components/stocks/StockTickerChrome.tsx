@@ -69,6 +69,7 @@ export default function StockTickerChrome({
                 ticker={resolved.ticker}
                 initialInWatchlist={resolved.watchlist.initialInWatchlist}
                 signedIn={resolved.watchlist.signedIn}
+                unavailable={resolved.watchlist.unavailable}
               />
             </>
           )}

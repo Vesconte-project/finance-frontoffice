@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getViewerUserId } from '@/lib/auth'
+import { personalFailure } from '@/lib/personal-server'
 import { createAiResearchRun, finalizeAiResearchRun } from '@/lib/ai-research'
 
 export const runtime = 'nodejs'
@@ -22,7 +23,8 @@ type AnalystNewsInput = {
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Unknown error'
+  void error
+  return 'AI request failed.'
 }
 
 function mergeUniqueUrls(existing: string[], incoming: unknown): string[] {
@@ -31,8 +33,8 @@ function mergeUniqueUrls(existing: string[], incoming: unknown): string[] {
     for (const item of incoming) {
       if (typeof item !== 'string') continue
       const trimmed = item.trim()
-      if (!trimmed.startsWith('http')) continue
-      next.add(trimmed)
+      if (!/^https?:\/\//.test(trimmed) || trimmed.length > 2048) continue
+      if (next.size < 32) next.add(trimmed)
     }
   }
   return [...next]
@@ -161,6 +163,8 @@ function buildPrompt({
 }
 
 export async function POST(request: NextRequest) {
+  if (!await getViewerUserId()) return NextResponse.json({ error: 'Authentication required.' },
+    { status: 401, headers: { 'Cache-Control': 'private, no-store' } })
   const apiKey = process.env.PERPLEXITY_API_KEY?.trim()
   const model = process.env.PERPLEXITY_MODEL?.trim() || 'sonar-pro'
 
@@ -198,14 +202,17 @@ export async function POST(request: NextRequest) {
   const news = sanitizeNews(payload.news)
   const question = asString(payload.question)
   const promptLabel = asString(payload.promptLabel)
-  const userId = await getViewerUserId()
-  const runId = await createAiResearchRun({
-    userId,
+  let runId: string
+  try {
+    runId = await createAiResearchRun({
     ticker,
     promptLabel,
     question,
     signal,
-  })
+    })
+  } catch (error) {
+    return personalFailure(error)
+  }
 
   const body = {
     model,
@@ -236,49 +243,41 @@ export async function POST(request: NextRequest) {
       cache: 'no-store',
     })
   } catch {
-    if (runId !== null) {
-      await finalizeAiResearchRun({
-        runId,
-        status: 'failed',
-        provider: 'perplexity',
-        model,
-        errorMessage: 'Failed to reach Perplexity API.',
-      })
-    }
+    await finalizeAiResearchRun({
+      runId,
+      status: 'failed',
+      provider: 'perplexity',
+      model,
+      errorMessage: 'Failed to reach Perplexity API.',
+    })
     return NextResponse.json({ error: 'Failed to reach Perplexity API.' }, { status: 502 })
   }
 
   if (!upstream.ok) {
-    const errorBody = await upstream.text().catch(() => '')
-    if (runId !== null) {
-      await finalizeAiResearchRun({
-        runId,
-        status: 'failed',
-        provider: 'perplexity',
-        model,
-        errorMessage: `Perplexity API error ${upstream.status}: ${errorBody.slice(0, 400)}`,
-      })
-    }
+    await finalizeAiResearchRun({
+      runId,
+      status: 'failed',
+      provider: 'perplexity',
+      model,
+      errorMessage: `Perplexity API error ${upstream.status}`,
+    })
     return NextResponse.json(
       {
         error: 'Perplexity API error.',
         status: upstream.status,
-        details: errorBody.slice(0, 400),
       },
       { status: 502 }
     )
   }
 
   if (!upstream.body) {
-    if (runId !== null) {
-      await finalizeAiResearchRun({
-        runId,
-        status: 'failed',
-        provider: 'perplexity',
-        model,
-        errorMessage: 'Perplexity API returned an empty stream.',
-      })
-    }
+    await finalizeAiResearchRun({
+      runId,
+      status: 'failed',
+      provider: 'perplexity',
+      model,
+      errorMessage: 'Perplexity API returned an empty stream.',
+    })
     return NextResponse.json({ error: 'Perplexity API returned an empty stream.' }, { status: 502 })
   }
 
@@ -291,9 +290,7 @@ export async function POST(request: NextRequest) {
 
   const stream = new ReadableStream({
     async start(controller) {
-      if (runId !== null) {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ run_id: runId })}\n\n`))
-      }
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ run_id: runId })}\n\n`))
 
       try {
         while (true) {
@@ -341,32 +338,27 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        await finalizeAiResearchRun({
+          runId,
+          status: 'completed',
+          provider: 'perplexity',
+          model,
+          responseExcerpt: accumulated.trim() || null,
+          citations: gatheredCitations,
+        })
         controller.close()
-
-        if (runId !== null) {
-          await finalizeAiResearchRun({
-            runId,
-            status: 'completed',
-            provider: 'perplexity',
-            model,
-            responseExcerpt: accumulated.trim() || null,
-            citations: gatheredCitations,
-          })
-        }
       } catch (error) {
         controller.error(error)
 
-        if (runId !== null) {
-          await finalizeAiResearchRun({
-            runId,
-            status: 'failed',
-            provider: 'perplexity',
-            model,
-            responseExcerpt: accumulated.trim() || null,
-            citations: gatheredCitations,
-            errorMessage: errorMessage(error),
-          })
-        }
+        await finalizeAiResearchRun({
+          runId,
+          status: 'failed',
+          provider: 'perplexity',
+          model,
+          responseExcerpt: accumulated.trim() || null,
+          citations: gatheredCitations,
+          errorMessage: errorMessage(error),
+        })
       }
     },
     async cancel() {
@@ -377,7 +369,7 @@ export async function POST(request: NextRequest) {
   return new Response(stream, {
     headers: {
       'Content-Type': 'text/event-stream; charset=utf-8',
-      'Cache-Control': 'no-cache, no-transform',
+      'Cache-Control': 'private, no-store, no-transform',
       Connection: 'keep-alive',
       'X-Content-Type-Options': 'nosniff',
     },

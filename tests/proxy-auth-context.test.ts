@@ -101,3 +101,10 @@ test('protection is still decided by isProtectedRoute, not by the matcher', () =
   const guarded = [...source.matchAll(/if \(isProtectedRoute\(req\)\) await auth\.protect\(\)/g)]
   assert.equal(guarded.length, 1, 'the only auth.protect() must be guarded by isProtectedRoute')
 })
+
+test('personal AI and optional analytics establish verified session context', () => {
+  const source = readProxySource()
+  for (const route of ['/api/ai-analyst(.*)', '/api/analytics/event'])
+    assert.ok(matcherRoutes(source).includes(route))
+  assert.ok(!protectedRoutes(source).includes('/api/analytics/event'), 'anonymous telemetry remains public')
+})

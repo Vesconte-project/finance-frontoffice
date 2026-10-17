@@ -20,6 +20,7 @@ export type StockTickerChromeData = {
   watchlist: {
     signedIn: boolean
     initialInWatchlist: boolean
+    unavailable?: boolean
   }
 }
 
@@ -27,7 +28,7 @@ export async function getStockTickerChromeData(tickerRaw: string): Promise<Stock
   const ticker = tickerRaw.trim().toUpperCase()
   const viewerUserIdPromise = getViewerUserId()
   const watchlistPromise = viewerUserIdPromise.then((userId) =>
-    userId ? isTickerInWatchlist(userId, ticker).catch(() => false) : false
+    userId ? isTickerInWatchlist(ticker).catch(() => null) : false
   )
   const [summary, viewerUserId, initialInWatchlist] = await Promise.all([
     getTickerPageSummary(ticker).catch(() => null),
@@ -57,7 +58,8 @@ export async function getStockTickerChromeData(tickerRaw: string): Promise<Stock
     identityColor: tickerIdentityColor(ticker),
     watchlist: {
       signedIn: Boolean(viewerUserId),
-      initialInWatchlist,
+      initialInWatchlist: initialInWatchlist === true,
+      unavailable: Boolean(viewerUserId) && initialInWatchlist === null,
     },
   }
 }

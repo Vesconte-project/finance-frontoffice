@@ -1,10 +1,10 @@
-import { fetchBackendJson } from './backend'
+import 'server-only'
+import { personalRequest } from './personal-server'
 
 type SignalDirection = 'bullish' | 'neutral' | 'bearish'
 type ResearchRunStatus = 'started' | 'completed' | 'failed'
 
 type CreateAiResearchRunInput = {
-  userId: string | null
   ticker: string
   promptLabel: string | null
   question: string | null
@@ -17,7 +17,7 @@ type CreateAiResearchRunInput = {
 }
 
 type FinalizeAiResearchRunInput = {
-  runId: number
+  runId: string
   status: 'completed' | 'failed'
   provider: string | null
   model: string | null
@@ -27,27 +27,22 @@ type FinalizeAiResearchRunInput = {
 }
 
 type RecordAiResearchFeedbackInput = {
-  runId: number | null
-  userId: string | null
-  ticker: string
+  runId: string
   category: string
   note: string | null
 }
 
 type GetRecentAiResearchRunsInput = {
-  userId: string | null
   ticker?: string | null
   limit?: number
 }
 
 type GetAiResearchRunByIdInput = {
-  userId: string | null
-  runId: number
+  runId: string
 }
 
 export type AiResearchRun = {
-  id: number
-  userId: string | null
+  id: string
   ticker: string
   promptLabel: string | null
   question: string | null
@@ -69,63 +64,28 @@ function normalizeTicker(ticker: string): string {
   return ticker.trim().toUpperCase()
 }
 
-export async function createAiResearchRun(input: CreateAiResearchRunInput): Promise<number | null> {
-  const payload = await fetchBackendJson<{ runId?: number | null }>('/site/ai-research/runs', {
-    context: 'backend.site.ai_research.create',
-    init: {
-      method: 'POST',
-      body: JSON.stringify(input),
-    },
-  })
-  return typeof payload?.runId === 'number' ? payload.runId : null
+export async function createAiResearchRun(input: CreateAiResearchRunInput): Promise<string> {
+  const payload = await (await personalRequest('/ai-research/runs', { method: 'POST', body: input })).json() as { runId: string }
+  return payload.runId
 }
 
-export async function finalizeAiResearchRun(input: FinalizeAiResearchRunInput): Promise<void> {
-  await fetchBackendJson(`/site/ai-research/runs/${input.runId}`, {
-    context: 'backend.site.ai_research.finalize',
-    allowEmptyBody: true,
-    init: {
-      method: 'PATCH',
-      body: JSON.stringify(input),
-    },
-  })
+export async function finalizeAiResearchRun({ runId, ...body }: FinalizeAiResearchRunInput): Promise<void> {
+  await personalRequest(`/ai-research/runs/${runId}`, { method: 'PATCH', body })
 }
 
-export async function recordAiResearchFeedback(
-  input: RecordAiResearchFeedbackInput
-): Promise<{ ok: boolean; error?: string }> {
-  const payload = await fetchBackendJson<{ ok?: boolean; error?: string }>('/site/ai-research/feedback', {
-    context: 'backend.site.ai_research.feedback',
-    init: {
-      method: 'POST',
-      body: JSON.stringify(input),
-    },
-  })
-  if (!payload?.ok) return { ok: false, error: payload?.error || 'Failed to record feedback.' }
-  return { ok: true }
+export async function recordAiResearchFeedback(input: RecordAiResearchFeedbackInput): Promise<{ ok: boolean }> {
+  return (await personalRequest('/ai-research/feedback', { method: 'POST', body: input })).json()
 }
 
-export async function getRecentAiResearchRuns(
-  input: GetRecentAiResearchRunsInput
-): Promise<AiResearchRun[]> {
-  if (!input.userId) return []
+export async function getRecentAiResearchRuns(input: GetRecentAiResearchRunsInput = {}): Promise<AiResearchRun[]> {
   const params = new URLSearchParams()
-  params.set('user_id', input.userId)
   if (input.ticker) params.set('ticker', normalizeTicker(input.ticker))
   params.set('limit', String(Math.max(1, Math.min(input.limit ?? 5, 20))))
-  const payload = await fetchBackendJson<{ runs?: AiResearchRun[] }>(`/site/ai-research/runs?${params.toString()}`, {
-    context: 'backend.site.ai_research.recent_runs',
-  })
-  return Array.isArray(payload?.runs) ? payload!.runs : []
+  const payload = await (await personalRequest(`/ai-research/runs?${params}`)).json() as { runs: AiResearchRun[] }
+  return payload.runs
 }
 
-export async function getAiResearchRunById(
-  input: GetAiResearchRunByIdInput
-): Promise<AiResearchRun | null> {
-  if (!input.userId) return null
-  const payload = await fetchBackendJson<{ run?: AiResearchRun | null }>(
-    `/site/ai-research/runs/${input.runId}?user_id=${encodeURIComponent(input.userId)}`,
-    { context: 'backend.site.ai_research.run_detail' }
-  )
-  return payload?.run ?? null
+export async function getAiResearchRunById({ runId }: GetAiResearchRunByIdInput): Promise<AiResearchRun> {
+  const payload = await (await personalRequest(`/ai-research/runs/${runId}`)).json() as { run: AiResearchRun }
+  return payload.run
 }

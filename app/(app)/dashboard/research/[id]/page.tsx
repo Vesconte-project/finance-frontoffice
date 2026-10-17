@@ -8,6 +8,7 @@ import { buttonClass } from '@/components/ui/Button'
 import RetryButton from '@/components/ui/RetryButton'
 import { getViewerUserId } from '@/lib/auth'
 import { getAiResearchRunById } from '@/lib/ai-research'
+import { PlatformError } from '@/lib/platform-client'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,10 +30,8 @@ function statusTone(status: 'started' | 'completed' | 'failed'): 'success' | 'da
   return 'neutral'
 }
 
-function asRunId(value: string): number | null {
-  const parsed = Number(value)
-  if (!Number.isFinite(parsed) || parsed <= 0) return null
-  return Math.round(parsed)
+function asRunId(value: string): string | null {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value) ? value : null
 }
 
 function buildRerunHref(ticker: string, question: string | null, promptLabel: string | null): string {
@@ -56,8 +55,9 @@ export default async function AiResearchRunDetailPage({
 
   let run
   try {
-    run = await getAiResearchRunById({ userId, runId })
-  } catch {
+    run = await getAiResearchRunById({ runId })
+  } catch (error) {
+    if (error instanceof PlatformError && error.status === 404) notFound()
     return (
       <EmptyState
         title="AI research run is temporarily unavailable"

@@ -504,3 +504,23 @@ Clerk account operations. This is local validation, not an ENG-19 Watchlist CI r
 Clerk keys and session state must never be uploaded as CI artifacts. Traces/videos
 are disabled in the authenticated local profile. Docker remains up after QA, and
 `npm run dev:local:down` stops it while preserving synthetic jobs.
+
+## Recursos pessoais autenticados
+
+Watchlist, runs/feedback AI e analytics autenticados usam exclusivamente `/v1`,
+com session JWT e a conta ativa resolvida por `/v1/me`. O owner nunca é enviado.
+As rotas antigas não são fallback. Com a plataforma desligada, a watchlist e o
+histórico mostram indisponibilidade; a estrela não assume uma watchlist vazia se
+a leitura falhar. Não há geração AI antes de uma admissão aceite pelo backend.
+O direito `research.ai` e a política de consumo existente não são alterados:
+sem política configurada, o backend recusa gerar mesmo com subscrição.
+
+A telemetria anónima continua nos logs próprios do frontoffice e não é enviada
+ao backend. Com sessão, o encaminhamento autenticado é best effort; uma falha não
+apaga o registo local nem atribui um owner anónimo. O middleware estabelece contexto
+opcional quando há uma credencial para verificar; o ingresso anónimo mantém-se
+independente do Clerk, mesmo com a integração configurada. Runs AI novos usam UUID; feedback exige um run concreto.
+
+Este corte não ativa /v1, aplica migrações ou configura tokens. Em produção com
+/v1 desligado deixam de funcionar guardar/remover watchlist, histórico/feedback e
+geração AI. O cron dedicado permanece inalterado e parado até à ativação aprovada.
