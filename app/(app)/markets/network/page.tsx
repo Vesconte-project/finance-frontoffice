@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   description: 'A weekly map of which companies move together beyond the market.',
 }
 
+// The atlas depends on the reader's session and on the newest built week: never prerendered.
+export const dynamic = 'force-dynamic'
+
 // Levels 0 and 1 make the whole-map view; deeper levels load by area as a signed-in reader zooms in.
 const FIRST_LEVEL = 1
 
