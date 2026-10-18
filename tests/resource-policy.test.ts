@@ -21,7 +21,7 @@ test('calendar and research tab links fetch only on navigation', () => {
 })
 
 test('market readers do not share session-dependent Next caches', () => {
-  for(const file of ['lib/calendar-events.ts','lib/canonical-research.ts','lib/relationships.ts'])
+  for(const file of ['lib/calendar-events.ts','lib/canonical-research.ts','lib/atlas.ts'])
     assert.doesNotMatch(source(file), /force-cache|unstable_cache/)
 })
 

@@ -37,7 +37,7 @@ export const config = {
     '/markets(.*)',
     '/api/stocks(.*)',
     '/api/tickers(.*)',
-    '/api/network(.*)',
+    '/api/atlas(.*)',
     '/api/calendar(.*)',
     '/api/market(.*)',
     '/dashboard(.*)',

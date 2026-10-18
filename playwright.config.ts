@@ -57,7 +57,7 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  // The fixture backend starts first: the Market Universe page fetches its atlas
+  // The fixture backend starts first: the market atlas page fetches its atlas
   // server-side, so the Next server must be able to reach it from the first
   // request. It serves repository-owned synthetic data only, and needs no
   // credentials and no external host.

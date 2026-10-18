@@ -119,7 +119,7 @@ export default async function CalendarLanding({ category, query }: { category: C
         {focus.kind === 'around' ? (
           <p className={styles.focusNote}>
             {focus.status === 'ok' ? (
-              <><strong>{focus.center}</strong>{names[focus.center] ? ` ${names[focus.center]}` : ''} and {Object.keys(relations).length} related {Object.keys(relations).length === 1 ? 'company' : 'companies'}: in the same investment theme, or with a share price that moves with it, before it or after it. </>
+              <><strong>{focus.center}</strong>{names[focus.center] ? ` ${names[focus.center]}` : ''} and {Object.keys(relations).length} related {Object.keys(relations).length === 1 ? 'company' : 'companies'}: the companies whose share price moves most with it once the whole market is taken out. </>
             ) : focus.status === 'signed-out' ? (
               <>Companies related to <strong>{focus.center}</strong> open with a free account. <Link prefetch={false} href={signUp(shown.view)} data-analytics-id="calendar_related_sign_up" data-analytics-event="auth_start" data-analytics-intent="sign_up">Create free account</Link> </>
             ) : (

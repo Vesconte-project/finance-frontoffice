@@ -27,11 +27,7 @@ import {
   STOCK_OHLC_CACHE_KEY,
   type OhlcLoadResult,
 } from '@/lib/ohlc-data'
-import {
-  getTickerRelationships,
-  rankTickerRelationshipCandidates,
-  type TickerRelationships,
-} from '@/lib/relationships'
+import { getAtlasCompany } from '@/lib/atlas'
 import {
   getTickerPageSummary,
   type SymbolCoverageRow,
@@ -77,24 +73,6 @@ function stockEntrySourceFromContext(
 
 function overviewFigure(value: number | null, asOf: string | null): { value: number; asOf: string | null } | null {
   return value === null ? null : { value, asOf }
-}
-
-function emptyRelationships(ticker: string, window: number): TickerRelationships {
-  return {
-    asOf: null,
-    ticker,
-    window,
-    node: null,
-    nodes: [],
-    marketCoMovers: [],
-    residualCoMovers: [],
-    leadLag: {
-      followers: [],
-      leaders: [],
-    },
-    probableSpurious: [],
-    themePeers: [],
-  }
 }
 
 function detectNavigationMode(requestHeaders: Headers): string {
@@ -331,31 +309,28 @@ export default async function TickerPage({
         ? 'empty'
         : 'error'
 
-  const relationship252Promise = runWithBackendRequestLogContext(requestLogContext, () =>
-    getTickerRelationships(ticker, { window: 252, topK: 50 }).catch((error) => {
-      const details = backendErrorDetails(error)
-      logStockPageEvent('error', 'relationship dataset unavailable', requestLogContext, {
-        endpoint: `/relationships/${ticker}?window=252`,
-        error: details.message,
-        aborted: details.aborted,
-        timeout: details.timeout,
-      })
-      return emptyRelationships(ticker, 252)
+  // Related companies are the company's strongest ties on the weekly atlas. Signed out,
+  // the atlas sends no ties at all, so the section invites the reader to an account.
+  const atlasCompany = await runWithBackendRequestLogContext(requestLogContext, () => getAtlasCompany(ticker))
+  if (atlasCompany.status === 'unavailable') {
+    logStockPageEvent('error', 'atlas company panel unavailable', requestLogContext, {
+      endpoint: `/v1/atlas/companies/${ticker}`,
+      error: 'unavailable',
+      aborted: false,
+      timeout: false,
     })
-  )
-
-  const relationships252 = await relationship252Promise
+  }
+  const relationshipsGate = atlasCompany.status === 'denied' && atlasCompany.reason === 'sign_in_required' ? 'signedOut' : null
   const relatedAssetsPromise = runWithBackendRequestLogContext(requestLogContext, () => {
-      const relationships = relationships252
-      const candidates = rankTickerRelationshipCandidates(relationships, ticker)
-      return Promise.all(candidates.map((item) => getStockQuote(item.symbol).catch(() => null).then((quote) => ({
+      const neighbours = atlasCompany.status === 'ok' ? atlasCompany.data.neighbours.slice(0, 6) : []
+      return Promise.all(neighbours.map((item) => getStockQuote(item.symbol).catch(() => null).then((quote) => ({
         symbol: item.symbol,
-        name: quote?.name ?? null,
+        name: item.name ?? quote?.name ?? null,
         price: quote?.price ?? null,
         changePercent: quote?.changePercent ?? null,
-        relation: item.relations.join(' · '),
-        strength: item.strength,
-        confidence: item.confidence,
+        relation: 'Moves with it',
+        strength: item.correlation,
+        confidence: null,
       }))))
     })
     .catch((error) => {
@@ -435,6 +410,7 @@ export default async function TickerPage({
           fiscalPeriod: tickerSummary.nextEarnings.fiscalPeriod,
         } : null}
         relatedAssets={relatedAssetsPromise}
+        relationshipsGate={relationshipsGate}
         chartEvents={chartEventsPromise}
         scorecard={scorecard}
         revenue={revenuePromise}

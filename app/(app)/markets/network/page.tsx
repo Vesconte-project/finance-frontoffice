@@ -1,76 +1,36 @@
-import Link from 'next/link'
-import { getViewerUserId } from '@/lib/auth'
 import type { Metadata } from 'next'
-import { Suspense } from 'react'
-import AtlasImmersiveMode from '@/components/AtlasImmersiveMode'
-import MarketUniverse from '@/components/MarketUniverse'
+import AtlasExplorer from '@/components/atlas/AtlasExplorer'
 import EmptyState from '@/components/ui/EmptyState'
 import RetryButton from '@/components/ui/RetryButton'
-import {
-  deriveFallbackAtlas,
-  getMarketNetwork,
-  getRelationshipAtlas,
-  type AtlasView,
-} from '@/lib/network'
+import { getAtlasOverview } from '@/lib/atlas'
 
 export const metadata: Metadata = {
-  title: 'Market Universe - Vesconte',
-  description: 'Move through the market as a progressive universe of observed relationships.',
+  title: 'Market Atlas - Vesconte',
+  description: 'A weekly map of which companies move together beyond the market.',
 }
 
-function singleSearchParam(value: string | string[] | undefined): string | null {
-  if (Array.isArray(value)) return value[0] ?? null
-  return typeof value === 'string' ? value : null
-}
+// Levels 0 and 1 make the whole-map view; deeper levels load by area as a signed-in reader zooms in.
+const FIRST_LEVEL = 1
 
-function atlasView(value: string | null): AtlasView {
-  return value === 'residual' || value === 'timing' || value === 'theme' ? value : 'market'
-}
+export default async function MarketAtlasPage() {
+  const result = await getAtlasOverview(FIRST_LEVEL)
 
-function evidenceWindow(value: string | null): 126 | 252 {
-  return value === '126' ? 126 : 252
-}
-
-export default async function MarketNetworkPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ window?: string | string[]; view?: string | string[] }>
-}) {
-  if (!(await getViewerUserId())) return <EmptyState title="Sign in to explore relationships"
-    description="The relationship map is available to signed-in users."
-    action={<Link href="/sign-in">Sign in</Link>} />
-  const resolved = await searchParams
-  const window = evidenceWindow(singleSearchParam(resolved.window))
-  const view = atlasView(singleSearchParam(resolved.view))
-
-  const materialized = await getRelationshipAtlas(window, view).catch(() => null)
-  let atlas = materialized
-  if (!atlas && view === 'market') {
-    const legacy = await getMarketNetwork({ window: String(window), minAbsCorrelation: 0.28, topK: 8 }).catch(() => null)
-    if (legacy) {
-      const fallback = deriveFallbackAtlas(legacy, 'market')
-      atlas = fallback.atlas
-    }
-  }
-
-  if (!atlas) {
-    return (
-      <div className="container-lg py-16">
-        <EmptyState
-          title={`${view === 'market' ? 'The market universe' : 'This relationship view'} is temporarily unavailable`}
-          description={view === 'market'
-            ? 'The latest relationship snapshot could not be loaded.'
-            : 'No materialized topology is available for this view and evidence window yet.'}
-          action={<RetryButton>Retry</RetryButton>}
-        />
-      </div>
-    )
-  }
+  if (result.status === 'ok') return <AtlasExplorer initial={result.data} />
 
   return (
-    <Suspense fallback={<div className="min-h-[70svh]" aria-hidden="true" />}>
-      <AtlasImmersiveMode />
-      <MarketUniverse initialAtlas={atlas} />
-    </Suspense>
+    <div className="container-lg py-16">
+      {result.status === 'not_found' ? (
+        <EmptyState
+          title="The first weekly atlas is being built"
+          description="The map appears here once its first week has been computed."
+        />
+      ) : (
+        <EmptyState
+          title="The market atlas is temporarily unavailable"
+          description="The latest weekly map could not be loaded."
+          action={<RetryButton>Retry</RetryButton>}
+        />
+      )}
+    </div>
   )
 }

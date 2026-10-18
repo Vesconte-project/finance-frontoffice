@@ -1,218 +1,172 @@
 /**
- * Synthetic market atlas used ONLY by the Playwright backend stub.
+ * Synthetic weekly atlas used ONLY by the Playwright backend stub.
  *
  * This is not production data and must never be imported by application code.
  * Every symbol carries the FX prefix and every name says "Fixture" so that a
  * screenshot or a stray log line is instantly recognisable as test-only.
  *
- * The shape follows lib/network-atlas.ts: RelationshipAtlas for /network/atlas,
- * RelationshipAtlasDetail for /network/communities/{id} and
- * /network/neighborhoods/{ticker}. Values are fixed rather than random so the
- * browser suite is deterministic run to run.
+ * The shapes follow the backend's /v1/atlas* routes (read by lib/atlas-model.ts)
+ * in their two live forms: signed out (rule 7: circles, schematic positions,
+ * size steps, tie counts, at most four leaders) and free (the real map of the
+ * newest week). Values are fixed rather than random so the browser suite is
+ * deterministic run to run.
  */
 
-const AS_OF = '2026-01-02'
+const AS_OF = '2026-10-16'
+const SIGNED_OUT = { tier: 'signedOut', maxLevel: 1, historyWeeks: 0, lines: false, bundleTies: false, truePositions: false, movement: false }
+const FREE = { tier: 'free', maxLevel: 3, historyWeeks: 0, lines: true, bundleTies: true, truePositions: true, movement: false }
 
-const FIELDS = [
-  {
-    id: 'fx-field-alpha',
-    label: 'Fixture Alpha',
-    dominantSector: 'Fixture Industrials',
-    dominantCountry: 'Testland',
-    dominantRegion: 'Test Region',
-    position: { x: -0.62, y: 0.18, z: 0 },
-    themes: ['fixture', 'alpha'],
-  },
-  {
-    id: 'fx-field-beta',
-    label: 'Fixture Beta',
-    dominantSector: 'Fixture Technology',
-    dominantCountry: 'Testland',
-    dominantRegion: 'Test Region',
-    position: { x: 0.54, y: -0.22, z: 0 },
-    themes: ['fixture', 'beta'],
-  },
-  {
-    id: 'fx-field-gamma',
-    label: 'Fixture Gamma',
-    dominantSector: 'Fixture Materials',
-    dominantCountry: 'Testland',
-    dominantRegion: 'Test Region',
-    position: { x: 0.06, y: 0.66, z: 0 },
-    themes: ['fixture', 'gamma'],
-  },
+const ZONES = [
+  { zoneId: 'fx-zone-alpha', label: 'Fixture Alpha', x: -3, y: 1 },
+  { zoneId: 'fx-zone-beta', label: 'Fixture Beta', x: 3, y: 1.5 },
+  { zoneId: 'fx-zone-gamma', label: 'Fixture Gamma', x: 0, y: -2.5 },
 ]
 
-/** Six deterministic members per field, spread on a fixed ring. */
-function membersFor(fieldIndex) {
-  const field = FIELDS[fieldIndex]
-  const letter = 'ABC'[fieldIndex]
-  return Array.from({ length: 6 }, (_, i) => {
-    const angle = (i / 6) * Math.PI * 2
+/** Six members per zone on a fixed ring; the first is the largest, levels follow the feature-store cuts. */
+const MEMBERS = ZONES.flatMap((zone, zoneIndex) => Array.from({ length: 6 }, (_, i) => {
+  const angle = (i / 6) * Math.PI * 2
+  return {
+    symbol: `FX${'ABC'[zoneIndex]}${i + 1}`,
+    name: `Fixture ${zone.label.split(' ')[1]} Holding ${i + 1}`,
+    zoneId: zone.zoneId,
+    x: zone.x + Math.cos(angle) * 0.9,
+    y: zone.y + Math.sin(angle) * 0.9,
+    level: i === 0 ? 0 : i === 1 ? 1 : i < 4 ? 2 : 3,
+    importance: 0.9 - i * 0.12,
+    marketCap: 900_000_000_000 - i * 60_000_000_000,
+  }
+}))
+
+function ring(zone) {
+  return Array.from({ length: 12 }, (_, i) => {
+    const angle = (i / 12) * Math.PI * 2
+    return [Number((zone.x + Math.cos(angle) * 1.4).toFixed(3)), Number((zone.y + Math.sin(angle) * 1.2).toFixed(3))]
+  })
+}
+
+function inBox(member, bbox) {
+  if (!bbox) return true
+  const [x0, y0, x1, y1] = bbox
+  return member.x >= x0 && member.x <= x1 && member.y >= y0 && member.y <= y1
+}
+
+export function atlasOverviewFixture({ signedIn, level, bbox }) {
+  if (!signedIn) {
+    // The signed-out projection: levels 0-1 only, placed by zone and rank, circles and tie counts.
     return {
-      symbol: `FX${letter}${i + 1}`,
-      name: `Fixture ${field.label} Holding ${i + 1}`,
-      communityId: field.id,
-      position: {
-        x: field.position.x + Math.cos(angle) * 0.16,
-        y: field.position.y + Math.sin(angle) * 0.16,
-        z: 0,
+      asOf: AS_OF,
+      companyCount: MEMBERS.length,
+      zoneCount: ZONES.length,
+      access: SIGNED_OUT,
+      level,
+      zones: ZONES.map((zone) => ({
+        zoneId: zone.zoneId, label: zone.label, labelSource: 'industry', memberCount: 6, x: zone.x, y: zone.y,
+        contour: { type: 'circle', x: zone.x, y: zone.y, radius: 1.3 },
+      })),
+      nodes: MEMBERS.filter((member) => member.level <= Math.min(level, 1)).map((member, rank) => ({
+        symbol: member.symbol, name: member.name, zoneId: member.zoneId,
+        x: Number((member.x * 0.6 + ZONES.find((zone) => zone.zoneId === member.zoneId).x * 0.4).toFixed(3)),
+        y: Number((member.y * 0.6 + ZONES.find((zone) => zone.zoneId === member.zoneId).y * 0.4).toFixed(3)),
+        level: member.level, size: rank % 4,
+      })),
+      bundles: [
+        { zoneA: 'fx-zone-alpha', zoneB: 'fx-zone-beta', tieCount: 9 },
+        { zoneA: 'fx-zone-alpha', zoneB: 'fx-zone-gamma', tieCount: 4 },
+      ],
+    }
+  }
+  const nodes = MEMBERS.filter((member) => member.level <= level && inBox(member, bbox))
+  const shown = new Set(nodes.map((node) => node.symbol))
+  return {
+    asOf: AS_OF,
+    previousAsOf: '2026-10-09',
+    methodVersion: 'atlas-weekly/1',
+    window: 252,
+    companyCount: MEMBERS.length,
+    zoneCount: ZONES.length,
+    fidelity: 0.81,
+    access: FREE,
+    level,
+    bbox: bbox ?? null,
+    zones: ZONES.map((zone) => ({
+      zoneId: zone.zoneId, label: zone.label, labelSource: 'industry', memberCount: 6,
+      leaders: MEMBERS.filter((member) => member.zoneId === zone.zoneId).slice(0, 4).map((member) => member.symbol),
+      contour: { type: 'rings', coverage: 0.8, rings: [ring(zone)] },
+      labelSupport: 1, dominantSector: 'Fixture', totalMarketCap: null, cohesion: 0.4, fidelity: 0.8,
+    })),
+    nodes: nodes.map((member) => ({
+      symbol: member.symbol, name: member.name, zoneId: member.zoneId, x: member.x, y: member.y, level: member.level,
+      loner: false, importance: member.importance, marketCap: member.marketCap, well: 0.5,
+    })),
+    skeleton: ZONES.flatMap((zone) => {
+      const members = MEMBERS.filter((member) => member.zoneId === zone.zoneId && shown.has(member.symbol))
+      return members.slice(1).map((member) => ({ source: members[0].symbol, target: member.symbol, zoneId: zone.zoneId, correlation: 0.5 }))
+    }),
+    bundles: [
+      { zoneA: 'fx-zone-alpha', zoneB: 'fx-zone-beta', tieCount: 9, meanCorrelation: 0.31, structural: true, ties: [{ source: 'FXA1', target: 'FXB1', correlation: 0.4 }] },
+      { zoneA: 'fx-zone-alpha', zoneB: 'fx-zone-gamma', tieCount: 4, meanCorrelation: 0.27, structural: true, ties: [{ source: 'FXA2', target: 'FXC1', correlation: 0.3 }] },
+    ],
+  }
+}
+
+/** A company's panel: signed out only the visible companies (levels 0-1), the rest refused alike. */
+export function atlasCompanyFixture(symbol, signedIn) {
+  const member = MEMBERS.find((item) => item.symbol === symbol)
+  const zone = member && ZONES.find((item) => item.zoneId === member.zoneId)
+  if (!signedIn) {
+    if (!member || member.level > 1) return { status: 403, body: { detail: 'sign_in_required' } }
+    return {
+      status: 200,
+      body: {
+        asOf: AS_OF, access: SIGNED_OUT, symbol, name: member.name, sector: 'Fixture', industry: 'Fixture Industry', country: 'Testland',
+        zoneId: zone.zoneId, zoneLabel: zone.label,
+        zoneLeaders: MEMBERS.filter((item) => item.zoneId === zone.zoneId && item.level <= 1).slice(0, 4).map((item) => ({ symbol: item.symbol, name: item.name })),
       },
-      importance: 0.9 - i * 0.1,
-      centrality: 0.8 - i * 0.09,
-      bridgeScore: i === 0 ? 0.62 : 0.18 + i * 0.04,
-      volatility: 0.21 + i * 0.02,
-      sector: field.dominantSector,
-      industry: `${field.label} Fixture Industry`,
-      country: field.dominantCountry,
-      region: field.dominantRegion,
-      marketCap: 900_000_000_000 - i * 60_000_000_000,
-      context: false,
-      isPrimary: true,
-      memberships: [{ communityId: field.id, weight: 1 }],
     }
-  })
-}
-
-const ALL_MEMBERS = FIELDS.map((_, index) => membersFor(index))
-
-function communities() {
-  return FIELDS.map((field, index) => {
-    const members = ALL_MEMBERS[index]
-    return {
-      id: field.id,
-      label: field.label,
-      displayLabel: field.label,
-      displayName: `${field.label} field`,
-      description: `Synthetic ${field.label} field used by the browser fixture backend.`,
-      scopeLabel: field.dominantRegion,
-      memberCount: members.length,
-      averageConfidence: 0.72 - index * 0.05,
-      dominantSector: field.dominantSector,
-      dominantCountry: field.dominantCountry,
-      dominantRegion: field.dominantRegion,
-      marketCapTotal: members.reduce((total, node) => total + node.marketCap, 0),
-      bridgeCount: 2 + index,
-      position: field.position,
-      representativeSymbols: members.slice(0, 3).map((node) => node.symbol),
-      themes: field.themes,
-    }
-  })
-}
-
-/** One backbone edge per adjacent pair inside a field, plus cross-field bridges. */
-function backbone() {
-  const edges = []
-  ALL_MEMBERS.forEach((members, fieldIndex) => {
-    members.forEach((node, i) => {
-      const peer = members[(i + 1) % members.length]
-      edges.push({
-        source: node.symbol,
-        target: peer.symbol,
-        sourceCommunityId: FIELDS[fieldIndex].id,
-        targetCommunityId: FIELDS[fieldIndex].id,
-        correlation: 0.61 - i * 0.03,
-        absCorrelation: 0.61 - i * 0.03,
-        strength: 0.61 - i * 0.03,
-        confidence: 0.68,
-        tier: 1,
-      })
-    })
-  })
-  for (let i = 0; i < FIELDS.length; i += 1) {
-    const from = ALL_MEMBERS[i][0]
-    const to = ALL_MEMBERS[(i + 1) % FIELDS.length][0]
-    edges.push({
-      source: from.symbol,
-      target: to.symbol,
-      sourceCommunityId: from.communityId,
-      targetCommunityId: to.communityId,
-      correlation: 0.34,
-      absCorrelation: 0.34,
-      strength: 0.34,
-      confidence: 0.55,
-      tier: 2,
-    })
   }
-  return edges
-}
-
-function links() {
-  return FIELDS.map((field, index) => {
-    const next = FIELDS[(index + 1) % FIELDS.length]
-    return {
-      source: field.id,
-      target: next.id,
-      strength: 0.38 - index * 0.04,
-      confidence: 0.6,
-      edgeCount: 3 + index,
-    }
-  })
-}
-
-export function atlasFixture(window, view) {
+  if (!member) return { status: 404, body: { detail: `${symbol} is not on the atlas` } }
+  const others = MEMBERS.filter((item) => item.symbol !== symbol)
   return {
-    asOf: AS_OF,
-    window,
-    view,
-    materialized: true,
-    detail: { backboneTier: 2, nodeBudget: 64, backboneTruncated: false },
-    communities: communities(),
-    links: links(),
-    landmarks: ALL_MEMBERS.flat(),
-    backbone: backbone(),
+    status: 200,
+    body: {
+      asOf: AS_OF, access: FREE, symbol, name: member.name, sector: 'Fixture', industry: 'Fixture Industry', country: 'Testland',
+      zoneId: zone.zoneId, zoneLabel: zone.label, x: member.x, y: member.y, level: member.level, loner: false,
+      memberships: [{ zoneId: zone.zoneId, label: zone.label, share: 0.85 }, { zoneId: ZONES[(ZONES.indexOf(zone) + 1) % 3].zoneId, label: ZONES[(ZONES.indexOf(zone) + 1) % 3].label, share: 0.15 }],
+      neighbours: others.slice(0, 15).map((item, rank) => ({ symbol: item.symbol, name: item.name, zoneId: item.zoneId, correlation: Number((0.62 - rank * 0.03).toFixed(4)) })),
+      importance: member.importance, reach: 0.5, marketCap: member.marketCap, fidelity: 0.8,
+    },
   }
 }
 
-export function communityFixture(communityId, window, view) {
-  const index = FIELDS.findIndex((field) => field.id === communityId)
-  if (index === -1) return null
-  const members = ALL_MEMBERS[index]
-  const symbols = new Set(members.map((node) => node.symbol))
-  return {
-    asOf: AS_OF,
-    window,
-    view,
-    focus: communityId,
-    community: communities()[index],
-    nodes: members,
-    edges: backbone().filter((edge) => symbols.has(edge.source) && symbols.has(edge.target)),
+export function atlasZoneFixture(zoneId, signedIn) {
+  const zone = ZONES.find((item) => item.zoneId === zoneId)
+  if (!zone) return { status: 404, body: { detail: `Zone ${zoneId} is not on the atlas` } }
+  const members = MEMBERS.filter((item) => item.zoneId === zoneId)
+  const base = { asOf: AS_OF, zoneId, label: zone.label, labelSource: 'industry', memberCount: members.length }
+  if (!signedIn) {
+    return { status: 200, body: { ...base, access: SIGNED_OUT, leaders: members.filter((item) => item.level <= 1).slice(0, 4).map((item) => ({ symbol: item.symbol, name: item.name })) } }
   }
-}
-
-export function neighborhoodFixture(ticker, window, view) {
-  const symbol = String(ticker).toUpperCase()
-  const all = ALL_MEMBERS.flat()
-  const focus = all.find((node) => node.symbol === symbol)
-  if (!focus) return null
-  const edges = backbone().filter((edge) => edge.source === symbol || edge.target === symbol)
-  const peerSymbols = new Set(
-    edges.map((edge) => (edge.source === symbol ? edge.target : edge.source))
-  )
-  const peers = all
-    .filter((node) => peerSymbols.has(node.symbol))
-    .map((node) => ({ ...node, context: true }))
   return {
-    asOf: AS_OF,
-    window,
-    view,
-    focus: symbol,
-    community: communities()[FIELDS.findIndex((field) => field.id === focus.communityId)],
-    nodes: [focus, ...peers],
-    edges,
+    status: 200,
+    body: {
+      ...base, access: FREE,
+      leaders: members.slice(0, 4).map((item) => ({ symbol: item.symbol, name: item.name })),
+      members: members.map((item) => ({ symbol: item.symbol, name: item.name, level: item.level, importance: item.importance, marketCap: item.marketCap, share: 0.85 })),
+      bundles: [],
+    },
   }
 }
 
 /**
  * Ticker index for the header search that every page renders. Without it the
- * proxy answers 502 and the browser logs a resource error, which the Market
- * Universe specs assert against. Same synthetic symbols as the atlas.
+ * proxy answers 502 and the browser logs a resource error, which the atlas
+ * specs assert against. Same synthetic symbols as the atlas.
  */
 export function tickerIndexFixture() {
   return {
-    items: ALL_MEMBERS.flat().map((node) => ({
-      symbol: node.symbol,
-      name: node.name,
+    items: MEMBERS.map((member) => ({
+      symbol: member.symbol,
+      name: member.name,
       exchange: 'FIXTURE',
       hasSignals: true,
     })),
