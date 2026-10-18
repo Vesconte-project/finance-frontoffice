@@ -1,14 +1,12 @@
 import { notFound } from 'next/navigation'
 import { getViewerUserId } from '@/lib/auth'
-import { syntheticResearchEnabled } from '@/lib/synthetic-research-access'
-import SyntheticComparison from '@/components/research/SyntheticComparison'
 import NativeComparison from '@/components/research/NativeComparison'
 import { platformEnabled } from '@/lib/platform-server'
 import Link from 'next/link'
 import { buttonClass } from '@/components/ui/Button'
 export const dynamic = 'force-dynamic'
 export default async function SyntheticComparisonPage() {
-  if (!syntheticResearchEnabled()) notFound()
+  if (!platformEnabled()) notFound()
   if (!(await getViewerUserId()))
     return (
       <section className="py-8">
@@ -21,5 +19,5 @@ export default async function SyntheticComparisonPage() {
         </Link>
       </section>
     )
-  return platformEnabled() ? <NativeComparison /> : <SyntheticComparison />
+  return <NativeComparison />
 }

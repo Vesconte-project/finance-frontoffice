@@ -1,3 +1,4 @@
+import { getViewerUserId } from '@/lib/auth'
 import { NextRequest, NextResponse } from 'next/server'
 import {
   deriveFallbackAtlas,
@@ -30,6 +31,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ communityId: string }> },
 ) {
+  if (!(await getViewerUserId())) return NextResponse.json({error:'Authentication required'},
+    {status:401,headers:{'Cache-Control':'private, no-store'}})
+
   const { communityId: rawCommunityId } = await params
   const communityId = decodeURIComponent(rawCommunityId || '').trim()
   const requestedView = request.nextUrl.searchParams.get('view') as AtlasView | null
@@ -47,7 +51,7 @@ export async function GET(
   try {
     const detail = await getRelationshipAtlasCommunity(communityId, { window, view, limit, asOf })
     return NextResponse.json(detail, {
-      headers: { 'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=86400' },
+      headers: { 'Cache-Control': 'private, no-store' },
     })
   } catch {
     if (asOf) {
@@ -57,7 +61,7 @@ export async function GET(
     const detail = legacy ? deriveFallbackAtlas(legacy, view).details[communityId] : null
     if (!detail) return NextResponse.json({ error: 'This market community is temporarily unavailable.' }, { status: 502 })
     return NextResponse.json(detail, {
-      headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600' },
+      headers: { 'Cache-Control': 'private, no-store' },
     })
   }
 }

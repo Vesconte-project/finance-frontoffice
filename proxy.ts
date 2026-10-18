@@ -4,7 +4,6 @@ import { NextResponse, type NextRequest, type NextFetchEvent } from 'next/server
 const isProtectedRoute = createRouteMatcher([
   '/dashboard(.*)',
   '/api/watchlist(.*)',
-  '/api/export-signals(.*)',
 ])
 
 const sessionMiddleware = clerkMiddleware(async (auth, req) => {
@@ -32,19 +31,26 @@ export const config = {
   // decided by isProtectedRoute above, which deliberately excludes /stocks so
   // ticker pages stay public.
   matcher: [
+    // Market readers now forward an optional verified session through the BFF.
+    // These entries establish context; they do not require login on public pages.
+    '/',
+    '/markets(.*)',
+    '/api/stocks(.*)',
+    '/api/tickers(.*)',
+    '/api/network(.*)',
+    '/api/calendar(.*)',
+    '/api/market(.*)',
     '/dashboard(.*)',
     '/stocks(.*)',
     // The calendar reads the viewer to decide how much of it is open.
     '/calendar(.*)',
     // These account-aware paid lists call auth() but keep their locked view public.
-    '/picks/long-term',
-    '/picks/income',
-    '/picks/short-term',
+    '/picks(.*)',
+    '/sitemap.xml',
     '/api/watchlist(.*)',
     '/api/ai-analyst(.*)',
     '/api/analytics/event',
-    '/api/research/synthetic(.*)',
-    '/api/export-signals(.*)',
+    '/api/platform(.*)',
     // Telemetry stays public; only an authenticated session may forward to /v1.
   ],
 }

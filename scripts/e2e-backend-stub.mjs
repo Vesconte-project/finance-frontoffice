@@ -70,25 +70,25 @@ const server = createServer((request, response) => {
 
   // Every page renders the header search, which loads this once. Serving it
   // keeps the browser console clean without weakening any assertion.
-  if (path === '/tickers/index') {
+  if (path === '/v1/tickers/index') {
     send(response, 200, tickerIndexFixture())
     return
   }
 
   // The public calendar, for whatever range the page asks for.
-  if (path === '/site/calendar' && url.searchParams.get('startDate') && url.searchParams.get('endDate') && !url.searchParams.get('symbol')) {
+  if (path === '/v1/calendar' && url.searchParams.get('startDate') && url.searchParams.get('endDate') && !url.searchParams.get('symbol')) {
     send(response, 200, calendarFixture(url.searchParams.get('startDate'), url.searchParams.get('endDate'), url.searchParams.get('category') || 'all'))
     return
   }
 
   // The market network, for the calendar's sector filter.
-  if (path === '/network' && !url.searchParams.get('focus')) {
+  if (path === '/v1/network' && !url.searchParams.get('focus')) {
     send(response, 200, calendarNetworkFixture())
     return
   }
 
   // Atlas relationships for the calendar's "around" filter, synthetic symbols only.
-  const relationshipsRoute = path.match(/^\/relationships\/([^/]+)$/)
+  const relationshipsRoute = path.match(/^\/v1\/relationships\/([^/]+)$/)
   if (relationshipsRoute) {
     const payload = calendarRelationshipsFixture(decodeURIComponent(relationshipsRoute[1]).toUpperCase())
     if (payload) {
@@ -100,7 +100,7 @@ const server = createServer((request, response) => {
   // Homepage reads all three rankings server-side. A successful empty fixture
   // keeps the smoke test focused on layout and unexpected console errors;
   // Picks data and entitlement behavior are tested separately.
-  if (path === '/screener/rankings' && ['longTerm', 'income', 'shortTerm'].includes(url.searchParams.get('reading'))) {
+  if (path === '/v1/screener/rankings' && ['longTerm', 'income', 'shortTerm'].includes(url.searchParams.get('reading'))) {
     send(response, 200, {
       asOf: null,
       reading: url.searchParams.get('reading'),
@@ -111,7 +111,7 @@ const server = createServer((request, response) => {
   }
 
   // A company's standing in each ranking; free on the ticker page.
-  const readingsMatch = path.match(/^\/tickers\/([^/]+)\/readings$/)
+  const readingsMatch = path.match(/^\/v1\/tickers\/([^/]+)\/readings$/)
   if (readingsMatch) {
     send(response, 200, {
       ticker: decodeURIComponent(readingsMatch[1]).toUpperCase(),
@@ -125,12 +125,12 @@ const server = createServer((request, response) => {
     return
   }
 
-  if (path === '/network/atlas') {
+  if (path === '/v1/network/atlas') {
     send(response, 200, atlasFixture(window, view))
     return
   }
 
-  const community = path.match(/^\/network\/communities\/([^/]+)$/)
+  const community = path.match(/^\/v1\/network\/communities\/([^/]+)$/)
   if (community) {
     const payload = communityFixture(decodeURIComponent(community[1]), window, view)
     if (!payload) {
@@ -143,43 +143,43 @@ const server = createServer((request, response) => {
 
   // Synthetic ticker pages (QAS, QAM, QAL) for hero layout checks. Real symbols
   // stay unavailable, as before.
-  const eventsRoute = path.match(/^\/tickers\/([^/]+)\/events$/)
+  const eventsRoute = path.match(/^\/v1\/tickers\/([^/]+)\/events$/)
   if (eventsRoute && isFixtureTicker(decodeURIComponent(eventsRoute[1]))) {
     send(response, 200, tickerEventsFixture(decodeURIComponent(eventsRoute[1])))
     return
   }
 
-  const statementsRoute = path.match(/^\/tickers\/([^/]+)\/financial-statements$/)
+  const statementsRoute = path.match(/^\/v1\/tickers\/([^/]+)\/financial-statements$/)
   if (statementsRoute && isFixtureTicker(decodeURIComponent(statementsRoute[1]))) {
     send(response, 200, tickerFinancialStatementsFixture(decodeURIComponent(statementsRoute[1]), url.searchParams.get('statementType')))
     return
   }
 
-  const metricsRoute = path.match(/^\/tickers\/([^/]+)\/market-metrics$/)
+  const metricsRoute = path.match(/^\/v1\/tickers\/([^/]+)\/market-metrics$/)
   if (metricsRoute && isFixtureTicker(decodeURIComponent(metricsRoute[1]))) {
     send(response, 200, tickerMarketMetricsFixture(decodeURIComponent(metricsRoute[1]), url.searchParams.get('metric')))
     return
   }
 
-  const capitalRoute = path.match(/^\/tickers\/([^/]+)\/equity-capital-events$/)
+  const capitalRoute = path.match(/^\/v1\/tickers\/([^/]+)\/equity-capital-events$/)
   if (capitalRoute && isFixtureTicker(decodeURIComponent(capitalRoute[1]))) {
     send(response, 200, tickerEquityCapitalEventsFixture(decodeURIComponent(capitalRoute[1])))
     return
   }
 
-  const disclosuresRoute = path.match(/^\/tickers\/([^/]+)\/disclosures$/)
+  const disclosuresRoute = path.match(/^\/v1\/tickers\/([^/]+)\/disclosures$/)
   if (disclosuresRoute && isFixtureTicker(decodeURIComponent(disclosuresRoute[1]))) {
     send(response, 200, tickerDisclosuresFixture(decodeURIComponent(disclosuresRoute[1])))
     return
   }
 
-  const actionsRoute = path.match(/^\/tickers\/([^/]+)\/corporate-actions$/)
+  const actionsRoute = path.match(/^\/v1\/tickers\/([^/]+)\/corporate-actions$/)
   if (actionsRoute && isFixtureTicker(decodeURIComponent(actionsRoute[1]))) {
     send(response, 200, tickerCorporateActionsFixture(decodeURIComponent(actionsRoute[1])))
     return
   }
 
-  const tickerRoute = path.match(/^\/tickers\/([^/]+)\/(summary|ohlc|history)$/)
+  const tickerRoute = path.match(/^\/v1\/tickers\/([^/]+)\/(summary|ohlc|history)$/)
   if (tickerRoute && isFixtureTicker(decodeURIComponent(tickerRoute[1]))) {
     const ticker = decodeURIComponent(tickerRoute[1])
     const periodDays = url.searchParams.get('period_days')
@@ -189,7 +189,7 @@ const server = createServer((request, response) => {
     return
   }
 
-  const neighborhood = path.match(/^\/network\/neighborhoods\/([^/]+)$/)
+  const neighborhood = path.match(/^\/v1\/network\/neighborhoods\/([^/]+)$/)
   if (neighborhood) {
     const payload = neighborhoodFixture(decodeURIComponent(neighborhood[1]), window, view)
     if (!payload) {

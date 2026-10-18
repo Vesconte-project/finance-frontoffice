@@ -71,10 +71,11 @@ test('coverage without prices can represent true empty OHLC data', () => {
   assert.deepEqual(result.rows, [])
 })
 
-test('stock OHLC cache key is versioned past stale empty v1 entries', () => {
+test('stock OHLC uses request-local memoization rather than a shared viewer cache', () => {
   const source = readRepoFile('lib/finance.ts')
 
   assert.equal(STOCK_OHLC_CACHE_KEY, 'stock-ohlc-cache-v2')
-  assert.match(source, /STOCK_OHLC_CACHE_KEY/)
+  assert.match(source, /cache } from .react./)
+  assert.doesNotMatch(source, /unstable_cache/)
   assert.doesNotMatch(source, /stock-ohlc-cache-v1/)
 })

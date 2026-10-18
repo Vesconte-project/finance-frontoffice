@@ -595,7 +595,20 @@ export default function HeroConstellation() {
       const controller = new AbortController()
       focusAbort = controller
       void fetch('/api/network/atlas/neighborhoods/' + encodeURIComponent(ticker), { signal: controller.signal })
-        .then(async (response) => response.ok ? response.json() as Promise<{ focus?: unknown; edges?: Array<{ source?: unknown; target?: unknown; strength?: unknown }> }> : null)
+        .then(async (response) => {
+          if (response.status === 401 || response.status === 403) {
+            if (generation === focusGeneration) {
+              const container=$('hc-fcC')
+              container.replaceChildren()
+              const link=document.createElement('a')
+              link.href='/sign-in'
+              link.textContent='Sign in to explore relationships'
+              container.append(link)
+            }
+            return null
+          }
+          return response.ok ? response.json() as Promise<{ focus?: unknown; edges?: Array<{ source?: unknown; target?: unknown; strength?: unknown }> }> : null
+        })
         .then((payload) => {
           if (!payload || controller.signal.aborted) return
           const connections = readConnections(ticker, payload)

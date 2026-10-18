@@ -1,4 +1,4 @@
-import { unstable_cache } from 'next/cache'
+import { cache } from 'react'
 import { BackendDataError, fetchBackendJson } from './backend'
 
 export type MarketQuoteSnapshot = {
@@ -140,18 +140,14 @@ async function fetchTickerPageSummaryFromBackend(tickerRaw: string): Promise<Tic
   if (!ticker) return null
 
   const payload = await fetchBackendJson<TickerPageSummary | null>(
-    `/tickers/${encodeURIComponent(ticker)}/summary`,
+    `/v1/tickers/${encodeURIComponent(ticker)}/summary`,
     { context: 'backend.tickers.summary' }
   )
   return payload && typeof payload === 'object' ? payload : null
 }
 
-export const getCachedTickerSummary = unstable_cache(
-  async (ticker: string): Promise<TickerPageSummary | null> =>
-    fetchTickerPageSummaryFromBackend(ticker),
-  ['ticker-page-summary-v2'],
-  { revalidate: 120 }
-)
+export const getCachedTickerSummary = cache(async (ticker: string): Promise<TickerPageSummary | null> =>
+    fetchTickerPageSummaryFromBackend(ticker))
 
 export async function getTickerCoverage(tickerRaw: string): Promise<SymbolCoverageRow | null> {
   const summary = await fetchTickerPageSummaryFromBackend(tickerRaw)

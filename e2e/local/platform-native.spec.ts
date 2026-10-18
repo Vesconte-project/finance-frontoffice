@@ -48,7 +48,7 @@ test('real Clerk sessions require an expiring explicit administrative grant and 
   ], { timeout: 60_000 })
   const role = `qa-contract-reader-${run}`
   await admin('role', '--role', role, '--permission', 'backoffice.access',
-    '--permission', 'GET /admin/contracts', '--reason', 'Temporary local real-Clerk administrative proof')
+    '--permission', 'GET /v1/admin/contracts', '--reason', 'Temporary local real-Clerk administrative proof')
   const inputPath = process.env.FINANCE_PLATFORM_INPUTS || resolve(repos, 'finance-infra/platform-local/.state/dev-input.json')
   const issuer = JSON.parse(readFileSync(inputPath, 'utf8')).CLERK_JWT_ISSUER as string
   const granted = await admin('grant', '--role', role, '--issuer', issuer,
@@ -58,11 +58,11 @@ test('real Clerk sessions require an expiring explicit administrative grant and 
   expect(grant).toBeTruthy()
   try {
     expect((await request(page, '/admin/me')).status).toBe(200)
-    expect((await request(page, '/admin/admin/contracts')).status).toBe(200)
-    expect((await request(page, '/admin/admin/data-control/calendar')).status).toBe(403)
+    expect((await request(page, '/admin/contracts')).status).toBe(200)
+    expect((await request(page, '/admin/data-control/calendar')).status).toBe(403)
     if (backoffice) {
       await backoffice.goto('http://localhost:3101/')
-      await expect(backoffice.getByRole('heading', { name: 'Next actions' })).toBeVisible()
+      await expect(backoffice.getByRole('heading', { name: 'Operations' })).toBeVisible()
       await backoffice.goto('http://localhost:3101/contracts')
       await expect(backoffice.getByRole('heading', { name: 'Live Backend Operations', exact: true })).toBeVisible()
       await expect(backoffice.getByText(/^Contract .+ \| API /)).toBeVisible()
@@ -110,10 +110,11 @@ test('real Clerk identities receive internal accounts; Free and cross-account re
   expect(account.role).toBe('owner')
   const access = await request(page, `/accounts/${account.id}/access`)
   expect(access.status).toBe(200)
-  for (const feature of ['signals.export', 'rankings.read', 'research.ai']) expect(access.body.features[feature].allowed).toBe(false)
-  expect((await request(page, '/signals/export', { account_id: account.id, ticker: 'ACME' })).status).toBe(403)
+  for (const feature of ['rankings.read', 'research.ai']) expect(access.body.features[feature].allowed).toBe(false)
+  expect(Object.hasOwn(access.body.features,'signals.export')).toBe(false)
+  expect((await request(page, '/signals/export', { account_id: account.id, ticker: 'ACME' })).status).toBe(404)
   expect((await request(page, `/rankings?account_id=${account.id}&reading=growth`)).status).toBe(403)
-  expect((await page.request.get('/api/export-signals?ticker=ACME')).status()).toBe(403)
+  expect((await page.request.get('/api/export-signals?ticker=ACME')).status()).toBe(404)
   await page.goto('/picks/long-term')
   await expect(page.getByRole('heading', { name: 'This ranking requires Pro access' })).toBeVisible()
   expect((await request(page, '/research/jobs', { account_id: account.id, comparison: {

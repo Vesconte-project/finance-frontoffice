@@ -55,3 +55,15 @@ The HTTP owner is not automatically the semantic owner. Record the owned gap and
 - Do not add autocomplete enrichment, scorecard, or per-symbol fetches.
 - Add or update tests when changing ticker autocomplete or data-source behavior.
 - Verify backend contracts and classify the ownership layer before recording a gap or proposing HTTP exposure.
+
+
+## Onboarding de tickers reservado à administração
+
+Os proxies públicos POST /api/tickers/request e GET /api/tickers/status e o helper
+associado foram apagados. Não existe pedido automático de onboarding no site nem
+fallback para o segredo partilhado. A mutação fica apenas no backend administrativo,
+com sessão JWT e RBAC explícito. Um pedido autenticado do utilizador depende de um
+contrato de produto futuro; este corte não cria direitos comerciais ou quotas.
+A pesquisa continua a usar só o índice local. Produção: estes dois caminhos ficam
+404, independentemente da ativação de /v1. Nenhuma credencial ou configuração de
+produção é alterada.

@@ -90,26 +90,15 @@ export type CalendarWindow = {
   start: string
   end: string
   thisWeek: string
-  /**
-   * True when the viewer asked for more than the open window. Nothing is fetched for a
-   * locked window: the open window is the current week, read in the week view.
-   */
-  locked: boolean
+
 }
 
-/**
- * The single rule for how much of the calendar a viewer receives.
- *
- * Anyone can read the current week. Other weeks and the month view need a signed-in
- * account (founder decision, 2026-10-08). The rule decides the date range before the
- * backend is asked, so a signed-out page never carries events outside this week.
- */
-export function resolveCalendarWindow({ view, week, month, day, signedIn, today }: {
+/** Public week/month windows; the backend enforces the shared configured horizon. */
+export function resolveCalendarWindow({ view, week, month, day, today }: {
   view?: string | null
   week?: string | null
   month?: string | null
   day?: string | null
-  signedIn: boolean
   today: string
 }): CalendarWindow {
   const thisWeek = weekStart(today)
@@ -119,7 +108,7 @@ export function resolveCalendarWindow({ view, week, month, day, signedIn, today 
   if (resolvedView === 'month') {
     const shownMonth = calendarMonth(month, new Date(`${today}T12:00:00Z`))
     const bounds = monthBounds(shownMonth)
-    return { view: 'month', week: shownWeek, month: shownMonth, ...bounds, thisWeek, locked: !signedIn }
+    return { view: 'month', week: shownWeek, month: shownMonth, ...bounds, thisWeek }
   }
   return {
     view: 'week',
@@ -128,7 +117,6 @@ export function resolveCalendarWindow({ view, week, month, day, signedIn, today 
     start: shownWeek,
     end: shiftDay(shownWeek, 6),
     thisWeek,
-    locked: !signedIn && shownWeek !== thisWeek,
   }
 }
 

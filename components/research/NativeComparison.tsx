@@ -27,7 +27,7 @@ function jobs(value: unknown): Job[] {
 export default function NativeComparison() {
   const { getToken, userId, orgId, isLoaded } = useAuth()
   const identity = `${userId || ''}:${orgId || ''}`
-  const request = useMemo(() => createPlatformClient({ baseUrl: process.env.NEXT_PUBLIC_PLATFORM_API_BASE_URL || '', getToken }), [getToken])
+  const request = useMemo(() => createPlatformClient({ baseUrl: 'same-origin', getToken }), [getToken])
   const [state, setState] = useState<State | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)

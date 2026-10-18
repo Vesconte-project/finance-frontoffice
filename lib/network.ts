@@ -195,7 +195,7 @@ export function normalizeNetworkGraph(graph: BackendNetworkGraph, focus: string 
 }
 
 export function marketNetworkPath(options: MarketNetworkOptions = {}): string {
-  return appendNetworkParams('/network', {
+  return appendNetworkParams('/v1/network', {
     window: options.window,
     minAbsCorrelation: options.minAbsCorrelation,
     topK: options.topK,
@@ -217,7 +217,7 @@ function atlasParams(window: number, view: AtlasView): string {
 }
 
 export function marketAtlasPath(window = 252, view: AtlasView = 'market'): string {
-  return `/network/atlas?${atlasParams(window, view)}`
+  return `/v1/network/atlas?${atlasParams(window, view)}`
 }
 
 export function marketAtlasCommunityPath(
@@ -231,7 +231,7 @@ export function marketAtlasCommunityPath(
 ): string {
   const params = new URLSearchParams({ window: String(window), view, limit: String(limit) })
   if (asOf) params.set('asOf', asOf)
-  return `/network/communities/${encodeURIComponent(communityId)}?${params.toString()}`
+  return `/v1/network/communities/${encodeURIComponent(communityId)}?${params.toString()}`
 }
 
 export function marketAtlasNeighborhoodPath(
@@ -245,7 +245,7 @@ export function marketAtlasNeighborhoodPath(
 ): string {
   const params = new URLSearchParams({ window: String(window), view, limit: String(limit) })
   if (asOf) params.set('asOf', asOf)
-  return `/network/neighborhoods/${encodeURIComponent(ticker.trim().toUpperCase())}?${params.toString()}`
+  return `/v1/network/neighborhoods/${encodeURIComponent(ticker.trim().toUpperCase())}?${params.toString()}`
 }
 
 export async function getRelationshipAtlas(window = 252, view: AtlasView = 'market'): Promise<RelationshipAtlas> {

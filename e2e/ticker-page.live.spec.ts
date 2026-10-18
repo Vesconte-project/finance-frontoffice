@@ -163,27 +163,20 @@ test.describe('live ticker architecture', () => {
     await expect(page.getByText('0005.HK', { exact: true }).first()).toBeVisible()
     await expect(page.locator('[data-selected-ticker-node]')).toHaveAttribute('data-tone', 'brand')
     const researchSnapshot = page.locator('dl[aria-label="Current research snapshot"]')
-    await expect(researchSnapshot.getByText('Model signal', { exact: true })).toBeVisible()
-    await expect(researchSnapshot.getByText('Unavailable', { exact: true })).toBeVisible()
+    await expect(researchSnapshot.getByText('Model signal', { exact: true })).toHaveCount(0)
     await expectNoHorizontalOverflow(page)
     await capture(page, testInfo, '0005-partial-equity-desktop')
   })
 
-  test('Relationships keeps the universe and its inspector across viewports', async ({ page }, testInfo) => {
-    await page.setViewportSize({ width: 1440, height: 900 })
-    await page.goto('/stocks/AAPL/relationships')
-    await expect(page.locator('[data-relationship-evidence] canvas')).toBeVisible()
-    await expectNoHorizontalOverflow(page)
-    await capture(page, testInfo, 'aapl-relationships-desktop')
-
-    await page.setViewportSize({ width: 390, height: 844 })
-    await page.reload()
-    await expect(page.locator('[data-relationship-evidence] canvas')).toBeVisible()
-    await expect(page.locator('[data-relationship-node]').first()).toBeVisible()
-    await expect(page.locator('[data-ticker-universe]')).toBeVisible()
-    await expect(page.locator('[data-company-name]')).toBeVisible()
-    await expectNoHorizontalOverflow(page)
-    await capture(page, testInfo, 'aapl-relationships-mobile')
+  test('Relationships requires a session across viewports', async ({ page }, testInfo) => {
+    for (const width of [1440,390]) {
+      await page.setViewportSize({width,height:900})
+      await page.goto('/stocks/AAPL/relationships')
+      await expect(page.getByRole('link',{name:/sign in/i}).first()).toBeVisible()
+      await expect(page.locator('[data-relationship-evidence] canvas')).toHaveCount(0)
+      await expectNoHorizontalOverflow(page)
+      await capture(page,testInfo,`relationships-login-${width}`)
+    }
   })
 
   test('legacy ticker routes redirect to their stable research destinations', async ({ page }) => {
