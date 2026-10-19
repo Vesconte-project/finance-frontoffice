@@ -942,3 +942,371 @@
     transition: none;
   }
 }
+
+/* Panels and Browse (pro-spec §9): chips, notes, share bars, metrics, the relevant grid */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.3rem 0 0.2rem;
+}
+
+.chips span {
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--line) 50%, transparent);
+  color: var(--text);
+  font-size: 0.74rem;
+}
+
+.note {
+  margin: 0.5rem 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.note b {
+  color: var(--text);
+}
+
+.shares {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 0.9rem;
+}
+
+.share {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+button.share {
+  cursor: pointer;
+}
+
+button.share:hover .shareHead span {
+  color: var(--accent);
+}
+
+.shareHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+}
+
+.shareHead small {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.bar {
+  display: block;
+  overflow: hidden;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--line) 55%, transparent);
+}
+
+.bar b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin: 0.6rem 0 0.4rem;
+}
+
+.metricBox {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+  border-radius: 6px;
+}
+
+.metricBox span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.metricBox strong {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.98rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+  margin-bottom: 0.6rem;
+}
+
+.grid button {
+  display: grid;
+  gap: 0.05rem;
+  min-width: 0;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.grid button:hover {
+  border-color: var(--accent);
+}
+
+.grid b {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.78rem;
+}
+
+.grid small {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grid em {
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-style: normal;
+}
+
+.dots {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.dots b {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--line);
+}
+
+.dots b.on {
+  background: var(--text);
+}
+
+.browseTools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.browseTools input {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.1rem;
+  box-sizing: border-box;
+  padding: 0 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.sort select {
+  max-width: 9.5rem;
+  min-height: 2.1rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.76rem;
+}
+
+.browseKey {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0 0 0.4rem 0.2rem;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.regionList,
+.linkList,
+.regionLeaders {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.regionList {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.regionRow {
+  display: grid;
+  grid-template-columns: 0.7rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.15rem 0.6rem;
+  width: 100%;
+  padding: 0.5rem 0.6rem 0.2rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.regionList li:hover .regionRow,
+.regionRow[aria-pressed='true'],
+.linkRow:hover {
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+}
+
+.regionRow i,
+.linkName i {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 3px;
+}
+
+.regionName {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.regionCount {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.regionMeta {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 2 / -1;
+  align-items: center;
+  gap: 0.25rem 0.7rem;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+}
+
+.regionLeaders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.55rem;
+  padding: 0 0.6rem 0.35rem 1.9rem;
+}
+
+.regionLeaders button {
+  min-height: 1.8rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.regionLeaders button:hover {
+  color: var(--accent);
+}
+
+.linkList {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.linkRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.25rem 0.6rem;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.linkPair {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.linkName {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.linkCount {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.linkRow .bar {
+  grid-column: 1 / -1;
+}
+
+.visuallyHidden {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.regionRow:focus-visible,
+.regionLeaders button:focus-visible,
+.linkRow:focus-visible,
+.browseTools input:focus-visible,
+.sort select:focus-visible,
+button.share:focus-visible,
+.grid button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

@@ -67,6 +67,9 @@ test('the list path opens a region and a company by keyboard, with the signed-ou
   await expect(panel.getByText('Largest companies in this region')).toBeVisible()
   // No ties signed out: the panel never lists what a company moves with.
   await expect(panel.getByText('Moves most with')).toHaveCount(0)
+  // Signed out the links show only how many ties, never their strength.
+  await list.getByRole('tab', { name: 'Links' }).click()
+  await expect(list.getByRole('button', { name: /Fixture Alpha and Fixture Beta: 9 ties$/ })).toBeVisible()
   await page.getByRole('application', { name: /Relationship atlas/ }).focus()
   // Escape closes the list first, then the details.
   await page.keyboard.press('Escape')

@@ -89,6 +89,7 @@ import {
   type AtlasMovement,
   type AtlasTheme,
 } from '@/lib/atlas-pro-model'
+import { cohesionDots, nameSourceLine, regionChanges } from '@/lib/atlas-panels'
 import { drawAtlas, edgeKey, parseColor, type FlowLine, type InfluenceLine, type Overlay, type Palette, type PathLine } from './atlas-canvas'
 import { SIGN_UP_HREF, formatDate } from './atlas-format'
 import AtlasBrowse, { type BrowseTab } from './AtlasBrowse'
@@ -162,6 +163,7 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
   const [panelAttempt, setPanelAttempt] = useState(0)
   const [hover, setHover] = useState<{ node: AtlasNode; x: number; y: number } | null>(null)
   const [hoverZone, setHoverZone] = useState<string | null>(null)
+  const [zoneTip, setZoneTip] = useState<{ zoneId: string; x: number; y: number } | null>(null)
   const [openSheet, setOpenSheet] = useState<Sheet>(null)
   const [browseTab, setBrowseTab] = useState<BrowseTab>('regions')
   const [showNames, setShowNames] = useState(true)
@@ -269,12 +271,14 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     const wanted = new Set<number>()
     if (cmp && cmp < weeks.length) wanted.add(cmp)
     if (shownWeek > 0) wanted.add(span)
+    // Browse › Regions counts who moved in and out over six months
+    if (openSheet === 'browse' && 26 < weeks.length) wanted.add(26)
     if (selection?.kind === 'company') {
       const panelSpan = cmp || 26
       if (panelSpan < weeks.length) wanted.add(panelSpan)
     }
     return [...wanted]
-  }, [cmp, pro, residual, selection, shownWeek, span, weeks.length])
+  }, [cmp, openSheet, pro, residual, selection, shownWeek, span, weeks.length])
 
   // Each span is read once per visit; a failed read stays failed until the page is reloaded.
   const movementRequests = useRef(new Set<number>())
@@ -834,6 +838,7 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
       const [wx, wy] = toWorld(camera, viewportRef.current, point.x, point.y)
       const zoneId = node ? null : zoneAt(zones, wx, wy)?.zoneId ?? null
       setHoverZone((current) => (current === zoneId ? current : zoneId))
+      setZoneTip(zoneId ? { zoneId, x: point.x, y: point.y } : null)
       return
     }
     pointersRef.current.set(event.pointerId, point)
@@ -1162,16 +1167,16 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     setCmp(value)
   }
 
-  const browse = useMemo(() => {
-    const byZone = new Map<string, AtlasNode[]>()
-    for (const node of atlas.nodes) {
-      if (node.level > 0) continue
-      const list = byZone.get(node.zoneId) ?? []
-      list.push(node)
-      byZone.set(node.zoneId, list)
-    }
-    return [...atlas.zones].sort((a, b) => b.memberCount - a.memberCount).map((zone) => ({ zone, nodes: byZone.get(zone.zoneId) ?? [] }))
-  }, [atlas.nodes, atlas.zones])
+  // Lead tickers per region: the backend's leaders, else (signed out) its largest companies on the map.
+  const leadersOf = useCallback((zone: AtlasZone) => {
+    if (zone.leaders.length) return zone.leaders
+    return atlas.nodes.filter((node) => node.zoneId === zone.zoneId && node.level === 0).map((node) => node.symbol)
+  }, [atlas.nodes])
+  const dots = useMemo(() => cohesionDots(atlas.zones), [atlas.zones])
+  const changes = useMemo(() => {
+    const answer = pro && residual ? movements[26] : undefined
+    return answer?.status === 'ok' ? regionChanges(answer.data.moves) : null
+  }, [movements, pro, residual])
 
   const sentence = correlationSentence(atlas.marketCorrelation)
   const activeId = options.length ? `${searchId}-option-${Math.min(activeResult, options.length - 1)}` : undefined
@@ -1225,6 +1230,7 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
             onPointerLeave={() => {
               setHover(null)
               setHoverZone(null)
+              setZoneTip(null)
             }}
             aria-hidden="true"
           />
@@ -1354,10 +1360,17 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
                 <AtlasBrowse
                   tab={browseTab}
                   onTab={setBrowseTab}
-                  regions={browse}
+                  zones={atlas.zones}
+                  bundles={atlas.bundles}
+                  leadersOf={leadersOf}
+                  dots={dots}
+                  changes={changes}
                   hues={hues}
+                  dark={paletteRef.current?.dark ?? false}
+                  selectedZone={selectedZone}
                   onZone={selectZone}
-                  onCompany={selectCompany}
+                  onCompany={selectSymbol}
+                  onHoverZone={(zoneId) => setHoverZone((current) => (current === zoneId ? current : zoneId))}
                   signedIn={signedIn}
                   pro={pro}
                   groups={groups}
@@ -1492,6 +1505,15 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
               <b>{hover.node.symbol}</b>{hover.node.name ? ` ${hover.node.name}` : ''}{zonesById.get(hover.node.zoneId) ? ` · ${zonesById.get(hover.node.zoneId)?.label}` : ''}
             </span>
           ) : null}
+          {!hover && zoneTip && zonesById.get(zoneTip.zoneId) ? (() => {
+            const zone = zonesById.get(zoneTip.zoneId) as AtlasZone
+            const source = nameSourceLine(zone.labelSource, zone.labelSupport)
+            return (
+              <span className={styles.tip} role="status" style={{ left: zoneTip.x, top: zoneTip.y }}>
+                <span style={{ fontWeight: 600 }}>{zone.label.replace(/_/g, ' ')}</span> · {zone.memberCount} companies{source ? <><br /><small>{source}</small></> : null}
+              </span>
+            )
+          })() : null}
           {loadingArea ? <span className={styles.loading} role="status">Loading companies in this area</span> : null}
           {areaError ? (
             <button type="button" className={styles.loading} onClick={() => { setAreaError(false); setDetail(null) }}>
@@ -1558,6 +1580,13 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
               farTies={overlay.farTies.length}
               onAction={onPanelAction}
               onCompany={selectSymbol}
+              onZone={(zoneId) => {
+                const zone = zonesById.get(zoneId)
+                if (zone) selectZone(zone)
+              }}
+              hues={hues}
+              dark={paletteRef.current?.dark ?? false}
+              maxReach={maxReach}
             />
           </aside>
         ) : null}

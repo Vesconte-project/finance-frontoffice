@@ -45,7 +45,21 @@ export type AtlasZone = {
   /** Pro only: the same outline with large companies counting more (region size by market value). */
   contourByValue: AtlasContour | null
   leaders: string[]
+  /** What the name comes from: a theme, a sector or an industry. */
+  labelSource: AtlasLabelSource | null
+  /** Signed in only: the share of its companies that carry the name, 0–1. */
+  labelSupport: number | null
+  /** Signed in only. */
+  dominantSector: string | null
+  totalMarketCap: number | null
+  /** Signed in only: mean correlation among its companies (how tightly they move together). */
+  cohesion: number | null
+  /** Signed in only: mean map accuracy of its companies, 0–1. */
+  fidelity: number | null
 }
+
+export type AtlasLabelSource = 'theme' | 'sector' | 'industry'
+const LABEL_SOURCES: readonly AtlasLabelSource[] = ['theme', 'sector', 'industry']
 
 export type AtlasNode = {
   symbol: string
@@ -78,7 +92,7 @@ export type AtlasShare = { zoneId: string; share: number }
 
 export type AtlasLine = { source: string; target: string; zoneId: string; correlation: number | null }
 export type AtlasTie = { source: string; target: string; correlation: number | null }
-export type AtlasBundle = { zoneA: string; zoneB: string; tieCount: number; structural: boolean; ties: AtlasTie[] }
+export type AtlasBundle = { zoneA: string; zoneB: string; tieCount: number; structural: boolean; ties: AtlasTie[]; meanCorrelation: number | null }
 
 export type AtlasComparison = 'higher' | 'lower' | 'usual'
 /** Signed in only: the week's average correlation beyond the market, against the last year's weeks. */
@@ -131,9 +145,18 @@ export type AtlasCompanyPanel = {
   /** Signed in only: its map accuracy, 0–1. */
   fidelity: number | null
   lens: AtlasLens
+  /** Signed in only: no tie clearly above the market's average. */
+  loner: boolean
+  /** Signed in only: how many companies move with it beyond the market. */
+  reach: number | null
+  /** Signed in only: annualised 20-session volatility, as a fraction. */
+  volatility20d: number | null
 }
 
-export type AtlasZoneMember = AtlasCompanyRef & { share: number | null; marketCap: number | null }
+export type AtlasZoneMember = AtlasCompanyRef & { share: number | null; marketCap: number | null; industry: string | null }
+export type AtlasSubIndustry = { industry: string; count: number }
+export type AtlasRelevant = AtlasCompanyRef & { zoneId: string | null; share: number }
+export type AtlasZoneLink = { zoneId: string; tieCount: number; meanCorrelation: number | null }
 
 export type AtlasZonePanel = {
   asOf: string
@@ -144,6 +167,19 @@ export type AtlasZonePanel = {
   leaders: AtlasCompanyRef[]
   /** Signed in only: the whole zone. */
   members: AtlasZoneMember[]
+  labelSource: AtlasLabelSource | null
+  labelSupport: number | null
+  dominantSector: string | null
+  totalMarketCap: number | null
+  cohesion: number | null
+  fidelity: number | null
+  /** Signed in only: members whose strongest ties also reach another region. */
+  sharedCount: number | null
+  subIndustries: AtlasSubIndustry[]
+  /** Signed in only: companies anywhere with weight here, by importance times that weight. */
+  relevant: AtlasRelevant[]
+  /** Signed in only: the regions it is tied to, most ties first. */
+  links: AtlasZoneLink[]
 }
 
 export const SIZE_STEPS = 4
@@ -265,7 +301,24 @@ function parseZone(value: unknown): AtlasZone | null {
     contour,
     contourByValue: parseContour(raw.contourByValue),
     leaders: list(raw.leaders).map(text).filter((symbol): symbol is string => symbol !== null),
+    ...zoneFacts(raw),
   }
+}
+
+function zoneFacts(raw: Raw) {
+  return {
+    labelSource: LABEL_SOURCES.includes(raw.labelSource as AtlasLabelSource) ? (raw.labelSource as AtlasLabelSource) : null,
+    labelSupport: unit(raw.labelSupport),
+    dominantSector: text(raw.dominantSector),
+    totalMarketCap: positive(raw.totalMarketCap),
+    cohesion: correlation(raw.cohesion),
+    fidelity: unit(raw.fidelity),
+  }
+}
+
+function unit(value: unknown): number | null {
+  const number = finite(value)
+  return number === null || number < 0 || number > 1 ? null : number
 }
 
 /** Market value at which a company moves up a size step, largest first. */
@@ -423,6 +476,7 @@ export function parseOverview(value: unknown): AtlasOverview | null {
           tieCount: whole(bundle.tieCount),
           structural: bundle.structural === true,
           ties: list(bundle.ties).map(parseTie).filter((tie): tie is AtlasTie => tie !== null),
+          meanCorrelation: correlation(bundle.meanCorrelation),
         }
       })
       .filter((bundle): bundle is AtlasBundle => bundle !== null && bundle.tieCount > 0),
@@ -480,6 +534,9 @@ export function parseCompanyPanel(value: unknown): AtlasCompanyPanel | null {
     themes: parseThemeRefs(raw.themes),
     fidelity: share01(raw.fidelity),
     lens: parseLens(raw.lens),
+    loner: raw.loner === true,
+    reach: finite(raw.reach),
+    volatility20d: positive(raw.volatility20d),
   }
 }
 
@@ -511,10 +568,49 @@ export function parseZonePanel(value: unknown): AtlasZonePanel | null {
       .map((entry) => {
         const ref = parseRef(entry)
         const item = record(entry)
-        return ref ? { ...ref, share: finite(item?.share), marketCap: finite(item?.marketCap) } : null
+        return ref ? { ...ref, share: finite(item?.share), marketCap: finite(item?.marketCap), industry: text(item?.industry) } : null
       })
       .filter((item): item is AtlasZoneMember => item !== null),
+    ...zoneFacts(raw),
+    sharedCount: finite(raw.sharedCount) === null ? null : whole(raw.sharedCount),
+    subIndustries: list(raw.subIndustries)
+      .map((entry) => {
+        const item = record(entry)
+        const industry = text(item?.industry)
+        const count = finite(item?.count)
+        return industry && count !== null && count > 0 ? { industry, count: Math.round(count) } : null
+      })
+      .filter((item): item is AtlasSubIndustry => item !== null),
+    relevant: list(raw.relevant)
+      .map((entry) => {
+        const ref = parseRef(entry)
+        const share = unit(record(entry)?.share)
+        return ref && share !== null && share > 0 ? { ...ref, zoneId: text(record(entry)?.zoneId), share } : null
+      })
+      .filter((item): item is AtlasRelevant => item !== null),
+    links: parseZoneLinks(zoneId, raw),
   }
+}
+
+/** A region's ties to other regions, from its bundles (or links already read), most ties first. */
+function parseZoneLinks(zoneId: string, raw: Raw): AtlasZoneLink[] {
+  const links: AtlasZoneLink[] = []
+  for (const entry of list(raw.links)) {
+    const item = record(entry)
+    const other = text(item?.zoneId)
+    const tieCount = finite(item?.tieCount)
+    if (other && tieCount !== null && tieCount > 0) links.push({ zoneId: other, tieCount: Math.round(tieCount), meanCorrelation: correlation(item?.meanCorrelation) })
+  }
+  for (const entry of list(raw.bundles)) {
+    const item = record(entry)
+    const a = text(item?.zoneA)
+    const b = text(item?.zoneB)
+    const tieCount = finite(item?.tieCount)
+    if (!a || !b || tieCount === null || tieCount <= 0 || (a !== zoneId && b !== zoneId)) continue
+    const other = a === zoneId ? b : a
+    if (other !== zoneId && !links.some((link) => link.zoneId === other)) links.push({ zoneId: other, tieCount: Math.round(tieCount), meanCorrelation: correlation(item?.meanCorrelation) })
+  }
+  return links.sort((x, y) => y.tieCount - x.tieCount || x.zoneId.localeCompare(y.zoneId))
 }
 
 export const ATLAS_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/

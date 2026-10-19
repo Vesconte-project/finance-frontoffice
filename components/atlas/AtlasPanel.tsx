@@ -2,7 +2,9 @@
 
 import Link from 'next/link'
 import type { AtlasCompanyPanel, AtlasDenial, AtlasZone, AtlasZonePanel } from '@/lib/atlas-model'
+import { betweenRegions, coverageOf, linkText, movesWithOthers, namingNote, percent } from '@/lib/atlas-panels'
 import type { ProFeature, ThenAndNow } from '@/lib/atlas-pro'
+import { zoneColor } from './atlas-canvas'
 import { SIGN_UP_HREF, formatCap, strength } from './atlas-format'
 import base from './AtlasExplorer.module.css'
 import styles from './AtlasPro.module.css'
@@ -28,6 +30,26 @@ type Props = {
   farTies: number
   onAction: (action: PanelAction, feature: ProFeature, anchor: HTMLElement) => void
   onCompany: (symbol: string) => void
+  onZone: (zoneId: string) => void
+  hues: ReadonlyMap<string, number>
+  dark: boolean
+  /** The largest reach on the map, for "Moves with others". */
+  maxReach: number | null
+}
+
+/** A labelled bar: a share of something, coloured by region. */
+function ShareBar({ label, value, width, color, onClick }: { label: string; value: string; width: number; color: string; onClick?: () => void }) {
+  const body = (
+    <>
+      <span className={styles.shareHead}><span>{label}</span><small>{value}</small></span>
+      <span className={styles.bar} aria-hidden="true"><b style={{ width: `${Math.round(Math.max(0, Math.min(1, width)) * 100)}%`, background: color }} /></span>
+    </>
+  )
+  return onClick ? <button type="button" className={styles.share} onClick={onClick}>{body}</button> : <div className={styles.share}>{body}</div>
+}
+
+function SectionLabel({ title, note }: { title: string; note?: string }) {
+  return <h3 className={base.panelHeading}>{title}{note ? <small className={styles.headingNote}>{note}</small> : null}</h3>
 }
 
 function CompanyLinks({ items }: { items: Array<{ symbol: string; name: string | null }> }) {
@@ -93,7 +115,9 @@ function ThenNow({ then, onCompany }: { then: ThenAndNow; onCompany: (symbol: st
   )
 }
 
-export default function AtlasPanel({ panel, zonesById, onRetry, pro, then, farTies, onAction, onCompany }: Props) {
+export default function AtlasPanel({ panel, zonesById, onRetry, pro, then, farTies, onAction, onCompany, onZone, hues, dark, maxReach }: Props) {
+  const color = (zoneId: string) => zoneColor(hues.get(zoneId) ?? 200, dark)
+  const labelOf = (zoneId: string, fallback?: string | null) => (zonesById.get(zoneId)?.label ?? fallback ?? zoneId).replace(/_/g, ' ')
   if (panel.status === 'idle' || panel.status === 'loading') return <p className={base.muted} role="status">Loading…</p>
   if (panel.status === 'error') {
     return (
@@ -120,14 +144,74 @@ export default function AtlasPanel({ panel, zonesById, onRetry, pro, then, farTi
   if (panel.status === 'zone') {
     const zone = panel.data
     const signedOut = zone.access.tier === 'signedOut'
+    if (signedOut) {
+      return (
+        <div>
+          <p className={base.eyebrow}>Region</p>
+          <h2 className={base.panelTitle}>{zone.label}</h2>
+          <p className={base.muted}>{zone.memberCount} companies whose prices move together beyond the market.</p>
+          <h3 className={base.panelHeading}>Largest companies</h3>
+          <CompanyLinks items={zone.leaders} />
+          <Link className={base.cta} href={SIGN_UP_HREF}>See every company in this region</Link>
+        </div>
+      )
+    }
+    const naming = namingNote(zone.labelSource, zone.label, zone.labelSupport)
+    const coverage = coverageOf(zonesById.get(zone.zoneId)?.contour ?? null)
+    const links = zone.links.slice(0, 8)
+    const maxTies = links[0]?.tieCount ?? 1
+    const cap = formatCap(zone.totalMarketCap)
     return (
       <div>
         <p className={base.eyebrow}>Region</p>
-        <h2 className={base.panelTitle}>{zone.label}</h2>
-        <p className={base.muted}>{zone.memberCount} companies whose prices move together beyond the market.</p>
-        {signedOut ? null : <Actions kind="zone" pro={pro} onAction={onAction} />}
-        <h3 className={base.panelHeading}>{signedOut ? 'Largest companies' : 'Leading companies'}</h3>
-        <CompanyLinks items={zone.leaders} />
+        <h2 className={base.panelTitle}>{zone.label.replace(/_/g, ' ')}</h2>
+        <div className={styles.chips}>
+          <span>{zone.memberCount} companies</span>
+          {zone.sharedCount !== null ? <span>{zone.sharedCount} shared with other regions</span> : null}
+          {zone.fidelity !== null ? <span>map accuracy {percent(zone.fidelity)}</span> : null}
+        </div>
+        <Actions kind="zone" pro={pro} onAction={onAction} />
+        {naming ? <p className={styles.note}>{naming}</p> : null}
+        <p className={styles.note}>A region of the map where companies move together. The line holds {percent(coverage)} of its weight. It names an area; it does not own the companies in it.</p>
+        {zone.subIndustries.length ? (
+          <>
+            <SectionLabel title="Sub-industries" note="companies" />
+            <div className={styles.shares}>
+              {zone.subIndustries.map((item) => (
+                <ShareBar key={item.industry} label={item.industry} value={String(item.count)} width={item.count / Math.max(1, zone.memberCount)} color={color(zone.zoneId)} />
+              ))}
+            </div>
+          </>
+        ) : null}
+        {links.length ? (
+          <>
+            <SectionLabel title="Tied to other regions" note="strong ties · average" />
+            <div className={styles.shares}>
+              {links.map((link) => (
+                <ShareBar key={link.zoneId} label={labelOf(link.zoneId)} value={linkText(link.tieCount, link.meanCorrelation).replace(' ties', '')}
+                  width={link.tieCount / maxTies} color={color(link.zoneId)} onClick={() => onZone(link.zoneId)} />
+              ))}
+            </div>
+          </>
+        ) : null}
+        {cap || zone.dominantSector ? (
+          <div className={styles.metrics}>
+            {cap ? <div className={styles.metricBox}><span>Market value here</span><strong>{cap}</strong></div> : null}
+            {zone.dominantSector ? <div className={styles.metricBox}><span>Primary sector</span><strong>{zone.dominantSector}</strong></div> : null}
+          </div>
+        ) : null}
+        {zone.relevant.length ? (
+          <>
+            <SectionLabel title="Most relevant here" note="by weight in this region" />
+            <div className={styles.grid}>
+              {zone.relevant.map((item) => (
+                <button key={item.symbol} type="button" onClick={() => onCompany(item.symbol)}>
+                  <b>{item.symbol}</b><small>{item.name ?? ''}</small>{item.share < 0.95 ? <em>{percent(item.share)} here</em> : null}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : null}
         {zone.members.length ? (
           <>
             <h3 className={base.panelHeading}>All {zone.members.length} companies</h3>
@@ -141,7 +225,6 @@ export default function AtlasPanel({ panel, zonesById, onRetry, pro, then, farTi
             </ul>
           </>
         ) : null}
-        {signedOut ? <Link className={base.cta} href={SIGN_UP_HREF}>See every company in this region</Link> : null}
       </div>
     )
   }
@@ -151,64 +234,82 @@ export default function AtlasPanel({ panel, zonesById, onRetry, pro, then, farTi
   const accuracy = company.fidelity === null ? null : Math.round(company.fidelity * 10)
   const residual = company.lens === 'residual'
   const totals = residual && company.neighbours.some((neighbour) => neighbour.total !== null)
+  if (signedOut) {
+    return (
+      <div>
+        <p className={base.eyebrow}>{company.symbol}</p>
+        <h2 className={base.panelTitle}>{company.name ?? company.symbol}</h2>
+        <p className={base.muted}>{[company.sector, company.industry, company.country, cap].filter(Boolean).join(' · ')}</p>
+        <p>In <b>{company.zoneLabel ?? zonesById.get(company.zoneId)?.label ?? 'its region'}</b></p>
+        <h3 className={base.panelHeading}>Largest companies in this region</h3>
+        <CompanyLinks items={company.zoneLeaders} />
+        <Link className={base.cta} href={SIGN_UP_HREF}>See what {company.symbol} moves with</Link>
+        <Link className={base.more} href={`/stocks/${encodeURIComponent(company.symbol)}`}>Open {company.symbol}</Link>
+      </div>
+    )
+  }
+  const reach = movesWithOthers(company.reach, maxReach)
+  const metrics: Array<[string, string]> = []
+  if (accuracy !== null) metrics.push(['Map accuracy here', `${accuracy} of 10`])
+  if (reach) metrics.push(['Moves with others', reach])
+  if (cap) metrics.push(['Market value', cap])
+  if (company.volatility20d !== null) metrics.push(['20d volatility', percent(company.volatility20d)])
   return (
     <div>
       <p className={base.eyebrow}>{company.symbol}</p>
       <h2 className={base.panelTitle}>{company.name ?? company.symbol}</h2>
-      <p className={base.muted}>
-        {[company.sector, company.industry, company.country, cap].filter(Boolean).join(' · ')}
-      </p>
-      <p>In <b>{company.zoneLabel ?? zonesById.get(company.zoneId)?.label ?? 'its region'}</b></p>
-      {company.themes.length ? (
-        <p className={styles.themeLine}>
-          Thematic funds group it as {company.themes.map((theme, index) => (
+      <div className={styles.chips}>
+        {company.industry ? <span>{company.industry}</span> : null}
+        {company.country ? <span>{company.country}</span> : null}
+        {company.loner ? <span>Moves on its own</span> : betweenRegions(company.memberships) ? <span>Between regions</span> : null}
+      </div>
+      <Actions kind="company" pro={pro} onAction={onAction} />
+      <p className={styles.note}>
+        On the map: <b>{labelOf(company.zoneId, company.zoneLabel)}</b>, because its price moves with those companies.
+        {company.themes.length ? (
+          <> Thematic funds group it as {company.themes.map((theme, index) => (
             <span key={theme.themeId}>{index ? ', ' : ''}<b>{theme.label}</b></span>
-          ))}. The two can differ: one is how it trades, the other how it is labelled.
-        </p>
-      ) : null}
-      {signedOut ? null : <Actions kind="company" pro={pro} onAction={onAction} />}
-      {accuracy !== null ? (
-        <div className={styles.metricBlock}>
-          <p className={styles.metric}>Map accuracy here: <b>{accuracy} of 10</b></p>
-          <p className={base.muted}>
-            {accuracy} of its 10 strongest relationships sit among its 10 nearest neighbours on the map.{pro && farTies > 0 ? ' The others are drawn as dashed red lines.' : ''}
-          </p>
-        </div>
-      ) : null}
-      {then ? <ThenNow then={then} onCompany={onCompany} /> : null}
-      {company.memberships.length > 1 ? (
+          ))}. The two can differ: one is how it trades, the other how it is labelled.</>
+        ) : null}
+      </p>
+      {company.memberships.length ? (
         <>
-          <h3 className={base.panelHeading}>Where its ties are</h3>
-          <ul className={base.refs}>
+          <SectionLabel title="Where it sits" note="share of its 15 strongest ties" />
+          <div className={styles.shares}>
             {company.memberships.map((membership) => (
-              <li key={membership.zoneId}>{membership.label ?? membership.zoneId} <span className={base.share}>{Math.round(membership.share * 100)}%</span></li>
+              <ShareBar key={membership.zoneId} label={labelOf(membership.zoneId, membership.label)} value={percent(membership.share)}
+                width={membership.share} color={color(membership.zoneId)} onClick={() => onZone(membership.zoneId)} />
             ))}
-          </ul>
+          </div>
         </>
       ) : null}
+      {metrics.length ? (
+        <div className={styles.metrics}>
+          {metrics.map(([label, value]) => <div key={label} className={styles.metricBox}><span>{label}</span><strong>{value}</strong></div>)}
+        </div>
+      ) : null}
+      {accuracy !== null ? (
+        <p className={styles.note}>
+          {accuracy} of its 10 strongest relationships sit among its 10 nearest neighbours on the map.{pro && farTies > 0 ? ' The others are drawn as dashed red lines.' : ''}
+        </p>
+      ) : null}
+      {then ? <ThenNow then={then} onCompany={onCompany} /> : null}
       {company.neighbours.length ? (
         <>
-          <h3 className={base.panelHeading}>Moves most with {totals ? <small className={styles.headingNote}>beyond market · total</small> : residual ? null : <small className={styles.headingNote}>total</small>}</h3>
+          <h3 className={base.panelHeading}>Strongest relationships {totals ? <small className={styles.headingNote}>beyond market · total</small> : residual ? null : <small className={styles.headingNote}>total</small>}</h3>
           <ul className={base.refs}>
             {company.neighbours.slice(0, 10).map((neighbour) => (
               <li key={neighbour.symbol}>
                 <Link href={`/stocks/${encodeURIComponent(neighbour.symbol)}`}><b>{neighbour.symbol}</b>{neighbour.name ? ` ${neighbour.name}` : ''}</Link>
                 <span className={base.share}>
                   {strength(neighbour.correlation)}
-                  {signedOut ? null : <small className={styles.tieNumbers}> {neighbour.correlation.toFixed(2)}{totals && neighbour.total !== null ? ` · ${neighbour.total.toFixed(2)}` : ''}</small>}
+                  <small className={styles.tieNumbers}> {neighbour.correlation.toFixed(2)}{totals && neighbour.total !== null ? ` · ${neighbour.total.toFixed(2)}` : ''}</small>
                   {neighbour.trend === 'stronger' ? <em className={`${styles.trend} ${styles.up}`} title="Stronger in the last six months than in the six before"> · ↑ stronger</em> : null}
                   {neighbour.trend === 'weaker' ? <em className={`${styles.trend} ${styles.down}`} title="Weaker in the last six months than in the six before"> · ↓ weaker</em> : null}
                 </span>
               </li>
             ))}
           </ul>
-        </>
-      ) : null}
-      {signedOut ? (
-        <>
-          <h3 className={base.panelHeading}>Largest companies in this region</h3>
-          <CompanyLinks items={company.zoneLeaders} />
-          <Link className={base.cta} href={SIGN_UP_HREF}>See what {company.symbol} moves with</Link>
         </>
       ) : null}
       <Link className={base.more} href={`/stocks/${encodeURIComponent(company.symbol)}`}>Open {company.symbol}</Link>

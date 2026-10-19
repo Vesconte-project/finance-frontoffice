@@ -226,7 +226,7 @@ test('an earlier week aligns onto today, outlines and all, and play moves betwee
   const today = [node('A', 0, 0), node('B', 2, 0), node('C', 0, 2), node('D', 2, 2)]
   const before = today.map((item) => ({ ...item, x: -item.y, y: item.x }))
   before[3] = { ...before[3], x: before[3].x - 1 }
-  const zone = { zoneId: 'z', label: 'Z', memberCount: 4, x: 0, y: 1, contour: { type: 'circle' as const, x: 0, y: 1, radius: 1 }, contourByValue: null, leaders: [] }
+  const zone = { zoneId: 'z', label: 'Z', memberCount: 4, x: 0, y: 1, contour: { type: 'circle' as const, x: 0, y: 1, radius: 1 }, contourByValue: null, leaders: [], labelSource: null, labelSupport: null, dominantSector: null, totalMarketCap: null, cohesion: null, fidelity: null }
   const frame0 = todayFrame('2026-10-16', today, [])
   const frame1 = alignWeek('2026-10-09', before, [zone], frame0.positions)
   assert.ok(frame1)
