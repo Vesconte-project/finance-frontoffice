@@ -140,7 +140,7 @@ test('panels read the signed-out and signed-in shapes', () => {
     neighbours: [{ symbol: 'NVDA', name: 'NVIDIA', zoneId: 'z1', correlation: 0.61 }, { symbol: 'X', correlation: 'high' }],
   })
   assert.ok(inside)
-  assert.deepEqual(inside.neighbours, [{ symbol: 'NVDA', name: 'NVIDIA', zoneId: 'z1', correlation: 0.61 }])
+  assert.deepEqual(inside.neighbours, [{ symbol: 'NVDA', name: 'NVIDIA', zoneId: 'z1', correlation: 0.61, total: null, trend: null }])
   assert.equal(inside.memberships.length, 2)
 
   const zone = parseZonePanel({ asOf: '2026-10-16', access: signedOutAccess, zoneId: 'residual-a', label: 'Semis', memberCount: 40, leaders: [{ symbol: 'NVDA', name: null }] })
@@ -306,7 +306,7 @@ test('the map fits in the space the controls leave free', () => {
 
 test('the ground sinks under the deepest wells, and stays flat without any', () => {
   const node = (symbol: string, x: number, y: number, well: number | null) =>
-    ({ symbol, name: null, zoneId: 'z', x, y, level: 0, size: 0, bulk: 0.06, reach: null, well, loner: false, memberships: [] })
+    ({ symbol, name: null, zoneId: 'z', x, y, level: 0, size: 0, bulk: 0.06, reach: null, well, loner: false, memberships: [], fidelity: null, themes: [], marketCap: null })
   const bounds = { x0: -10, y0: -10, x1: 10, y1: 10 }
   assert.equal(buildSheet([node('A', 0, 0, null)], bounds), null)
   assert.equal(groundAt(null, 0, 0), 0)
@@ -359,7 +359,7 @@ test('"Most connected" ranks by reach, and is empty signed out', () => {
   const atlas = parseOverview(signedOut)
   assert.ok(atlas)
   assert.deepEqual(mostConnected(atlas.nodes), [])
-  const node = (symbol: string, reach: number | null) => ({ symbol, name: null, zoneId: 'z', x: 0, y: 0, level: 0, size: 0, bulk: 0.06, reach, well: null, loner: false, memberships: [] })
+  const node = (symbol: string, reach: number | null) => ({ symbol, name: null, zoneId: 'z', x: 0, y: 0, level: 0, size: 0, bulk: 0.06, reach, well: null, loner: false, memberships: [], fidelity: null, themes: [], marketCap: null })
   assert.deepEqual(mostConnected([node('A', 0.2), node('B', 0.9), node('C', null), node('D', 0.9)], 2).map((item) => item.symbol), ['B', 'D'])
 })
 
