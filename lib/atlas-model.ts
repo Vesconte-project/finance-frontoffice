@@ -46,13 +46,23 @@ export type AtlasNode = {
   x: number
   y: number
   level: number
-  /** 0 (largest) to 3, in four steps. */
+  /** 0 (largest) to 3, in four steps of market value. */
   size: number
+  /** Signed in only: how many companies move with it beyond the market (the "Most connected" order). */
+  reach: number | null
+  /** Signed in only: its reach against the strongest company in its region, 0–1; it sinks the ground. */
+  well: number | null
+  /** Signed in only: no tie clearly above the market's average, so it moves on its own. */
+  loner: boolean
 }
 
-export type AtlasLine = { source: string; target: string; zoneId: string }
-export type AtlasTie = { source: string; target: string }
+export type AtlasLine = { source: string; target: string; zoneId: string; correlation: number | null }
+export type AtlasTie = { source: string; target: string; correlation: number | null }
 export type AtlasBundle = { zoneA: string; zoneB: string; tieCount: number; structural: boolean; ties: AtlasTie[] }
+
+export type AtlasComparison = 'higher' | 'lower' | 'usual'
+/** Signed in only: the week's average correlation beyond the market, against the last year's weeks. */
+export type AtlasMarketCorrelation = { value: number; comparedWithLastYear: AtlasComparison | null; weeksCompared: number }
 
 export type AtlasOverview = {
   asOf: string
@@ -64,6 +74,7 @@ export type AtlasOverview = {
   nodes: AtlasNode[]
   lines: AtlasLine[]
   bundles: AtlasBundle[]
+  marketCorrelation: AtlasMarketCorrelation | null
 }
 
 export type AtlasCompanyRef = { symbol: string; name: string | null }
@@ -121,6 +132,16 @@ function text(value: unknown): string | null {
 
 function finite(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function positive(value: unknown): number | null {
+  const number = finite(value)
+  return number !== null && number > 0 ? number : null
+}
+
+function correlation(value: unknown): number | null {
+  const number = finite(value)
+  return number !== null && number >= -1 && number <= 1 ? number : null
 }
 
 function whole(value: unknown, fallback = 0): number {
@@ -210,6 +231,15 @@ function parseZone(value: unknown): AtlasZone | null {
   }
 }
 
+/** Market value at which a company moves up a size step, largest first. */
+export const CAP_STEPS = [200e9, 50e9, 10e9] as const
+
+/** A size step from a market value, so a company keeps its size whichever area it was loaded with. */
+export function capStep(marketCap: number): number {
+  const step = CAP_STEPS.findIndex((threshold) => marketCap >= threshold)
+  return step === -1 ? SIZE_STEPS - 1 : step
+}
+
 /** Four size steps by rank, largest first: the same cut the backend uses signed out. */
 export function sizeSteps(values: Map<string, number>): Map<string, number> {
   const ranked = [...values.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
@@ -229,15 +259,18 @@ function parseNodes(values: unknown[]): AtlasNode[] {
     seen.add(symbol)
     valid.push({ raw, symbol, zoneId, x, y })
   }
-  // Signed in, size follows importance among the companies kept; signed out the backend sends the step itself.
+  // Size is market value: signed out the backend sends the step itself; signed in it comes from the value,
+  // and a company without one is ranked by importance among the others without one.
   const importance = new Map<string, number>()
   for (const { raw, symbol } of valid) {
     const value = finite(raw.importance)
-    if (value !== null && finite(raw.size) === null) importance.set(symbol, value)
+    if (value !== null && finite(raw.size) === null && !positive(raw.marketCap)) importance.set(symbol, value)
   }
   const steps = sizeSteps(importance)
   return valid.map(({ raw, symbol, zoneId, x, y }) => {
     const size = finite(raw.size)
+    const cap = positive(raw.marketCap)
+    const well = finite(raw.well)
     return {
       symbol,
       name: text(raw.name),
@@ -245,7 +278,10 @@ function parseNodes(values: unknown[]): AtlasNode[] {
       x,
       y,
       level: Math.min(ATLAS_MAX_LEVEL, whole(raw.level)),
-      size: Math.min(SIZE_STEPS - 1, size !== null ? whole(size) : steps.get(symbol) ?? SIZE_STEPS - 1),
+      size: Math.min(SIZE_STEPS - 1, size !== null ? whole(size) : cap !== null ? capStep(cap) : steps.get(symbol) ?? SIZE_STEPS - 1),
+      reach: finite(raw.reach),
+      well: well === null ? null : Math.max(0, Math.min(1, well)),
+      loner: raw.loner === true,
     }
   })
 }
@@ -254,7 +290,17 @@ function parseTie(value: unknown): AtlasTie | null {
   const raw = record(value)
   const source = text(raw?.source)
   const target = text(raw?.target)
-  return source && target ? { source, target } : null
+  return source && target ? { source, target, correlation: correlation(raw?.correlation) } : null
+}
+
+const COMPARISONS: readonly AtlasComparison[] = ['higher', 'lower', 'usual']
+
+export function parseMarketCorrelation(value: unknown): AtlasMarketCorrelation | null {
+  const raw = record(value)
+  const number = correlation(raw?.value)
+  if (!raw || number === null) return null
+  const compared = COMPARISONS.includes(raw.comparedWithLastYear as AtlasComparison) ? (raw.comparedWithLastYear as AtlasComparison) : null
+  return { value: number, comparedWithLastYear: compared, weeksCompared: whole(raw.weeksCompared) }
 }
 
 export function parseOverview(value: unknown): AtlasOverview | null {
@@ -296,6 +342,7 @@ export function parseOverview(value: unknown): AtlasOverview | null {
         }
       })
       .filter((bundle): bundle is AtlasBundle => bundle !== null && bundle.tieCount > 0),
+    marketCorrelation: parseMarketCorrelation(raw.marketCorrelation),
   }
 }
 

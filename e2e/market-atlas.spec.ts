@@ -46,7 +46,7 @@ test('the list path opens a region and a company by keyboard, with the signed-ou
   await browse.focus()
   await page.keyboard.press('Enter')
   await expect(browse).toHaveAttribute('aria-expanded', 'true')
-  const list = page.getByRole('navigation', { name: 'Regions and their largest companies' })
+  const list = page.getByRole('region', { name: 'Browse the market' })
   await list.getByRole('button', { name: /Fixture Alpha/ }).click()
   const panel = page.getByRole('complementary', { name: 'Details' })
   // The first panel compiles its local route under `next dev`.
@@ -59,9 +59,62 @@ test('the list path opens a region and a company by keyboard, with the signed-ou
   // No ties signed out: the panel never lists what a company moves with.
   await expect(panel.getByText('Moves most with')).toHaveCount(0)
   await page.getByRole('application', { name: /Relationship atlas/ }).focus()
+  // Escape closes the list first, then the details.
+  await page.keyboard.press('Escape')
+  await expect(list).toHaveCount(0)
+  await expect(browse).toBeFocused()
+  await page.getByRole('application', { name: /Relationship atlas/ }).focus()
   await page.keyboard.press('Escape')
   await expect(panel).toHaveCount(0)
   if (process.env.PLAYWRIGHT_CAPTURE) await page.screenshot({ path: 'test-results/market-atlas-browse-1440.png' })
+  expect(errors).toEqual([])
+})
+
+test('the map controls read, filter and find, and keep to what a signed-out reader may see', async ({ page }) => {
+  const errors = watchConsole(page)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/markets/network')
+  const map = page.getByRole('application', { name: /Relationship atlas/ })
+  await expect(map).toBeVisible({ timeout: 30_000 })
+
+  // How to read and Layers open over the map, one at a time, and Escape returns to the button.
+  const help = page.getByRole('button', { name: 'How to read' })
+  await help.click()
+  await expect(page.getByRole('region', { name: 'How to read the atlas' })).toBeVisible()
+  await page.getByRole('button', { name: 'Layers' }).click()
+  await expect(page.getByRole('region', { name: 'How to read the atlas' })).toHaveCount(0)
+  const layers = page.getByRole('region', { name: 'Layers' })
+  await layers.getByLabel('Map key').check()
+  await expect(page.getByRole('group', { name: 'Map key' })).toBeVisible()
+  // Signed out the key explains only what is drawn: no wells, lines or bundles.
+  await expect(page.getByRole('group', { name: 'Map key' }).getByText(/^Well/)).toHaveCount(0)
+  await layers.getByLabel('Names on the map').uncheck()
+  await expect(page.getByRole('button', { name: 'Names on the map' })).toHaveAttribute('aria-pressed', 'false')
+  await page.keyboard.press('Escape')
+  await expect(layers).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Layers' })).toBeFocused()
+  await page.getByRole('button', { name: 'Close the map key' }).click()
+  await expect(page.getByRole('group', { name: 'Map key' })).toHaveCount(0)
+
+  // Search finds a region and a company on the map and opens its panel.
+  const search = page.getByRole('combobox', { name: 'Find a company or region on the map' })
+  await search.fill('fxb1')
+  await expect(page.getByRole('option', { name: /FXB1/ })).toBeVisible()
+  await search.press('Enter')
+  const panel = page.getByRole('complementary', { name: 'Details' })
+  await expect(panel.getByRole('heading', { name: /Fixture Beta Holding 1/ })).toBeVisible({ timeout: 30_000 })
+  await search.fill('gamma')
+  await page.getByRole('option', { name: /^Region Fixture Gamma/ }).click()
+  await expect(panel.getByRole('heading', { name: 'Fixture Gamma' })).toBeVisible({ timeout: 30_000 })
+  // A company not on the signed-out map is not offered, and nothing is invented for it.
+  await search.fill('FXA6')
+  await expect(page.getByRole('option', { name: /Only the largest companies/ })).toBeVisible()
+
+  // Signed out there is no reach, so no "Most connected" list, and no correlation sentence.
+  await expect(page.getByRole('group', { name: 'Most connected companies' })).toHaveCount(0)
+  await expect(page.getByText(/Average correlation/)).toHaveCount(0)
+  await expect(page.getByText(/Week of/)).toBeVisible()
+  if (process.env.PLAYWRIGHT_CAPTURE) await page.screenshot({ path: 'test-results/market-atlas-controls-1440.png' })
   expect(errors).toEqual([])
 })
 
