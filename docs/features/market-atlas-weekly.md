@@ -23,14 +23,14 @@ After the approved prototype (version 18), from the backend's answer only:
 
 - **Ground and wells:** signed in, the ground sinks under the 70 companies with the deepest wells (`well`², from the backend) and the view tilts 38° so the wells show. Signed out there are no wells, so the map is drawn straight down.
 - **Regions:** tinted areas, with borders in the paper's colour where two overlap and a coastline around the rest. Signed out the circle keeps a dashed line.
-- **Balls:** shaded, sized by market value in four fixed steps (≥ $200B, $50B, $10B), resting in their well with a shadow; a company that moves on its own is hollow.
+- **Balls:** shaded and resting in their well with a shadow, sized as the prototype sizes them: continuous in log market value (up to $4T), against the map's size on screen and the square root of the zoom, never under 1.4 px. Signed out, the backend's four steps stand for ≥ $200B, $50B, $10B and smaller. A company that moves on its own is hollow; one whose strongest ties are at least 15% outside its region wears a ring split by region (`memberships`, finance-backend #59) once the ball is larger than 3 px.
 - **Bundles:** signed in, every real tie between two regions whose two companies are on the map is a strand, gathered through the middle (Holten 2006). A tie with a company not loaded yet is left out. Pointing at a region shows its three strongest bundles with their tie counts (five when selected). Signed out, a region in focus shows only the counts, as dashed lines between region centres.
 - **Focus:** a company under the pointer or selected lights up its lines, its bundle ties and, once its panel loads, the ten companies it moves most with.
 - **Controls:** Browse atlas, How to read, Layers (names and key), Find on the map (companies and regions on the map; signed in, a ticker not loaded yet opens its panel and the map goes to its region), the zoom stack with the level, Aa (names) and Key.
 - **Most connected:** signed in, the six companies with the largest `reach`, closed until opened.
 - **The week's line:** the date, the counts and, signed in, "Average correlation 0.07 · lower for this market over the last year" from `marketCorrelation` (finance-backend #59); before a full year only the value.
 
-Not built: themes (the backend serves no theme membership), the tool rail, movement and history (nobody is Pro), and the ring that splits a ball by region (the overview carries no memberships).
+Not built: themes (the backend serves no theme membership), the tool rail, movement and history (nobody is Pro). A map served without `memberships` draws no rings.
 
 ## Code
 

@@ -48,13 +48,19 @@ export type AtlasNode = {
   level: number
   /** 0 (largest) to 3, in four steps of market value. */
   size: number
+  /** Ball radius in the prototype's map units (0.06–0.28): continuous in market value, else from the step. */
+  bulk: number
   /** Signed in only: how many companies move with it beyond the market (the "Most connected" order). */
   reach: number | null
   /** Signed in only: its reach against the strongest company in its region, 0–1; it sinks the ground. */
   well: number | null
   /** Signed in only: no tie clearly above the market's average, so it moves on its own. */
   loner: boolean
+  /** Signed in only: its regions by share of its strongest ties, largest first; the ring of a ball between regions. */
+  memberships: AtlasShare[]
 }
+
+export type AtlasShare = { zoneId: string; share: number }
 
 export type AtlasLine = { source: string; target: string; zoneId: string; correlation: number | null }
 export type AtlasTie = { source: string; target: string; correlation: number | null }
@@ -240,6 +246,31 @@ export function capStep(marketCap: number): number {
   return step === -1 ? SIZE_STEPS - 1 : step
 }
 
+/** Log market value at which a ball is largest; above it every ball is the same size. */
+const CAP_TOP = Math.log1p(4e12 / 1e6)
+/** Market value a size step stands for when only the step arrives (signed out, or no value). */
+const STEP_CAPS = [...CAP_STEPS, 3e9]
+
+/**
+ * A ball's radius from its market value, as the approved prototype draws it: log value against the
+ * largest, small companies all at the floor. A fixed top keeps a company's size whichever area loaded it.
+ */
+export function capBulk(marketCap: number): number {
+  const norm = Math.min(1, Math.log1p(Math.max(0, marketCap) / 1e6) / CAP_TOP)
+  return 0.06 + 0.22 * Math.pow(Math.max(0, Math.min(1, (norm - 0.35) / 0.65)), 1.4)
+}
+
+function parseShares(value: unknown): AtlasShare[] {
+  const shares: AtlasShare[] = []
+  for (const raw of list(value).map(record)) {
+    const zoneId = text(raw?.zoneId)
+    const share = finite(raw?.share)
+    if (!zoneId || share === null || share <= 0 || share > 1 || shares.some((item) => item.zoneId === zoneId)) continue
+    shares.push({ zoneId, share })
+  }
+  return shares.sort((a, b) => b.share - a.share)
+}
+
 /** Four size steps by rank, largest first: the same cut the backend uses signed out. */
 export function sizeSteps(values: Map<string, number>): Map<string, number> {
   const ranked = [...values.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
@@ -271,6 +302,7 @@ function parseNodes(values: unknown[]): AtlasNode[] {
     const size = finite(raw.size)
     const cap = positive(raw.marketCap)
     const well = finite(raw.well)
+    const step = Math.min(SIZE_STEPS - 1, size !== null ? whole(size) : cap !== null ? capStep(cap) : steps.get(symbol) ?? SIZE_STEPS - 1)
     return {
       symbol,
       name: text(raw.name),
@@ -278,10 +310,12 @@ function parseNodes(values: unknown[]): AtlasNode[] {
       x,
       y,
       level: Math.min(ATLAS_MAX_LEVEL, whole(raw.level)),
-      size: Math.min(SIZE_STEPS - 1, size !== null ? whole(size) : cap !== null ? capStep(cap) : steps.get(symbol) ?? SIZE_STEPS - 1),
+      size: step,
+      bulk: capBulk(size === null && cap !== null ? cap : STEP_CAPS[step]),
       reach: finite(raw.reach),
       well: well === null ? null : Math.max(0, Math.min(1, well)),
       loner: raw.loner === true,
+      memberships: parseShares(raw.memberships),
     }
   })
 }

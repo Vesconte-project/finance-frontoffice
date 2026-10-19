@@ -30,6 +30,7 @@ import {
   fitCamera,
   groundAt,
   levelForZoom,
+  mapExtent,
   mostConnected,
   nodeAt,
   padBounds,
@@ -197,6 +198,7 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
       viewport,
       camera,
       zoom: camera.k / fit.k,
+      extent: mapExtent(bounds, fit),
       palette,
       bounds,
       sheet,
@@ -364,15 +366,16 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     const fit = fitRef.current
     if (!camera || !fit) return 0
     // the ball's centre sits one radius above the ground
-    return groundAt(sheet, node.x, node.y) + ballRadius(node.size, camera.k / fit.k) / camera.k
-  }, [sheet])
+    return groundAt(sheet, node.x, node.y) + ballRadius(node.bulk, camera.k / fit.k, mapExtent(bounds, fit)) / camera.k
+  }, [bounds, sheet])
 
   const pickNode = (x: number, y: number) => {
     const camera = cameraRef.current
     const fit = fitRef.current
     if (!camera || !fit) return null
     const scale = camera.k / fit.k
-    return nodeAt(nodes, camera, viewportRef.current, x, y, 10, { z: ballZ, radius: (node) => ballRadius(node.size, scale) })
+    const extent = mapExtent(bounds, fit)
+    return nodeAt(nodes, camera, viewportRef.current, x, y, 10, { z: ballZ, radius: (node) => ballRadius(node.bulk, scale, extent) })
   }
 
   const pointFrom = (event: PointerEvent<HTMLCanvasElement>) => {

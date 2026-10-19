@@ -115,14 +115,26 @@ export function padBounds(bounds: Bounds, share: number): Bounds {
   return { x0: bounds.x0 - dx, y0: bounds.y0 - dy, x1: bounds.x1 + dx, y1: bounds.y1 + dy }
 }
 
-/** Dot radius in CSS pixels for a size step (0 is the largest), at the whole-map zoom. */
-export function dotRadius(size: number): number {
-  return [5.5, 4.2, 3.2, 2.4][Math.max(0, Math.min(3, Math.round(size)))]
+/** The approved prototype's map is 70 of its ball units across its shorter side. */
+const BALL_UNITS = 70
+
+/** The map's shorter side on screen at the whole-map fit, in CSS pixels: what ball sizes scale with. */
+export function mapExtent(bounds: Bounds, fit: Camera): number {
+  return fit.k * Math.min(bounds.x1 - bounds.x0, (bounds.y1 - bounds.y0) * Math.cos(fit.pitch))
 }
 
-/** Balls grow with the square root of the zoom, so a close view reads as closer without hiding the ground. */
-export function ballRadius(size: number, zoom: number): number {
-  return dotRadius(size) * Math.min(2.6, Math.sqrt(Math.max(1, zoom)))
+/**
+ * A ball's radius in CSS pixels, as the prototype draws it: its bulk against the map's size, growing with
+ * the square root of the zoom, never under 1.4 px.
+ */
+export function ballRadius(bulk: number, zoom: number, extent: number): number {
+  return Math.max(1.4, (bulk / BALL_UNITS) * extent * Math.sqrt(Math.max(0, zoom)))
+}
+
+/** A ball's ring: a company whose strongest ties are at least 15% outside its main region. */
+export function ringShares(node: AtlasNode): AtlasNode['memberships'] {
+  const [main] = node.memberships
+  return node.memberships.length > 1 && main && 1 - main.share >= 0.15 ? node.memberships : []
 }
 
 export type Placement = {
@@ -147,7 +159,7 @@ export function nodeAt(
   for (const node of nodes) {
     const [sx, sy] = toScreen(camera, viewport, node.x, node.y, placement.z?.(node) ?? 0)
     const distance = Math.hypot(sx - px, sy - py)
-    if (distance <= Math.max(reach, (placement.radius?.(node) ?? dotRadius(node.size)) + 4) && distance < bestDistance) {
+    if (distance <= Math.max(reach, (placement.radius?.(node) ?? 0) + 4) && distance < bestDistance) {
       best = node
       bestDistance = distance
     }

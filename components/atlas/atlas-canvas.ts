@@ -13,6 +13,7 @@ import {
   bundleStrands,
   focusBundles,
   groundAt,
+  ringShares,
   toScreen,
   type Bounds,
   type Camera,
@@ -27,6 +28,8 @@ export type Scene = {
   camera: Camera
   /** Zoom against the whole-map fit. */
   zoom: number
+  /** The map's shorter side at the whole-map fit, in CSS pixels; ball sizes scale with it. */
+  extent: number
   palette: Palette
   bounds: Bounds
   sheet: Sheet | null
@@ -393,9 +396,9 @@ function drawBalls(
   const sin = Math.sin(camera.pitch)
   const placedBalls = new Map<string, { x: number; y: number; r: number; alpha: number }>()
   // back to front: in a tilted view, farther rows (larger y) first
-  const order = [...scene.nodes].sort((a, b) => (sin > 0 ? b.y - a.y : 0) || b.size - a.size)
+  const order = [...scene.nodes].sort((a, b) => (sin > 0 ? b.y - a.y : 0) || b.bulk - a.bulk)
   for (const item of order) {
-    const r = Math.max(1.4, ballRadius(item.size, zoom))
+    const r = ballRadius(item.bulk, zoom, scene.extent)
     const z = ground(item.x, item.y)
     const [gx, gy] = project(item.x, item.y, z)
     // the ball rests in the ground, its centre one radius up
@@ -433,6 +436,20 @@ function drawBalls(
       context.arc(x, y, r, 0, Math.PI * 2)
       context.fillStyle = shade
       context.fill()
+      // a company between regions wears a ring split by where its strongest ties are
+      const ring = ringShares(item)
+      if (ring.length > 0 && alpha > 0.3 && r > 3) {
+        let start = -Math.PI / 2
+        for (const { zoneId, share } of ring) {
+          const end = start + Math.PI * 2 * share
+          context.beginPath()
+          context.arc(x, y, r + 2, start + 0.06, end - 0.06)
+          context.strokeStyle = rgba(zoneColor(scene.hues.get(zoneId) ?? 200, palette.dark), 0.95 * alpha)
+          context.lineWidth = 2.2
+          context.stroke()
+          start = end
+        }
+      }
     }
     if (selected) {
       context.lineWidth = 2

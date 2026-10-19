@@ -5,6 +5,7 @@ import {
   atlasOverviewPath,
   atlasSymbol,
   atlasZoneId,
+  capBulk,
   capStep,
   contourAnchor,
   parseCompanyPanel,
@@ -25,9 +26,11 @@ import {
   focusBundles,
   groundAt,
   levelForZoom,
+  mapExtent,
   mostConnected,
   nodeAt,
   panBy,
+  ringShares,
   toScreen,
   toWorld,
   zoneAt,
@@ -218,8 +221,9 @@ test('signed in, size is market value in fixed steps, and reach, wells and loner
     asOf: '2026-10-16', access: freeAccess, level: 1,
     zones: [{ zoneId: 'z1', label: 'Semis', memberCount: 4, contour: null }],
     nodes: [
-      { symbol: 'BIG', zoneId: 'z1', x: 0, y: 0, level: 0, importance: 0.1, marketCap: 3e12, reach: 0.7, well: 1, loner: false },
-      { symbol: 'MID', zoneId: 'z1', x: 1, y: 0, level: 0, importance: 0.9, marketCap: 60e9, reach: 0.4, well: 0.5 },
+      { symbol: 'BIG', zoneId: 'z1', x: 0, y: 0, level: 0, importance: 0.1, marketCap: 3e12, reach: 0.7, well: 1, loner: false,
+        memberships: [{ zoneId: 'z2', share: 0.2 }, { zoneId: 'z1', share: 0.8 }, { zoneId: 'z1', share: 0.1 }, { zoneId: 'z3', share: 2 }] },
+      { symbol: 'MID', zoneId: 'z1', x: 1, y: 0, level: 0, importance: 0.9, marketCap: 60e9, reach: 0.4, well: 0.5, memberships: [{ zoneId: 'z1', share: 0.9 }, { zoneId: 'z2', share: 0.1 }] },
       { symbol: 'SMALL', zoneId: 'z1', x: 2, y: 0, level: 1, importance: 0.5, marketCap: 2e9, reach: 'x', well: 4, loner: true },
     ],
     bundles: [{ zoneA: 'z1', zoneB: 'z1', tieCount: 2, ties: [{ source: 'BIG', target: 'MID', correlation: 0.52 }, { source: 'A', target: 'B', correlation: 7 }] }],
@@ -235,6 +239,16 @@ test('signed in, size is market value in fixed steps, and reach, wells and loner
   assert.deepEqual(atlas.marketCorrelation, { value: 0.0712, comparedWithLastYear: 'lower', weeksCompared: 52 })
   assert.equal(capStep(200e9), 0)
   assert.equal(capStep(9e9), 3)
+  // a ball's radius is continuous in market value, as in the prototype; small companies share the floor
+  const [big, mid, small] = atlas.nodes
+  assert.ok(big.bulk > mid.bulk && mid.bulk > small.bulk)
+  assert.ok(Math.abs(capBulk(5e12) - 0.28) < 1e-12, 'above the top every ball is the largest')
+  assert.equal(capBulk(50e6), 0.06)
+  // regions: a duplicate or a share outside 0..1 is dropped; largest first
+  assert.deepEqual(big.memberships, [{ zoneId: 'z1', share: 0.8 }, { zoneId: 'z2', share: 0.2 }])
+  assert.deepEqual(ringShares(big).map((item) => item.zoneId), ['z1', 'z2'])
+  assert.deepEqual(ringShares(mid), [], 'under 15% outside its region, a ball has no ring')
+  assert.deepEqual(small.memberships, [], 'no memberships, no ring')
 })
 
 test('the market correlation is read only when it is a real value', () => {
@@ -292,7 +306,7 @@ test('the map fits in the space the controls leave free', () => {
 
 test('the ground sinks under the deepest wells, and stays flat without any', () => {
   const node = (symbol: string, x: number, y: number, well: number | null) =>
-    ({ symbol, name: null, zoneId: 'z', x, y, level: 0, size: 0, reach: null, well, loner: false })
+    ({ symbol, name: null, zoneId: 'z', x, y, level: 0, size: 0, bulk: 0.06, reach: null, well, loner: false, memberships: [] })
   const bounds = { x0: -10, y0: -10, x1: 10, y1: 10 }
   assert.equal(buildSheet([node('A', 0, 0, null)], bounds), null)
   assert.equal(groundAt(null, 0, 0), 0)
@@ -345,14 +359,17 @@ test('"Most connected" ranks by reach, and is empty signed out', () => {
   const atlas = parseOverview(signedOut)
   assert.ok(atlas)
   assert.deepEqual(mostConnected(atlas.nodes), [])
-  const node = (symbol: string, reach: number | null) => ({ symbol, name: null, zoneId: 'z', x: 0, y: 0, level: 0, size: 0, reach, well: null, loner: false })
+  const node = (symbol: string, reach: number | null) => ({ symbol, name: null, zoneId: 'z', x: 0, y: 0, level: 0, size: 0, bulk: 0.06, reach, well: null, loner: false, memberships: [] })
   assert.deepEqual(mostConnected([node('A', 0.2), node('B', 0.9), node('C', null), node('D', 0.9)], 2).map((item) => item.symbol), ['B', 'D'])
 })
 
-test('balls grow with the zoom, within bounds', () => {
-  assert.equal(ballRadius(0, 1), 5.5)
-  assert.ok(ballRadius(0, 4) > ballRadius(0, 1))
-  assert.equal(ballRadius(0, 1000), 5.5 * 2.6)
+test('balls scale with the map on screen and the square root of the zoom, never under 1.4 px', () => {
+  // the prototype at 1440 px: its 70-unit side fills 887 px, so the largest ball is 3.5 px
+  assert.equal(ballRadius(0.28, 1, 887), 0.28 / 70 * 887)
+  assert.equal(ballRadius(0.28, 4, 887), 2 * ballRadius(0.28, 1, 887))
+  assert.equal(ballRadius(0.06, 1, 887), 1.4)
+  const fit = fitCamera({ x0: 0, y0: 0, x1: 20, y1: 10 }, { width: 400, height: 400 })
+  assert.equal(mapExtent({ x0: 0, y0: 0, x1: 20, y1: 10 }, fit), 200)
 })
 
 test('zone colours depend on the zone id only, so they hold from week to week', () => {
