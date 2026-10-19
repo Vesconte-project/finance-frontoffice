@@ -870,21 +870,23 @@
 }
 
 @media (max-width: 40rem) {
+  /* a row along the bottom, above the time bar, so the map keeps its height */
   .rail {
     top: auto;
-    bottom: 8.4rem;
+    bottom: 8.3rem;
     left: 0.6rem;
+    grid-auto-flow: column;
     transform: none;
   }
 
   .rail button {
-    width: 2.25rem;
-    height: 2.1rem;
+    width: 2.75rem;
+    height: 2.75rem;
   }
 
-  /* Groups stays one tap away in Browse › Groups, so the rail fits short screens */
-  .rail [data-tool='groups'] {
-    display: none;
+  .rail button + button {
+    border-top: 0;
+    border-left: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
   }
 
   .timeline {
@@ -907,9 +909,10 @@
   }
 
   .workbench {
-    right: 0.6rem;
-    bottom: 7.6rem;
-    left: 3.4rem;
+    /* clear of the zoom stack at the right edge */
+    right: 3.8rem;
+    bottom: 11.5rem;
+    left: 0.6rem;
     width: auto;
     transform: none;
   }
@@ -923,12 +926,16 @@
   }
 
   .cardSlot {
-    top: auto;
-    right: 3.6rem;
-    bottom: 7.6rem;
-    left: 3.4rem;
+    top: 4.1rem;
+    right: 0.6rem;
+    left: 0.6rem;
     width: auto;
     max-height: 34%;
+  }
+
+  .play {
+    width: 2.75rem;
+    height: 2.75rem;
   }
 
   .themeLabel {

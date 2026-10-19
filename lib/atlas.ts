@@ -14,6 +14,7 @@ import {
 } from './atlas-model'
 import {
   parseCompare,
+  parseSetCohesion,
   parseInfluence,
   parseMovement,
   parseTest,
@@ -21,6 +22,7 @@ import {
   parseThemes,
   parseWeeks,
   type AtlasCompare,
+  type AtlasSetCohesion,
   type AtlasInfluence,
   type AtlasMovement,
   type AtlasTest,
@@ -110,6 +112,10 @@ export function getAtlasCompare(a: string, b: string, asOf?: string | null): Pro
 
 export function getAtlasTest(options: { from: string; to: string; testsRun: number; asOf?: string | null }): Promise<AtlasResult<AtlasTest>> {
   return readAtlas(`/v1/atlas/test${query({ from: options.from, to: options.to, testsRun: String(options.testsRun), asOf: options.asOf })}`, 'atlas.test', parseTest)
+}
+
+export function getAtlasSet(members: string[], asOf?: string | null): Promise<AtlasResult<AtlasSetCohesion>> {
+  return readAtlas(`/v1/atlas/set${query({ members: members.join(','), asOf })}`, 'atlas.set', parseSetCohesion)
 }
 
 export function getAtlasZone(zoneId: string, lens?: AtlasLens): Promise<AtlasResult<AtlasZonePanel>> {

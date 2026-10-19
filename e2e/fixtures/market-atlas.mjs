@@ -132,6 +132,8 @@ export function atlasOverviewFixture({ signedIn, level, bbox }) {
         : [{ zoneId: member.zoneId, share: 1 }],
     })),
     marketCorrelation: { value: 0.0712, comparedWithLastYear: null, weeksCompared: 1 },
+    // the week's largest reach over every company, not only those on this answer
+    reachMax: 0.9,
     skeleton: ZONES.flatMap((zone) => {
       const members = MEMBERS.filter((member) => member.zoneId === zone.zoneId && shown.has(member.symbol))
       return members.slice(1).map((member) => ({ source: members[0].symbol, target: member.symbol, zoneId: zone.zoneId, correlation: 0.5 }))

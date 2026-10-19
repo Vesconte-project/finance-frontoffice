@@ -79,8 +79,10 @@ import {
   type WeekFrame,
 } from '@/lib/atlas-pro'
 import {
+  atlasSetPath,
   parseCompare,
   parseInfluence,
+  parseSetCohesion,
   parseMovement,
   parseTest,
   parseThemeDetail,
@@ -165,6 +167,7 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
   const [hoverZone, setHoverZone] = useState<string | null>(null)
   const [zoneTip, setZoneTip] = useState<{ zoneId: string; x: number; y: number } | null>(null)
   const [openSheet, setOpenSheet] = useState<Sheet>(null)
+  const [moreOpen, setMoreOpen] = useState(false)
   const [browseTab, setBrowseTab] = useState<BrowseTab>('regions')
   const [showNames, setShowNames] = useState(true)
   const [keyOpen, setKeyOpen] = useState(false)
@@ -558,7 +561,8 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
       const edge = (selector: string) => [...frame.querySelectorAll<HTMLElement>(selector)].map((element) => element.getBoundingClientRect())
       const top = Math.max(0, ...edge('[data-atlas-controls]').map((box) => box.bottom - rect.top)) + 10
       const narrow = rect.width < 640
-      const bottom = Math.max(narrow ? 72 : 44, ...edge('[data-atlas-bottom]').map((box) => rect.bottom - box.top + 8))
+      // on a phone the rail lies along the bottom too
+      const bottom = Math.max(narrow ? 72 : 44, ...edge(narrow ? '[data-atlas-bottom], [data-atlas-left]' : '[data-atlas-bottom]').map((box) => rect.bottom - box.top + 8))
       const left = narrow ? 16 : Math.max(16, ...edge('[data-atlas-left]').map((box) => box.right - rect.left + 8))
       fitRef.current = fitCamera(bounds, viewportRef.current, pitch, { top, right: narrow ? 16 : 64, bottom, left })
       if (!cameraRef.current || !previousFit || fittedAtlas.current !== atlas) cameraRef.current = { ...fitRef.current }
@@ -1118,7 +1122,9 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     stopPlay()
     if (view.lens !== lens) changeLens(view.lens)
     setCmp(view.cmp)
-    setTheme(view.theme ? { themeId: view.theme, label: view.theme, memberCount: 0, cohesion: null, typicalCohesion: null, verdict: null, regions: [] } : null)
+    const known = view.theme && themesRemote.status === 'ok' ? themesRemote.data.find((item) => item.themeId === view.theme) : undefined
+    if (view.theme && !known) setThemesWanted(true)
+    setTheme(known ?? (view.theme ? { themeId: view.theme, label: view.theme, memberCount: 0, cohesion: null, typicalCohesion: null, verdict: null, regions: [] } : null))
     setMulti(new Set(view.multi))
     setShowInfluence(view.layers.inf)
     setShowFidelity(view.layers.fid)
@@ -1189,6 +1195,24 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     : historyError ? 'Earlier weeks could not load.' : null
   const influence = influenceRemote.status === 'ok' ? influenceRemote.data : null
   const summary = useMemo(() => selectionSummary(multi, loadedBySymbol), [loadedBySymbol, multi])
+  // The selection's cohesion, read once the selection has settled; a newer selection cancels the older read.
+  const [setCohesion, setSetCohesion] = useState<{ key: string; value: number | null } | null>(null)
+  const setPath = pro ? atlasSetPath(multi, initial.asOf) : null
+  useEffect(() => {
+    if (!setPath) return
+    const controller = new AbortController()
+    const timer = window.setTimeout(() => {
+      void fetchAtlasJson(setPath, parseSetCohesion, { signal: controller.signal }).then((answer) => {
+        if (controller.signal.aborted) return
+        setSetCohesion({ key: setPath, value: answer.status === 'ok' && answer.data.available ? answer.data.meanCorrelation : null })
+      })
+    }, 350)
+    return () => {
+      controller.abort()
+      window.clearTimeout(timer)
+    }
+  }, [setPath])
+  const trayCorrelation = setPath && setCohesion?.key === setPath ? setCohesion.value : null
   const railActive = new Set<AtlasTool>([
     tool === 'select' ? 'select' : 'explore',
     ...(dock ? [dock.kind] : []),
@@ -1235,7 +1259,7 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
             aria-hidden="true"
           />
 
-          <div className={styles.chrome}>
+          <div className={styles.chrome} data-more={moreOpen ? 'true' : 'false'}>
             <div className={styles.chromeLeft} data-atlas-controls="">
               <button
                 type="button"
@@ -1270,6 +1294,18 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
               >
                 <Layers size={15} aria-hidden="true" /><span className={styles.wide}>Layers</span>
               </button>
+              {/* On a phone the theme, the search and movement fold behind this button, so the map keeps the screen. */}
+              <button
+                type="button"
+                className={`${styles.pill} ${styles.moreToggle}`}
+                aria-expanded={moreOpen}
+                aria-controls={`${searchId}-more`}
+                aria-label={signedIn ? 'Theme, find and movement' : 'Find and movement'}
+                onClick={() => setMoreOpen((open) => !open)}
+              >
+                {moreOpen ? <X size={15} aria-hidden="true" /> : <Search size={15} aria-hidden="true" />}<span>More</span>
+              </button>
+              <span id={`${searchId}-more`} className={`${styles.foldGroup} ${styles.foldable}`}>
               {signedIn ? (
                 <AtlasThemeMenu
                   open={themeMenu}
@@ -1331,8 +1367,9 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
                   </ul>
                 ) : null}
               </div>
+              </span>
             </div>
-            <div className={styles.chromeRight} role="group" aria-label="Movement over time" data-atlas-controls="">
+            <div className={`${styles.chromeRight} ${styles.foldable}`} role="group" aria-label="Movement over time" data-atlas-controls="">
               <span className={styles.eyebrow}>Movement</span>
               <div className={pro$.seg} role="group" aria-label={pro ? 'Compare with an earlier map' : 'Compare with an earlier map: Pro'}>
                 {([[0, 'Off', 'Movement off'], [26, '6 mo', 'Movement over the last 6 months'], [52, '1 yr', 'Movement over the last year']] as const).map(([value, text, label]) => (
@@ -1489,6 +1526,7 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
               {multi.size ? (
                 <AtlasTray
                   summary={summary}
+                  meanCorrelation={trayCorrelation}
                   groupCount={groups.length}
                   onCompare={() => openDock('compare', groupKey(multi))}
                   onTest={() => openDock('test', groupKey(multi))}
@@ -1586,7 +1624,7 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
               }}
               hues={hues}
               dark={paletteRef.current?.dark ?? false}
-              maxReach={maxReach}
+              maxReach={atlas.reachMax ?? maxReach}
             />
           </aside>
         ) : null}

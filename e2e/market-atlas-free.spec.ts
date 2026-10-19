@@ -4,6 +4,14 @@ import { expect, test, type Page } from '@playwright/test'
 // themes and map accuracy are open; history, movement, the Pro layers and the tools are locked and carry no data.
 test.skip(process.env.E2E_STUB_SIGNED_IN !== '1' || process.env.E2E_STUB_TIER === 'pro', 'needs the fixture backend answering as a free reader')
 
+// Under `next dev` the first request to a dynamic route can answer the 404 page while it compiles;
+// ask each one until it answers as itself, so the specs test the atlas and not the compiler.
+test.beforeAll(async ({ request }) => {
+  for (const path of ['/api/atlas/companies/FXA1', '/api/atlas/zones/fx-zone-alpha', '/api/atlas/themes/fx-ai']) {
+    await expect.poll(async () => (await request.get(path)).headers()['content-type'] ?? '', { timeout: 60_000 }).toContain('application/json')
+  }
+})
+
 function watchConsole(page: Page): string[] {
   const errors: string[] = []
   page.on('console', (message) => {
@@ -178,7 +186,7 @@ async function pageSearch(page: Page, symbol: string) {
 }
 
 test('the local routes keep the backend refusals for Pro answers', async ({ request }) => {
-  for (const path of ['/api/atlas/weeks', '/api/atlas/influence', '/api/atlas/movement?from=2026-04-17', '/api/atlas/compare?a=zone:fx-zone-alpha&b=FXB1', '/api/atlas?level=1&lens=total', '/api/atlas?level=1&asOf=2026-04-17']) {
+  for (const path of ['/api/atlas/set?members=FXA1,FXA2', '/api/atlas/weeks', '/api/atlas/influence', '/api/atlas/movement?from=2026-04-17', '/api/atlas/compare?a=zone:fx-zone-alpha&b=FXB1', '/api/atlas?level=1&lens=total', '/api/atlas?level=1&asOf=2026-04-17']) {
     const response = await request.get(path)
     expect(response.status(), path).toBe(403)
     expect(await response.json()).toEqual({ detail: 'pro_required' })
