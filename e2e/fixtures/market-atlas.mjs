@@ -12,18 +12,27 @@
  * deterministic run to run.
  */
 
-const AS_OF = '2026-10-16'
-const SIGNED_OUT = { tier: 'signedOut', maxLevel: 1, historyWeeks: 0, lines: false, bundleTies: false, truePositions: false, movement: false }
-const FREE = { tier: 'free', maxLevel: 3, historyWeeks: 0, lines: true, bundleTies: true, truePositions: true, movement: false }
+export const AS_OF = '2026-10-16'
+const SIGNED_OUT = { tier: 'signedOut', maxLevel: 1, historyWeeks: 0, lines: false, bundleTies: false, truePositions: false, movement: false, pro: false }
+const FREE = { tier: 'free', maxLevel: 3, historyWeeks: 0, lines: true, bundleTies: true, truePositions: true, movement: false, pro: false }
 
-const ZONES = [
+/** Synthetic themes: which fixture companies "thematic funds" hold together. */
+export const FIXTURE_THEMES = [
+  { themeId: 'fx-ai', label: 'Fixture AI', members: ['FXA1', 'FXA3', 'FXB2', 'FXC1'] },
+  { themeId: 'fx-robotics', label: 'Fixture Robotics', members: ['FXB4', 'FXC2', 'FXC5'] },
+]
+const themesOf = (symbol) => FIXTURE_THEMES.filter((theme) => theme.members.includes(symbol)).map((theme) => theme.themeId)
+/** Map accuracy per member rank: well placed leaders, one stretched company per zone. */
+const FIDELITY = [0.9, 0.8, 0.7, 0.9, 0.3, 0.6]
+
+export const ZONES = [
   { zoneId: 'fx-zone-alpha', label: 'Fixture Alpha', x: -3, y: 1 },
   { zoneId: 'fx-zone-beta', label: 'Fixture Beta', x: 3, y: 1.5 },
   { zoneId: 'fx-zone-gamma', label: 'Fixture Gamma', x: 0, y: -2.5 },
 ]
 
 /** Six members per zone on a fixed ring; the first is the largest, levels follow the feature-store cuts. */
-const MEMBERS = ZONES.flatMap((zone, zoneIndex) => Array.from({ length: 6 }, (_, i) => {
+export const MEMBERS = ZONES.flatMap((zone, zoneIndex) => Array.from({ length: 6 }, (_, i) => {
   const angle = (i / 6) * Math.PI * 2
   return {
     symbol: `FX${'ABC'[zoneIndex]}${i + 1}`,
@@ -38,7 +47,7 @@ const MEMBERS = ZONES.flatMap((zone, zoneIndex) => Array.from({ length: 6 }, (_,
   }
 }))
 
-function ring(zone) {
+export function ring(zone) {
   return Array.from({ length: 12 }, (_, i) => {
     const angle = (i / 12) * Math.PI * 2
     return [Number((zone.x + Math.cos(angle) * 1.4).toFixed(3)), Number((zone.y + Math.sin(angle) * 1.2).toFixed(3))]
@@ -100,6 +109,7 @@ export function atlasOverviewFixture({ signedIn, level, bbox }) {
       // The last member of each zone moves on its own; the first is its deepest well.
       loner: member.symbol.endsWith('6'), importance: member.importance, reach: Number((member.importance * 0.8).toFixed(4)),
       marketCap: member.marketCap, well: Number(Math.max(0, 1 - (Number(member.symbol.slice(-1)) - 1) * 0.18).toFixed(3)),
+      fidelity: FIDELITY[Number(member.symbol.slice(-1)) - 1], themes: themesOf(member.symbol),
       // the second member of each zone bridges into the next zone, so it wears a ring
       memberships: member.symbol.endsWith('2')
         ? [{ zoneId: member.zoneId, share: 0.6 }, { zoneId: ZONES[(ZONES.findIndex((zone) => zone.zoneId === member.zoneId) + 1) % 3].zoneId, share: 0.4 }]
@@ -140,8 +150,11 @@ export function atlasCompanyFixture(symbol, signedIn) {
       asOf: AS_OF, access: FREE, symbol, name: member.name, sector: 'Fixture', industry: 'Fixture Industry', country: 'Testland',
       zoneId: zone.zoneId, zoneLabel: zone.label, x: member.x, y: member.y, level: member.level, loner: false,
       memberships: [{ zoneId: zone.zoneId, label: zone.label, share: 0.85 }, { zoneId: ZONES[(ZONES.indexOf(zone) + 1) % 3].zoneId, label: ZONES[(ZONES.indexOf(zone) + 1) % 3].label, share: 0.15 }],
-      neighbours: others.slice(0, 15).map((item, rank) => ({ symbol: item.symbol, name: item.name, zoneId: item.zoneId, correlation: Number((0.62 - rank * 0.03).toFixed(4)) })),
-      importance: member.importance, reach: 0.5, marketCap: member.marketCap, fidelity: 0.8,
+      neighbours: others.slice(0, 15).map((item, rank) => ({
+        symbol: item.symbol, name: item.name, zoneId: item.zoneId, correlation: Number((0.62 - rank * 0.03).toFixed(4)), total: Number((0.7 - rank * 0.025).toFixed(4)),
+      })),
+      importance: member.importance, reach: 0.5, marketCap: member.marketCap, fidelity: FIDELITY[Number(member.symbol.slice(-1)) - 1], lens: 'residual',
+      themes: FIXTURE_THEMES.filter((theme) => theme.members.includes(symbol)).map((theme) => ({ themeId: theme.themeId, label: theme.label })),
     },
   }
 }
