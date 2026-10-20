@@ -40,6 +40,8 @@ export const config = {
     '/api/network(.*)',
     '/api/calendar(.*)',
     '/api/market(.*)',
+    // The ticker currency list is a market read like the others.
+    '/api/currencies(.*)',
     '/dashboard(.*)',
     '/stocks(.*)',
     // The calendar reads the viewer to decide how much of it is open.
