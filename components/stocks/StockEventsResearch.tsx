@@ -4,9 +4,7 @@ import type { CanonicalEvent, DisclosurePayload, EventCalendarPayload } from '@/
 import type { CalendarResult } from '@/lib/calendar-events'
 import type { CalendarCategory } from '@/lib/calendar-model'
 import { normalizeEarningsHistory } from '@/lib/event-research'
-import Money from '@/components/ui/Money'
 import { formatCompactMoney } from '@/lib/currency'
-import { amountView } from '@/lib/display-currency'
 import BeingBuilt from '@/components/stocks/research/BeingBuilt'
 import ResearchChapter, { LeadStat } from '@/components/stocks/research/ResearchChapter'
 import type { StockResearchData } from '@/lib/stock-research'
@@ -87,25 +85,7 @@ function Cell({ value }: { value: string }) {
   return value ? <>{value}</> : <span className={styles.notReported}>Not reported</span>
 }
 
-/**
- * An earnings revenue figure. The read model records no currency for earnings,
- * so with a display currency it stays as reported, marked, and never relabelled.
- */
-function RevenueCell({ value, data, displayCurrency }: { value: number | null; data: StockResearchData; displayCurrency: string | null }) {
-  if (value === null) return <Cell value="" />
-  if (!displayCurrency) return <Cell value={formatCompactMoney(value, data.currency)} />
-  return (
-    <Money view={amountView({
-      value: null,
-      currency: displayCurrency,
-      original: { value, currency: data.currency, label: data.currency },
-      unconverted: 'currency_unknown',
-      rateDate: null,
-    }, formatCompactMoney)} />
-  )
-}
-
-function EarningsHistory({ data, displayCurrency }: { data: StockResearchData; displayCurrency: string | null }) {
+function EarningsHistory({ data }: { data: StockResearchData }) {
   const { rows } = normalizeEarningsHistory(data.summary.earningsHistory)
   if (rows.length === 0) {
     return <BeingBuilt size="chart">Each quarter’s reported earnings and revenue against what was expected are being added.</BeingBuilt>
@@ -136,8 +116,8 @@ function EarningsHistory({ data, displayCurrency }: { data: StockResearchData; d
               <td data-direction={row.epsSurprisePct === null ? undefined : row.epsSurprisePct >= 0 ? 'up' : 'down'}>
                 <Cell value={formatSurprise(row.epsSurprisePct)} />
               </td>
-              <td><RevenueCell value={row.revenueActual} data={data} displayCurrency={displayCurrency} /></td>
-              <td><RevenueCell value={row.revenueEstimate} data={data} displayCurrency={displayCurrency} /></td>
+              <td><Cell value={row.revenueActual === null ? '' : formatCompactMoney(row.revenueActual, data.currency)} /></td>
+              <td><Cell value={row.revenueEstimate === null ? '' : formatCompactMoney(row.revenueEstimate, data.currency)} /></td>
               <td data-direction={row.revenueSurprisePct === null ? undefined : row.revenueSurprisePct >= 0 ? 'up' : 'down'}>
                 <Cell value={formatSurprise(row.revenueSurprisePct)} />
               </td>
@@ -157,7 +137,6 @@ export default function StockEventsResearch({
   month,
   category,
   selectedDay,
-  displayCurrency = null,
 }: {
   data: StockResearchData
   events: EventCalendarPayload | null
@@ -166,8 +145,6 @@ export default function StockEventsResearch({
   month: string
   category: CalendarCategory
   selectedDay?: string
-  /** The display currency the reader chose; earnings carry no currency, so they stay as reported. */
-  displayCurrency?: string | null
 }) {
   const isFund = data.kind === 'fund'
   const entries = collapseEvents([...(events?.rows ?? []), ...(disclosures?.rows ?? [])])
@@ -187,7 +164,7 @@ export default function StockEventsResearch({
   const nextContext = [
     earnings?.fiscalPeriod,
     earnings?.epsEstimate === null || earnings?.epsEstimate === undefined ? null : `EPS estimate ${formatNumber(earnings.epsEstimate)}`,
-    earnings?.revenueEstimate === null || earnings?.revenueEstimate === undefined ? null : `revenue estimate ${formatCompactMoney(earnings.revenueEstimate, data.currency)}${displayCurrency ? ` (as reported, not in ${displayCurrency})` : ''}`,
+    earnings?.revenueEstimate === null || earnings?.revenueEstimate === undefined ? null : `revenue estimate ${formatCompactMoney(earnings.revenueEstimate, data.currency)}`,
     next?.movedFrom ? `moved from ${formatDate(next.movedFrom)}` : null,
   ].filter(Boolean).join(' · ')
 
@@ -216,7 +193,7 @@ export default function StockEventsResearch({
 
         {!isFund ? (
           <ResearchChapter id="reported-against-estimate" label="Reported against estimate">
-            <EarningsHistory data={data} displayCurrency={displayCurrency} />
+            <EarningsHistory data={data} />
           </ResearchChapter>
         ) : null}
 

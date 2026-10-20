@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { amountOf, DISPLAY_CURRENCY_PARAM, moneyEntryOf } from '@/lib/display-currency'
+import { convertedValueOf, DISPLAY_CURRENCY_PARAM, moneyEntryOf } from '@/lib/display-currency'
 import { resolveDisplayCurrency } from '@/lib/display-currency-server'
 import { getTickerPageSummary } from '@/lib/ticker-data'
 
@@ -9,10 +9,10 @@ export const dynamic = 'force-dynamic'
 const TICKER_PATTERN = /^[A-Z0-9][A-Z0-9.-]{0,14}$/
 
 /**
- * The ticker chrome's quote in a display currency: the price and the day's
- * change as the backend converted them, each with the reported amount. The
- * chrome sits in the layout, which does not see the page's `?currency=`, so it
- * asks here.
+ * The header price in a display currency: the backend's conversion of the
+ * latest price at its rate ("₩75,000 ≈ $54.11"). The page keeps the reported
+ * price; this only adds the converted figure beside it. The chrome sits in the
+ * layout, which does not see the page's `?currency=`, so it asks here.
  */
 export async function GET(
   request: NextRequest,
@@ -30,21 +30,21 @@ export async function GET(
 
   try {
     const summary = await getTickerPageSummary(ticker, currency)
-    if (summary.displayReport?.unsupported) {
+    if (summary.displayCurrency?.refused) {
       return NextResponse.json({ error: 'unsupported_currency' }, { status: 422 })
     }
     const quote = summary.quote
-    const original = summary.asset?.currency ?? currency
-    const context = { display: currency, original }
     // The chrome falls back to the last price when the quote has none.
-    const priceHolder = quote && (quote.price !== null || moneyEntryOf(quote, 'price')) ? quote : summary.marketStats
+    const priceHolder = quote && typeof quote.price === 'number' ? quote : summary.marketStats
     const priceField = priceHolder === quote ? 'price' : 'lastPrice'
+    const conversion = convertedValueOf(priceHolder, priceField, currency)
+    const entry = moneyEntryOf(priceHolder, priceField)
     return NextResponse.json({
       ticker,
       currency,
-      price: amountOf(priceHolder, priceField, context),
-      change: amountOf(quote, 'change', context),
-      changePercent: typeof quote?.changePercent === 'number' ? quote.changePercent : null,
+      // The latest price as reported stays the page's price; this is the backend's conversion of it.
+      converted: conversion ? { value: conversion.value, currency: conversion.currency, rateDate: conversion.rateDate } : null,
+      unconvertedReason: conversion ? null : entry?.unconvertedReason ?? 'no_rate',
     }, {
       headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
     })

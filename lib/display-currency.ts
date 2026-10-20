@@ -1,34 +1,29 @@
 /**
- * Display currency for the ticker pages: the reader can see every amount in
- * another currency, converted by the backend (`?currency=XXX` on the ticker
- * reads). Nothing here converts: the browser and this site never apply a rate.
- * The backend adds a `money` block next to each amount it can annotate:
+ * Display currency for the ticker pages. The page always reads in the
+ * listing's own currency; a display currency chosen in the URL
+ * (`?currency=XXX`, and nowhere else) only adds the backend's conversion in two
+ * places: next to the header price, and in the price chart when the reader
+ * asks for it. Indicators, signals, scorecards and financial statements stay in
+ * the listing's currency.
+ *
+ * Nothing here converts: the browser and this site never apply a rate. With
+ * `?currency=` the backend keeps every original amount and adds a `money`
+ * block beside it:
  *
  *   {"close": 75000, "money": {"close": {"value": 75000, "currency": "KRW",
  *     "sourceCurrency": "KRW", "date": "2026-10-13",
  *     "converted": {"value": 54.12, "currency": "USD", "rate": 0.0007216, "rateDate": "2026-10-12"},
  *     "unconvertedReason": null}}}
  *
- * This module parses those blocks defensively, puts the converted value in the
- * field's place for the page to draw (or null when there is none, so a chart
- * never mixes currencies), and keeps the original beside it.
- *
- * The preference lives in the URL (`?currency=`) and in the browser
- * (localStorage) for now; it moves to the account once the platform migration
- * is approved.
+ * This module parses those blocks defensively, and the `listings` block of the
+ * ticker summary (the listings of the same company we track).
  */
 
 export const DISPLAY_CURRENCY_PARAM = 'currency'
-export const DISPLAY_CURRENCY_STORAGE_KEY = 'vesconte:display-currency'
 
 /** Reasons the backend gives for an amount it could not convert. */
 export const BACKEND_UNCONVERTED_REASONS = ['currency_unknown', 'value_date_unknown', 'no_rate', 'fx_rates_unavailable'] as const
 export type BackendUnconvertedReason = (typeof BACKEND_UNCONVERTED_REASONS)[number]
-/**
- * `not_offered`: the page shows an amount the backend does not annotate (for
- * example net cash), so it stays in its own currency.
- */
-export type UnconvertedReason = BackendUnconvertedReason | 'not_offered'
 
 export type MoneyConversion = {
   value: number
@@ -48,23 +43,6 @@ export type MoneyEntry = {
   unconvertedReason: BackendUnconvertedReason | null
 }
 
-export type MoneyBlock = Record<string, MoneyEntry>
-
-export type MoneyOriginal = {
-  value: number
-  currency: string
-  /** The label the amount was stored with (GBp for pence), for the reader. */
-  label: string
-}
-
-export type DisplayCurrencyReport = {
-  target: string
-  converted: number
-  unconverted: Partial<Record<BackendUnconvertedReason, number>>
-  /** The backend refused the currency; the page fell back to original amounts. */
-  unsupported: boolean
-}
-
 export type CurrencyOption = {
   code: string
   latestRateDate: string | null
@@ -80,6 +58,7 @@ export type CurrenciesPayload = {
 }
 
 const CODE = /^[A-Z]{3}$/
+const SYMBOL = /^[A-Z0-9][A-Z0-9.-]{0,14}$/
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
@@ -139,228 +118,16 @@ export function parseMoneyEntry(raw: unknown): MoneyEntry | null {
   }
 }
 
-export function parseMoneyBlock(raw: unknown): MoneyBlock | null {
-  const record = asRecord(raw)
-  if (!record) return null
-  const block: MoneyBlock = {}
-  for (const [field, value] of Object.entries(record)) {
-    const entry = parseMoneyEntry(value)
-    if (entry) block[field] = entry
-  }
-  return Object.keys(block).length ? block : null
-}
-
+/** The `money` entry of `holder[field]`, or null when the backend did not annotate it. */
 export function moneyEntryOf(holder: unknown, field: string): MoneyEntry | null {
-  const block = parseMoneyBlock(asRecord(holder)?.money)
-  return block?.[field] ?? null
+  const money = asRecord(asRecord(holder)?.money)
+  return money ? parseMoneyEntry(money[field]) : null
 }
 
-export function emptyReport(target: string): DisplayCurrencyReport {
-  return { target, converted: 0, unconverted: {}, unsupported: false }
-}
-
-export function mergeReports(target: string, reports: ReadonlyArray<DisplayCurrencyReport | null | undefined>): DisplayCurrencyReport {
-  const merged = emptyReport(target)
-  for (const report of reports) {
-    if (!report || report.target !== target) continue
-    merged.converted += report.converted
-    merged.unsupported ||= report.unsupported
-    for (const [reason, count] of Object.entries(report.unconverted) as Array<[BackendUnconvertedReason, number]>) {
-      merged.unconverted[reason] = (merged.unconverted[reason] ?? 0) + count
-    }
-  }
-  return merged
-}
-
-export function unconvertedCount(report: DisplayCurrencyReport | null | undefined): number {
-  return report ? Object.values(report.unconverted).reduce((sum, count) => sum + (count ?? 0), 0) : 0
-}
-
-/**
- * The payload as the page draws it in `target`: every annotated amount is
- * replaced by its converted value, or by null when the backend could not
- * convert it, and the holder's `currency` reads `target`. The `money` blocks
- * stay, parsed, so the original can be shown beside the converted value. The
- * input is not changed.
- */
-export function applyDisplayCurrency<T>(payload: T, target: string): { payload: T; report: DisplayCurrencyReport } {
-  const report = emptyReport(target)
-  const walk = (node: unknown): unknown => {
-    if (Array.isArray(node)) return node.map(walk)
-    const record = asRecord(node)
-    if (!record) return node
-    const out: Record<string, unknown> = {}
-    for (const [key, value] of Object.entries(record)) out[key] = key === 'money' ? value : walk(value)
-    const block = parseMoneyBlock(record.money)
-    if (!block) return out
-    out.money = block
-    for (const [field, entry] of Object.entries(block)) {
-      if (entry.converted && entry.converted.currency === target) {
-        out[field] = entry.converted.value
-        report.converted += 1
-      } else {
-        out[field] = null
-        // A conversion into another currency than the one asked for is not used.
-        if (!entry.unconvertedReason && entry.converted) entry.unconvertedReason = 'no_rate'
-        if (entry.value !== null) {
-          const reason = entry.unconvertedReason ?? 'no_rate'
-          report.unconverted[reason] = (report.unconverted[reason] ?? 0) + 1
-        }
-      }
-    }
-    if ('currency' in out) out.currency = target
-    return out
-  }
-  return { payload: walk(payload) as T, report }
-}
-
-/** One amount as the page shows it. */
-export type Amount = {
-  /** The amount to show, in `currency`; null when there is none to show. */
-  value: number | null
-  currency: string
-  /** The original, when it differs from what is shown (converted) or stands in for it (unconverted). */
-  original: MoneyOriginal | null
-  unconverted: UnconvertedReason | null
-  rateDate: string | null
-}
-
-export type DisplayContext = {
-  /** The display currency the reader chose; null shows amounts as reported. */
-  display: string | null
-  /** The currency the amounts are reported in, used when no `money` entry says otherwise. */
-  original: string
-}
-
-/**
- * The amount at `holder[field]` after `applyDisplayCurrency`. Without a display
- * currency it is the reported value. With one, it is the backend's converted
- * value and the original; when there is no conversion, the original with the
- * reason. An amount the backend does not annotate stays in its own currency.
- */
-export function amountOf(holder: unknown, field: string, context: DisplayContext): Amount {
-  const record = asRecord(holder)
-  const raw = finite(record?.[field])
-  if (!context.display) return { value: raw, currency: context.original, original: null, unconverted: null, rateDate: null }
-  const entry = moneyEntryOf(record, field)
-  if (!entry) {
-    return {
-      value: null,
-      currency: context.display,
-      original: raw === null ? null : { value: raw, currency: context.original, label: context.original },
-      unconverted: raw === null ? null : 'not_offered',
-      rateDate: null,
-    }
-  }
-  const original = entry.value === null
-    ? null
-    : {
-        value: entry.value,
-        currency: entry.currency ?? context.original,
-        label: entry.sourceCurrency ?? entry.currency ?? context.original,
-      }
-  if (entry.converted && entry.converted.currency === context.display) {
-    return { value: entry.converted.value, currency: context.display, original, unconverted: null, rateDate: entry.converted.rateDate }
-  }
-  return {
-    value: null,
-    currency: context.display,
-    original,
-    unconverted: original ? entry.unconvertedReason ?? 'no_rate' : null,
-    rateDate: null,
-  }
-}
-
-/** The original of an annotated amount, for derived points (a statement year, a dividend). */
-export function originalOf(holder: unknown, field: string): MoneyOriginal | null {
-  const entry = moneyEntryOf(holder, field)
-  if (!entry || entry.value === null || !entry.currency) return null
-  return { value: entry.value, currency: entry.currency, label: entry.sourceCurrency ?? entry.currency }
-}
-
-/** Why an amount is not shown in `target`, in the reader's words. */
-export function unconvertedReasonText(reason: UnconvertedReason, target: string): string {
-  switch (reason) {
-    case 'currency_unknown':
-      return `The currency of this amount is not recorded, so it cannot be shown in ${target}.`
-    case 'value_date_unknown':
-      return `The date of this amount is not recorded, so no ${target} rate can be chosen for it.`
-    case 'no_rate':
-      return `No ${target} exchange rate was published within 10 business days of this amount's date.`
-    case 'fx_rates_unavailable':
-      return `Exchange rates are unavailable right now, so this amount is shown as reported.`
-    case 'not_offered':
-      return `This figure is not offered in other currencies yet, so it is shown as reported.`
-  }
-}
-
-export type AmountView = {
-  /** The figure to show first. */
-  text: string
-  /** The original beside a converted figure. */
-  original: string | null
-  /** A short marker for an amount shown as reported because it could not be converted. */
-  marker: string | null
-  /** The longer explanation: the rate date, or why there is none. */
-  detail: string | null
-}
-
-const dayFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
-
-function formatDay(value: string): string {
-  const parsed = Date.parse(`${value.slice(0, 10)}T00:00:00Z`)
-  return Number.isFinite(parsed) ? dayFormat.format(parsed) : value
-}
-
-/** What to write for an amount, with `format` choosing the style (full, compact, signed). */
-export function amountView(
-  amount: Amount,
-  format: (value: number, currency: string) => string,
-): AmountView | null {
-  if (amount.unconverted && amount.original) {
-    return {
-      text: format(amount.original.value, amount.original.currency),
-      original: null,
-      marker: `not in ${amount.currency}`,
-      detail: unconvertedReasonText(amount.unconverted, amount.currency),
-    }
-  }
-  if (amount.value === null) return null
-  const text = format(amount.value, amount.currency)
-  if (!amount.original || isoCurrency(amount.original.currency) === amount.currency) {
-    return { text, original: null, marker: null, detail: null }
-  }
-  const original = format(amount.original.value, amount.original.currency)
-  const label = amount.original.label !== amount.original.currency ? ` (quoted in ${amount.original.label})` : ''
-  return {
-    text,
-    original,
-    marker: null,
-    detail: `${original}${label} converted to ${amount.currency}${amount.rateDate ? ` at the rate of ${formatDay(amount.rateDate)}` : ''}.`,
-  }
-}
-
-/** The page-level sentence for a display currency, or null when amounts show as reported. */
-export function displayCurrencySummary(report: DisplayCurrencyReport | null | undefined): { lead: string; gaps: string | null } | null {
-  if (!report) return null
-  if (report.unsupported) {
-    return { lead: `Amounts are shown as reported: ${report.target} is not available for this page right now.`, gaps: null }
-  }
-  const lead = `Amounts in ${report.target}, each converted at the exchange rate of its own date. The reported amount is shown beside the main figures.`
-  const missing = unconvertedCount(report)
-  if (!missing) return { lead, gaps: null }
-  const reasons = (Object.entries(report.unconverted) as Array<[BackendUnconvertedReason, number]>).filter(([, count]) => count > 0)
-  const head = `${missing} ${missing === 1 ? 'amount has' : 'amounts have'} no ${report.target} value`
-  const tail = `${missing === 1 ? 'is' : 'are'} left out of charts or marked “not in ${report.target}”`
-  if (reasons.length === 1) return { lead, gaps: `${head} (${GAP_LABEL[reasons[0][0]]}) and ${tail}.` }
-  return { lead, gaps: `${head} and ${tail}: ${reasons.map(([reason, count]) => `${count} ${GAP_LABEL[reason]}`).join(', ')}.` }
-}
-
-const GAP_LABEL: Record<BackendUnconvertedReason, string> = {
-  currency_unknown: 'no recorded currency',
-  value_date_unknown: 'no recorded date',
-  no_rate: 'no exchange rate within 10 business days of their date',
-  fx_rates_unavailable: 'exchange rates unavailable',
+/** The backend's conversion of `holder[field]` into `target`, or null when there is none. */
+export function convertedValueOf(holder: unknown, field: string, target: string): MoneyConversion | null {
+  const conversion = moneyEntryOf(holder, field)?.converted
+  return conversion && conversion.currency === target ? conversion : null
 }
 
 export function parseCurrenciesPayload(raw: unknown): CurrenciesPayload | null {
@@ -405,7 +172,147 @@ export function withCurrencyQuery(path: string, currency: string): string {
   return `${path}${path.includes('?') ? '&' : '?'}${DISPLAY_CURRENCY_PARAM}=${encodeURIComponent(currency)}`
 }
 
-/** An amount already chosen for display (a statement year, a dividend), with its reported original when converted. */
-export function shownAmount(value: number | null, currency: string, original?: MoneyOriginal | null): Amount {
-  return { value, currency, original: original ?? null, unconverted: null, rateDate: null }
+/* ------------------------------------------------------------------ */
+/* Listings we track                                                    */
+/* ------------------------------------------------------------------ */
+
+/** One listing of the same company that we track (finance-backend summary `listings.items`). */
+export type TrackedListing = {
+  symbol: string
+  exchange: string | null
+  exchangeMic: string | null
+  country: string | null
+  /** ISO code; the backend scales a minor unit into its parent. */
+  currency: string | null
+  isPrimary: boolean
+  isCurrent: boolean
+}
+
+export type TrackedListings = {
+  available: boolean
+  reason: string | null
+  items: TrackedListing[]
+}
+
+/**
+ * The summary's `listings` block. Null when it is absent or malformed (an older
+ * backend): the page then simply says nothing about other listings. Items that
+ * cannot be read are dropped, never repaired; an unavailable block has no items.
+ */
+export function parseTrackedListings(raw: unknown): TrackedListings | null {
+  const record = asRecord(raw)
+  if (!record || typeof record.available !== 'boolean') return null
+  const reason = text(record.reason)
+  if (!record.available) return { available: false, reason, items: [] }
+  if (!Array.isArray(record.items)) return null
+  const seen = new Set<string>()
+  const items: TrackedListing[] = []
+  for (const value of record.items) {
+    const item = asRecord(value)
+    const symbol = text(item?.symbol)?.toUpperCase() ?? null
+    if (!item || !symbol || !SYMBOL.test(symbol) || seen.has(symbol)) continue
+    seen.add(symbol)
+    items.push({
+      symbol,
+      exchange: text(item.exchange),
+      exchangeMic: text(item.exchangeMic)?.toUpperCase() ?? null,
+      country: text(item.country)?.toUpperCase() ?? null,
+      currency: isoCurrency(text(item.currency)),
+      isPrimary: item.isPrimary === true,
+      isCurrent: item.isCurrent === true,
+    })
+  }
+  // Primary first, then by symbol, as the backend sorts; kept if it ever does not.
+  items.sort((left, right) => Number(right.isPrimary) - Number(left.isPrimary) || left.symbol.localeCompare(right.symbol))
+  return { available: true, reason, items }
+}
+
+/* ------------------------------------------------------------------ */
+/* The price chart in a display currency                               */
+/* ------------------------------------------------------------------ */
+
+/** A day's close as reported, and the backend's conversion of it (null when it has none). */
+export type ConvertedClose = {
+  date: string
+  close: number
+  converted: number | null
+}
+
+/**
+ * Daily closes from the backend's `history?currency=XXX` rows. The reported
+ * close stays as it is; `converted` is the backend's value for that day, or
+ * null when the day has no rate (or is not annotated). Nothing is filled in.
+ */
+export function convertedClosesFromHistory(rows: unknown, target: string): ConvertedClose[] {
+  if (!Array.isArray(rows)) return []
+  const byDate = new Map<string, ConvertedClose>()
+  for (const value of rows) {
+    const row = asRecord(value)
+    const date = text(row?.date)?.slice(0, 10) ?? null
+    const close = finite(row?.close)
+    if (!row || !date || close === null || close <= 0) continue
+    const conversion = convertedValueOf(row, 'close', target)
+    byDate.set(date, { date, close, converted: conversion && conversion.value > 0 ? conversion.value : null })
+  }
+  return [...byDate.values()].sort((left, right) => left.date.localeCompare(right.date))
+}
+
+/** Parses the local route's `/api/stocks/{ticker}/history?currency=` answer. */
+export function parseConvertedCloses(raw: unknown): ConvertedClose[] {
+  if (!Array.isArray(raw)) return []
+  return raw.flatMap((value) => {
+    const row = asRecord(value)
+    const date = text(row?.date)
+    const close = finite(row?.close)
+    const converted = row?.converted === null ? null : finite(row?.converted)
+    if (!row || !date || close === null || (row.converted !== null && converted === null)) return []
+    return [{ date, close, converted }]
+  })
+}
+
+export type CurrencyDecomposition = {
+  /** First and last day used: the first and last days in the range that have a conversion. */
+  from: string
+  to: string
+  /** The company's return in its listing currency over those days. */
+  localReturn: number
+  /** The currency's part: (1 + converted) / (1 + local) − 1. */
+  currencyEffect: number
+  /** The return in the display currency over the same days. */
+  convertedReturn: number
+  /** Days in the range with a conversion. */
+  usedDays: number
+  /** Days in the range without one, left out. */
+  excludedDays: number
+}
+
+/**
+ * How a range's return in the display currency splits into the company's
+ * return in its own currency and the currency's effect:
+ * (1 + r_ccy) = (1 + r_local) · (1 + r_fx). Both returns use the same two
+ * days — the first and the last in the range with a conversion — so the
+ * split is exact. Days without a conversion are counted and left out.
+ * Null when fewer than two days have one.
+ */
+export function currencyDecomposition(points: readonly ConvertedClose[]): { result: CurrencyDecomposition | null; excludedDays: number } {
+  const used = points.filter((point) => point.converted !== null && point.converted > 0 && point.close > 0)
+  const excludedDays = points.length - used.length
+  if (used.length < 2) return { result: null, excludedDays }
+  const first = used[0]
+  const last = used[used.length - 1]
+  const localReturn = last.close / first.close - 1
+  const convertedReturn = (last.converted as number) / (first.converted as number) - 1
+  const currencyEffect = (1 + convertedReturn) / (1 + localReturn) - 1
+  return {
+    result: {
+      from: first.date,
+      to: last.date,
+      localReturn,
+      currencyEffect,
+      convertedReturn,
+      usedDays: used.length,
+      excludedDays,
+    },
+    excludedDays,
+  }
 }

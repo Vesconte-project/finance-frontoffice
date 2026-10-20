@@ -1,9 +1,7 @@
 import type { ReactNode } from 'react'
 import LoadingPulse from '@/components/ui/LoadingPulse'
-import Money from '@/components/ui/Money'
 import type { AssetMetadataParts } from '@/lib/asset-metadata'
 import { formatMoney, formatSignedMoney } from '@/lib/currency'
-import type { AmountView } from '@/lib/display-currency'
 import { cn } from '@/lib/utils'
 import styles from './StockTickerIdentity.module.css'
 
@@ -21,6 +19,14 @@ function deltaClass(value: number): string {
   return styles.deltaNeutral
 }
 
+export type ConvertedPrice = {
+  /** "$54.11". */
+  text: string
+  /** The rate's date, for the tooltip and screen readers ("Sep 29, 2026"); null when unknown. */
+  rateDate: string | null
+  currency: string
+}
+
 type StockTickerIdentityProps = {
   ticker: string
   displayName: string
@@ -36,11 +42,12 @@ type StockTickerIdentityProps = {
   /** Export and watchlist controls. */
   actions?: ReactNode
   /**
-   * The price and the day's change in a display currency, as the backend
-   * converted them (with the reported amounts); null shows them as reported.
+   * The latest price in the display currency the URL asks for, as the backend
+   * converted it; shown beside the reported price ("₩75,000 ≈ $54.11"), never
+   * in its place.
    */
-  converted?: { price: AmountView | null; change: AmountView | null } | null
-  /** The display-currency control, shown in place of the currency label. */
+  converted?: ConvertedPrice | null
+  /** The listings-and-currency control, shown in place of the currency label. */
   currencyControl?: ReactNode
 }
 
@@ -92,19 +99,25 @@ export default function StockTickerIdentity({
                 <span className={styles.quote} data-ticker-quote="">
                   <span className={styles.quoteLead}>
                     <span className={styles.tickerBadge} data-ticker-symbol="">{ticker}</span>
-                    {converted?.price ? (
-                      <strong className={styles.price} data-ticker-price="" data-ticker-price-converted="">
-                        <Money view={converted.price} />
-                      </strong>
-                    ) : isFiniteNumber(price) ? (
+                    {isFiniteNumber(price) ? (
                       <strong className={styles.price} data-ticker-price="">{formatMoney(price, currency)}</strong>
                     ) : null}
                   </span>
+                  {isFiniteNumber(price) && converted ? (
+                    <span
+                      className={styles.converted}
+                      data-ticker-price-converted={converted.currency}
+                      title={`Converted to ${converted.currency}${converted.rateDate ? ` at the exchange rate of ${converted.rateDate}` : ''}. Not a price traded in ${converted.currency}.`}
+                    >
+                      <span aria-hidden="true">≈ {converted.text}</span>
+                      <span className="sr-only">
+                        {`, about ${converted.text} converted to ${converted.currency}${converted.rateDate ? ` at the exchange rate of ${converted.rateDate}` : ''}`}
+                      </span>
+                    </span>
+                  ) : null}
                   {isFiniteNumber(price) && isFiniteNumber(dailyMoveAmount) && isFiniteNumber(dailyMovePercent) ? (
                     <span className={cn(styles.delta, deltaClass(dailyMoveAmount))}>
-                      {converted?.change
-                        ? <Money view={converted.change} showOriginal={false} />
-                        : formatSignedMoney(dailyMoveAmount, currency)} ({formatCompactPercent(dailyMovePercent)})
+                      {formatSignedMoney(dailyMoveAmount, currency)} ({formatCompactPercent(dailyMovePercent)})
                     </span>
                   ) : null}
                 </span>

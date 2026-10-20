@@ -7,7 +7,7 @@ import {
 } from './ohlc-data'
 import { getCachedTickerSummary } from './ticker-data'
 import { formatCompactMoney, formatMoney } from './currency'
-import { moneyEntryOf, type DisplayCurrencyReport } from './display-currency'
+import { convertedClosesFromHistory, type ConvertedClose } from './display-currency'
 import { fetchInDisplayCurrency } from './display-currency-server'
 
 const FUNDAMENTALS_FRESH_MS = 6 * 60 * 60 * 1000
@@ -30,16 +30,6 @@ export interface PricePoint {
 }
 
 export type { OhlcLoadResult, OhlcPoint } from './ohlc-data'
-
-/** How profile amounts are written: the currency they are in, and whether a display currency is on. */
-type MoneyFormat = {
-  currency: string | null
-  /** The display currency; an amount the backend did not convert keeps `original`. */
-  display: string | null
-  original: string | null
-}
-
-const REPORTED_FORMAT: MoneyFormat = { currency: null, display: null, original: null }
 
 export interface TickerHolding {
   symbol: string
@@ -251,27 +241,14 @@ function formatBackendPercent(raw: number | null): string | null {
   return `${raw.toFixed(2)}%`
 }
 
+/** `currency`: the currency the profile reports in; without one it has always been written in dollars. */
 function formatBackendMoney(raw: number | null, currency: string | null = null): string | null {
   if (raw === null || !Number.isFinite(raw)) return null
-  // Without a known currency the profile has always been written in dollars.
   if (currency && currency.toUpperCase() !== 'USD') {
     return Math.abs(raw) < 1000 ? formatMoney(raw, currency) : formatCompactMoney(raw, currency)
   }
   if (Math.abs(raw) < 1000) return `$${raw.toFixed(2)}`
   return formatDollarCompact(raw)
-}
-
-/**
- * A profile amount: in the display currency when the backend converted it,
- * otherwise as reported and marked, never relabelled.
- */
-function formatProfileMoney(holder: Record<string, unknown> | null, field: string, raw: number | null, format: MoneyFormat): string | null {
-  if (!format.display) return formatBackendMoney(raw, format.currency)
-  const entry = holder ? moneyEntryOf(holder, field) : null
-  if (entry?.converted?.currency === format.display) return formatBackendMoney(entry.converted.value, format.display)
-  const original = entry?.value ?? raw
-  const originalText = formatBackendMoney(original, entry?.currency ?? format.original)
-  return originalText ? `${originalText} (not in ${format.display})` : null
 }
 
 function formatBackendDate(value: unknown): string | null {
@@ -294,13 +271,7 @@ function formatBackendDate(value: unknown): string | null {
   return formatUnixDateDisplay(numeric)
 }
 
-function formatBackendRowValue(
-  label: string,
-  value: unknown,
-  format: MoneyFormat = REPORTED_FORMAT,
-  row: Record<string, unknown> | null = null,
-  moneyField = 'value',
-): string | null {
+function formatBackendRowValue(label: string, value: unknown, currency: string | null = null): string | null {
   const display = getDisplayValue(value)
   const raw = getRawNumber(value)
   const normalized = label.toLowerCase()
@@ -310,8 +281,7 @@ function formatBackendRowValue(
     return display?.includes('%') ? display : formatBackendPercent(raw)
   }
   if (/market cap|assets|dividend rate|annual dividend/.test(normalized)) {
-    if (format.display) return formatProfileMoney(row, moneyField, raw, format)
-    return display?.startsWith('$') ? display : formatBackendMoney(raw, format.currency)
+    return display?.startsWith('$') ? display : formatBackendMoney(raw, currency)
   }
   if (/shares|holdings|exposures/.test(normalized)) {
     return raw !== null ? formatNumberCompact(raw) : display
@@ -323,14 +293,14 @@ function formatBackendRowValue(
   return display
 }
 
-function parseBackendFinancialRows(value: unknown, format: MoneyFormat = REPORTED_FORMAT): TickerFinancialRow[] {
+function parseBackendFinancialRows(value: unknown, currency: string | null = null): TickerFinancialRow[] {
   return asArray(value)
     .map((item): TickerFinancialRow | null => {
       const row = asRecord(item)
       if (!row) return null
       const label = getString(row.label) ?? getString(row.key)
       if (!label) return null
-      const rowValue = formatBackendRowValue(label, row.value, format, row)
+      const rowValue = formatBackendRowValue(label, row.value, currency)
       if (!rowValue) return null
       return { label, value: rowValue }
     })
@@ -403,7 +373,7 @@ function ensureProfileIdentityRows(
 
 function buildFallbackFundamentalsFromBackendSummary(
   summary: Awaited<ReturnType<typeof getCachedTickerSummary>>,
-  format: MoneyFormat = REPORTED_FORMAT,
+  currency: string | null = null,
 ): TickerFundamentals {
   const fallback = emptyFundamentals()
   if (!summary) return fallback
@@ -418,7 +388,7 @@ function buildFallbackFundamentalsFromBackendSummary(
       return {
         label,
         value:
-          formatBackendRowValue(label, format.display ? valueNumber : valueDisplay ?? valueNumber, format, row as unknown as Record<string, unknown>, 'valueNumber') ??
+          formatBackendRowValue(label, valueDisplay ?? valueNumber, currency) ??
           (valueNumber !== null ? String(valueNumber) : '—'),
       }
     })
@@ -426,16 +396,14 @@ function buildFallbackFundamentalsFromBackendSummary(
     .slice(0, 10)
 
   const marketCapNumber = summary.fundamentalsSummary?.marketCap ?? null
-  // The quote's market cap is preformatted text in the listing's currency; it
-  // is never shown as a display-currency amount.
   const quoteMarketCapText =
-    !format.display && typeof summary.quote?.marketCapText === 'string' && summary.quote.marketCapText.trim()
+    typeof summary.quote?.marketCapText === 'string' && summary.quote.marketCapText.trim()
       ? summary.quote.marketCapText
       : null
   fallback.marketCap =
     formatBackendMoney(getRawNumber(quoteMarketCapText)) ??
     quoteMarketCapText ??
-    formatProfileMoney(asRecord(summary.fundamentalsSummary), 'marketCap', marketCapNumber, format)
+    formatBackendMoney(marketCapNumber, currency)
   fallback.profile = ensureProfileIdentityRows(
     [],
     summary.ticker,
@@ -449,7 +417,7 @@ function normalizeBackendProfilePayload(
   payload: unknown,
   summary: Awaited<ReturnType<typeof getCachedTickerSummary>>,
   ticker: string,
-  format: MoneyFormat = REPORTED_FORMAT,
+  currency: string | null = null,
 ): TickerFundamentals | null {
   const record = firstBackendRecord(
     payload,
@@ -461,15 +429,15 @@ function normalizeBackendProfilePayload(
 
   const holdings = parseBackendHoldings(record.holdings)
   const sectorWeights = parseBackendSectorWeights(record.sectorWeights ?? record.sector_weights)
-  const marketCap = formatProfileMoney(record, 'marketCap', getRawNumber(firstBackendValue(record, ['marketCap', 'market_cap'])), format)
-  const dividendRate = formatProfileMoney(record, 'dividendRate', getRawNumber(firstBackendValue(record, ['dividendRate', 'dividend_rate'])), format)
+  const marketCap = formatBackendMoney(getRawNumber(firstBackendValue(record, ['marketCap', 'market_cap'])), currency)
+  const dividendRate = formatBackendMoney(getRawNumber(firstBackendValue(record, ['dividendRate', 'dividend_rate'])), currency)
   const dividendYield = formatBackendPercent(getRawNumber(firstBackendValue(record, ['dividendYield', 'dividend_yield'])))
   const exDividendDate = formatBackendDate(firstBackendValue(record, ['exDividendDate', 'ex_dividend_date']))
   const payoutRatio = formatBackendPercent(getRawNumber(firstBackendValue(record, ['payoutRatio', 'payout_ratio'])))
-  const profileRows = parseBackendFinancialRows(record.profile, format)
-  const portfolioRows = parseBackendFinancialRows(record.portfolio, format)
-  const distributions = parseBackendFinancialRows(record.distributions, format)
-  const risk = parseBackendFinancialRows(record.risk, format)
+  const profileRows = parseBackendFinancialRows(record.profile, currency)
+  const portfolioRows = parseBackendFinancialRows(record.portfolio, currency)
+  const distributions = parseBackendFinancialRows(record.distributions, currency)
+  const risk = parseBackendFinancialRows(record.risk, currency)
 
   const fundamentals: TickerFundamentals = {
     about:
@@ -479,10 +447,10 @@ function normalizeBackendProfilePayload(
       null,
     marketCap:
       marketCap ??
-      (!format.display && typeof summary?.quote?.marketCapText === 'string' && summary.quote.marketCapText.trim()
+      (typeof summary?.quote?.marketCapText === 'string' && summary.quote.marketCapText.trim()
         ? summary.quote.marketCapText
         : null),
-    snapshot: parseBackendFinancialRows(record.snapshot, format),
+    snapshot: parseBackendFinancialRows(record.snapshot, currency),
     holdings,
     sectorWeights,
     dividendRate,
@@ -503,20 +471,18 @@ function normalizeBackendProfilePayload(
   return fundamentals
 }
 
-async function fetchBackendTickerProfile(ticker: string, currency: string | null = null): Promise<unknown | null> {
+async function fetchBackendTickerProfile(ticker: string): Promise<unknown | null> {
   try {
-    const { payload } = await fetchInDisplayCurrency(`/v1/tickers/${encodeURIComponent(ticker)}/profile`, currency, (path) =>
-      fetchBackendJson<unknown>(path, {
-        context: 'backend.tickers.profile',
-        init: {
-          cache: 'no-store',
-          next: {
-            revalidate: FUNDAMENTALS_FRESH_MS / 1000,
-            tags: [`ticker-profile:${ticker}`],
-          },
+    return await fetchBackendJson<unknown>(`/v1/tickers/${encodeURIComponent(ticker)}/profile`, {
+      context: 'backend.tickers.profile',
+      init: {
+        cache: 'no-store',
+        next: {
+          revalidate: FUNDAMENTALS_FRESH_MS / 1000,
+          tags: [`ticker-profile:${ticker}`],
         },
-      }))
-    return payload
+      },
+    })
   } catch (error) {
     if (error instanceof BackendDataError) {
       if (error.status !== 404 && error.status !== 422) {
@@ -545,101 +511,85 @@ async function loadQuote(tickerRaw: string): Promise<StockQuote | null> {
   }
 }
 
-async function loadHistorical(
-  tickerRaw: string,
-  periodDays: number,
-  currency: string | null = null,
-): Promise<{ points: PricePoint[]; report: DisplayCurrencyReport | null }> {
+async function loadHistorical(tickerRaw: string, periodDays: number): Promise<PricePoint[]> {
   const ticker = normalizeTicker(tickerRaw)
   const safeDays = Number.isFinite(periodDays) && periodDays > 0
     ? Math.max(30, Math.min(periodDays, BACKEND_HISTORY_PERIOD_DAYS_MAX))
     : 0
-  const { payload, report } = await fetchInDisplayCurrency(
+  const payload = await fetchBackendJson<Array<{ date?: string; close?: number }>>(
     `/v1/tickers/${encodeURIComponent(ticker)}/history?period_days=${safeDays}`,
-    currency,
-    (path) => fetchBackendJson<Array<{ date?: string; close?: number }>>(path, { context: 'backend.tickers.history' }),
+    { context: 'backend.tickers.history' }
   )
-  return { points: normalizeAdjustedHistory(payload), report }
+  return normalizeAdjustedHistory(payload)
 }
 
 async function loadOhlc(
   tickerRaw: string,
   periodDays: number,
-  coverageExpectsPrices: boolean,
-  currency: string | null = null,
+  coverageExpectsPrices: boolean
 ): Promise<OhlcLoadResult> {
   const ticker = normalizeTicker(tickerRaw)
   const safeDays = Number.isFinite(periodDays) && periodDays > 0
     ? Math.max(30, Math.min(periodDays, BACKEND_HISTORY_PERIOD_DAYS_MAX))
     : 0
-  const { payload, report } = await fetchInDisplayCurrency(
+  const payload = await fetchBackendJson<unknown>(
     `/v1/tickers/${encodeURIComponent(ticker)}/ohlc?period_days=${safeDays}`,
-    currency,
-    (path) => fetchBackendJson<unknown>(path, { context: 'backend.tickers.ohlc' }),
+    { context: 'backend.tickers.ohlc' }
   )
-  // A bar without a converted close is left out; one without a converted open
-  // is drawn in the neutral colour, as a bar without an open always is.
-  const result = normalizeOhlcPayload(payload, { coverageExpectsPrices })
-  return report ? { ...result, displayReport: report } : result
+  return normalizeOhlcPayload(payload, { coverageExpectsPrices })
 }
 
-async function loadTickerFundamentals(tickerRaw: string, currency: string | null = null): Promise<TickerFundamentals> {
+async function loadTickerFundamentals(tickerRaw: string): Promise<TickerFundamentals> {
   const ticker = normalizeTicker(tickerRaw)
-  const summary = await getCachedTickerSummary(ticker, currency)
+  const summary = await getCachedTickerSummary(ticker)
   if (!summary) {
     return emptyFundamentals()
   }
-  const original = summary.fundamentalsSummary?.currency ?? summary.asset?.currency ?? null
-  const format: MoneyFormat = currency
-    ? { currency, display: currency, original: summary.asset?.currency ?? null }
-    : { currency: original, display: null, original }
+  // Profile amounts are written in the currency the company reports in.
+  const currency = summary.fundamentalsSummary?.currency ?? summary.asset?.currency ?? null
 
-  const embeddedProfile = normalizeBackendProfilePayload(summary.profile, summary, ticker, format)
+  const embeddedProfile = normalizeBackendProfilePayload(summary.profile, summary, ticker, currency)
   if (embeddedProfile && hasMeaningfulFundamentalsData(embeddedProfile)) {
     return embeddedProfile
   }
 
-  const remoteProfilePayload = await fetchBackendTickerProfile(ticker, currency)
-  const remoteProfile = normalizeBackendProfilePayload(remoteProfilePayload, summary, ticker, format)
+  const remoteProfilePayload = await fetchBackendTickerProfile(ticker)
+  const remoteProfile = normalizeBackendProfilePayload(remoteProfilePayload, summary, ticker, currency)
   if (remoteProfile && hasMeaningfulFundamentalsData(remoteProfile)) {
     return remoteProfile
   }
 
-  return buildFallbackFundamentalsFromBackendSummary(summary, format)
+  return buildFallbackFundamentalsFromBackendSummary(summary, currency)
 }
 
 export const getStockQuote = cache(async (ticker: string): Promise<StockQuote | null> => loadQuote(ticker))
 
 export const getHistoricalData = cache(async (ticker: string, periodDays: number = 30): Promise<PricePoint[]> =>
-    (await loadHistorical(ticker, periodDays)).points)
+    loadHistorical(ticker, periodDays))
 
-/** Daily closes in `currency` (converted by the backend), with what could not be converted. */
-export const getHistoricalPrices = cache(async (
+export const getOhlcData = cache(async (
     ticker: string,
-    periodDays: number,
-    currency: string | null,
-  ): Promise<{ points: PricePoint[]; report: DisplayCurrencyReport | null }> => loadHistorical(ticker, periodDays, currency))
+    periodDays: number = 1825,
+    coverageExpectsPrices: boolean = false
+  ): Promise<OhlcLoadResult> => loadOhlc(ticker, periodDays, coverageExpectsPrices))
 
-const cachedOhlcData = cache(async (
-    ticker: string,
-    periodDays: number,
-    coverageExpectsPrices: boolean,
-    currency: string | null,
-  ): Promise<OhlcLoadResult> => loadOhlc(ticker, periodDays, coverageExpectsPrices, currency))
+export const getTickerFundamentals = cache(async (ticker: string): Promise<TickerFundamentals> => loadTickerFundamentals(ticker))
 
-export function getOhlcData(
-  ticker: string,
-  periodDays: number = 1825,
-  coverageExpectsPrices: boolean = false,
-  currency: string | null = null,
-): Promise<OhlcLoadResult> {
-  return cachedOhlcData(ticker, periodDays, coverageExpectsPrices, currency)
-}
-
-const cachedTickerFundamentals = cache(async (ticker: string, currency: string | null): Promise<TickerFundamentals> =>
-    loadTickerFundamentals(ticker, currency))
-
-/** Profile fundamentals, in `currency` when a display currency is chosen (one cached read per request either way). */
-export function getTickerFundamentals(ticker: string, currency: string | null = null): Promise<TickerFundamentals> {
-  return cachedTickerFundamentals(ticker, currency)
-}
+/**
+ * The full daily history as reported, each close beside the backend's
+ * conversion into `currency` (null for a day without a rate). For the price
+ * chart's "Show in {currency}" view; nothing is converted here. `refused` when
+ * the backend no longer lists the currency.
+ */
+export const getConvertedCloses = cache(async (
+    tickerRaw: string,
+    currency: string,
+  ): Promise<{ points: ConvertedClose[]; refused: boolean }> => {
+  const ticker = normalizeTicker(tickerRaw)
+  const { payload, refused } = await fetchInDisplayCurrency(
+    `/v1/tickers/${encodeURIComponent(ticker)}/history?period_days=${BACKEND_HISTORY_PERIOD_DAYS_MAX}`,
+    currency,
+    (path) => fetchBackendJson<unknown>(path, { context: 'backend.tickers.history' }),
+  )
+  return { points: refused ? [] : convertedClosesFromHistory(payload, currency), refused }
+})

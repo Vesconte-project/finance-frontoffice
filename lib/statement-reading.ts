@@ -9,8 +9,6 @@
  * values.
  */
 
-import { originalOf, type MoneyOriginal } from './display-currency'
-
 export type StatementRowLike = {
   lineItemId: string
   displayLabel: string | null
@@ -27,8 +25,6 @@ export type ReportedPoint = {
   year: number
   value: number
   currency: string | null
-  /** The reported amount, when `value` is the backend's conversion into a display currency. */
-  original?: MoneyOriginal
 }
 
 export type MeasureKey = 'revenue' | 'grossProfit' | 'operatingIncome' | 'netIncome'
@@ -98,14 +94,7 @@ export function annualSeries(rows: readonly StatementRowLike[], measure: Measure
   const byPeriod = new Map<string, ReportedPoint>()
   for (const row of chosen) {
     if (row.value === null || !Number.isFinite(row.value) || byPeriod.has(row.periodEnd)) continue
-    const original = originalOf(row, 'value')
-    byPeriod.set(row.periodEnd, {
-      periodEnd: row.periodEnd,
-      year: yearOf(row),
-      value: row.value,
-      currency: row.currency,
-      ...(original ? { original } : {}),
-    })
+    byPeriod.set(row.periodEnd, { periodEnd: row.periodEnd, year: yearOf(row), value: row.value, currency: row.currency })
   }
   return [...byPeriod.values()].sort((left, right) => left.periodEnd.localeCompare(right.periodEnd))
 }
@@ -149,8 +138,6 @@ export type DividendPayment = {
   exDate: string
   amount: number
   currency: string | null
-  /** The reported amount, when `amount` is the backend's conversion into a display currency. */
-  original?: MoneyOriginal
 }
 
 export type DividendHistory = {
@@ -184,8 +171,7 @@ export function dividendHistory(
   const adjusted = window.length > 0 && window.every(([, row]) => usable(row.adjustedCashAmount))
   const payments = window.flatMap(([exDate, row]) => {
     const amount = adjusted ? row.adjustedCashAmount : row.cashAmount
-    const original = originalOf(row, adjusted ? 'adjustedCashAmount' : 'cashAmount')
-    return usable(amount) ? [{ exDate, amount, currency: row.currency, ...(original ? { original } : {}) }] : []
+    return usable(amount) ? [{ exDate, amount, currency: row.currency }] : []
   })
   return { payments, adjusted }
 }

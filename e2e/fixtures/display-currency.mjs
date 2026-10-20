@@ -7,14 +7,16 @@
  * - `?currency=XXX` on the fixture ticker reads: each amount gains a `money`
  *   entry, converted at the rate of its own date through USD. KRW has no rate
  *   before 2019-01-01, so the earliest won amounts stay unconverted
- *   (`no_rate`); earnings carry no currency (`currency_unknown`).
+ *   (`no_rate`), and none is published for June 2026 either, so the chart's
+ *   converted view has days without a rate inside its default range; earnings
+ *   carry no currency (`currency_unknown`).
  * - An unlisted currency answers 422 `unsupported_currency`.
  */
 
 const RATES = {
   USD: { from: null, usdPerUnit: () => 1 },
   EUR: { from: '2010-01-01', usdPerUnit: (day) => 1.08 + 0.02 * Math.sin(dayNumber(day) / 90) },
-  KRW: { from: '2019-01-01', usdPerUnit: (day) => 0.00072 + 0.00002 * Math.sin(dayNumber(day) / 120) },
+  KRW: { from: '2019-01-01', gaps: [['2026-06-01', '2026-06-30']], usdPerUnit: (day) => 0.00072 + 0.00002 * Math.sin(dayNumber(day) / 120) },
 }
 
 const LIST = [
@@ -57,7 +59,8 @@ function entry(value, currency, day, target) {
   const on = rateDay(day)
   const from = RATES[currency]
   const to = RATES[target]
-  if (!from || !to || (from.from && on < from.from) || (to.from && on < to.from)) return { ...base, unconvertedReason: 'no_rate' }
+  const missing = (rates) => !rates || (rates.from && on < rates.from) || (rates.gaps ?? []).some(([start, end]) => on >= start && on <= end)
+  if (missing(from) || missing(to)) return { ...base, unconvertedReason: 'no_rate' }
   const rate = from.usdPerUnit(on) / to.usdPerUnit(on)
   return { ...base, converted: { value: Number((value * rate).toFixed(6)), currency: target, rate: Number(rate.toPrecision(8)), rateDate: on } }
 }
