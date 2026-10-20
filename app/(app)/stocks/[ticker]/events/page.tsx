@@ -2,7 +2,6 @@ import StockEventsResearch from '@/components/stocks/StockEventsResearch'
 import ResearchUnavailable from '@/components/stocks/ResearchUnavailable'
 import { getTickerDisclosures, getTickerEvents } from '@/lib/canonical-research'
 import { getPublicCalendar } from '@/lib/calendar-events'
-import { resolveDisplayCurrency } from '@/lib/display-currency-server'
 import { calendarMonth, type CalendarCategory } from '@/lib/calendar-model'
 import { getStockResearchData } from '@/lib/stock-research'
 
@@ -12,7 +11,7 @@ function isoDate(value: Date): string {
 
 export default async function EventsPage({ params, searchParams }: {
   params: Promise<{ ticker: string }>
-  searchParams: Promise<{ month?: string; day?: string; type?: string; currency?: string | string[] }>
+  searchParams: Promise<{ month?: string; day?: string; type?: string }>
 }) {
   const [{ ticker }, query] = await Promise.all([params, searchParams])
   const month = calendarMonth(query.month)
@@ -40,9 +39,6 @@ export default async function EventsPage({ params, searchParams }: {
     getPublicCalendar(month, category, ticker),
   ])
   if (!data) return <ResearchUnavailable ticker={ticker.toUpperCase()} />
-  // The read model records no currency for earnings, so nothing here can be
-  // converted; with a display currency the amounts are marked as reported.
-  const displayCurrency = await resolveDisplayCurrency(query.currency)
   return <StockEventsResearch data={data} events={events} disclosures={disclosures}
-    calendar={calendar} month={month} category={category} selectedDay={query.day} displayCurrency={displayCurrency} />
+    calendar={calendar} month={month} category={category} selectedDay={query.day} />
 }

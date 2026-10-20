@@ -1,6 +1,5 @@
 import { cache } from 'react'
 import { BackendDataError, fetchBackendJson } from './backend'
-import type { DisplayCurrencyReport } from './display-currency'
 import { fetchInDisplayCurrency } from './display-currency-server'
 
 export type MarketQuoteSnapshot = {
@@ -131,8 +130,19 @@ export type TickerPageSummary = {
   componentMissingInputs: string[]
   scorecard?: unknown
   profile?: TickerProfileSummary | null
-  /** Set when the summary was read in a display currency (see lib/display-currency.ts). */
-  displayReport?: DisplayCurrencyReport | null
+  /**
+   * The listings of the same company we track (finance-backend Entity Layer):
+   * `{available, reason, items: [{symbol, exchange, exchangeMic, country,
+   * currency, isPrimary, isCurrent}]}`. Absent on an older backend; read it
+   * with `parseTrackedListings` (lib/display-currency.ts).
+   */
+  listings?: unknown
+  /**
+   * Set when the summary was asked for in a display currency: the amounts
+   * stay as reported, with the backend's `money` annotations beside them.
+   * `refused` when the backend no longer lists the currency.
+   */
+  displayCurrency?: { code: string; refused: boolean } | null
 }
 
 function normalizeTicker(tickerRaw: string): string {
@@ -146,20 +156,20 @@ async function fetchTickerPageSummaryFromBackend(
   const ticker = normalizeTicker(tickerRaw)
   if (!ticker) return null
 
-  const { payload, report } = await fetchInDisplayCurrency(
+  const { payload, refused } = await fetchInDisplayCurrency(
     `/v1/tickers/${encodeURIComponent(ticker)}/summary`,
     currency,
     (path) => fetchBackendJson<TickerPageSummary | null>(path, { context: 'backend.tickers.summary' }),
   )
   if (!payload || typeof payload !== 'object') return null
-  return report ? { ...payload, displayReport: report } : payload
+  return currency ? { ...payload, displayCurrency: { code: currency, refused } } : payload
 }
 
 const cachedTickerSummary = cache(async (ticker: string, currency: string | null): Promise<TickerPageSummary | null> =>
     fetchTickerPageSummaryFromBackend(ticker, currency))
 
 /**
- * The ticker summary, in `currency` when a display currency is chosen. Both
+ * The ticker summary, annotated with `currency` conversions when one is chosen. Both
  * arguments always reach the cache, so a call without a currency shares the
  * request's read with one that passes null.
  */

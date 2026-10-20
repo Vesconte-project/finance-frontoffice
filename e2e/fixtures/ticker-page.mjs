@@ -124,7 +124,40 @@ export function tickerSummaryFixture(ticker) {
     },
     earningsHistory: [],
     componentMissingInputs: [],
+    ...listingsFixture(ticker),
   }
+}
+
+/**
+ * The summary's `listings` block (finance-backend Entity Layer), synthetic:
+ * QAK has two tracked listings (its primary won listing and a dollar one), QAS
+ * is not resolved (unavailable, no items), QAM is its only tracked listing,
+ * and QAL has no block at all, as an older backend would send.
+ */
+function listingsFixture(ticker) {
+  if (ticker === 'QAK') {
+    return {
+      listings: {
+        available: true,
+        reason: null,
+        items: [
+          { symbol: 'QAK', exchange: 'KSC', exchangeMic: 'XKRX', country: 'KR', currency: 'KRW', isPrimary: true, isCurrent: true },
+          { symbol: 'QAKY', exchange: null, exchangeMic: 'OTCM', country: 'US', currency: 'USD', isPrimary: false, isCurrent: false },
+        ],
+      },
+    }
+  }
+  if (ticker === 'QAS') return { listings: { available: false, reason: 'symbol_absent', items: [] } }
+  if (ticker === 'QAM') {
+    return {
+      listings: {
+        available: true,
+        reason: null,
+        items: [{ symbol: 'QAM', exchange: 'NMS', exchangeMic: 'XNAS', country: 'US', currency: 'USD', isPrimary: true, isCurrent: true }],
+      },
+    }
+  }
+  return {}
 }
 
 /**

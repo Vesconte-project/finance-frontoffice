@@ -5,9 +5,7 @@ import styles from '@/components/stocks/fundamentals/Fundamentals.module.css'
 import BeingBuilt, { BeingBuiltBadge } from '@/components/stocks/research/BeingBuilt'
 import ReportedBars from '@/components/stocks/research/ReportedBars'
 import ResearchChapter, { LeadStat } from '@/components/stocks/research/ResearchChapter'
-import Money from '@/components/ui/Money'
 import { formatChartMoney, formatCompactMoney, formatMoney } from '@/lib/currency'
-import { amountOf, amountView, shownAmount } from '@/lib/display-currency'
 import {
   shortYear,
   summaryAmount,
@@ -72,18 +70,12 @@ function OperatingMarginChapter({ data, sinceYear }: { data: StockResearchData; 
 function CashAndDebtChapter({ data }: { data: StockResearchData }) {
   const netCash = summaryAmount(data.summary.latestFundamentals, /^net\s+cash\b/i)
   const netCashDate = summaryDate(data.summary.latestFundamentals, /^net\s+cash\b/i)
-  const netCashRow = data.displayCurrency
-    ? data.summary.latestFundamentals.find((row) => /^net\s+cash\b/i.test(row.metricLabel || row.metric.replace(/_/g, ' ')))
-    : undefined
-  const netCashView = netCashRow
-    ? amountView(amountOf(netCashRow, 'valueNumber', { display: data.displayCurrency, original: data.reportedCurrency }), formatCompactMoney)
-    : null
   return (
     <ResearchChapter
       id="cash-and-debt"
       label="Cash and debt"
-      lead={netCash !== null || netCashView ? (
-        <LeadStat value={netCashView ? <Money view={netCashView} /> : formatCompactMoney(netCash, data.currency)} context={`net cash: cash minus debt${netCashDate ? ` · as of ${formatDay(netCashDate)}` : ''}`} tone={netCash !== null && netCash < 0 ? 'down' : undefined} />
+      lead={netCash !== null ? (
+        <LeadStat value={formatCompactMoney(netCash, data.currency)} context={`net cash: cash minus debt${netCashDate ? ` · as of ${formatDay(netCashDate)}` : ''}`} tone={netCash < 0 ? 'down' : undefined} />
       ) : (
         <BeingBuilt size="inline">Net cash, the cash left after all debt, is being added.</BeingBuilt>
       )}
@@ -127,9 +119,7 @@ function DividendsChapter({
       lead={latest ? (
         <>
           <LeadStat
-            value={latest.original
-              ? <Money view={amountView(shownAmount(latest.amount, latest.currency ?? currency, latest.original), formatMoney)} />
-              : formatMoney(latest.amount, latest.currency ?? currency)}
+            value={formatMoney(latest.amount, latest.currency ?? currency)}
             context={`per share, latest dividend · ex-dividend ${formatDay(latest.exDate)}`}
           />
           <p className={styles.leadNote}><BeingBuiltBadge /> How many years in a row it has risen is being added.</p>

@@ -1,16 +1,12 @@
 import 'server-only'
 
 import { fetchBackendJson } from '@/lib/backend'
-import type { DisplayCurrencyReport } from '@/lib/display-currency'
-import { fetchInDisplayCurrency } from '@/lib/display-currency-server'
 
 export type CanonicalAvailability = {
   available: boolean
   reason: string | null
   symbol: string
   count: number
-  /** Set when the read was made in a display currency (see lib/display-currency.ts). */
-  displayReport?: DisplayCurrencyReport | null
 }
 
 export type FinancialStatementType = 'income_statement' | 'balance_sheet' | 'cash_flow'
@@ -139,12 +135,6 @@ function normalizedTicker(value: string): string {
   return value.trim().toUpperCase()
 }
 
-/** A ticker read in `currency` when one is chosen, its report attached. */
-async function readInCurrency<T extends CanonicalAvailability>(path: string, currency: string | null | undefined, context: string): Promise<T> {
-  const { payload, report } = await fetchInDisplayCurrency(path, currency ?? null, (target) => fetchBackendJson<T>(target, { context }))
-  return report && payload && typeof payload === 'object' ? { ...payload, displayReport: report } : payload
-}
-
 function queryString(values: Record<string, string | number | boolean | null | undefined>): string {
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(values)) {
@@ -157,68 +147,63 @@ function queryString(values: Record<string, string | number | boolean | null | u
 export async function getTickerFinancialStatements(
   tickerRaw: string,
   options: {
-    currency?: string | null
     statementType?: FinancialStatementType
     periodType?: FinancialStatementPeriod
     limit?: number
   } = {},
 ): Promise<FinancialStatementsPayload> {
   const ticker = normalizedTicker(tickerRaw)
-  return readInCurrency<FinancialStatementsPayload>(
+  return fetchBackendJson<FinancialStatementsPayload>(
     `/v1/tickers/${encodeURIComponent(ticker)}/financial-statements${queryString({
       statementType: options.statementType,
       periodType: options.periodType,
       limit: options.limit ?? 500,
     })}`,
-    options.currency,
-    `ticker.financial-statements.${ticker}`,
+    { context: `ticker.financial-statements.${ticker}` },
   )
 }
 
 export async function getTickerMarketMetrics(
   tickerRaw: string,
-  options: { currency?: string | null; metric?: string; latestOnly?: boolean; limit?: number } = {},
+  options: { metric?: string; latestOnly?: boolean; limit?: number } = {},
 ): Promise<MarketMetricsPayload> {
   const ticker = normalizedTicker(tickerRaw)
-  return readInCurrency<MarketMetricsPayload>(
+  return fetchBackendJson<MarketMetricsPayload>(
     `/v1/tickers/${encodeURIComponent(ticker)}/market-metrics${queryString({
       metric: options.metric,
       latestOnly: options.latestOnly ?? false,
       limit: options.limit ?? 250,
     })}`,
-    options.currency,
-    `ticker.market-metrics.${ticker}`,
+    { context: `ticker.market-metrics.${ticker}` },
   )
 }
 
 export async function getTickerCorporateActions(
   tickerRaw: string,
-  options: { currency?: string | null; actionType?: 'dividend' | 'split'; limit?: number } = {},
+  options: { actionType?: 'dividend' | 'split'; limit?: number } = {},
 ): Promise<CorporateActionsPayload> {
   const ticker = normalizedTicker(tickerRaw)
-  return readInCurrency<CorporateActionsPayload>(
+  return fetchBackendJson<CorporateActionsPayload>(
     `/v1/tickers/${encodeURIComponent(ticker)}/corporate-actions${queryString({
       actionType: options.actionType,
       latestOnly: true,
       limit: options.limit ?? 200,
     })}`,
-    options.currency,
-    `ticker.corporate-actions.${ticker}`,
+    { context: `ticker.corporate-actions.${ticker}` },
   )
 }
 
 export async function getTickerEquityCapitalEvents(
   tickerRaw: string,
-  options: { currency?: string | null; limit?: number } = {},
+  options: { limit?: number } = {},
 ): Promise<EquityCapitalEventsPayload> {
   const ticker = normalizedTicker(tickerRaw)
-  return readInCurrency<EquityCapitalEventsPayload>(
+  return fetchBackendJson<EquityCapitalEventsPayload>(
     `/v1/tickers/${encodeURIComponent(ticker)}/equity-capital-events${queryString({
       latestOnly: true,
       limit: options.limit ?? 500,
     })}`,
-    options.currency,
-    `ticker.equity-capital-events.${ticker}`,
+    { context: `ticker.equity-capital-events.${ticker}` },
   )
 }
 
