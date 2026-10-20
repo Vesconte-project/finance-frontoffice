@@ -107,3 +107,10 @@ test('personal AI and optional analytics establish verified session context', ()
     assert.ok(matcherRoutes(source).includes(route))
   assert.ok(!protectedRoutes(source).includes('/api/analytics/event'), 'anonymous telemetry remains public')
 })
+
+test('the display-currency list establishes auth context and stays public', () => {
+  const source = readProxySource()
+  // Its backend read calls auth(); unmatched, auth() throws and the list fails as unavailable.
+  assert.ok(matcherRoutes(source).includes('/api/currencies(.*)'))
+  assert.ok(!protectedRoutes(source).some(route => route.startsWith('/api/currencies')))
+})
