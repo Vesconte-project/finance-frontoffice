@@ -1,0 +1,94 @@
+/*
+ * A native select (the platform's own listbox, keyboard and screen reader
+ * behaviour) laid transparently over a compact face that shows only the
+ * current code. It sits where the hero's currency label was, so it takes no
+ * more room than the label and a chevron.
+ */
+.control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.face {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 15px 1px 5px;
+  border: 1px solid var(--line-strong, var(--line));
+  border-radius: 4px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 9px) 55%, calc(100% - 5px) 55%;
+  background-size: 4px 4px;
+  background-repeat: no-repeat;
+  color: inherit;
+  font-family: var(--font-mono), monospace;
+  font-size: inherit;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: border-color 150ms ease, color 150ms ease;
+}
+
+/* A display currency is on: the face takes the accent, so the choice is visible at a glance. */
+.face[data-converted] {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/*
+ * The select covers the face and reaches past it, so the touch target is at
+ * least 44px tall without the face growing.
+ */
+.select {
+  position: absolute;
+  inset: -4px -2px;
+  width: calc(100% + 4px);
+  height: calc(100% + 8px);
+  margin: 0;
+  /* 16px keeps mobile browsers from zooming when the list opens. */
+  font-size: 16px;
+  opacity: 0;
+  cursor: pointer;
+  appearance: none;
+}
+
+.control:hover .face {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.control:has(.select:focus-visible) .face {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.control:has(.select:disabled) .face {
+  opacity: 0.6;
+}
+
+.control:has(.select:disabled) .select {
+  cursor: not-allowed;
+}
+
+.control[data-pending] .face {
+  opacity: 0.7;
+}
+
+@media (pointer: coarse) {
+  .select {
+    top: 50%;
+    bottom: auto;
+    height: 44px;
+    transform: translateY(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .face {
+    transition: none;
+  }
+}

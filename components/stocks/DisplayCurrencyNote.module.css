@@ -1,0 +1,19 @@
+.note {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-inline-start: 2px solid var(--line-strong);
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.gaps {
+  color: var(--text);
+}
+
+.note[data-spaced] {
+  margin-bottom: 20px;
+}

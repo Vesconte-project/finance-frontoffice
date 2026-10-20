@@ -5,6 +5,7 @@ import EmptyState from '@/components/ui/EmptyState'
 import RetryButton from '@/components/ui/RetryButton'
 import TrackEventOnMount from '@/components/analytics/TrackEventOnMount'
 import StockOverviewClient from '@/components/stocks/StockOverviewClient'
+import DisplayCurrencyNote from '@/components/stocks/DisplayCurrencyNote'
 import {
   backendErrorDetails,
   runWithBackendRequestLogContext,
@@ -14,6 +15,8 @@ import { BackendDataError } from '@/lib/backend'
 import { getTickerDisclosures, getTickerEvents, getTickerFinancialStatements } from '@/lib/canonical-research'
 import { annualSeries, summaryAmount, summaryDate, summaryPercent, type ReportedPoint } from '@/lib/statement-reading'
 import { currencyForTicker, formatCompactMoney } from '@/lib/currency'
+import { amountOf, amountView, mergeReports, moneyEntryOf, unconvertedReasonText } from '@/lib/display-currency'
+import { resolveDisplayCurrency } from '@/lib/display-currency-server'
 import {
   getOhlcData,
   getStockQuote,
@@ -135,12 +138,13 @@ function coverageExpectsPrices(coverage: SymbolCoverageRow): boolean {
 
 async function loadStockOhlcDataset(
   context: BackendRequestLogContext,
-  coverage: SymbolCoverageRow
+  coverage: SymbolCoverageRow,
+  displayCurrency: string | null,
 ): Promise<OhlcLoadResult> {
   const expectsPrices = coverageExpectsPrices(coverage)
 
   try {
-    return await getOhlcData(context.ticker, 3650, expectsPrices)
+    return await getOhlcData(context.ticker, 3650, expectsPrices, displayCurrency)
   } catch (error) {
     const details = backendErrorDetails(error)
     const result =
@@ -204,6 +208,7 @@ export default async function TickerPage({
     from?: string | string[]
     screenerSignal?: string | string[]
     modelName?: string | string[]
+    currency?: string | string[]
   }>
 }) {
   const resolvedParams = await params
@@ -217,7 +222,8 @@ export default async function TickerPage({
   }
   logStockPageEvent('info', 'render start', requestLogContext)
 
-  const currency = currencyForTicker(ticker)
+  // `?currency=`: every amount below comes converted by the backend; nothing is converted here.
+  const requestedCurrency = await resolveDisplayCurrency(resolvedSearchParams.currency)
   const sourceContext = singleSearchParam(resolvedSearchParams.from)
   const screenerSignal = sanitizeScreenerSignal(singleSearchParam(resolvedSearchParams.screenerSignal))
   const modelName = sanitizeModelName(singleSearchParam(resolvedSearchParams.modelName))
@@ -229,7 +235,7 @@ export default async function TickerPage({
   let tickerSummary: Awaited<ReturnType<typeof getTickerPageSummary>>
 
   try {
-    tickerSummary = await runWithBackendRequestLogContext(requestLogContext, () => getTickerPageSummary(ticker))
+    tickerSummary = await runWithBackendRequestLogContext(requestLogContext, () => getTickerPageSummary(ticker, requestedCurrency))
   } catch (error) {
     const details = backendErrorDetails(error)
     logStockPageEvent('error', 'required summary unavailable', requestLogContext, {
@@ -249,13 +255,17 @@ export default async function TickerPage({
     )
   }
 
+  // A currency the backend refused falls back to amounts as reported.
+  const displayCurrency = tickerSummary.displayReport && !tickerSummary.displayReport.unsupported ? requestedCurrency : null
+  const currency = displayCurrency ?? currencyForTicker(ticker)
+  const reportedCurrency = tickerSummary.asset?.currency ?? currencyForTicker(ticker)
   const scorecard = scorecardFromTickerSummary(tickerSummary)
   // Reported annual revenue for the Fundamentals card: the same series the
   // Fundamentals tab draws (Spec PRD-78, "Os mesmos números em todas as tabs").
   // Not awaited; the card waits for it on its own.
   const revenuePromise = runWithBackendRequestLogContext(requestLogContext, () =>
     loadOptionalStockDataset<ReportedPoint[] | null>(requestLogContext, `/tickers/${ticker}/financial-statements`, null, async () => {
-      const income = await getTickerFinancialStatements(ticker, { statementType: 'income_statement', periodType: 'annual', limit: 500 })
+      const income = await getTickerFinancialStatements(ticker, { statementType: 'income_statement', periodType: 'annual', limit: 500, currency: displayCurrency })
       return income.available ? annualSeries(income.rows, 'revenue') : null
     })
   )
@@ -283,7 +293,7 @@ export default async function TickerPage({
     requestLogContext,
     () =>
       Promise.all([
-        loadStockOhlcDataset(requestLogContext, tickerSummary.coverage),
+        loadStockOhlcDataset(requestLogContext, tickerSummary.coverage, displayCurrency),
         loadOptionalStockDataset<TickerFundamentals | null>(
           requestLogContext,
           `/tickers/${ticker}/profile`,
@@ -363,7 +373,8 @@ export default async function TickerPage({
   const canonicalStats = canonicalTickerStats({
     snapshotProfileMarketCap: tickerSummary.profile?.marketCap,
     fundamentalsMarketCap: fundamentalsSummary?.marketCap,
-    quoteMarketCapText: marketQuote?.marketCapText,
+    // Preformatted text in the listing's currency; never shown as a converted amount.
+    quoteMarketCapText: displayCurrency ? null : marketQuote?.marketCapText,
     fundamentalsTrailingPe: fundamentalsSummary?.trailingPe,
     profileTrailingPe: tickerSummary.profile?.trailingPe,
     marketStatsVolume: marketStats?.volume,
@@ -374,6 +385,26 @@ export default async function TickerPage({
     ? formatCompactMoney(marketCapNumeric, currency)
     : canonicalStats.marketCapText ?? null
   const holdings = isEtf ? fundamentals?.holdings ?? [] : []
+  const displayContext = { display: displayCurrency, original: reportedCurrency }
+  // The market cap's holder, in the order canonicalTickerStats reads it.
+  const marketCapHolder = tickerSummary.profile && (tickerSummary.profile.marketCap !== null || moneyEntryOf(tickerSummary.profile, 'marketCap'))
+    ? tickerSummary.profile
+    : fundamentalsSummary
+  const marketCapText = marketQuote?.marketCapText?.trim() || null
+  const marketCapView = displayCurrency
+    ? amountView(amountOf(marketCapHolder, 'marketCap', displayContext), formatCompactMoney)
+      // Only the quote's preformatted text: shown as reported and marked, never relabelled.
+      ?? (marketCapText ? {
+        text: marketCapText,
+        original: null,
+        marker: `not in ${displayCurrency}`,
+        detail: unconvertedReasonText('not_offered', displayCurrency),
+      } : null)
+    : null
+  const netCashRow = latestFundamentals.find((row) => /^net\s+cash\b/i.test(row.metricLabel || row.metric.replace(/_/g, ' ')))
+  const netCashView = displayCurrency && netCashRow
+    ? amountView(amountOf(netCashRow, 'valueNumber', displayContext), formatCompactMoney)
+    : null
 
   return (
     <div className="space-y-4 md:space-y-5">
@@ -394,7 +425,17 @@ export default async function TickerPage({
         </div>
       ) : null}
 
+      {displayCurrency ? (
+        // The prices drawn here; single figures carry their own marker.
+        <DisplayCurrencyNote report={mergeReports(displayCurrency, [ohlcResult.displayReport])} />
+      ) : null}
+
       <StockOverviewClient
+        // A new currency starts the client state (the full history it fetched) afresh.
+        key={displayCurrency ?? 'reported'}
+        displayCurrency={displayCurrency}
+        marketCapView={marketCapView}
+        netCashView={netCashView}
         ticker={ticker}
         currency={currency}
         isFund={isEtf}

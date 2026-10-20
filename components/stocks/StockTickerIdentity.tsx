@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
 import LoadingPulse from '@/components/ui/LoadingPulse'
+import Money from '@/components/ui/Money'
 import type { AssetMetadataParts } from '@/lib/asset-metadata'
 import { formatMoney, formatSignedMoney } from '@/lib/currency'
+import type { AmountView } from '@/lib/display-currency'
 import { cn } from '@/lib/utils'
 import styles from './StockTickerIdentity.module.css'
 
@@ -33,6 +35,13 @@ type StockTickerIdentityProps = {
   metadata?: AssetMetadataParts
   /** Export and watchlist controls. */
   actions?: ReactNode
+  /**
+   * The price and the day's change in a display currency, as the backend
+   * converted them (with the reported amounts); null shows them as reported.
+   */
+  converted?: { price: AmountView | null; change: AmountView | null } | null
+  /** The display-currency control, shown in place of the currency label. */
+  currencyControl?: ReactNode
 }
 
 /**
@@ -52,6 +61,8 @@ export default function StockTickerIdentity({
   loading = false,
   metadata,
   actions,
+  converted = null,
+  currencyControl = null,
 }: StockTickerIdentityProps) {
   const name = nameAsHeading
     ? <h1 className={styles.name} title={displayName} data-ticker-name="">{displayName}</h1>
@@ -81,13 +92,19 @@ export default function StockTickerIdentity({
                 <span className={styles.quote} data-ticker-quote="">
                   <span className={styles.quoteLead}>
                     <span className={styles.tickerBadge} data-ticker-symbol="">{ticker}</span>
-                    {isFiniteNumber(price) ? (
+                    {converted?.price ? (
+                      <strong className={styles.price} data-ticker-price="" data-ticker-price-converted="">
+                        <Money view={converted.price} />
+                      </strong>
+                    ) : isFiniteNumber(price) ? (
                       <strong className={styles.price} data-ticker-price="">{formatMoney(price, currency)}</strong>
                     ) : null}
                   </span>
                   {isFiniteNumber(price) && isFiniteNumber(dailyMoveAmount) && isFiniteNumber(dailyMovePercent) ? (
                     <span className={cn(styles.delta, deltaClass(dailyMoveAmount))}>
-                      {formatSignedMoney(dailyMoveAmount, currency)} ({formatCompactPercent(dailyMovePercent)})
+                      {converted?.change
+                        ? <Money view={converted.change} showOriginal={false} />
+                        : formatSignedMoney(dailyMoveAmount, currency)} ({formatCompactPercent(dailyMovePercent)})
                     </span>
                   ) : null}
                 </span>
@@ -102,7 +119,9 @@ export default function StockTickerIdentity({
                     >
                       <span className={styles.metaKind}>{metadata.kind}</span>
                       {metadata.exchange ? <span className={styles.metaExchange}>{metadata.exchange}</span> : null}
-                      {metadata.currency ? <span className={styles.metaCurrency}>{metadata.currency}</span> : null}
+                      {currencyControl
+                        ? <span className={styles.metaCurrency}>{currencyControl}</span>
+                        : metadata.currency ? <span className={styles.metaCurrency}>{metadata.currency}</span> : null}
                     </span>
                   ) : null}
                   {actions ? <div className={styles.actions} data-ticker-actions="">{actions}</div> : null}

@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { currencyForTicker, formatCompactMoney } from '@/lib/currency'
+import { amountOf, amountView, moneyEntryOf, type DisplayContext } from '@/lib/display-currency'
 import {
   getTickerFundamentals,
   type TickerFinancialRow,
@@ -33,7 +34,12 @@ export type StockResearchData = {
   ticker: string
   name: string
   kind: ResearchAssetKind
+  /** The currency amounts are shown in: the display currency when one is chosen, else the reported one. */
   currency: string
+  /** The currency the fundamentals are reported in. */
+  reportedCurrency: string
+  /** The display currency the reader chose, or null for amounts as reported. */
+  displayCurrency: string | null
   summary: TickerPageSummary
   fundamentals: TickerFundamentals
   description: string | null
@@ -74,30 +80,37 @@ function repairLabel(value: string): string {
     .join(' ')
 }
 
-function formatMetricValue(row: LatestFundamentalsRow, currency: string): string | null {
+function formatMetricValue(row: LatestFundamentalsRow, context: DisplayContext): string | null {
   const display = row.valueDisplay?.trim()
   const value = row.valueNumber
+  const label = normalizeLabel(`${row.metric} ${row.metricLabel}`)
+  const isMoney = /(market cap|revenue|sales|ebitda|cash|debt|asset|liabilit|equity|income|cash flow|free cash flow|enterprise value|profit)/.test(label)
+  // In a display currency an amount is the backend's conversion, or the
+  // reported amount marked as such; the reported text is never relabelled.
+  if (context.display && (isMoney || moneyEntryOf(row, 'valueNumber'))) {
+    const view = amountView(amountOf(row, 'valueNumber', context), formatCompactMoney)
+    return view ? (view.marker ? `${view.text} (${view.marker})` : view.text) : null
+  }
   if (value === null || !Number.isFinite(value)) return display || null
 
-  const label = normalizeLabel(`${row.metric} ${row.metricLabel}`)
   if (/(yield|margin|growth|return on|\broe\b|\broa\b|payout|percent|pct)/.test(label)) {
     const scaled = Math.abs(value) <= 1.5 ? value * 100 : value
     return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(scaled)}%`
   }
-  if (/(market cap|revenue|sales|ebitda|cash|debt|asset|liabilit|equity|income|cash flow|free cash flow|enterprise value|profit)/.test(label)) {
-    return formatCompactMoney(value, currency)
+  if (isMoney) {
+    return formatCompactMoney(value, context.original)
   }
   // `display` last, not first: the backend sends full precision in it, so a
   // trailing P/E rendered as 37.681973 on a page of two-decimal figures.
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value)
 }
 
-function latestMetrics(rows: LatestFundamentalsRow[], currency: string): ResearchMetric[] {
+function latestMetrics(rows: LatestFundamentalsRow[], context: DisplayContext): ResearchMetric[] {
   const seen = new Set<string>()
   return rows.flatMap((row) => {
     const key = normalizeLabel(row.metric || row.metricLabel)
     const identity = dedupeKey(row.metric || row.metricLabel)
-    const value = formatMetricValue(row, currency)
+    const value = formatMetricValue(row, context)
     if (!key || seen.has(identity) || !value || value === '—') return []
     seen.add(identity)
     return [{
@@ -127,9 +140,9 @@ function buildThemes(
   kind: ResearchAssetKind,
   latestRows: LatestFundamentalsRow[],
   fundamentals: TickerFundamentals,
-  currency: string,
+  context: DisplayContext,
 ): ResearchTheme[] {
-  let metrics = latestMetrics(latestRows, currency)
+  let metrics = latestMetrics(latestRows, context)
   metrics = appendFormattedRows(metrics, fundamentals.snapshot)
   metrics = appendFormattedRows(metrics, fundamentals.portfolio)
   metrics = appendFormattedRows(metrics, fundamentals.distributions)
@@ -195,11 +208,14 @@ function splitProfileRows(rows: TickerFinancialRow[]): {
   return { profileFacts, identifiers }
 }
 
-export async function getStockResearchData(tickerRaw: string): Promise<StockResearchData> {
+/** Research data for a ticker tab; amounts in `displayCurrency` when one is chosen (converted by the backend). */
+export async function getStockResearchData(tickerRaw: string, displayCurrency: string | null = null): Promise<StockResearchData> {
   const ticker = tickerRaw.trim().toUpperCase()
-  const [summary, fundamentals] = await Promise.all([
-    getTickerPageSummary(ticker),
-    getTickerFundamentals(ticker),
+  const [summary, fundamentals, reported] = await Promise.all([
+    getTickerPageSummary(ticker, displayCurrency),
+    getTickerFundamentals(ticker, displayCurrency),
+    // The reported currency, from the summary as reported (shared with the chrome's read).
+    displayCurrency ? getTickerPageSummary(ticker).catch(() => null) : Promise.resolve(null),
   ])
   const name = summary.quote?.name?.trim() || ticker
   const kind = resolveStockAsset({
@@ -208,7 +224,9 @@ export async function getStockResearchData(tickerRaw: string): Promise<StockRese
     name,
     latestFundamentals: summary.latestFundamentals,
   }).kind
-  const currency = summary.fundamentalsSummary?.currency || currencyForTicker(ticker)
+  const reportedCurrency = (reported ?? summary).fundamentalsSummary?.currency || currencyForTicker(ticker)
+  const display = summary.displayReport && !summary.displayReport.unsupported ? displayCurrency : null
+  const currency = display ?? reportedCurrency
   const { profileFacts, identifiers } = splitProfileRows(fundamentals.profile)
   const hasProfileEvidence = Boolean(
     fundamentals.about ||
@@ -222,12 +240,14 @@ export async function getStockResearchData(tickerRaw: string): Promise<StockRese
     name,
     kind,
     currency,
+    reportedCurrency,
+    displayCurrency: display,
     summary,
     fundamentals,
     description: fundamentals.about,
     profileFacts,
     identifiers,
-    themes: buildThemes(kind, summary.latestFundamentals, fundamentals, currency),
+    themes: buildThemes(kind, summary.latestFundamentals, fundamentals, { display, original: reportedCurrency }),
     coverageLabel:
       summary.coverage.hasFundamentals && hasProfileEvidence && Boolean(fundamentals.about)
         ? 'Available'

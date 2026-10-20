@@ -57,6 +57,7 @@ function ShareBalanceCard({ bought, today, todayAsOf }: { bought: number | null;
 function BuybacksChapter({
   summary,
   mixedCurrencies,
+  unconvertedIn,
   currency,
   sharesBought,
   sharesToday,
@@ -64,6 +65,8 @@ function BuybacksChapter({
 }: {
   summary: BuybackSummary | null
   mixedCurrencies: boolean
+  /** The display currency some buybacks have no rate in, so no total is written in it. */
+  unconvertedIn: string | null
   currency: string
   sharesBought: number | null
   sharesToday: number | null
@@ -90,7 +93,9 @@ function BuybacksChapter({
         />
       ) : (
         <BeingBuilt size="inline">
-          {mixedCurrencies
+          {unconvertedIn
+            ? `Some buybacks have no ${unconvertedIn} rate near their date, so their total is not shown in ${unconvertedIn}. Choose the reported currency to see it.`
+            : mixedCurrencies
             ? 'Buybacks reported in more than one currency are being added together.'
             : `What the company has spent on buybacks since ${SINCE_YEAR}, and what those shares are worth today, is being added.`}
         </BeingBuilt>
@@ -124,6 +129,7 @@ type OwnershipProps = {
   data: StockResearchData
   buybackYears: BuybackSummary | null
   mixedCurrencies: boolean
+  unconvertedIn?: string | null
   sharesBought: number | null
   sharesToday: number | null
   sharesTodayAsOf: string | null
@@ -131,7 +137,7 @@ type OwnershipProps = {
   priceByQuarter: PricePeriod[]
 }
 
-function EquityOwnership({ data, buybackYears, mixedCurrencies, sharesBought, sharesToday, sharesTodayAsOf, priceByYear, priceByQuarter }: OwnershipProps) {
+function EquityOwnership({ data, buybackYears, mixedCurrencies, unconvertedIn = null, sharesBought, sharesToday, sharesTodayAsOf, priceByYear, priceByQuarter }: OwnershipProps) {
   const snapshot = currentResearchSnapshot(data)
   const currency = snapshot.currency || data.currency
   return (
@@ -156,13 +162,15 @@ function EquityOwnership({ data, buybackYears, mixedCurrencies, sharesBought, sh
       <BuybacksChapter
         summary={buybackYears}
         mixedCurrencies={mixedCurrencies}
+        unconvertedIn={unconvertedIn}
         currency={currency}
         sharesBought={sharesBought}
         sharesToday={sharesToday}
         sharesTodayAsOf={sharesTodayAsOf}
       />
 
-      <PricePaysForChapter marketCap={tickerMarketCap(data.summary)} marketCapAsOf={snapshot.marketCap !== null ? snapshot.reportingPeriod : null} currency={currency} />
+      {/* The quote's market-cap text is in the listing's currency, never a display-currency figure. */}
+      <PricePaysForChapter marketCap={tickerMarketCap(data.displayCurrency ? { ...data.summary, quote: null } : data.summary)} marketCapAsOf={snapshot.marketCap !== null ? snapshot.reportingPeriod : null} currency={currency} />
 
       <PriceHistoryChapter byYear={priceByYear} byQuarter={priceByQuarter} currency={currency} />
     </>

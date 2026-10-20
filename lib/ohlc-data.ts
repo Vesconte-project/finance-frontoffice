@@ -1,4 +1,6 @@
-export const STOCK_OHLC_CACHE_KEY = 'stock-ohlc-cache-adjusted-v3'
+import type { DisplayCurrencyReport } from './display-currency'
+
+export const STOCK_OHLC_CACHE_KEY = 'stock-ohlc-cache-adjusted-fx-v4'
 
 export type OhlcPoint = {
   price_basis: 'adjusted'
@@ -25,6 +27,8 @@ export type OhlcLoadResult = {
   backendStatus: number | null
   rawRows: number | null
   validRows: number
+  /** Set when the bars were read in a display currency (see lib/display-currency.ts). */
+  displayReport?: DisplayCurrencyReport | null
 }
 
 export class OhlcPayloadError extends Error {

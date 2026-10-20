@@ -1,5 +1,7 @@
 import { cache } from 'react'
 import { BackendDataError, fetchBackendJson } from './backend'
+import type { DisplayCurrencyReport } from './display-currency'
+import { fetchInDisplayCurrency } from './display-currency-server'
 
 export type MarketQuoteSnapshot = {
   ticker: string
@@ -129,25 +131,41 @@ export type TickerPageSummary = {
   componentMissingInputs: string[]
   scorecard?: unknown
   profile?: TickerProfileSummary | null
+  /** Set when the summary was read in a display currency (see lib/display-currency.ts). */
+  displayReport?: DisplayCurrencyReport | null
 }
 
 function normalizeTicker(tickerRaw: string): string {
   return tickerRaw.trim().toUpperCase()
 }
 
-async function fetchTickerPageSummaryFromBackend(tickerRaw: string): Promise<TickerPageSummary | null> {
+async function fetchTickerPageSummaryFromBackend(
+  tickerRaw: string,
+  currency: string | null = null,
+): Promise<TickerPageSummary | null> {
   const ticker = normalizeTicker(tickerRaw)
   if (!ticker) return null
 
-  const payload = await fetchBackendJson<TickerPageSummary | null>(
+  const { payload, report } = await fetchInDisplayCurrency(
     `/v1/tickers/${encodeURIComponent(ticker)}/summary`,
-    { context: 'backend.tickers.summary' }
+    currency,
+    (path) => fetchBackendJson<TickerPageSummary | null>(path, { context: 'backend.tickers.summary' }),
   )
-  return payload && typeof payload === 'object' ? payload : null
+  if (!payload || typeof payload !== 'object') return null
+  return report ? { ...payload, displayReport: report } : payload
 }
 
-export const getCachedTickerSummary = cache(async (ticker: string): Promise<TickerPageSummary | null> =>
-    fetchTickerPageSummaryFromBackend(ticker))
+const cachedTickerSummary = cache(async (ticker: string, currency: string | null): Promise<TickerPageSummary | null> =>
+    fetchTickerPageSummaryFromBackend(ticker, currency))
+
+/**
+ * The ticker summary, in `currency` when a display currency is chosen. Both
+ * arguments always reach the cache, so a call without a currency shares the
+ * request's read with one that passes null.
+ */
+export function getCachedTickerSummary(ticker: string, currency: string | null = null): Promise<TickerPageSummary | null> {
+  return cachedTickerSummary(ticker, currency)
+}
 
 export async function getTickerCoverage(tickerRaw: string): Promise<SymbolCoverageRow | null> {
   const summary = await fetchTickerPageSummaryFromBackend(tickerRaw)
@@ -176,9 +194,9 @@ export async function getTickerEarningsHistory(tickerRaw: string): Promise<Earni
   return summary?.earningsHistory ?? []
 }
 
-export async function getTickerPageSummary(tickerRaw: string): Promise<TickerPageSummary> {
+export async function getTickerPageSummary(tickerRaw: string, currency: string | null = null): Promise<TickerPageSummary> {
   const ticker = normalizeTicker(tickerRaw)
-  const summary = await getCachedTickerSummary(ticker)
+  const summary = await getCachedTickerSummary(ticker, currency)
   if (!summary) {
     throw new BackendDataError('backend.tickers.summary', `No ticker summary payload returned for ${ticker}`)
   }
