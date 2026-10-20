@@ -7,6 +7,7 @@ Inventário método/caminho, ficheiro, autenticação e origem:
 | Família | Backend | Origem / autenticação |
 |---|---|---|
 | Preços e empresa | `/v1/tickers/{ticker}/*`, `/v1/tickers/index` | SSR/BFF, sessão opcional + Access no servidor |
+| Moeda de apresentação | `/v1/currencies`, `?currency=` nas leituras de ticker | SSR/BFF (`/api/currencies`, `/api/stocks/{ticker}/quote`); ver `display-currency.md` |
 | Calendário | `/v1/calendar` | SSR, público, mesmos tetos nos três níveis |
 | Rankings reduzidos | `/v1/screener/rankings` | SSR, top 10: posição/ticker/score |
 | Ranking completo | `/v1/rankings` | BFF, sessão + `rankings.read` |

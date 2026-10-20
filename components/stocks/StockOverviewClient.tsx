@@ -19,7 +19,9 @@ import type { EventMarker } from '@/lib/event-markers'
 import type { ScorecardAxis } from '@/lib/scorecard-types'
 import BeingBuilt, { BeingBuiltBadge } from '@/components/stocks/research/BeingBuilt'
 import MiniBars from '@/components/stocks/research/MiniBars'
+import Money from '@/components/ui/Money'
 import { formatCompactMoney } from '@/lib/currency'
+import { amountView, DISPLAY_CURRENCY_PARAM, shownAmount, type AmountView } from '@/lib/display-currency'
 import { shortYear, type ReportedPoint } from '@/lib/statement-reading'
 import ResearchChapter, { ChapterCard } from '@/components/stocks/research/ResearchChapter'
 import { hasUsableMaterializedScorecard } from '@/lib/ticker-page-scorecard'
@@ -38,7 +40,7 @@ type FullHistoryState = 'idle' | 'loading' | 'loaded' | 'error'
 
 type OverviewStat = {
   label: string
-  value: string
+  value: React.ReactNode
 }
 
 type OverviewRelatedAsset = {
@@ -84,6 +86,12 @@ type StockOverviewClientProps = {
   ohlcData: OhlcPoint[]
   /** Formatted market cap, or null when the summary has none. */
   marketCap: string | null
+  /** The display currency the reader chose (amounts arrive converted by the backend), or null. */
+  displayCurrency?: string | null
+  /** The market cap in the display currency, with the reported amount. */
+  marketCapView?: AmountView | null
+  /** Net cash in the display currency, or as reported and marked when it has no conversion. */
+  netCashView?: AmountView | null
   holdings: OverviewHolding[]
   sectorWeights: OverviewSectorWeight[]
   nextEarnings: OverviewEarnings | null
@@ -397,7 +405,7 @@ function FundamentalCard({
   pending,
 }: {
   label: string
-  figure: string | null
+  figure: React.ReactNode
   context: string
   tone?: 'down'
   bars?: React.ReactNode
@@ -437,7 +445,9 @@ function RevenueCard({ revenuePromise, currency }: { revenuePromise: Promise<Rep
   return (
     <FundamentalCard
       label="Revenue"
-      figure={formatCompactMoney(latest.value, latest.currency ?? currency)}
+      figure={latest.original
+        ? <Money view={amountView(shownAmount(latest.value, latest.currency ?? currency, latest.original), formatCompactMoney)} />
+        : formatCompactMoney(latest.value, latest.currency ?? currency)}
       context={`reported for FY${latest.year}`}
       bars={points.length >= 2 ? (
         <MiniBars
@@ -478,6 +488,9 @@ export default function StockOverviewClient({
   revenue: revenuePromise,
   operatingMargin,
   netCash,
+  displayCurrency = null,
+  marketCapView = null,
+  netCashView = null,
 }: StockOverviewClientProps) {
   const [heroTimeframe, setHeroTimeframe] = useState<ChartTimeframe>('1Y')
   const [fullHistoricalData, setFullHistoricalData] = useState<PricePoint[] | null>(null)
@@ -555,7 +568,8 @@ export default function StockOverviewClient({
     setHeroTimeframe(timeframe)
     setFullHistoryState('loading')
 
-    void fetch(`/api/stocks/${encodeURIComponent(ticker)}/history`)
+    const historyQuery = displayCurrency ? `?${DISPLAY_CURRENCY_PARAM}=${encodeURIComponent(displayCurrency)}` : ''
+    void fetch(`/api/stocks/${encodeURIComponent(ticker)}/history${historyQuery}`)
       .then(async (response) => {
         const payload: unknown = await response.json().catch(() => null)
         if (!response.ok || !Array.isArray(payload)) throw new Error('Full history request failed.')
@@ -589,12 +603,12 @@ export default function StockOverviewClient({
   const nextEarningsReference = nextEarnings?.date
     ? formatDate(nextEarnings.date, { month: 'short', day: 'numeric' })
     : null
-  const referenceFacts = [
-    marketCap ? { label: 'Market cap', value: marketCap } : null,
+  const referenceFacts = ([
+    marketCapView ? { label: 'Market cap', value: <Money view={marketCapView} /> } : marketCap ? { label: 'Market cap', value: marketCap } : null,
     nextEarningsReference
       ? { label: 'Next earnings', value: nextEarningsReference }
       : null,
-  ].filter((fact): fact is OverviewStat => fact !== null)
+  ] as Array<OverviewStat | null>).filter((fact): fact is OverviewStat => fact !== null)
 
   const summaryGauge = technicalSummary.gauges.summary
   const readings = technicalSummary.readings
@@ -719,7 +733,7 @@ export default function StockOverviewClient({
             />
             <FundamentalCard
               label="Net cash"
-              figure={netCash ? formatCompactMoney(netCash.value, currency) : null}
+              figure={netCashView ? <Money view={netCashView} /> : netCash ? formatCompactMoney(netCash.value, currency) : null}
               tone={netCash && netCash.value < 0 ? 'down' : undefined}
               context={`cash minus debt${netCash?.asOf ? ` · as of ${formatDay(netCash.asOf)}` : ''}`}
               pending={netCash ? 'Ten years of cash and debt is being added.' : 'Net cash and ten years of cash and debt are being added.'}

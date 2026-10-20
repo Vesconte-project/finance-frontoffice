@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { BACKEND_HISTORY_PERIOD_DAYS_MAX, getHistoricalData } from '@/lib/finance'
+import { DISPLAY_CURRENCY_PARAM } from '@/lib/display-currency'
+import { resolveDisplayCurrency } from '@/lib/display-currency-server'
+import { BACKEND_HISTORY_PERIOD_DAYS_MAX, getHistoricalPrices } from '@/lib/finance'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -12,7 +14,7 @@ function normalizeTicker(value: string): string | null {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ ticker: string }> },
 ) {
   const { ticker: rawTicker } = await params
@@ -21,8 +23,16 @@ export async function GET(
     return NextResponse.json({ error: 'A valid ticker is required.' }, { status: 400 })
   }
 
+  // `?currency=` draws the closes in a display currency, as the backend converted
+  // them; a currency it does not list is refused rather than ignored.
+  const requested = request.nextUrl.searchParams.get(DISPLAY_CURRENCY_PARAM)
+  const currency = requested ? await resolveDisplayCurrency(requested) : null
+  if (requested && !currency) {
+    return NextResponse.json({ error: 'unsupported_currency' }, { status: 422 })
+  }
+
   try {
-    const points = await getHistoricalData(ticker, BACKEND_HISTORY_PERIOD_DAYS_MAX)
+    const { points } = await getHistoricalPrices(ticker, BACKEND_HISTORY_PERIOD_DAYS_MAX, currency)
     if (points.length === 0) {
       return NextResponse.json(
         { error: `Historical price data is unavailable for ${ticker}.` },

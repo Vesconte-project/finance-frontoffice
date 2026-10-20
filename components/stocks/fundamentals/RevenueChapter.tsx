@@ -5,7 +5,9 @@ import BeingBuilt, { BeingBuiltBadge } from '@/components/stocks/research/BeingB
 import ReportedBars from '@/components/stocks/research/ReportedBars'
 import ResearchChapter, { ChapterCard } from '@/components/stocks/research/ResearchChapter'
 import SegmentedControl from '@/components/ui/SegmentedControl'
+import Money from '@/components/ui/Money'
 import { formatChartMoney, formatCompactMoney } from '@/lib/currency'
+import { amountView, shownAmount } from '@/lib/display-currency'
 import type { ReportedPoint } from '@/lib/statement-reading'
 import styles from './Fundamentals.module.css'
 
@@ -46,7 +48,11 @@ export default function RevenueChapter({
       aside={latest ? (
         <ChapterCard title={`FY${latest.year}`} meta="Revenue">
           <p className={styles.cardFigure} data-card-figure="">
-            <strong>{formatCompactMoney(latest.value, latest.currency ?? currency)}</strong>
+            <strong>
+              {latest.original
+                ? <Money view={amountView(shownAmount(latest.value, latest.currency ?? currency, latest.original), formatCompactMoney)} />
+                : formatCompactMoney(latest.value, latest.currency ?? currency)}
+            </strong>
             <span>reported for the year</span>
           </p>
           <BeingBuilt label="By business" size="inline">
