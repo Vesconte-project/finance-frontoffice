@@ -14,6 +14,8 @@ import { BackendDataError } from '@/lib/backend'
 import { getTickerDisclosures, getTickerEvents, getTickerFinancialStatements } from '@/lib/canonical-research'
 import { annualSeries, summaryAmount, summaryDate, summaryPercent, type ReportedPoint } from '@/lib/statement-reading'
 import { currencyForTicker, formatCompactMoney } from '@/lib/currency'
+import { isoCurrency } from '@/lib/display-currency'
+import { resolveDisplayCurrency } from '@/lib/display-currency-server'
 import {
   getOhlcData,
   getStockQuote,
@@ -204,6 +206,7 @@ export default async function TickerPage({
     from?: string | string[]
     screenerSignal?: string | string[]
     modelName?: string | string[]
+    currency?: string | string[]
   }>
 }) {
   const resolvedParams = await params
@@ -217,7 +220,6 @@ export default async function TickerPage({
   }
   logStockPageEvent('info', 'render start', requestLogContext)
 
-  const currency = currencyForTicker(ticker)
   const sourceContext = singleSearchParam(resolvedSearchParams.from)
   const screenerSignal = sanitizeScreenerSignal(singleSearchParam(resolvedSearchParams.screenerSignal))
   const modelName = sanitizeModelName(singleSearchParam(resolvedSearchParams.modelName))
@@ -249,6 +251,13 @@ export default async function TickerPage({
     )
   }
 
+  // The listing's currency, as the header shows it. The whole page stays in it.
+  const currency = tickerSummary.asset?.currency ?? tickerSummary.fundamentalsSummary?.currency ?? currencyForTicker(ticker)
+  // `?currency=`: only offers the chart in that currency (converted by the
+  // backend, on request); a code the backend does not list, or the listing's
+  // own currency, is no display currency.
+  const requestedCurrency = await resolveDisplayCurrency(resolvedSearchParams.currency).catch(() => null)
+  const displayCurrency = requestedCurrency && requestedCurrency !== isoCurrency(currency) ? requestedCurrency : null
   const scorecard = scorecardFromTickerSummary(tickerSummary)
   // Reported annual revenue for the Fundamentals card: the same series the
   // Fundamentals tab draws (Spec PRD-78, "Os mesmos números em todas as tabs").
@@ -395,6 +404,9 @@ export default async function TickerPage({
       ) : null}
 
       <StockOverviewClient
+        // A new display currency starts the chart's converted view afresh.
+        key={displayCurrency ?? 'listing'}
+        displayCurrency={displayCurrency}
         ticker={ticker}
         currency={currency}
         isFund={isEtf}

@@ -168,6 +168,7 @@ test('failed watchlist read renders an explicit unavailable state, without guess
   const chrome = load('lib/stock-ticker-chrome.ts', { 'server-only': {},
     '@/lib/auth': { getViewerUserId: async () => 'user_synthetic001' },
     '@/lib/currency': { currencyForTicker: () => 'USD' },
+    '@/lib/display-currency': { parseTrackedListings: () => null },
     '@/lib/stock-asset-kind': { resolveStockAsset: () => ({ badge: 'Equity' }) },
     '@/lib/ticker-data': { getTickerPageSummary: async () => null },
     '@/lib/ticker-identity-color': { tickerIdentityColor: () => '#000000' },
