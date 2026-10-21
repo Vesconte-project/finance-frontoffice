@@ -31,34 +31,3 @@ export function calendarFixture(startDate, endDate, category = 'all') {
   const filtered = category === 'all' ? rows : rows.filter((row) => kind(row) === category)
   return { available: true, reason: null, unavailableDomains: [], truncated: false, snapshotMode: 'latest', isPointInTime: false, count: filtered.length, rows: filtered }
 }
-
-/** Synthetic atlas relationships for the calendar's "around" filter. */
-export function calendarRelationshipsFixture(ticker) {
-  const symbols = tickerIndexFixture().items.map((item) => item.symbol)
-  if (!symbols.includes(ticker)) return null
-  const others = symbols.filter((symbol) => symbol !== ticker)
-  return {
-    ticker,
-    asOf: '2026-10-02',
-    window: 252,
-    node: { ticker, name: null },
-    nodes: [],
-    themePeers: others.slice(0, 2).map((symbol) => ({ symbol, strength: 0.6, confidence: 0.8, theme: 'Synthetic theme', themes: ['Synthetic theme'] })),
-    residualCoMovers: others.slice(2, 4).map((symbol) => ({ symbol, strength: 0.5, confidence: 0.7, direction: 'positive' })),
-    marketCoMovers: [],
-    leadLag: { leaders: others.slice(4, 5).map((symbol) => ({ symbol, strength: 0.4, confidence: 0.6, direction: 'leads' })), followers: [] },
-    probableSpurious: [],
-  }
-}
-
-/** A synthetic market network: only nodes with a sector, for the calendar's sector filter. */
-export function calendarNetworkFixture() {
-  const sectorFor = (symbol) => symbol.startsWith('FXA') ? 'Technology' : symbol.startsWith('FXB') ? 'Consumer Defensive' : 'Healthcare'
-  return {
-    asOf: '2026-10-02',
-    window: 252,
-    focus: null,
-    nodes: tickerIndexFixture().items.map((item) => ({ ticker: item.symbol, name: item.name, sector: sectorFor(item.symbol), country: null, region: null, marketCap: null, degree: 1 })),
-    edges: [],
-  }
-}

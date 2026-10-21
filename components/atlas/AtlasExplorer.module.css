@@ -1,0 +1,367 @@
+.shell {
+  display: grid;
+  gap: 0.75rem;
+  padding: clamp(1rem, 2.4vw, 1.6rem) clamp(1rem, 3.7vw, 4.2rem) 1.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  background: var(--bg);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.pill,
+.locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+.pill {
+  cursor: pointer;
+}
+
+.pill:focus-visible,
+.frame:focus-visible,
+.zoom button:focus-visible,
+.close:focus-visible,
+.browse button:focus-visible,
+.lockNote:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lockNote {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  text-decoration: none;
+}
+
+a.lockNote:hover {
+  color: var(--text);
+}
+
+.invite {
+  max-width: 62rem;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.invite a,
+.panel a {
+  color: var(--accent);
+}
+
+.stage {
+  position: relative;
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 64rem) {
+  .stage:has(.panel) {
+    grid-template-columns: minmax(0, 1fr) 22rem;
+  }
+}
+
+.frame {
+  position: relative;
+  height: clamp(28rem, calc(100svh - 13rem), 58rem);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 10px;
+  background:
+    linear-gradient(color-mix(in srgb, var(--line) 35%, transparent) 1px, transparent 1px) 0 0 / 48px 48px,
+    linear-gradient(90deg, color-mix(in srgb, var(--line) 35%, transparent) 1px, transparent 1px) 0 0 / 48px 48px,
+    var(--bg);
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none;
+}
+
+.canvas:active {
+  cursor: grabbing;
+}
+
+.tip,
+.loading {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.3rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.tip {
+  bottom: 2.6rem;
+}
+
+.loading {
+  top: 0.8rem;
+  color: var(--text-muted);
+}
+
+button.loading {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.zoom {
+  position: absolute;
+  top: 50%;
+  right: 0.8rem;
+  display: grid;
+  overflow: hidden;
+  transform: translateY(-50%);
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.zoom button,
+.level {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.level {
+  border-bottom: 0;
+  color: var(--text-muted);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.72rem;
+  cursor: default;
+}
+
+.footnote {
+  position: absolute;
+  bottom: 0.7rem;
+  left: 0.9rem;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  pointer-events: none;
+}
+
+.panel {
+  position: relative;
+  max-height: clamp(28rem, calc(100svh - 13rem), 58rem);
+  overflow-y: auto;
+  padding: 1.1rem 1.2rem 1.3rem;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.panelTitle {
+  margin: 0.2rem 2.4rem 0.35rem 0;
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.panelHeading {
+  margin: 1rem 0 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.muted {
+  margin: 0 0 0.6rem;
+  color: var(--text-muted);
+}
+
+.refs {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.refs li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.refs a {
+  overflow: hidden;
+  color: var(--text);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.refs a:hover b {
+  color: var(--accent);
+}
+
+.refs b {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-weight: 600;
+}
+
+.share {
+  flex: none;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.cta,
+.more {
+  display: inline-flex;
+  margin-top: 1rem;
+  font-weight: 600;
+}
+
+.more {
+  margin-left: 0.9rem;
+}
+
+.cta + .more {
+  display: flex;
+  margin-left: 0;
+  margin-top: 0.6rem;
+}
+
+.browse {
+  padding: 1rem 1.2rem;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.browse > ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.9rem 1.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.zoneButton,
+.companies button {
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.zoneButton {
+  min-height: 2.25rem;
+  padding: 0;
+  font-weight: 600;
+}
+
+.zoneButton span {
+  margin-left: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 400;
+}
+
+.companies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.companies button {
+  min-height: 2rem;
+  padding: 0;
+  color: var(--text-muted);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.8rem;
+}
+
+.companies button:hover {
+  color: var(--accent);
+}
+
+@media (max-width: 40rem) {
+  .frame {
+    height: clamp(24rem, 68svh, 40rem);
+  }
+
+  .zoom {
+    top: auto;
+    right: 0.6rem;
+    bottom: 2.4rem;
+    transform: none;
+  }
+}

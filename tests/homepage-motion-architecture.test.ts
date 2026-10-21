@@ -63,11 +63,11 @@ test('site scroll has one root runtime with standard, operational, and narrative
 test('global smooth scroll preserves native nested regions and contains document overscroll', () => {
   const globals = readRepoFile('app/globals.css')
   const tickerSearch = readRepoFile('components/search/TickerSearchCombobox.tsx')
-  const correlationNetwork = readRepoFile('components/MarketCorrelationNetwork.tsx')
+  const atlas = readRepoFile('components/atlas/AtlasExplorer.tsx')
   const dataTable = readRepoFile('components/ui/DataTable.tsx')
 
   assert.match(globals, /overscroll-behavior-y:\s*none/)
   assert.match(tickerSearch, /data-lenis-prevent/)
-  assert.match(correlationNetwork, /data-lenis-prevent/)
+  assert.match(atlas, /data-lenis-prevent/)
   assert.match(dataTable, /data-lenis-prevent-horizontal/)
 })

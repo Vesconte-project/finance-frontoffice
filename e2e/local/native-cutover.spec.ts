@@ -56,7 +56,9 @@ test('public reads, legacy 404s and exact monitor exception',async({page,request
   await page.goto('/stocks/ACME');await expect(page.getByRole('heading',{level:1}).first()).toBeVisible()
   await expect(page.getByText('Ticker data is temporarily unavailable',{exact:true})).toHaveCount(0)
   await page.goto('/calendar');await expect(page.getByRole('heading',{level:1})).toBeVisible()
-  await page.goto('/markets/network');await expect(page.getByRole('heading',{name:'Sign in to explore relationships'})).toBeVisible()
+  // The weekly atlas is open without a session (backend rule 7): a map or an atlas state, never a sign-in wall.
+  await page.goto('/markets/network');await expect(page.getByText(/atlas/i).first()).toBeVisible()
+  await expect(page.getByRole('heading',{name:'Sign in to explore relationships'})).toHaveCount(0)
   await page.goto('/stocks/ACME/signals');await expect(page.getByRole('heading',{name:'Directional signals',exact:true})).toBeVisible()
   results.public_and_retired='PASS';results.me_without_credentials='401';results.monitor_exception='PASS'
 })

@@ -120,45 +120,22 @@ test('the retired perspective system is absent and its motion survives as a gene
   assert.doesNotMatch(overview, /initialLens|data-lens|lensScore/)
 })
 
-test('Relationships uses the shared expanding selector and an accessible focused constellation', () => {
-  const relationships = readRepoFile('components/RelationshipOrbit.tsx')
-  const comparison = readRepoFile('components/RelationshipComparisonChart.tsx')
-  const styles = readRepoFile('components/RelationshipOrbit.module.css')
+test('Relationships reads the weekly atlas: the company\'s region and the companies it moves with', () => {
+  const place = readRepoFile('components/atlas/CompanyAtlasPlace.tsx')
   const page = readRepoFile('app/(app)/stocks/[ticker]/relationships/page.tsx')
-  const comparisonRoute = readRepoFile('app/api/stocks/relationship-comparison/route.ts')
 
-  assert.match(relationships, /ExpandingSelector/)
-  assert.match(relationships, /SegmentedControl/)
-  assert.match(relationships, /label="View"/)
-  assert.match(relationships, /Moves independently/)
-  // Global rules (Spec PRD-78): a chapter, no loose legend, no summary or
-  // footnote, no internal language, no cards repeating the map, no dashes.
-  assert.match(relationships, /<ResearchChapter/)
-  assert.doesNotMatch(relationships, /Strength = closer|How to read|mapLegend|Dataset |DiscoveryCards|data-relationship-card|'—'/)
-  assert.doesNotMatch(page, /relationship endpoint|How to read relationships|Coverage:|methodology#relationships/)
-  assert.match(readRepoFile('components/stocks/StockMethodologyResearch.tsx'), /id="relationships"/)
-  assert.doesNotMatch(styles, /@media \(max-width/)
-  assert.match(relationships, /confidenceProminence/)
-  assert.match(relationships, /data-company-name/)
-  assert.match(relationships, /data-relationship-node/)
-  assert.match(relationships, /aria-pressed/)
-  assert.match(relationships, /RelationshipConnections/)
-  assert.match(relationships, /RelationshipComparisonChart/)
-  assert.match(relationships, /DEFAULT_LAYER_RENDER_LIMIT = 50/)
-  assert.match(relationships, /sectorColor/)
-  assert.match(relationships, /requestAnimationFrame/)
-  // Both lines on one scale, each named at its end: no legend and no caveat needed.
-  assert.doesNotMatch(comparison, /separate vertical scales|styles\.legend/)
-  assert.match(comparison, /endLabel/)
-  assert.match(comparisonRoute, /getHistoricalData/)
-  assert.match(comparisonRoute, /Two different valid ticker symbols are required/)
-  assert.doesNotMatch(relationships, /NetworkGraphCanvas|FilterChip/)
-  assert.match(relationships, /formatConfidence/)
-  assert.doesNotMatch(relationships, /probability|relationshipConfidence/i)
-  assert.match(styles, /prefers-reduced-motion: reduce/)
-  assert.match(page, /RelationshipOrbit/)
+  assert.match(page, /getAtlasCompany\(ticker\)/)
+  assert.match(page, /CompanyAtlasPlace/)
   assert.match(page, /showHeader=\{false\}/)
-  assert.doesNotMatch(page, /RelationshipsList/)
+  // Signed out the atlas sends no ties: the page invites the reader, it never shows a placeholder value.
+  assert.match(page, /sign_in_required/)
+  assert.match(page, /Create a free account/)
+  // Global rules (Spec PRD-78): chapters, no internal language, no dashes for missing values.
+  assert.match(place, /<ResearchChapter/)
+  assert.match(place, /id="related-companies"/)
+  assert.doesNotMatch(page, /relationship endpoint|How to read relationships|Coverage:|methodology#relationships|getViewerUserId/)
+  assert.doesNotMatch(place, /'—'/)
+  assert.match(readRepoFile('components/stocks/StockMethodologyResearch.tsx'), /id="relationships"/)
 })
 
 test('legacy ticker detail routes resolve to stable research destinations', () => {
@@ -509,8 +486,8 @@ test('Signals, Events, Relationships, AI Research and Methodology are research c
   const calendarStyles = readRepoFile('components/calendar/EventCalendar.module.css')
   assert.doesNotMatch(calendarStyles, /@media \(max-width/)
 
-  const relationships = readRepoFile('components/RelationshipOrbit.tsx')
-  inOrder(relationships, ['id="related-companies"', 'data-relationship-evidence'], 'Relationships')
+  const relationships = readRepoFile('components/atlas/CompanyAtlasPlace.tsx')
+  inOrder(relationships, ['id="atlas-region"', 'id="related-companies"'], 'Relationships')
 
   const ai = readRepoFile('components/stocks/StockAiResearch.tsx')
   inOrder(ai, ['id="ask"', 'id="brief"'], 'AI Research')

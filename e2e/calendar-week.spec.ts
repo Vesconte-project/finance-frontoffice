@@ -101,5 +101,5 @@ test('related companies and the watchlist need an account', async ({ page }) => 
 test('anonymous calendar never reads the session-only map for sectors',async({page})=>{
   await page.goto('/calendar?sector=Technology')
   await expect(page.getByRole('heading',{level:1})).toBeVisible()
-  await expect(page.getByRole('combobox',{name:'Sector'})).toHaveCount(0)
+  await expect(page.getByRole('combobox',{name:'Region'})).toHaveCount(0)
 })

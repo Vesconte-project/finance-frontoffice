@@ -74,7 +74,7 @@ test('narrowing keeps the named companies and every economic release', () => {
   // related companies are not read at all for a signed-out viewer.
   const focus = readRepoFile('lib/calendar-focus.ts')
   assert.match(focus, /^import 'server-only'/)
-  assert.ok(focus.indexOf("if (!signedIn) return { kind: 'around'") < focus.indexOf('getTickerRelationships(center'))
+  assert.ok(focus.indexOf("if (!signedIn) return { kind: 'around'") < focus.indexOf('getAtlasCompany(center'))
   assert.match(readRepoFile('components/calendar/CalendarLanding.tsx'), /keepCompanies\(fetched\.events, kept\)/)
 })
 

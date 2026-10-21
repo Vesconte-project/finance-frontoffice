@@ -1,8 +1,8 @@
 /**
  * Deterministic fixture backend for browser QA.
  *
- * The Market Universe page fetches its atlas server-side, so a Playwright
- * page.route() mock cannot reach it. This serves the relationship endpoints
+ * The market atlas page fetches its atlas server-side, so a Playwright
+ * page.route() mock cannot reach it. This serves the weekly atlas endpoints
  * from repository-owned synthetic data, an explicitly empty Picks ranking
  * needed by the homepage smoke test, three synthetic ticker pages and a synthetic
  * public calendar. Browser QA needs no external backend
@@ -14,12 +14,12 @@
  */
 import { createServer } from 'node:http'
 import {
-  atlasFixture,
-  communityFixture,
-  neighborhoodFixture,
+  atlasCompanyFixture,
+  atlasOverviewFixture,
+  atlasZoneFixture,
   tickerIndexFixture,
 } from '../e2e/fixtures/market-atlas.mjs'
-import { calendarFixture, calendarNetworkFixture, calendarRelationshipsFixture } from '../e2e/fixtures/calendar.mjs'
+import { calendarFixture } from '../e2e/fixtures/calendar.mjs'
 import {
   isFixtureTicker,
   tickerCorporateActionsFixture,
@@ -36,17 +36,6 @@ import {
 const HOST = '127.0.0.1'
 const PORT = Number(process.env.E2E_BACKEND_STUB_PORT || 3101)
 
-const ATLAS_VIEWS = new Set(['market', 'residual', 'timing', 'theme'])
-
-function readView(params) {
-  const view = params.get('view')
-  return view && ATLAS_VIEWS.has(view) ? view : 'market'
-}
-
-function readWindow(params) {
-  return params.get('window') === '126' ? 126 : 252
-}
-
 function send(response, status, payload) {
   const body = JSON.stringify(payload)
   response.writeHead(status, {
@@ -60,8 +49,6 @@ function send(response, status, payload) {
 const server = createServer((request, response) => {
   const url = new URL(request.url ?? '/', `http://${HOST}:${PORT}`)
   const path = url.pathname.replace(/\/+$/, '') || '/'
-  const window = readWindow(url.searchParams)
-  const view = readView(url.searchParams)
 
   if (path === '/health') {
     send(response, 200, { status: 'ok', fixture: true })
@@ -81,20 +68,35 @@ const server = createServer((request, response) => {
     return
   }
 
-  // The market network, for the calendar's sector filter.
-  if (path === '/v1/network' && !url.searchParams.get('focus')) {
-    send(response, 200, calendarNetworkFixture())
-    return
-  }
-
-  // Atlas relationships for the calendar's "around" filter, synthetic symbols only.
-  const relationshipsRoute = path.match(/^\/v1\/relationships\/([^/]+)$/)
-  if (relationshipsRoute) {
-    const payload = calendarRelationshipsFixture(decodeURIComponent(relationshipsRoute[1]).toUpperCase())
-    if (payload) {
-      send(response, 200, payload)
+  // The weekly atlas: the map page, the calendar's region and "around" filters, panels.
+  // A request with a session gets the free map; without one, the signed-out projection.
+  // E2E_STUB_SIGNED_IN=1 answers every request as free, to look at the signed-in map without Clerk.
+  const signedIn = Boolean(request.headers.authorization) || process.env.E2E_STUB_SIGNED_IN === '1'
+  if (path === '/v1/atlas') {
+    const level = Number.parseInt(url.searchParams.get('level') ?? '0', 10)
+    const bbox = url.searchParams.get('bbox')
+    if (!signedIn && (level > 1 || bbox || url.searchParams.get('asOf'))) {
+      send(response, 403, { detail: 'sign_in_required' })
       return
     }
+    send(response, 200, atlasOverviewFixture({ signedIn, level, bbox: bbox ? bbox.split(',').map(Number) : null }))
+    return
+  }
+  if (path === '/v1/atlas/weeks' || path === '/v1/atlas/movement') {
+    send(response, 403, { detail: signedIn ? 'pro_required' : 'sign_in_required' })
+    return
+  }
+  const atlasCompany = path.match(/^\/v1\/atlas\/companies\/([^/]+)$/)
+  if (atlasCompany) {
+    const { status, body } = atlasCompanyFixture(decodeURIComponent(atlasCompany[1]).toUpperCase(), signedIn)
+    send(response, status, body)
+    return
+  }
+  const atlasZone = path.match(/^\/v1\/atlas\/zones\/([^/]+)$/)
+  if (atlasZone) {
+    const { status, body } = atlasZoneFixture(decodeURIComponent(atlasZone[1]), signedIn)
+    send(response, status, body)
+    return
   }
 
   // Homepage reads all three rankings server-side. A successful empty fixture
@@ -122,22 +124,6 @@ const server = createServer((request, response) => {
         { reading: 'shortTerm', status: 'absent', standing: null, absenceReason: 'insufficient_coverage' },
       ],
     })
-    return
-  }
-
-  if (path === '/v1/network/atlas') {
-    send(response, 200, atlasFixture(window, view))
-    return
-  }
-
-  const community = path.match(/^\/v1\/network\/communities\/([^/]+)$/)
-  if (community) {
-    const payload = communityFixture(decodeURIComponent(community[1]), window, view)
-    if (!payload) {
-      send(response, 404, { error: 'fixture_community_not_found' })
-      return
-    }
-    send(response, 200, payload)
     return
   }
 
@@ -186,17 +172,6 @@ const server = createServer((request, response) => {
     if (tickerRoute[2] === 'summary') send(response, 200, tickerSummaryFixture(ticker))
     else if (tickerRoute[2] === 'ohlc') send(response, 200, tickerOhlcFixture(ticker, periodDays))
     else send(response, 200, tickerHistoryFixture(ticker, periodDays))
-    return
-  }
-
-  const neighborhood = path.match(/^\/v1\/network\/neighborhoods\/([^/]+)$/)
-  if (neighborhood) {
-    const payload = neighborhoodFixture(decodeURIComponent(neighborhood[1]), window, view)
-    if (!payload) {
-      send(response, 404, { error: 'fixture_neighborhood_not_found' })
-      return
-    }
-    send(response, 200, payload)
     return
   }
 

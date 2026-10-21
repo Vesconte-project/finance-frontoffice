@@ -6,7 +6,9 @@ locais; JWT Clerk vem da sessão verificada. Access usa `CF_ACCESS_CLIENT_ID` e
 `BACKEND_BASE_URL` é a origem única, sem alias nem segredo partilhado.
 
 - Leituras públicas `/v1`: sessão opcional; nível decidido por `authorize()`.
-- Mapa `/v1/network*` e `/v1/relationships/*`: sessão obrigatória, até à ENG-228.
+- Atlas `/v1/atlas*`: sessão opcional. Sem sessão o backend serve só a projeção da regra 7
+  (403 `sign_in_required` para o resto); com sessão o mapa real da semana mais recente
+  (403 `pro_required` para histórico e movimento). O ecrã mostra o estado de cada recusa.
 - Watchlist, research, AI e analytics: sessão obrigatória, owner verificado no backend.
 - Administração: só backoffice com JWT + RBAC PostgreSQL; nenhum service token.
 - Geração AI exige `research.ai`; direito comercial vem da projeção Stripe,
