@@ -22,6 +22,22 @@ export const FIXTURE_THEMES = [
   { themeId: 'fx-robotics', label: 'Fixture Robotics', members: ['FXB4', 'FXC2', 'FXC5'] },
 ]
 const themesOf = (symbol) => FIXTURE_THEMES.filter((theme) => theme.members.includes(symbol)).map((theme) => theme.themeId)
+/** What the signed-in overview and panel say about a zone: naming, value, cohesion, accuracy. */
+const ZONE_FACTS = {
+  'fx-zone-alpha': { labelSupport: 0.67, dominantSector: 'Fixture Technology', cohesion: 0.42, fidelity: 0.81 },
+  'fx-zone-beta': { labelSupport: 0.5, dominantSector: 'Fixture Industrials', cohesion: 0.31, fidelity: 0.74 },
+  'fx-zone-gamma': { labelSupport: 0.83, dominantSector: 'Fixture Energy', cohesion: 0.18, fidelity: 0.66 },
+}
+function zoneFacts(zone) {
+  const caps = MEMBERS.filter((member) => member.zoneId === zone.zoneId).map((member) => member.marketCap)
+  // the gamma zone is worth less, so sorting by market value differs from sorting by size
+  const scale = zone.zoneId === 'fx-zone-gamma' ? 0.1 : zone.zoneId === 'fx-zone-beta' ? 0.6 : 1
+  return { ...ZONE_FACTS[zone.zoneId], totalMarketCap: caps.reduce((sum, cap) => sum + cap, 0) * scale }
+}
+const INDUSTRIES = ['Fixture Chips', 'Fixture Chips', 'Fixture Software', 'Fixture Software', 'Fixture Software', 'Fixture Services']
+/** Annualised 20-day volatility per member rank; the last has none. */
+const VOLATILITY = [0.21, 0.28, 0.33, 0.41, 0.52, null]
+
 /** Map accuracy per member rank: well placed leaders, one stretched company per zone. */
 const FIDELITY = [0.9, 0.8, 0.7, 0.9, 0.3, 0.6]
 
@@ -102,7 +118,7 @@ export function atlasOverviewFixture({ signedIn, level, bbox }) {
       zoneId: zone.zoneId, label: zone.label, labelSource: 'industry', memberCount: 6,
       leaders: MEMBERS.filter((member) => member.zoneId === zone.zoneId).slice(0, 4).map((member) => member.symbol),
       contour: { type: 'rings', coverage: 0.8, rings: [ring(zone)] },
-      labelSupport: 1, dominantSector: 'Fixture', totalMarketCap: null, cohesion: 0.4, fidelity: 0.8,
+      ...zoneFacts(zone),
     })),
     nodes: nodes.map((member) => ({
       symbol: member.symbol, name: member.name, zoneId: member.zoneId, x: member.x, y: member.y, level: member.level,
@@ -120,10 +136,7 @@ export function atlasOverviewFixture({ signedIn, level, bbox }) {
       const members = MEMBERS.filter((member) => member.zoneId === zone.zoneId && shown.has(member.symbol))
       return members.slice(1).map((member) => ({ source: members[0].symbol, target: member.symbol, zoneId: zone.zoneId, correlation: 0.5 }))
     }),
-    bundles: [
-      { zoneA: 'fx-zone-alpha', zoneB: 'fx-zone-beta', tieCount: 9, meanCorrelation: 0.31, structural: true, ties: [{ source: 'FXA1', target: 'FXB1', correlation: 0.4 }] },
-      { zoneA: 'fx-zone-alpha', zoneB: 'fx-zone-gamma', tieCount: 4, meanCorrelation: 0.27, structural: true, ties: [{ source: 'FXA2', target: 'FXC1', correlation: 0.3 }] },
-    ],
+    bundles: FIXTURE_BUNDLES,
   }
 }
 
@@ -148,16 +161,22 @@ export function atlasCompanyFixture(symbol, signedIn) {
     status: 200,
     body: {
       asOf: AS_OF, access: FREE, symbol, name: member.name, sector: 'Fixture', industry: 'Fixture Industry', country: 'Testland',
-      zoneId: zone.zoneId, zoneLabel: zone.label, x: member.x, y: member.y, level: member.level, loner: false,
+      zoneId: zone.zoneId, zoneLabel: zone.label, x: member.x, y: member.y, level: member.level, loner: symbol.endsWith('6'),
       memberships: [{ zoneId: zone.zoneId, label: zone.label, share: 0.85 }, { zoneId: ZONES[(ZONES.indexOf(zone) + 1) % 3].zoneId, label: ZONES[(ZONES.indexOf(zone) + 1) % 3].label, share: 0.15 }],
       neighbours: others.slice(0, 15).map((item, rank) => ({
         symbol: item.symbol, name: item.name, zoneId: item.zoneId, correlation: Number((0.62 - rank * 0.03).toFixed(4)), total: Number((0.7 - rank * 0.025).toFixed(4)),
       })),
-      importance: member.importance, reach: 0.5, marketCap: member.marketCap, fidelity: FIDELITY[Number(member.symbol.slice(-1)) - 1], lens: 'residual',
+      importance: member.importance, reach: Number((member.importance * 0.8).toFixed(4)), marketCap: member.marketCap,
+      industry: INDUSTRIES[Number(symbol.slice(-1)) - 1], volatility20d: VOLATILITY[Number(symbol.slice(-1)) - 1], fidelity: FIDELITY[Number(member.symbol.slice(-1)) - 1], lens: 'residual',
       themes: FIXTURE_THEMES.filter((theme) => theme.members.includes(symbol)).map((theme) => ({ themeId: theme.themeId, label: theme.label })),
     },
   }
 }
+
+const FIXTURE_BUNDLES = [
+  { zoneA: 'fx-zone-alpha', zoneB: 'fx-zone-beta', tieCount: 9, meanCorrelation: 0.31, structural: true, ties: [{ source: 'FXA1', target: 'FXB1', correlation: 0.4 }] },
+  { zoneA: 'fx-zone-alpha', zoneB: 'fx-zone-gamma', tieCount: 4, meanCorrelation: 0.27, structural: true, ties: [{ source: 'FXA2', target: 'FXC1', correlation: 0.3 }] },
+]
 
 export function atlasZoneFixture(zoneId, signedIn) {
   const zone = ZONES.find((item) => item.zoneId === zoneId)
@@ -172,8 +191,17 @@ export function atlasZoneFixture(zoneId, signedIn) {
     body: {
       ...base, access: FREE,
       leaders: members.slice(0, 4).map((item) => ({ symbol: item.symbol, name: item.name })),
-      members: members.map((item) => ({ symbol: item.symbol, name: item.name, level: item.level, importance: item.importance, marketCap: item.marketCap, share: 0.85 })),
-      bundles: [],
+      ...zoneFacts(zone),
+      members: members.map((item, rank) => ({ symbol: item.symbol, name: item.name, level: item.level, importance: item.importance, marketCap: item.marketCap, industry: INDUSTRIES[rank], share: 0.85 })),
+      sharedCount: 1,
+      subIndustries: [...new Set(INDUSTRIES)].map((industry) => ({ industry, count: INDUSTRIES.filter((item) => item === industry).length })).sort((a, b) => b.count - a.count),
+      // the zone's own members first, then the bridging member of the zone before it
+      relevant: [
+        ...members.map((item) => ({ symbol: item.symbol, name: item.name, zoneId, share: item.symbol.endsWith('2') ? 0.6 : 1 })),
+        ...MEMBERS.filter((item) => item.symbol.endsWith('2') && ZONES[(ZONES.findIndex((other) => other.zoneId === item.zoneId) + 1) % 3].zoneId === zoneId)
+          .map((item) => ({ symbol: item.symbol, name: item.name, zoneId: item.zoneId, share: 0.4 })),
+      ].slice(0, 14),
+      bundles: FIXTURE_BUNDLES.filter((bundle) => bundle.zoneA === zoneId || bundle.zoneB === zoneId),
     },
   }
 }

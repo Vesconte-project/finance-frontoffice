@@ -130,8 +130,13 @@ test('the Pro layers switch the lens, size regions by value, ring accuracy and d
   await expect(page.getByText(/· total co-movement/)).toHaveCount(0)
   await expect(page.getByRole('slider', { name: 'Weeks before today' })).toBeVisible()
 
-  // Browse › Market: the cohesion chart
+  // Browse › Regions: six-month changes for Pro
   await page.getByRole('button', { name: 'Browse atlas' }).click()
+  const sheet = page.getByRole('region', { name: 'Browse the market' })
+  await expect(sheet.getByText('+2 / −0')).toBeVisible({ timeout: 30_000 })
+  await expect(sheet.getByText('+0 / −2')).toBeVisible()
+  await sheet.getByRole('combobox', { name: 'Sort regions' }).selectOption('change')
+  // Browse › Market: the cohesion chart
   await page.getByRole('tab', { name: 'Market' }).click()
   await expect(page.getByRole('img', { name: /Average correlation over the last year, from 0\.\d\d to 0\.\d\d; today 0\.09/ })).toBeVisible({ timeout: 30_000 })
   expect(errors).toEqual([])

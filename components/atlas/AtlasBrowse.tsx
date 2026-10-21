@@ -1,24 +1,34 @@
 'use client'
 
-import { useId, useRef, type KeyboardEvent } from 'react'
-import type { AtlasLens, AtlasNode, AtlasZone } from '@/lib/atlas-model'
+import { useId, useRef, useState, type KeyboardEvent } from 'react'
+import type { AtlasBundle, AtlasLens, AtlasZone } from '@/lib/atlas-model'
+import { browseRegions, linkText, topLinks, type RegionChange, type RegionSort } from '@/lib/atlas-panels'
 import { cohesionChart, type AtlasGroup, type ProFeature } from '@/lib/atlas-pro'
 import type { AtlasWeeks } from '@/lib/atlas-pro-model'
 import { zoneColor } from './atlas-canvas'
+import { formatCap } from './atlas-format'
 import type { Remote } from './use-atlas-json'
 import base from './AtlasExplorer.module.css'
 import styles from './AtlasPro.module.css'
 
-export type BrowseTab = 'regions' | 'groups' | 'market'
-const TABS: Array<[BrowseTab, string]> = [['regions', 'Regions'], ['groups', 'Groups'], ['market', 'Market']]
+export type BrowseTab = 'regions' | 'links' | 'groups' | 'market'
+const TABS: Array<[BrowseTab, string]> = [['regions', 'Regions'], ['links', 'Links'], ['groups', 'Groups'], ['market', 'Market']]
 
 type Props = {
   tab: BrowseTab
   onTab: (tab: BrowseTab) => void
-  regions: Array<{ zone: AtlasZone; nodes: AtlasNode[] }>
+  zones: AtlasZone[]
+  bundles: AtlasBundle[]
+  leadersOf: (zone: AtlasZone) => string[]
+  dots: ReadonlyMap<string, number>
+  /** Pro: companies in and out over six months; null for readers without it. */
+  changes: ReadonlyMap<string, RegionChange> | null
   hues: ReadonlyMap<string, number>
+  dark: boolean
+  selectedZone: string | null
   onZone: (zone: AtlasZone) => void
-  onCompany: (node: AtlasNode) => void
+  onCompany: (symbol: string) => void
+  onHoverZone: (zoneId: string | null) => void
   signedIn: boolean
   pro: boolean
   groups: AtlasGroup[]
@@ -82,27 +92,8 @@ export default function AtlasBrowse(props: Props) {
         ))}
       </div>
       <div role="tabpanel" id={`${id}-${props.tab}`} aria-labelledby={`${id}-${props.tab}-tab`}>
-        {props.tab === 'regions' ? (
-          <ul className={base.browse}>
-            {props.regions.map(({ zone, nodes }) => (
-              <li key={zone.zoneId}>
-                <button type="button" className={base.zoneButton} onClick={() => props.onZone(zone)}>
-                  <i style={{ background: zoneColor(props.hues.get(zone.zoneId) ?? 200, false) }} aria-hidden="true" />
-                  {zone.label} <span>{zone.memberCount} companies</span>
-                </button>
-                {nodes.length ? (
-                  <ul className={base.companies}>
-                    {nodes.map((node) => (
-                      <li key={node.symbol}>
-                        <button type="button" onClick={() => props.onCompany(node)}>{node.symbol}</button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        ) : null}
+        {props.tab === 'regions' ? <Regions {...props} /> : null}
+        {props.tab === 'links' ? <Links {...props} /> : null}
         {props.tab === 'groups' ? (
           props.pro ? (
             props.groups.length ? (
@@ -140,6 +131,112 @@ export default function AtlasBrowse(props: Props) {
           </>
         ) : null}
       </div>
+    </>
+  )
+}
+
+function Dots({ value }: { value: number }) {
+  return (
+    <span className={styles.dots} title="How tightly its companies move together, against the other regions" aria-label={`Moves together: ${value} of 5`} role="img">
+      {[1, 2, 3, 4, 5].map((dot) => <b key={dot} className={dot <= value ? styles.on : undefined} />)}
+    </span>
+  )
+}
+
+/** Browse › Regions (v27): filter, sort, cohesion dots, market value, six-month changes for Pro, four lead tickers. */
+function Regions(props: Props) {
+  const [term, setTerm] = useState('')
+  const [sort, setSort] = useState<RegionSort>('size')
+  const signedIn = props.signedIn
+  const rows = browseRegions(props.zones, props.leadersOf, { term, sort: props.changes || sort !== 'change' ? sort : 'size', dots: props.dots, changes: props.changes })
+  return (
+    <>
+      <div className={styles.browseTools}>
+        <input type="search" placeholder="Filter regions or tickers" aria-label="Filter regions or tickers" value={term} onChange={(event) => setTerm(event.target.value)} />
+        {signedIn ? (
+          <label className={styles.sort}>
+            <span>Sort</span>
+            <select aria-label="Sort regions" value={sort} onChange={(event) => setSort(event.target.value as RegionSort)}>
+              <option value="size">Most companies</option>
+              <option value="value">Market value</option>
+              <option value="tight">Moves most together</option>
+              {props.changes ? <option value="change">Changed most (6 mo)</option> : null}
+            </select>
+          </label>
+        ) : null}
+      </div>
+      {signedIn && props.dots.size ? (
+        <p className={styles.browseKey}>
+          <Dots value={3} /> how tightly its companies move together · market value{props.changes ? <> · <span className={styles.up}>+in</span> / <span className={styles.down}>−out</span> in 6 months</> : null}
+        </p>
+      ) : null}
+      {rows.length ? (
+        <ul className={styles.regionList} onPointerLeave={() => props.onHoverZone(null)}>
+          {rows.map(({ zone, leaders, dots, change }) => {
+            const cap = formatCap(zone.totalMarketCap)
+            return (
+              <li key={zone.zoneId} onPointerEnter={() => props.onHoverZone(zone.zoneId)}>
+                <button type="button" className={styles.regionRow} aria-pressed={props.selectedZone === zone.zoneId} onClick={() => props.onZone(zone)} onFocus={() => props.onHoverZone(zone.zoneId)} onBlur={() => props.onHoverZone(null)}>
+                  <i style={{ background: zoneColor(props.hues.get(zone.zoneId) ?? 200, props.dark) }} aria-hidden="true" />
+                  <span className={styles.regionName}>{zone.label.replace(/_/g, ' ')}</span>
+                  <span className={styles.regionCount}>{zone.memberCount}<span className={styles.visuallyHidden}> companies</span></span>
+                  {dots !== null || cap || (change && (change.joined || change.left)) ? (
+                    <small className={styles.regionMeta}>
+                      {dots !== null ? <Dots value={dots} /> : null}
+                      {cap ? <span>{cap}</span> : null}
+                      {change && (change.joined || change.left) ? (
+                        <span className={change.joined >= change.left ? styles.up : styles.down} title="Companies that moved in or out in the last six months">+{change.joined} / −{change.left}</span>
+                      ) : null}
+                    </small>
+                  ) : null}
+                </button>
+                {leaders.length ? (
+                  <ul className={styles.regionLeaders} aria-label={`Lead companies in ${zone.label}`}>
+                    {leaders.map((symbol) => (
+                      <li key={symbol}><button type="button" onClick={() => props.onCompany(symbol)}>{symbol}</button></li>
+                    ))}
+                  </ul>
+                ) : null}
+              </li>
+            )
+          })}
+        </ul>
+      ) : <p className={styles.muted}>No region matches.</p>}
+    </>
+  )
+}
+
+/** Browse › Links (v27): the region pairs with the most strong ties; selecting one shows its bundle. */
+function Links(props: Props) {
+  const links = topLinks(props.bundles)
+  const zones = new Map(props.zones.map((zone) => [zone.zoneId, zone]))
+  const max = links[0]?.tieCount ?? 1
+  return (
+    <>
+      <p className={styles.muted}>The strongest links between regions: how many strong ties join them and how strong they are on average. Select one to see its bundle.</p>
+      {links.length ? (
+        <ul className={styles.linkList} onPointerLeave={() => props.onHoverZone(null)}>
+          {links.map((bundle) => {
+            const a = zones.get(bundle.zoneA)
+            const b = zones.get(bundle.zoneB)
+            if (!a || !b) return null
+            // the larger region is selected: its five strongest bundles include this one
+            const focus = a.memberCount >= b.memberCount ? a : b
+            const name = (zone: AtlasZone) => (
+              <span className={styles.linkName}><i style={{ background: zoneColor(props.hues.get(zone.zoneId) ?? 200, props.dark) }} aria-hidden="true" />{zone.label.replace(/_/g, ' ')}</span>
+            )
+            return (
+              <li key={`${bundle.zoneA}|${bundle.zoneB}`} onPointerEnter={() => props.onHoverZone(focus.zoneId)}>
+                <button type="button" className={styles.linkRow} onClick={() => props.onZone(focus)} aria-label={`${a.label} and ${b.label}: ${linkText(bundle.tieCount, bundle.meanCorrelation)}`}>
+                  <span className={styles.linkPair}>{name(a)}<span aria-hidden="true">↔</span>{name(b)}</span>
+                  <span className={styles.linkCount}>{linkText(bundle.tieCount, bundle.meanCorrelation)}</span>
+                  <span className={styles.bar} aria-hidden="true"><b style={{ width: `${Math.round((bundle.tieCount / max) * 100)}%` }} /></span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      ) : <p className={styles.empty}>No ties between regions this week.</p>}
     </>
   )
 }

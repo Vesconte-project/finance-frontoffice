@@ -69,7 +69,7 @@ test('the signed-out atlas reads as sent and drops entries that point nowhere', 
   assert.equal(atlas.access.tier, 'signedOut')
   assert.equal(atlas.access.lines, false)
   assert.deepEqual(atlas.nodes.map((node) => [node.symbol, node.level, node.size]), [['AMD', 0, 0], ['COP', 1, 2]])
-  assert.deepEqual(atlas.bundles, [{ zoneA: 'residual-a', zoneB: 'residual-b', tieCount: 12, structural: false, ties: [] }])
+  assert.deepEqual(atlas.bundles, [{ zoneA: 'residual-a', zoneB: 'residual-b', tieCount: 12, structural: false, ties: [], meanCorrelation: null }])
   assert.deepEqual(atlas.lines, [])
   assert.deepEqual(atlas.zones[0].contour, { type: 'circle', x: 1, y: 2, radius: 1.5 })
 })
@@ -325,7 +325,7 @@ test('a bundle runs each real tie between companies on the map, and only those',
     ['B1', { x: 10, y: 0, zoneId: 'b' }], ['B2', { x: 10, y: 2, zoneId: 'b' }],
   ])
   const strands = bundleStrands({
-    zoneA: 'a', zoneB: 'b', tieCount: 5, structural: true,
+    zoneA: 'a', zoneB: 'b', tieCount: 5, structural: true, meanCorrelation: null,
     ties: [
       { source: 'A1', target: 'B1', correlation: 0.5 },
       { source: 'B2', target: 'A2', correlation: 0.4 },
@@ -338,9 +338,9 @@ test('a bundle runs each real tie between companies on the map, and only those',
   // the strands gather towards the middle
   for (const strand of strands) assert.ok(Math.abs(strand.c1[1] - 1) < Math.abs(strand.from[1] - 1) + 1e-9)
   const bundles = [
-    { zoneA: 'a', zoneB: 'b', tieCount: 3, structural: true, ties: [] },
-    { zoneA: 'c', zoneB: 'a', tieCount: 9, structural: false, ties: [] },
-    { zoneA: 'b', zoneB: 'c', tieCount: 20, structural: true, ties: [] },
+    { zoneA: 'a', zoneB: 'b', tieCount: 3, structural: true, ties: [], meanCorrelation: null },
+    { zoneA: 'c', zoneB: 'a', tieCount: 9, structural: false, ties: [], meanCorrelation: null },
+    { zoneA: 'b', zoneB: 'c', tieCount: 20, structural: true, ties: [], meanCorrelation: null },
   ]
   assert.deepEqual(focusBundles(bundles, 'a', 3).map((bundle) => bundle.tieCount), [9, 3])
 })
