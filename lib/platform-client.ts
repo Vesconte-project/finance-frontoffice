@@ -16,8 +16,9 @@ export class PlatformError extends Error {
 }
 
 const uuid = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
-const reads = new RegExp(`^/(?:me|accounts/${uuid}/access|research/jobs(?:/${uuid}(?:/(?:results|events|artifacts))?)?|artifacts/${uuid}/(?:download|content)|rankings|watchlist|ai-research/runs(?:/${uuid})?)$`)
-const writes = new RegExp(`^/(?:billing/(?:checkout|portal)|research/jobs(?:/${uuid}/cancel)?|watchlist|ai-research/(?:runs|feedback)|analytics/events)$`)
+const reads = new RegExp(`^/(?:me|accounts/${uuid}/access|research/jobs(?:/${uuid}(?:/(?:results|events|artifacts))?)?|artifacts/${uuid}/(?:download|content)|rankings|watchlist|ai-research/runs(?:/${uuid})?|model-lab/(?:viewer|library|alerts|theses(?:/${uuid}(?:/evidence)?)?|tests/${uuid}/results|runs/${uuid}|panels(?:/${uuid}(?:/(?:today|evidence|alerts))?)?|admin/(?:queue|candidates|access-requests|data-health|pipeline/(?:thesis|reuse|panel))))$`)
+const writes = new RegExp(`^/(?:billing/(?:checkout|portal)|research/jobs(?:/${uuid}/cancel)?|watchlist|ai-research/(?:runs|feedback)|analytics/events|model-lab/(?:quotes|runs|panels|alerts/read|admin/access-requests|runs/${uuid}/cancel|theses/${uuid}/(?:notes|submit)))$`)
+const patches = new RegExp(`^/(?:ai-research/runs/${uuid}|model-lab/(?:panels/${uuid}|theses/${uuid}/watch))$`)
 
 export function createPlatformClient({ baseUrl, getToken, fetcher = fetch, originHeaders }: Options) {
   let base: string
@@ -37,10 +38,10 @@ export function createPlatformClient({ baseUrl, getToken, fetcher = fetch, origi
     const route = path.split('?')[0]
     if (path.includes('#') || route.includes('%') || !path.startsWith('/') ||
       !(method === 'GET' ? reads.test(route) : method === 'PATCH'
-        ? new RegExp(`^/ai-research/runs/${uuid}$`).test(route) : method === 'DELETE'
+        ? patches.test(route) : method === 'DELETE'
         ? route === '/watchlist' : writes.test(route))) throw new PlatformError(404)
     if (method === 'GET' && options.body !== undefined) throw new PlatformError(422)
-    const requiresKey = method === 'POST' && ['/billing/checkout', '/billing/portal', '/research/jobs'].includes(route)
+    const requiresKey = method === 'POST' && ['/billing/checkout', '/billing/portal', '/research/jobs', '/model-lab/runs'].includes(route)
     if ((requiresKey && !options.idempotencyKey) || (options.idempotencyKey &&
       !/^[A-Za-z0-9_.:-]{8,128}$/.test(options.idempotencyKey))) throw new PlatformError(422)
 

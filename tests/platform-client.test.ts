@@ -81,3 +81,34 @@ test('server native requests add origin transport separately from the session', 
     } })
   await client('/me')
 })
+
+test('the Model Lab routes are a closed list and runs need an idempotency key', async () => {
+  const id = '3f2b8c1e-6d4a-4b7e-9c10-2a5d7e8f9b01'
+  const seen: string[] = []
+  const client = createPlatformClient({ baseUrl: 'https://api.example.com', getToken: async () => 'fixture',
+    fetcher: async (url, options) => { seen.push(`${options?.method} ${url}`); return new Response('{}') } })
+  for (const path of ['/model-lab/viewer', '/model-lab/theses', `/model-lab/theses/${id}`, `/model-lab/theses/${id}/evidence`,
+    `/model-lab/tests/${id}/results`, `/model-lab/runs/${id}`, '/model-lab/panels', `/model-lab/panels/${id}/today`,
+    `/model-lab/panels/${id}/evidence`, `/model-lab/panels/${id}/alerts`, '/model-lab/library', '/model-lab/alerts',
+    '/model-lab/admin/queue', '/model-lab/admin/pipeline/panel', '/model-lab/admin/access-requests', '/model-lab/admin/data-health'])
+    await client(`${path}?account_id=${id}`)
+  assert.equal(seen.length, 16)
+  await client('/model-lab/quotes', { method: 'POST', body: {} })
+  await client('/model-lab/runs', { method: 'POST', body: {}, idempotencyKey: 'run-fixture-1' })
+  await client(`/model-lab/runs/${id}/cancel`, { method: 'POST', body: {} })
+  await client(`/model-lab/theses/${id}/notes`, { method: 'POST', body: {} })
+  await client(`/model-lab/panels/${id}`, { method: 'PATCH', body: {} })
+  await client(`/model-lab/theses/${id}/watch`, { method: 'PATCH', body: {} })
+  await assert.rejects(client('/model-lab/runs', { method: 'POST', body: {} }), PlatformError)
+})
+
+test('Model Lab paths outside the closed list never fetch', async () => {
+  const id = '3f2b8c1e-6d4a-4b7e-9c10-2a5d7e8f9b01'
+  const client = createPlatformClient({ baseUrl: 'https://api.example.com', getToken: async () => 'fixture',
+    fetcher: async () => { throw Error('must not fetch') } })
+  for (const path of ['/model-lab', '/model-lab/theses/not-a-uuid', `/model-lab/theses/${id}/other`, '/model-lab/admin/users',
+    '/model-lab/admin/pipeline/secret', `/model-lab/runs/${id}/results`, '/model-lab/theses/../me', '/model-lab/panels/%2e%2e'])
+    await assert.rejects(client(path), PlatformError)
+  await assert.rejects(client(`/model-lab/theses/${id}`, { method: 'DELETE' }), PlatformError)
+  await assert.rejects(client(`/model-lab/theses/${id}`, { method: 'PATCH', body: {} }), PlatformError)
+})
