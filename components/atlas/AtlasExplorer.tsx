@@ -1,21 +1,21 @@
 'use client'
 
 import Link from 'next/link'
-import { Layers, Lock, Maximize2, Minus, Network, Plus, Search, X } from 'lucide-react'
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
+import { Layers, Maximize2, Minus, Network, Plus, Search, X } from 'lucide-react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import {
+  ATLAS_MAX_LEVEL,
   atlasOverviewPath,
   atlasSymbol,
   parseCompanyPanel,
   parseOverview,
   parseZonePanel,
-  type AtlasCompanyPanel,
-  type AtlasDenial,
+  type AtlasLens,
   type AtlasLine,
   type AtlasNode,
   type AtlasOverview,
+  type AtlasPoint,
   type AtlasZone,
-  type AtlasZonePanel,
   atlasDenial,
 } from '@/lib/atlas-model'
 import {
@@ -35,6 +35,7 @@ import {
   nodeAt,
   padBounds,
   panBy,
+  toScreen,
   toWorld,
   visibleBounds,
   zoneAt,
@@ -45,24 +46,76 @@ import {
   type SearchResult,
   type Viewport,
 } from '@/lib/atlas-view'
-import { drawAtlas, edgeKey, parseColor, zoneColor, type Palette } from './atlas-canvas'
+import {
+  GROUPS_KEY,
+  NOTEBOOK_KEY,
+  alignWeek,
+  basketCentre,
+  browserStorage,
+  farTies,
+  frameAt,
+  groupKey,
+  influencePill,
+  insidePolygon,
+  loadList,
+  meanAccuracy,
+  noteTitle,
+  parseGroups,
+  parseNotes,
+  pathOf,
+  playWeek,
+  saveList,
+  selectionSummary,
+  spanAgo,
+  thenAndNow,
+  timelineNote,
+  todayFrame,
+  weekLabel,
+  type AtlasGroup,
+  type MovementSpan,
+  type NotebookEntry,
+  type NotebookView,
+  type ProFeature,
+  type WeekFrame,
+} from '@/lib/atlas-pro'
+import {
+  parseCompare,
+  parseInfluence,
+  parseMovement,
+  parseTest,
+  parseThemeDetail,
+  parseThemes,
+  parseWeeks,
+  type AtlasMovement,
+  type AtlasTheme,
+} from '@/lib/atlas-pro-model'
+import { drawAtlas, edgeKey, parseColor, type FlowLine, type InfluenceLine, type Overlay, type Palette, type PathLine } from './atlas-canvas'
+import { SIGN_UP_HREF, formatDate } from './atlas-format'
+import AtlasBrowse, { type BrowseTab } from './AtlasBrowse'
+import { InfluenceCard, ThemeCard } from './AtlasCards'
+import AtlasLayers from './AtlasLayers'
+import AtlasMapKey from './AtlasMapKey'
+import AtlasNotebook from './AtlasNotebook'
+import AtlasPanel, { type PanelAction, type PanelState } from './AtlasPanel'
+import AtlasThemeMenu from './AtlasThemeMenu'
+import AtlasTimeBar from './AtlasTimeBar'
+import AtlasToolRail, { type AtlasTool } from './AtlasToolRail'
+import AtlasUpsell from './AtlasUpsell'
+import { AtlasDock, AtlasTray, type DockKind, type DockSource, type TestState } from './AtlasWorkbench'
+import { fetchAtlasJson, useAtlasJson, type Remote } from './use-atlas-json'
 import styles from './AtlasExplorer.module.css'
-
-const SIGN_UP_HREF = '/sign-up?redirect_url=/markets/network'
+import pro$ from './AtlasPro.module.css'
 
 type Selection = { kind: 'company'; symbol: string } | { kind: 'zone'; zoneId: string } | null
 
-type PanelState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'company'; data: AtlasCompanyPanel }
-  | { status: 'zone'; data: AtlasZonePanel }
-  | { status: 'denied'; reason: AtlasDenial }
-  | { status: 'error' }
+type Detail = { level: number; lens: AtlasLens; area: Bounds; nodes: AtlasNode[]; lines: AtlasLine[] }
 
-type Detail = { level: number; area: Bounds; nodes: AtlasNode[]; lines: AtlasLine[] }
+type Sheet = 'browse' | 'help' | 'layers' | 'notebook' | null
 
-type Sheet = 'browse' | 'help' | 'layers' | null
+type Dock = { kind: DockKind; a: string; b: string }
+
+/** How many earlier weeks load at once while the time bar fills. */
+const WEEK_REQUESTS = 4
 
 function readPalette(element: Element): Palette {
   const style = getComputedStyle(element)
@@ -76,34 +129,18 @@ function readPalette(element: Element): Palette {
     text: token('--text', '#0B1220'),
     muted: token('--text-muted', '#566173'),
     accent: token('--accent', '#2557D6'),
+    up: token('--up', '#0F7B55'),
+    down: token('--down', '#C2362B'),
     dark: luminance < 110,
   }
 }
 
-function formatCap(value: number | null): string | null {
-  if (!value || !Number.isFinite(value)) return null
-  if (value >= 1e12) return `$${(value / 1e12).toFixed(1)}T`
-  if (value >= 1e9) return `$${(value / 1e9).toFixed(0)}B`
-  if (value >= 1e6) return `$${(value / 1e6).toFixed(0)}M`
-  return null
-}
-
-function formatDate(iso: string): string {
-  const date = new Date(`${iso}T00:00:00Z`)
-  return Number.isNaN(date.getTime()) ? iso : date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
-}
-
-/** A plain-language strength for a tie, so the panel reads without a coefficient. */
-function strength(correlation: number): string {
-  if (correlation >= 0.6) return 'Very strong'
-  if (correlation >= 0.4) return 'Strong'
-  if (correlation >= 0.25) return 'Clear'
-  return 'Weak'
-}
+const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
   const access = initial.access
   const signedIn = access.tier !== 'signedOut'
+  const pro = access.pro
   const frameRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const viewportRef = useRef<Viewport>({ width: 0, height: 0 })
@@ -111,61 +148,252 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
   const cameraRef = useRef<Camera | null>(null)
   const pointersRef = useRef(new Map<number, { x: number; y: number }>())
   const dragRef = useRef<{ moved: boolean; startX: number; startY: number; pinch: number | null } | null>(null)
+  const lassoRef = useRef<AtlasPoint[] | null>(null)
   const frameRequest = useRef<number | null>(null)
   const paletteRef = useRef<Palette | null>(null)
   const sheetButtons = useRef(new Map<Exclude<Sheet, null>, HTMLButtonElement | null>())
+  const upsellAnchor = useRef<HTMLElement | null>(null)
   const [zoom, setZoom] = useState(1)
   const [detail, setDetail] = useState<Detail | null>(null)
   const [loadingArea, setLoadingArea] = useState(false)
   const [areaError, setAreaError] = useState(false)
   const [selection, setSelection] = useState<Selection>(null)
   const [panel, setPanel] = useState<PanelState>({ status: 'idle' })
+  const [panelAttempt, setPanelAttempt] = useState(0)
   const [hover, setHover] = useState<{ node: AtlasNode; x: number; y: number } | null>(null)
   const [hoverZone, setHoverZone] = useState<string | null>(null)
   const [openSheet, setOpenSheet] = useState<Sheet>(null)
+  const [browseTab, setBrowseTab] = useState<BrowseTab>('regions')
   const [showNames, setShowNames] = useState(true)
   const [keyOpen, setKeyOpen] = useState(false)
   const [landmarksOpen, setLandmarksOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [activeResult, setActiveResult] = useState(0)
+  const [upsell, setUpsell] = useState<ProFeature | null>(null)
+  // Pro layers
+  const [lens, setLens] = useState<AtlasLens>('residual')
+  const [byValue, setByValue] = useState(false)
+  const [showFidelity, setShowFidelity] = useState(false)
+  const [showInfluence, setShowInfluence] = useState(false)
+  // history
+  const [cmp, setCmp] = useState<MovementSpan>(0)
+  const [week, setWeek] = useState(0)
+  const [playing, setPlaying] = useState(false)
+  const [historyWanted, setHistoryWanted] = useState(false)
+  const framesRef = useRef<Array<WeekFrame | undefined>>([])
+  const [framesLoaded, setFramesLoaded] = useState(0)
+  const [historyError, setHistoryError] = useState(false)
+  const [movements, setMovements] = useState<Record<number, Remote<AtlasMovement>>>({})
+  // themes
+  const [themeMenu, setThemeMenu] = useState(false)
+  const [themesWanted, setThemesWanted] = useState(false)
+  const [theme, setTheme] = useState<AtlasTheme | null>(null)
+  // tools
+  const [tool, setTool] = useState<'explore' | 'select'>('explore')
+  const [multi, setMulti] = useState<Set<string>>(() => new Set())
+  const [forced, setForced] = useState<Map<string, AtlasNode>>(() => new Map())
+  const [dock, setDock] = useState<Dock | null>(null)
+  const [testsRun, setTestsRun] = useState(0)
+  const [test, setTest] = useState<{ key: string; state: TestState }>({ key: '', state: { status: 'idle' } })
+  // the reader's own lists, kept in this browser only; every access is guarded
+  const [groups, setGroups] = useState<AtlasGroup[]>(() => parseGroups(loadList(browserStorage(), GROUPS_KEY)))
+  const [notes, setNotes] = useState<NotebookEntry[]>(() => parseNotes(loadList(browserStorage(), NOTEBOOK_KEY)))
+  const [stored, setStored] = useState(true)
   const searchId = useId()
 
+  // ------------------------------------------------------------ what the map is built on
+  const [lensRemote, retryLens] = useAtlasJson(pro && lens === 'total' ? atlasOverviewPath(initial.level, null, { lens: 'total' }) : null, parseOverview)
+  const atlas = lens === 'total' && lensRemote.status === 'ok' ? lensRemote.data : initial
+  const residual = atlas.lens === 'residual'
+
   const hues = useMemo(() => zoneHues(initial.zones), [initial.zones])
-  const zonesById = useMemo(() => new Map(initial.zones.map((zone) => [zone.zoneId, zone])), [initial.zones])
-  const bounds = useMemo(() => atlasBounds(initial), [initial])
+  const zonesById = useMemo(() => new Map(atlas.zones.map((zone) => [zone.zoneId, zone])), [atlas.zones])
+  const labelOf = useCallback((zoneId: string, fallback: string | null = null) => zonesById.get(zoneId)?.label ?? fallback ?? zoneId, [zonesById])
+  const bounds = useMemo(() => atlasBounds(atlas), [atlas])
   // The ground's wells come from the first answer and stay put while deeper levels load.
-  const sheet = useMemo(() => buildSheet(initial.nodes, bounds), [initial.nodes, bounds])
+  const sheet = useMemo(() => buildSheet(atlas.nodes, bounds), [atlas.nodes, bounds])
   const pitch = sheet ? RELIEF_PITCH : 0
   const maxLevel = signedIn ? access.maxLevel : Math.min(access.maxLevel, initial.level)
   const level = levelForZoom(zoom, maxLevel)
 
+  // ------------------------------------------------------------ weeks
+  const [weeksRemote] = useAtlasJson(pro ? '/api/atlas/weeks' : null, parseWeeks)
+  const weeks = useMemo(() => (weeksRemote.status === 'ok' ? weeksRemote.data.weeks : []), [weeksRemote])
+  const span = Math.min(52, Math.max(0, weeks.length - 1))
+  const historyOn = pro && residual && span > 0
+  const shownWeek = historyOn ? Math.min(week, span) : 0
+
+  // Earlier weeks load once the reader reaches for them, at full detail, each laid onto today's map.
+  useEffect(() => {
+    if (!historyOn || !historyWanted || framesRef.current.length) return
+    const controller = new AbortController()
+    const signal = controller.signal
+    let complete = false
+    const run = async () => {
+      const today = await fetchAtlasJson(atlasOverviewPath(ATLAS_MAX_LEVEL), parseOverview, { signal })
+      if (signal.aborted) return
+      if (today.status !== 'ok') {
+        setHistoryError(true)
+        return
+      }
+      const frames: Array<WeekFrame | undefined> = new Array(span + 1)
+      frames[0] = todayFrame(weeks[0], today.data.nodes, today.data.zones)
+      framesRef.current = frames
+      setFramesLoaded(1)
+      const reference = frames[0].positions
+      const queue = Array.from({ length: span }, (_, index) => index + 1)
+      let loaded = 1
+      const worker = async () => {
+        for (let k = queue.shift(); k !== undefined && !signal.aborted; k = queue.shift()) {
+          const answer = await fetchAtlasJson(atlasOverviewPath(ATLAS_MAX_LEVEL, null, { asOf: weeks[k] }), parseOverview, { signal })
+          if (signal.aborted) return
+          if (answer.status === 'ok') frames[k] = alignWeek(weeks[k], answer.data.nodes, answer.data.zones, reference) ?? undefined
+          loaded += 1
+          setFramesLoaded(loaded)
+        }
+      }
+      await Promise.all(Array.from({ length: WEEK_REQUESTS }, worker))
+      complete = !signal.aborted
+    }
+    void run()
+    return () => {
+      controller.abort()
+      // an interrupted load starts again from the beginning next time
+      if (!complete) framesRef.current = []
+    }
+  }, [historyOn, historyWanted, span, weeks])
+
+  // Movement against an earlier week: the control's span, the paths' span, and the panel's (6 months unless set).
+  const movementSpans = useMemo(() => {
+    if (!pro || !residual || !weeks.length) return []
+    const wanted = new Set<number>()
+    if (cmp && cmp < weeks.length) wanted.add(cmp)
+    if (shownWeek > 0) wanted.add(span)
+    if (selection?.kind === 'company') {
+      const panelSpan = cmp || 26
+      if (panelSpan < weeks.length) wanted.add(panelSpan)
+    }
+    return [...wanted]
+  }, [cmp, pro, residual, selection, shownWeek, span, weeks.length])
+
+  // Each span is read once per visit; a failed read stays failed until the page is reloaded.
+  const movementRequests = useRef(new Set<number>())
+  useEffect(() => {
+    for (const value of movementSpans) {
+      if (movementRequests.current.has(value)) continue
+      movementRequests.current.add(value)
+      setMovements((current) => ({ ...current, [value]: { status: 'loading' } }))
+      const params = new URLSearchParams({ from: weeks[value], to: weeks[0] })
+      void fetchAtlasJson(`/api/atlas/movement?${params.toString()}`, parseMovement).then((answer) => {
+        setMovements((current) => ({ ...current, [value]: answer }))
+      })
+    }
+  }, [movementSpans, weeks])
+
+  const movementFor = (value: number): AtlasMovement | null => {
+    const answer = movements[value]
+    return answer?.status === 'ok' ? answer.data : null
+  }
+
+  // ------------------------------------------------------------ themes and influence
+  const [themesRemote] = useAtlasJson(signedIn && themesWanted ? `/api/atlas/themes?asOf=${encodeURIComponent(initial.asOf)}` : null, parseThemes)
+  const [themeDetail] = useAtlasJson(signedIn && theme ? `/api/atlas/themes/${encodeURIComponent(theme.themeId)}?asOf=${encodeURIComponent(initial.asOf)}` : null, parseThemeDetail)
+  const themeShown: AtlasTheme | null = theme ? (themeDetail.status === 'ok' ? themeDetail.data : theme) : null
+  const themeMembers = useMemo(() => {
+    if (!theme) return null
+    const members = new Set<string>()
+    for (const node of atlas.nodes) if (node.themes.includes(theme.themeId)) members.add(node.symbol)
+    if (themeDetail.status === 'ok') for (const node of themeDetail.data.members) members.add(node.symbol)
+    return members
+  }, [atlas.nodes, theme, themeDetail])
+  const [influenceRemote] = useAtlasJson(
+    pro && residual && (showInfluence || openSheet === 'layers') ? `/api/atlas/influence?asOf=${encodeURIComponent(initial.asOf)}` : null,
+    parseInfluence,
+  )
+
+  // ------------------------------------------------------------ companies on screen
   // The base map is the first answer; deeper levels arrive per area and replace only what they cover.
   const loadedNodes = useMemo(() => {
-    const merged = new Map(initial.nodes.map((node) => [node.symbol, node]))
-    if (detail) for (const node of detail.nodes) merged.set(node.symbol, node)
+    const merged = new Map(atlas.nodes.map((node) => [node.symbol, node]))
+    if (detail && detail.lens === atlas.lens) for (const node of detail.nodes) merged.set(node.symbol, node)
     return [...merged.values()]
-  }, [initial.nodes, detail])
-  const nodes = useMemo(() => loadedNodes.filter((node) => node.level <= level), [loadedNodes, level])
+  }, [atlas.nodes, atlas.lens, detail])
+  const loadedBySymbol = useMemo(() => {
+    const map = new Map(loadedNodes.map((node) => [node.symbol, node]))
+    for (const [symbol, node] of forced) if (!map.has(symbol)) map.set(symbol, node)
+    if (residual && themeDetail.status === 'ok') for (const node of themeDetail.data.members) if (!map.has(node.symbol)) map.set(node.symbol, node)
+    return map
+  }, [forced, loadedNodes, residual, themeDetail])
+  // Movers show at every level while their arrows or paths are on screen: the movement is about them.
+  const moverSymbols = useMemo(() => {
+    const value = shownWeek > 0 ? span : cmp
+    const answer = value ? movements[value] : undefined
+    return new Set(answer?.status === 'ok' ? answer.data.flows.flatMap((flow) => flow.symbols) : [])
+  }, [cmp, movements, shownWeek, span])
+
+  // A theme's members and a selection show at every zoom level: the highlight is about them, wherever they are.
+  const todayNodes = useMemo(() => [...loadedBySymbol.values()].filter((node) =>
+    node.level <= level || multi.has(node.symbol) || (themeMembers?.has(node.symbol) ?? false) || forced.has(node.symbol) || moverSymbols.has(node.symbol)),
+  [forced, level, loadedBySymbol, moverSymbols, multi, themeMembers])
+
+  const focusedSymbol = selection?.kind === 'company' ? selection.symbol : null
+  // Movers not loaded yet are fetched where they now sit, once per movement, so every arrow has its companies.
+  const moversRequested = useRef(new Set<number>())
+  useEffect(() => {
+    const value = shownWeek > 0 ? span : cmp
+    const answer = value ? movements[value] : undefined
+    if (!value || answer?.status !== 'ok' || moversRequested.current.has(value)) return
+    const missing = answer.data.flows.filter((flow) => flow.symbols.some((symbol) => !loadedBySymbol.has(symbol)))
+    if (!missing.length) return
+    moversRequested.current.add(value)
+    const pad = Math.max(bounds.x1 - bounds.x0, bounds.y1 - bounds.y0) * 0.12
+    const xs = missing.map((flow) => flow.to[0])
+    const ys = missing.map((flow) => flow.to[1])
+    const area: [number, number, number, number] = [Math.min(...xs) - pad, Math.min(...ys) - pad, Math.max(...xs) + pad, Math.max(...ys) + pad]
+    const wanted = new Set(missing.flatMap((flow) => flow.symbols))
+    void fetchAtlasJson(atlasOverviewPath(ATLAS_MAX_LEVEL, area), parseOverview).then((result) => {
+      if (result.status !== 'ok') return
+      setForced((current) => {
+        const next = new Map(current)
+        for (const node of result.data.nodes) if (wanted.has(node.symbol)) next.set(node.symbol, node)
+        return next
+      })
+    })
+  }, [bounds, cmp, loadedBySymbol, movements, shownWeek, span])
+
+  const past = useMemo(() => {
+    if (shownWeek <= 0 || framesLoaded === 0) return null
+    return frameAt(framesRef.current, shownWeek)
+    // framesLoaded counts the frames as they arrive
+  }, [framesLoaded, shownWeek])
+  const nodes = useMemo(() => (past
+    ? past.nodes.filter((node) => node.level <= level || multi.has(node.symbol) || moverSymbols.has(node.symbol) || node.symbol === focusedSymbol)
+    : todayNodes), [focusedSymbol, level, moverSymbols, multi, past, todayNodes])
+  const zones = useMemo(() => {
+    const source = past ? past.zones : atlas.zones
+    return pro && byValue ? source.map((zone) => (zone.contourByValue ? { ...zone, contour: zone.contourByValue } : zone)) : source
+  }, [atlas.zones, byValue, past, pro])
+
   const lines = useMemo(() => {
-    if (!access.lines) return []
-    const source = detail && detail.level === level ? detail.lines : initial.level === level ? initial.lines : []
+    if (!access.lines || past) return []
+    const source = detail && detail.level === level && detail.lens === atlas.lens ? detail.lines : atlas.level === level ? atlas.lines : []
     const shown = new Set(nodes.map((node) => node.symbol))
     return source.filter((line) => shown.has(line.source) && shown.has(line.target))
-  }, [access.lines, detail, initial.level, initial.lines, level, nodes])
+  }, [access.lines, atlas.lens, atlas.level, atlas.lines, detail, level, nodes, past])
 
   // Ties of the company selected or under the pointer: its lines, its bundle ties, and, once loaded, its panel's.
   const focusSymbol = selection?.kind === 'company' ? selection.symbol : hover?.node.symbol ?? null
   const { related, relatedEdges } = useMemo(() => {
     const symbols = new Set<string>()
     const edges = new Set<string>()
-    if (!focusSymbol) return { related: symbols, relatedEdges: edges }
+    if (!focusSymbol || past) return { related: symbols, relatedEdges: edges }
     const add = (a: string, b: string) => {
       if (a !== focusSymbol && b !== focusSymbol) return
       symbols.add(a === focusSymbol ? b : a)
       edges.add(edgeKey(a, b))
     }
     for (const line of lines) add(line.source, line.target)
-    for (const bundle of initial.bundles) for (const tie of bundle.ties) add(tie.source, tie.target)
+    for (const bundle of atlas.bundles) for (const tie of bundle.ties) add(tie.source, tie.target)
     if (panel.status === 'company' && panel.data.symbol === focusSymbol) {
       for (const neighbour of panel.data.neighbours.slice(0, 10)) {
         symbols.add(neighbour.symbol)
@@ -173,16 +401,94 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
       }
     }
     return { related: symbols, relatedEdges: edges }
-  }, [focusSymbol, lines, initial.bundles, panel])
+  }, [focusSymbol, lines, atlas.bundles, panel, past])
 
-  const landmarks = useMemo(() => mostConnected(initial.nodes), [initial.nodes])
+  // ------------------------------------------------------------ overlay: movement, paths, influence, accuracy
+  const selectedSymbol = selection?.kind === 'company' ? selection.symbol : null
+  const selectedZone = selection?.kind === 'zone' ? selection.zoneId : null
+  const panelSpan = cmp || 26
+  const panelMove = useMemo(() => {
+    const movement = selectedSymbol && pro && residual ? movements[panelSpan] : undefined
+    if (!selectedSymbol || movement?.status !== 'ok') return null
+    const move = movement.data.moves.find((item) => item.symbol === selectedSymbol)
+    return move ? { move, noise: movement.data.noise } : null
+  }, [movements, panelSpan, pro, residual, selectedSymbol])
+  const then = useMemo(() => (panelMove ? thenAndNow(panelMove.move, panelMove.noise, panelSpan, (zoneId) => labelOf(zoneId)) : null), [labelOf, panelMove, panelSpan])
+
+  const overlay = useMemo<Overlay>(() => {
+    const positions = new Map(nodes.map((node) => [node.symbol, [node.x, node.y] as AtlasPoint]))
+    const movers = new Set<string>()
+    const result: Overlay = {
+      past: past !== null,
+      paths: [],
+      flows: [],
+      movers,
+      ghost: null,
+      influence: [],
+      theme: themeMembers,
+      multi,
+      showFidelity: pro && showFidelity,
+      farTies: [],
+      lasso: null,
+    }
+    if (past) {
+      const pathMovement = movementFor(span)
+      for (const symbol of pathMovement?.flows.flatMap((flow) => flow.symbols) ?? []) movers.add(symbol)
+      const paths: PathLine[] = []
+      for (const symbol of movers) {
+        if (symbol === selectedSymbol) continue
+        const points = pathOf(symbol, framesRef.current, span, shownWeek, positions.get(symbol) ?? null)
+        if (points.length) paths.push({ points, selected: false })
+      }
+      if (selectedSymbol) {
+        const points = pathOf(selectedSymbol, framesRef.current, span, shownWeek, positions.get(selectedSymbol) ?? null)
+        if (points.length) paths.push({ points, selected: true })
+      }
+      result.paths = paths
+      return result
+    }
+    const movement = cmp ? movementFor(cmp) : null
+    if (movement && !selectedSymbol) {
+      const flows: FlowLine[] = []
+      for (const flow of movement.flows) {
+        if (selectedZone && flow.fromZoneId !== selectedZone && flow.toZoneId !== selectedZone) continue
+        flows.push({ from: flow.from, to: flow.to, count: flow.symbols.length, label: `${flow.symbols.length} · ${labelOf(flow.fromZoneId)} → ${labelOf(flow.toZoneId)}` })
+        for (const symbol of flow.symbols) movers.add(symbol)
+      }
+      result.flows = flows
+    }
+    if (panelMove?.move.flow && panelMove.move.from) result.ghost = { at: panelMove.move.from, label: spanAgo(panelSpan) }
+    const influence = influenceRemote.status === 'ok' ? influenceRemote.data : null
+    if (pro && residual && showInfluence && influence?.tested && !selectedSymbol) {
+      const lines: InfluenceLine[] = []
+      const anchor = (zoneId: string | null): AtlasPoint | null => {
+        const zone = zoneId ? zonesById.get(zoneId) : undefined
+        return zone && zone.x !== null && zone.y !== null ? [zone.x, zone.y] : null
+      }
+      for (const arrow of influence.arrows) {
+        const from = basketCentre(arrow.from.members, positions, anchor(arrow.from.zoneId))
+        const to = basketCentre(arrow.to.members, positions, anchor(arrow.to.zoneId))
+        if (from && to) lines.push({ from, to, sign: arrow.sign, t: arrow.t, label: influencePill(arrow) })
+      }
+      result.influence = lines
+    }
+    if (pro && selectedSymbol && panel.status === 'company' && panel.data.symbol === selectedSymbol) {
+      result.farTies = farTies(selectedSymbol, panel.data.neighbours.map((neighbour) => neighbour.symbol), loadedNodes)
+    }
+    return result
+    // movementFor reads `movements`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cmp, influenceRemote, labelOf, loadedNodes, movements, multi, nodes, panel, panelMove, panelSpan, past, pro, residual, selectedSymbol, selectedZone, showFidelity, showInfluence, shownWeek, span, themeMembers, zonesById])
+
+  const landmarks = useMemo(() => mostConnected(atlas.nodes), [atlas.nodes])
   const maxReach = landmarks[0]?.reach ?? 1
-  const results = useMemo(() => findOnMap(query, loadedNodes, initial.zones), [query, loadedNodes, initial.zones])
+  const results = useMemo(() => findOnMap(query, loadedNodes, atlas.zones), [query, loadedNodes, atlas.zones])
   const typedSymbol = atlasSymbol(query)
   const offerOpen = signedIn && typedSymbol !== null && !results.some((result) => result.kind === 'company' && result.symbol === typedSymbol)
   const options: Array<SearchResult | { kind: 'open'; symbol: string }> = offerOpen && typedSymbol ? [...results, { kind: 'open', symbol: typedSymbol }] : results
   const listOpen = query.trim().length > 0
 
+  // ------------------------------------------------------------ drawing
   const draw = useCallback(() => {
     frameRequest.current = null
     const canvas = canvasRef.current
@@ -202,22 +508,23 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
       palette,
       bounds,
       sheet,
-      zones: initial.zones,
+      zones,
       hues,
       nodes,
       lines,
-      bundles: initial.bundles,
+      bundles: past ? [] : atlas.bundles,
       signedIn,
-      baseline: initial.marketCorrelation?.value ?? 0,
+      baseline: atlas.marketCorrelation?.value ?? 0,
       showNames,
-      selectedZone: selection?.kind === 'zone' ? selection.zoneId : null,
+      selectedZone,
       hoverZone,
-      selectedSymbol: selection?.kind === 'company' ? selection.symbol : null,
+      selectedSymbol,
       hoverSymbol: hover?.node.symbol ?? null,
       related,
       relatedEdges,
+      overlay: { ...overlay, lasso: lassoRef.current },
     }, window.devicePixelRatio || 1)
-  }, [bounds, hover, hoverZone, hues, initial.bundles, initial.marketCorrelation, initial.zones, lines, nodes, related, relatedEdges, selection, sheet, showNames, signedIn])
+  }, [atlas.bundles, atlas.marketCorrelation, bounds, hover, hoverZone, hues, lines, nodes, overlay, past, related, relatedEdges, selectedSymbol, selectedZone, sheet, showNames, signedIn, zones])
 
   // The latest drawing; listeners hold this ref, so they are not re-registered on every hover.
   const drawRef = useRef(draw)
@@ -231,6 +538,7 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
   }, [draw, schedule])
 
   // size, fit and theme
+  const fittedAtlas = useRef<AtlasOverview | null>(null)
   useEffect(() => {
     const frame = frameRef.current
     const canvas = canvasRef.current
@@ -242,13 +550,18 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
       canvas.width = Math.round(rect.width * ratio)
       canvas.height = Math.round(rect.height * ratio)
       const previousFit = fitRef.current
-      // The map fits under the controls and clear of the zoom stack and the week's line.
-      const controls = [...frame.querySelectorAll<HTMLElement>('[data-atlas-controls]')]
-      const top = Math.max(0, ...controls.map((element) => element.getBoundingClientRect().bottom - rect.top)) + 10
+      // The map fits under the controls, clear of the zoom stack, the tool rail and the time bar.
+      const edge = (selector: string) => [...frame.querySelectorAll<HTMLElement>(selector)].map((element) => element.getBoundingClientRect())
+      const top = Math.max(0, ...edge('[data-atlas-controls]').map((box) => box.bottom - rect.top)) + 10
       const narrow = rect.width < 640
-      fitRef.current = fitCamera(bounds, viewportRef.current, pitch, { top, right: narrow ? 16 : 64, bottom: narrow ? 72 : 44, left: 16 })
-      if (!cameraRef.current || !previousFit) cameraRef.current = { ...fitRef.current }
+      const bottom = Math.max(narrow ? 72 : 44, ...edge('[data-atlas-bottom]').map((box) => rect.bottom - box.top + 8))
+      const left = narrow ? 16 : Math.max(16, ...edge('[data-atlas-left]').map((box) => box.right - rect.left + 8))
+      fitRef.current = fitCamera(bounds, viewportRef.current, pitch, { top, right: narrow ? 16 : 64, bottom, left })
+      if (!cameraRef.current || !previousFit || fittedAtlas.current !== atlas) cameraRef.current = { ...fitRef.current }
       else cameraRef.current = { ...cameraRef.current, k: cameraRef.current.k * (fitRef.current.k / previousFit.k) }
+      fittedAtlas.current = atlas
+      const fit = fitRef.current
+      if (fit && cameraRef.current) setZoom(cameraRef.current.k / fit.k)
       schedule()
     }
     resize()
@@ -267,7 +580,7 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
       scheme.removeEventListener('change', theme)
       themeObserver.disconnect()
     }
-  }, [bounds, pitch, schedule])
+  }, [atlas, bounds, pitch, schedule])
 
   useEffect(() => () => {
     if (frameRequest.current !== null) cancelAnimationFrame(frameRequest.current)
@@ -282,21 +595,22 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
 
   // deeper levels, per area, signed in only
   useEffect(() => {
-    if (!signedIn || level <= initial.level) return
+    if (!signedIn || level <= atlas.level) return
     const camera = cameraRef.current
     if (!camera) return
     const view = visibleBounds(camera, viewportRef.current)
-    if (detail && detail.level >= level && covers(detail.area, view)) return
+    if (detail && detail.lens === atlas.lens && detail.level >= level && covers(detail.area, view)) return
     const area = padBounds(view, 0.25)
     const controller = new AbortController()
+    const areaLens = atlas.lens
     const timer = window.setTimeout(async () => {
       setLoadingArea(true)
       setAreaError(false)
       try {
-        const response = await fetch(atlasOverviewPath(level, [area.x0, area.y0, area.x1, area.y1]), { signal: controller.signal })
+        const response = await fetch(atlasOverviewPath(level, [area.x0, area.y0, area.x1, area.y1], { lens: areaLens }), { signal: controller.signal })
         const parsed = response.ok ? parseOverview(await response.json()) : null
         if (!parsed) throw new Error('atlas area unavailable')
-        setDetail({ level, area, nodes: parsed.nodes, lines: parsed.lines })
+        setDetail({ level, lens: areaLens, area, nodes: parsed.nodes, lines: parsed.lines })
       } catch (error) {
         if (!controller.signal.aborted) setAreaError(true)
         void error
@@ -308,7 +622,7 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
       controller.abort()
       window.clearTimeout(timer)
     }
-  }, [detail, initial.level, level, signedIn, zoom])
+  }, [atlas.lens, atlas.level, detail, level, signedIn, zoom])
 
   // panel
   useEffect(() => {
@@ -318,9 +632,10 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     }
     const controller = new AbortController()
     setPanel({ status: 'loading' })
+    const lensQuery = lens === 'total' && pro ? '?lens=total' : ''
     const path = selection.kind === 'company'
-      ? `/api/atlas/companies/${encodeURIComponent(selection.symbol)}`
-      : `/api/atlas/zones/${encodeURIComponent(selection.zoneId)}`
+      ? `/api/atlas/companies/${encodeURIComponent(selection.symbol)}${lensQuery}`
+      : `/api/atlas/zones/${encodeURIComponent(selection.zoneId)}${lensQuery}`
     fetch(path, { signal: controller.signal })
       .then(async (response) => {
         const body: unknown = await response.json().catch(() => null)
@@ -341,7 +656,7 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
         if (!controller.signal.aborted) setPanel({ status: 'error' })
       })
     return () => controller.abort()
-  }, [selection])
+  }, [selection, lens, pro, panelAttempt])
 
   const focusOn = useCallback((x: number, y: number, minimumZoom: number) => {
     const camera = cameraRef.current
@@ -361,6 +676,55 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     if (zone && zone.x !== null && zone.y !== null) focusOn(zone.x, zone.y, 1)
   }, [focusOn, loadedNodes, panel, zonesById])
 
+  // ------------------------------------------------------------ play
+  const playRef = useRef<number | null>(null)
+  const stopPlay = useCallback(() => {
+    if (playRef.current !== null) cancelAnimationFrame(playRef.current)
+    playRef.current = null
+    setPlaying(false)
+  }, [])
+  useEffect(() => () => {
+    if (playRef.current !== null) cancelAnimationFrame(playRef.current)
+  }, [])
+  const togglePlay = () => {
+    if (playing) {
+      stopPlay()
+      return
+    }
+    setHistoryWanted(true)
+    // near today there is nothing left to play: start again from a year ago
+    const from = shownWeek >= 2 ? shownWeek : span
+    const started = performance.now()
+    const reduced = reducedMotion()
+    setPlaying(true)
+    const step = (now: number) => {
+      const next = playWeek(from, now - started, reduced)
+      setWeek(next)
+      if (next > 0) playRef.current = requestAnimationFrame(step)
+      else {
+        playRef.current = null
+        setPlaying(false)
+      }
+    }
+    playRef.current = requestAnimationFrame(step)
+  }
+  const onWeek = (value: number) => {
+    stopPlay()
+    setHistoryWanted(true)
+    setWeek(Math.max(0, Math.min(span, value)))
+  }
+
+  // ------------------------------------------------------------ gates
+  const gate = useCallback((feature: ProFeature, anchor: HTMLElement | null) => {
+    upsellAnchor.current = anchor
+    setUpsell(feature)
+  }, [])
+  const closeUpsell = useCallback(() => {
+    setUpsell(null)
+    upsellAnchor.current?.focus()
+  }, [])
+
+  // ------------------------------------------------------------ selection tools
   const ballZ = useCallback((node: AtlasNode) => {
     const camera = cameraRef.current
     const fit = fitRef.current
@@ -369,6 +733,51 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     return groundAt(sheet, node.x, node.y) + ballRadius(node.bulk, camera.k / fit.k, mapExtent(bounds, fit)) / camera.k
   }, [bounds, sheet])
 
+  const toggleMulti = useCallback((symbols: string[], add: boolean) => {
+    setMulti((current) => {
+      const next = new Set(current)
+      for (const symbol of symbols) {
+        if (add || !next.has(symbol)) next.add(symbol)
+        else next.delete(symbol)
+      }
+      return next
+    })
+  }, [])
+
+  const addZoneMembers = useCallback(async (zoneId: string) => {
+    const answer = await fetchAtlasJson(`/api/atlas/zones/${encodeURIComponent(zoneId)}${atlas.lens === 'total' ? '?lens=total' : ''}`, parseZonePanel)
+    const symbols = answer.status === 'ok' ? answer.data.members.map((member) => member.symbol) : loadedNodes.filter((node) => node.zoneId === zoneId).map((node) => node.symbol)
+    toggleMulti(symbols, true)
+  }, [atlas.lens, loadedNodes, toggleMulti])
+
+  /** Every company inside the lasso, loaded or not: the selection is about the area, so its companies are fetched. */
+  const selectArea = useCallback(async (polygon: AtlasPoint[]) => {
+    const camera = cameraRef.current
+    const viewport = viewportRef.current
+    if (!camera) return
+    const inside = (node: AtlasNode) => {
+      const [sx, sy] = toScreen(camera, viewport, node.x, node.y, ballZ(node))
+      return insidePolygon(polygon, sx, sy)
+    }
+    const local = nodes.filter(inside).map((node) => node.symbol)
+    toggleMulti(local, true)
+    const world = polygon.map(([x, y]) => toWorld(camera, viewport, x, y))
+    const area = padBounds({
+      x0: Math.min(...world.map(([x]) => x)), y0: Math.min(...world.map(([, y]) => y)),
+      x1: Math.max(...world.map(([x]) => x)), y1: Math.max(...world.map(([, y]) => y)),
+    }, 0.15)
+    const answer = await fetchAtlasJson(atlasOverviewPath(ATLAS_MAX_LEVEL, [area.x0, area.y0, area.x1, area.y1], { lens: atlas.lens }), parseOverview)
+    if (answer.status !== 'ok') return
+    const found = answer.data.nodes.filter(inside)
+    setForced((current) => {
+      const next = new Map(current)
+      for (const node of found) next.set(node.symbol, node)
+      return next
+    })
+    toggleMulti(found.map((node) => node.symbol), true)
+  }, [atlas.lens, ballZ, nodes, toggleMulti])
+
+  // ------------------------------------------------------------ pointer
   const pickNode = (x: number, y: number) => {
     const camera = cameraRef.current
     const fit = fitRef.current
@@ -385,9 +794,16 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
 
   const onPointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
     event.currentTarget.setPointerCapture(event.pointerId)
-    setOpenSheet(null)
+    setOpenSheet((current) => (current === 'notebook' ? current : null))
+    setThemeMenu(false)
     const point = pointFrom(event)
     pointersRef.current.set(event.pointerId, point)
+    if (pointersRef.current.size === 1 && tool === 'select' && pro) {
+      lassoRef.current = [[point.x, point.y]]
+      dragRef.current = null
+      return
+    }
+    lassoRef.current = null
     const [first, second] = [...pointersRef.current.values()]
     dragRef.current = {
       moved: pointersRef.current.size > 1,
@@ -403,11 +819,20 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     const fit = fitRef.current
     const previous = pointersRef.current.get(event.pointerId)
     if (!camera || !fit) return
+    const lasso = lassoRef.current
+    if (lasso && previous) {
+      const last = lasso[lasso.length - 1]
+      if (Math.hypot(point.x - last[0], point.y - last[1]) > 3) {
+        lasso.push([point.x, point.y])
+        schedule()
+      }
+      return
+    }
     if (!previous) {
       const node = pickNode(point.x, point.y)
       setHover((current) => (node ? { node, x: point.x, y: point.y } : current === null ? current : null))
       const [wx, wy] = toWorld(camera, viewportRef.current, point.x, point.y)
-      const zoneId = node ? null : zoneAt(initial.zones, wx, wy)?.zoneId ?? null
+      const zoneId = node ? null : zoneAt(zones, wx, wy)?.zoneId ?? null
       setHoverZone((current) => (current === zoneId ? current : zoneId))
       return
     }
@@ -429,17 +854,41 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
   const onPointerUp = (event: PointerEvent<HTMLCanvasElement>) => {
     const point = pointFrom(event)
     pointersRef.current.delete(event.pointerId)
+    const lasso = lassoRef.current
+    if (lasso) {
+      lassoRef.current = null
+      schedule()
+      if (lasso.length >= 4) {
+        void selectArea(lasso)
+        return
+      }
+      // a short lasso is a click: it toggles the company, or adds the whole region
+      const node = pickNode(point.x, point.y)
+      if (node) toggleMulti([node.symbol], false)
+      else {
+        const camera = cameraRef.current
+        if (!camera) return
+        const [wx, wy] = toWorld(camera, viewportRef.current, point.x, point.y)
+        const zone = zoneAt(zones, wx, wy)
+        if (zone) void addZoneMembers(zone.zoneId)
+      }
+      return
+    }
     const drag = dragRef.current
     if (pointersRef.current.size === 0) dragRef.current = null
     const camera = cameraRef.current
     if (!drag || drag.moved || !camera) return
     const node = pickNode(point.x, point.y)
+    if (node && event.shiftKey && pro) {
+      toggleMulti([node.symbol], false)
+      return
+    }
     if (node) {
       setSelection({ kind: 'company', symbol: node.symbol })
       return
     }
     const [wx, wy] = toWorld(camera, viewportRef.current, point.x, point.y)
-    const zone = zoneAt(initial.zones, wx, wy)
+    const zone = zoneAt(zones, wx, wy)
     setSelection(zone ? { kind: 'zone', zoneId: zone.zoneId } : null)
   }
 
@@ -478,11 +927,25 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     })
   }, [])
 
+  const railButton = (name: AtlasTool) => frameRef.current?.querySelector<HTMLButtonElement>(`[data-tool="${name}"]`) ?? null
+
+  const closeDock = useCallback(() => {
+    setDock((current) => {
+      if (current) frameRef.current?.querySelector<HTMLButtonElement>(`[data-tool="${current.kind}"]`)?.focus()
+      return null
+    })
+  }, [])
+
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape') {
-      if (openSheet) closeSheet()
+      // the innermost thing open closes first, and focus goes back to what opened it
+      if (upsell) closeUpsell()
+      else if (themeMenu) setThemeMenu(false)
+      else if (openSheet) closeSheet()
+      else if (dock) closeDock()
       else if (keyOpen) setKeyOpen(false)
-      else setSelection(null)
+      else if (selection) setSelection(null)
+      else if (tool === 'select') setTool('explore')
       return
     }
     // Keys typed in the search field or a panel are theirs; the map answers only when it has focus itself.
@@ -506,6 +969,12 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     focusOn(node.x, node.y, LEVEL_ZOOM[node.level] + 0.2)
   }
 
+  const selectSymbol = (symbol: string) => {
+    const node = loadedBySymbol.get(symbol)
+    if (node) selectCompany(node)
+    else setSelection({ kind: 'company', symbol })
+  }
+
   const selectZone = (zone: AtlasZone) => {
     setSelection({ kind: 'zone', zoneId: zone.zoneId })
     if (zone.x !== null && zone.y !== null) focusOn(zone.x, zone.y, 1)
@@ -519,9 +988,7 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
       if (zone) selectZone(zone)
       return
     }
-    const node = loadedNodes.find((item) => item.symbol === option.symbol)
-    if (node) selectCompany(node)
-    else setSelection({ kind: 'company', symbol: option.symbol })
+    selectSymbol(option.symbol)
   }
 
   const onSearchKey = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -540,21 +1007,189 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     }
   }
 
-  const toggleSheet = (sheetName: Exclude<Sheet, null>) => setOpenSheet((current) => (current === sheetName ? null : sheetName))
+  const toggleSheet = (sheetName: Exclude<Sheet, null>) => {
+    setThemeMenu(false)
+    setOpenSheet((current) => (current === sheetName ? null : sheetName))
+  }
+
+  // ------------------------------------------------------------ layers
+  const changeLens = (next: AtlasLens) => {
+    if (next === lens) return
+    // a new map: new positions, regions and ties; the selection and the history belong to the other one
+    stopPlay()
+    setSelection(null)
+    setDetail(null)
+    setWeek(0)
+    setCmp(0)
+    setShowInfluence(false)
+    setMulti(new Set())
+    setForced(new Map())
+    setLens(next)
+  }
+
+  // ------------------------------------------------------------ workbench
+  const sources = useMemo<DockSource[]>(() => {
+    const list: DockSource[] = []
+    const push = (source: DockSource) => {
+      if (!list.some((item) => item.key === source.key)) list.push(source)
+    }
+    if (multi.size) push({ key: groupKey(multi), label: `Selection · ${multi.size}`, count: multi.size })
+    if (selectedSymbol) push({ key: selectedSymbol, label: selectedSymbol, count: 1 })
+    for (const group of groups) push({ key: groupKey(group.members), label: `Group · ${group.name}`, count: group.members.length })
+    for (const zone of atlas.zones) if (zone.memberCount >= 3) push({ key: `zone:${zone.zoneId}`, label: zone.label.replace(/_/g, ' '), count: zone.memberCount })
+    return list
+  }, [atlas.zones, groups, multi, selectedSymbol])
+
+  const openDock = (kind: DockKind, aKey?: string) => {
+    if (!sources.length) return
+    const a = sources.find((source) => source.key === aKey) ?? sources[0]
+    const own = loadedBySymbol.get(a.key)?.zoneId
+    const b = sources.find((source) => source.key.startsWith('zone:') && source.key !== a.key && source.key !== `zone:${own}`) ?? sources[1] ?? a
+    setOpenSheet((current) => (current === 'notebook' ? null : current))
+    setDock({ kind, a: a.key, b: b.key })
+  }
+
+  const dockSources = dock ? sources : []
+  const dockA = dock && dockSources.some((source) => source.key === dock.a) ? dock.a : dockSources[0]?.key ?? ''
+  const dockB = dock && dockSources.some((source) => source.key === dock.b) ? dock.b : (dockSources[1] ?? dockSources[0])?.key ?? ''
+  const compareParams = new URLSearchParams({ a: dockA, b: dockB, asOf: initial.asOf })
+  const [compare] = useAtlasJson(pro && dock?.kind === 'compare' && dockA && dockB ? `/api/atlas/compare?${compareParams.toString()}` : null, parseCompare)
+  const testKey = `${dockA}>${dockB}`
+  const testState: TestState = test.key === testKey ? test.state : { status: 'idle' }
+
+  const runTest = async () => {
+    const run = testsRun + 1
+    setTestsRun(run)
+    setTest({ key: testKey, state: { status: 'loading' } })
+    const params = new URLSearchParams({ from: dockA, to: dockB, testsRun: String(run), asOf: initial.asOf })
+    const answer = await fetchAtlasJson(`/api/atlas/test?${params.toString()}`, parseTest)
+    setTest({
+      key: testKey,
+      state: answer.status === 'ok' ? { status: 'done', result: answer.data, run } : answer.status === 'invalid' ? { status: 'invalid' } : { status: 'error' },
+    })
+  }
+
+  const saveGroups = (next: AtlasGroup[]) => {
+    setGroups(next)
+    setStored(saveList(browserStorage(), GROUPS_KEY, next))
+  }
+  const saveNotes = (next: NotebookEntry[]) => {
+    setNotes(next)
+    setStored(saveList(browserStorage(), NOTEBOOK_KEY, next))
+  }
+
+  const viewState = (): NotebookView => {
+    const camera = cameraRef.current
+    return {
+      week: Math.round(shownWeek),
+      cmp,
+      theme: theme?.themeId ?? null,
+      lens,
+      node: selectedSymbol,
+      zone: selectedZone,
+      multi: [...multi],
+      layers: { inf: showInfluence, fid: showFidelity, cap: byValue },
+      cam: camera ? { cx: camera.cx, cy: camera.cy, k: camera.k } : null,
+      dock: dock ? { kind: dock.kind, a: dockA, b: dockB } : null,
+    }
+  }
+
+  const saveView = () => {
+    const view = viewState()
+    const entry: NotebookEntry = {
+      id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+      title: noteTitle(view, view.zone ? labelOf(view.zone) : null),
+      savedAt: new Date().toISOString(),
+      note: '',
+      view,
+    }
+    saveNotes([entry, ...notes].slice(0, 100))
+    setOpenSheet('notebook')
+  }
+
+  /** A saved view opens on the current week's data. */
+  const openNote = (entry: NotebookEntry) => {
+    const view = entry.view
+    stopPlay()
+    if (view.lens !== lens) changeLens(view.lens)
+    setCmp(view.cmp)
+    setTheme(view.theme ? { themeId: view.theme, label: view.theme, memberCount: 0, cohesion: null, typicalCohesion: null, verdict: null, regions: [] } : null)
+    setMulti(new Set(view.multi))
+    setShowInfluence(view.layers.inf)
+    setShowFidelity(view.layers.fid)
+    setByValue(view.layers.cap)
+    setSelection(view.node ? { kind: 'company', symbol: view.node } : view.zone ? { kind: 'zone', zoneId: view.zone } : null)
+    if (view.week > 0) setHistoryWanted(true)
+    setWeek(Math.min(view.week, span))
+    const camera = cameraRef.current
+    if (camera && view.cam && view.lens === lens) setCamera({ ...camera, ...view.cam })
+    setDock(view.dock)
+    setOpenSheet(null)
+  }
+
+  const onTool = (name: AtlasTool, anchor: HTMLElement) => {
+    if (name === 'explore') setTool('explore')
+    else if (name === 'select') setTool((current) => (current === 'select' ? 'explore' : 'select'))
+    else if (name === 'compare' || name === 'test') {
+      if (dock?.kind === name) closeDock()
+      else openDock(name)
+    } else if (name === 'notebook') {
+      sheetButtons.current.set('notebook', anchor as HTMLButtonElement)
+      toggleSheet('notebook')
+    } else if (name === 'groups') {
+      setBrowseTab('groups')
+      setOpenSheet((current) => (current === 'browse' && browseTab === 'groups' ? null : 'browse'))
+    }
+  }
+
+  const onPanelAction = (action: PanelAction, feature: ProFeature, anchor: HTMLElement) => {
+    if (!pro) {
+      gate(feature, anchor)
+      return
+    }
+    if (action === 'note') saveView()
+    else if (action === 'add') {
+      if (selectedSymbol) toggleMulti([selectedSymbol], true)
+      else if (selectedZone) void addZoneMembers(selectedZone)
+    } else openDock(action, selectedSymbol ?? (selectedZone ? `zone:${selectedZone}` : undefined))
+  }
+
+  const onMovement = (value: MovementSpan, anchor: HTMLElement) => {
+    if (!pro) {
+      if (value) gate(value === 52 ? 'movement1y' : 'timeline', anchor)
+      return
+    }
+    setCmp(value)
+  }
 
   const browse = useMemo(() => {
     const byZone = new Map<string, AtlasNode[]>()
-    for (const node of initial.nodes) {
+    for (const node of atlas.nodes) {
       if (node.level > 0) continue
       const list = byZone.get(node.zoneId) ?? []
       list.push(node)
       byZone.set(node.zoneId, list)
     }
-    return [...initial.zones].sort((a, b) => b.memberCount - a.memberCount).map((zone) => ({ zone, nodes: byZone.get(zone.zoneId) ?? [] }))
-  }, [initial.nodes, initial.zones])
+    return [...atlas.zones].sort((a, b) => b.memberCount - a.memberCount).map((zone) => ({ zone, nodes: byZone.get(zone.zoneId) ?? [] }))
+  }, [atlas.nodes, atlas.zones])
 
-  const sentence = correlationSentence(initial.marketCorrelation)
+  const sentence = correlationSentence(atlas.marketCorrelation)
   const activeId = options.length ? `${searchId}-option-${Math.min(activeResult, options.length - 1)}` : undefined
+  const accuracy = useMemo(() => meanAccuracy(atlas.nodes), [atlas.nodes])
+  const selectedMove = shownWeek > 0 && selectedSymbol ? movementFor(span)?.moves.find((move) => move.symbol === selectedSymbol) ?? null : null
+  const note = shownWeek > 0 ? timelineNote(span, selectedSymbol ? { symbol: selectedSymbol, changed: selectedMove ? selectedMove.flow : null } : null) : null
+  const framesNeeded = span + 1
+  const loadingWeeks = historyWanted && historyOn && framesLoaded < framesNeeded && !historyError
+    ? `Loading earlier weeks · ${Math.max(0, framesLoaded - 1)} of ${span}`
+    : historyError ? 'Earlier weeks could not load.' : null
+  const influence = influenceRemote.status === 'ok' ? influenceRemote.data : null
+  const summary = useMemo(() => selectionSummary(multi, loadedBySymbol), [loadedBySymbol, multi])
+  const railActive = new Set<AtlasTool>([
+    tool === 'select' ? 'select' : 'explore',
+    ...(dock ? [dock.kind] : []),
+    ...(openSheet === 'notebook' ? ['notebook' as const] : []),
+    ...(openSheet === 'browse' && browseTab === 'groups' ? ['groups' as const] : []),
+  ])
 
   return (
     <div className={styles.shell}>
@@ -573,18 +1208,19 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
           data-lenis-prevent=""
           role="application"
           aria-roledescription="map"
-          aria-label={`Relationship atlas, week of ${formatDate(initial.asOf)}: ${initial.zoneCount} regions. Arrow keys move, plus and minus zoom, 0 shows the whole map, Escape closes a panel. Use Browse atlas or search for a list.`}
+          aria-label={`Relationship atlas, week of ${formatDate(initial.asOf)}: ${atlas.zoneCount} regions. Arrow keys move, plus and minus zoom, 0 shows the whole map, Escape closes a panel. Use Browse atlas or search for a list.`}
           onKeyDown={onKeyDown}
         >
           <canvas
             ref={canvasRef}
-            className={styles.canvas}
+            className={tool === 'select' && pro ? `${styles.canvas} ${pro$.lassoCursor}` : styles.canvas}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={(event) => {
               pointersRef.current.delete(event.pointerId)
               dragRef.current = null
+              lassoRef.current = null
             }}
             onPointerLeave={() => {
               setHover(null)
@@ -628,6 +1264,21 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
               >
                 <Layers size={15} aria-hidden="true" /><span className={styles.wide}>Layers</span>
               </button>
+              {signedIn ? (
+                <AtlasThemeMenu
+                  open={themeMenu}
+                  onOpen={(open) => {
+                    if (open) {
+                      setThemesWanted(true)
+                      setOpenSheet(null)
+                    }
+                    setThemeMenu(open)
+                  }}
+                  themes={themesRemote}
+                  theme={themeShown}
+                  onPick={setTheme}
+                />
+              ) : null}
               <div className={styles.search}>
                 <Search size={14} aria-hidden="true" />
                 <input
@@ -677,11 +1328,22 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
             </div>
             <div className={styles.chromeRight} role="group" aria-label="Movement over time" data-atlas-controls="">
               <span className={styles.eyebrow}>Movement</span>
-              {signedIn ? (
-                <span className={styles.lockNote}><Lock size={13} aria-hidden="true" /> History available on Pro</span>
-              ) : (
-                <Link className={styles.lockNote} href={SIGN_UP_HREF}><Lock size={13} aria-hidden="true" /> Create an account to follow the map</Link>
-              )}
+              <div className={pro$.seg} role="group" aria-label={pro ? 'Compare with an earlier map' : 'Compare with an earlier map: Pro'}>
+                {([[0, 'Off', 'Movement off'], [26, '6 mo', 'Movement over the last 6 months'], [52, '1 yr', 'Movement over the last year']] as const).map(([value, text, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={(pro ? cmp : 0) === value}
+                    aria-label={pro || !value ? label : `${label}: Pro`}
+                    data-locked={!pro && value ? '' : undefined}
+                    disabled={pro && value > 0 && (!residual || value >= weeks.length)}
+                    title={pro && value > 0 && residual && value >= weeks.length && weeksRemote.status === 'ok' ? `Needs ${value} earlier weeks` : undefined}
+                    onClick={(event) => onMovement(value, event.currentTarget)}
+                  >
+                    {text}
+                  </button>
+                ))}
+              </div>
             </div>
             {/* The open sheet starts on its own line, under the controls however many lines they take. */}
             {openSheet ? <span className={styles.break} aria-hidden="true" /> : null}
@@ -689,25 +1351,23 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
             {openSheet === 'browse' ? (
               <section id="atlas-browse" className={styles.sheet} aria-labelledby="atlas-browse-title" data-lenis-prevent="">
                 <h2 id="atlas-browse-title">Browse the market</h2>
-                <ul className={styles.browse}>
-                  {browse.map(({ zone, nodes: leaders }) => (
-                    <li key={zone.zoneId}>
-                      <button type="button" className={styles.zoneButton} onClick={() => selectZone(zone)}>
-                        <i style={{ background: zoneColor(hues.get(zone.zoneId) ?? 200, false) }} aria-hidden="true" />
-                        {zone.label} <span>{zone.memberCount} companies</span>
-                      </button>
-                      {leaders.length ? (
-                        <ul className={styles.companies}>
-                          {leaders.map((node) => (
-                            <li key={node.symbol}>
-                              <button type="button" onClick={() => selectCompany(node)}>{node.symbol}</button>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
+                <AtlasBrowse
+                  tab={browseTab}
+                  onTab={setBrowseTab}
+                  regions={browse}
+                  hues={hues}
+                  onZone={selectZone}
+                  onCompany={selectCompany}
+                  signedIn={signedIn}
+                  pro={pro}
+                  groups={groups}
+                  onGroup={(group) => setMulti(new Set(group.members))}
+                  onDeleteGroup={(group) => saveGroups(groups.filter((item) => item.id !== group.id))}
+                  accuracy={accuracy}
+                  weeks={weeksRemote}
+                  lens={lens}
+                  onLocked={gate}
+                />
               </section>
             ) : null}
 
@@ -717,12 +1377,15 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
                 <dl className={styles.helpList}>
                   <dt>Position</dt><dd>Companies whose prices move together sit close, after removing what the whole market does that day.</dd>
                   <dt>Regions</dt><dd>Areas of companies that move together, measured from prices. The line holds 80% of a region&apos;s weight; a company can sit between two.</dd>
+                  <dt>Themes</dt><dd>What thematic funds hold together. A theme is a label, not a measurement: it can cross regions, and its companies need not move together. The theme card says whether prices confirm it.{signedIn ? '' : ' Shown with a free account.'}</dd>
                   <dt>Size</dt><dd>Market value.</dd>
                   <dt>Wells</dt><dd>How many companies move with it in its region. A small ball in a deep well is a small company many others move with.{signedIn ? '' : ' Shown with a free account.'}</dd>
                   <dt>Lines</dt><dd>The strongest ties inside each region. Every region shows the same share of its companies at each zoom level, and the lines join the ones on screen.</dd>
                   <dt>Bundles</dt><dd>Real ties between two regions. Point at a region to see its strongest bundles and how many strong ties each holds; select a company to see its own ties.</dd>
-                  <dt>Average correlation</dt><dd>How much companies move together this week once the market is taken out, against the last year&apos;s weeks.</dd>
-                  <dt>Weeks</dt><dd>The map is rebuilt every week. Earlier weeks and how companies moved between them are part of Pro.</dd>
+                  <dt>Average correlation</dt><dd>How much companies move together this week, against the last year&apos;s weeks.</dd>
+                  <dt>Movement</dt><dd>Arrows show groups of companies that moved from one region to another in the last 6 months or year.{pro ? '' : ' Part of Pro.'}</dd>
+                  <dt>Time</dt><dd>Drag the bar at the bottom to see where companies were in the past year.{pro ? '' : ' Part of Pro.'}</dd>
+                  <dt>Influence</dt><dd>Arrows that show one group moving another on the same day: when the first group reports results, the second moves too, and not the other way round. Shown only when this repeats in both of the last two years. Turn it on in Layers; when nothing passes the test, nothing is drawn and the list says so.{pro ? '' : ' Part of Pro.'}</dd>
                 </dl>
               </section>
             ) : null}
@@ -730,16 +1393,51 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
             {openSheet === 'layers' ? (
               <section id="atlas-layers" className={styles.sheet} aria-labelledby="atlas-layers-title" data-lenis-prevent="">
                 <h2 id="atlas-layers-title">Layers</h2>
-                <h3 className={styles.eyebrow}>Reading</h3>
-                <label className={styles.toggle}>
-                  <input type="checkbox" checked={showNames} onChange={(event) => setShowNames(event.target.checked)} /> Names on the map
-                </label>
-                <label className={styles.toggle}>
-                  <input type="checkbox" checked={keyOpen} onChange={(event) => setKeyOpen(event.target.checked)} /> Map key
-                </label>
+                <AtlasLayers
+                  pro={pro}
+                  lens={lens}
+                  byValue={byValue}
+                  showFidelity={showFidelity}
+                  showInfluence={showInfluence}
+                  influence={influenceRemote}
+                  showNames={showNames}
+                  keyOpen={keyOpen}
+                  onLens={changeLens}
+                  onByValue={setByValue}
+                  onFidelity={setShowFidelity}
+                  onInfluence={setShowInfluence}
+                  onNames={setShowNames}
+                  onKey={setKeyOpen}
+                  onLocked={gate}
+                />
+                {pro && lens === 'total' && lensRemote.status === 'loading' ? <p className={pro$.muted} role="status">Loading the total co-movement map…</p> : null}
+                {pro && lens === 'total' && (lensRemote.status === 'error' || lensRemote.status === 'denied') ? (
+                  <p className={pro$.empty}>The total co-movement map could not load. <button type="button" className={pro$.chip} onClick={retryLens}>Retry</button></p>
+                ) : null}
               </section>
             ) : null}
+
+            {openSheet === 'notebook' && pro ? (
+              <AtlasNotebook
+                notes={notes}
+                stored={stored}
+                onSave={saveView}
+                onOpen={openNote}
+                onDelete={(entry) => saveNotes(notes.filter((item) => item.id !== entry.id))}
+                onNote={(entry, text) => saveNotes(notes.map((item) => (item.id === entry.id ? { ...item, note: text } : item)))}
+                onClose={() => {
+                  setOpenSheet(null)
+                  railButton('notebook')?.focus()
+                }}
+              />
+            ) : null}
           </div>
+
+          {pro && showInfluence && influence && residual && shownWeek === 0 ? (
+            <div className={pro$.cardSlot}><InfluenceCard influence={influence} /></div>
+          ) : themeShown ? (
+            <div className={pro$.cardSlot}><ThemeCard theme={themeShown} labelOf={labelOf} /></div>
+          ) : null}
 
           {signedIn && landmarks.length ? (
             <div className={styles.landmarks} role="group" aria-label="Most connected companies">
@@ -753,6 +1451,39 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
                   <small>{zonesById.get(node.zoneId)?.label ?? ''}</small>
                 </button>
               )) : null}
+            </div>
+          ) : null}
+
+          <AtlasToolRail pro={pro} active={railActive} onTool={onTool} onLocked={gate} />
+
+          {pro && (dock || multi.size) ? (
+            <div className={pro$.workbench}>
+              {dock ? (
+                <AtlasDock
+                  kind={dock.kind}
+                  sources={dockSources}
+                  a={dockA}
+                  b={dockB}
+                  onPick={(a, b) => setDock({ ...dock, a, b })}
+                  onClose={closeDock}
+                  compare={compare}
+                  test={testState}
+                  testsRun={testsRun}
+                  onRun={() => void runTest()}
+                  onNote={saveView}
+                />
+              ) : null}
+              {multi.size ? (
+                <AtlasTray
+                  summary={summary}
+                  groupCount={groups.length}
+                  onCompare={() => openDock('compare', groupKey(multi))}
+                  onTest={() => openDock('test', groupKey(multi))}
+                  onSave={(name) => saveGroups([...groups, { id: `${Date.now().toString(36)}${groups.length}`, name, members: [...multi] }])}
+                  onNote={saveView}
+                  onClear={() => setMulti(new Set())}
+                />
+              ) : null}
             </div>
           ) : null}
 
@@ -777,11 +1508,40 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
             <button type="button" className={styles.text} aria-pressed={keyOpen} aria-controls="atlas-key" onClick={() => setKeyOpen((value) => !value)} title="Map key">Key</button>
           </div>
 
-          {keyOpen ? <MapKey signedIn={signedIn} onClose={() => setKeyOpen(false)} /> : null}
+          {keyOpen ? (
+            <AtlasMapKey
+              signedIn={signedIn}
+              extras={{
+                arrowsSince: cmp && shownWeek === 0 ? spanAgo(cmp) : null,
+                paths: shownWeek > 0,
+                fidelity: pro && showFidelity,
+                influence: pro && showInfluence && residual,
+                theme: theme !== null,
+              }}
+              onClose={() => setKeyOpen(false)}
+            />
+          ) : null}
+
+          {residual || !pro ? (
+            <AtlasTimeBar
+              pro={pro}
+              span={span}
+              week={shownWeek}
+              label={weekLabel(weeks, shownWeek)}
+              playing={playing}
+              note={note}
+              loading={loadingWeeks}
+              onWeek={onWeek}
+              onPlay={togglePlay}
+              onLocked={gate}
+            />
+          ) : null}
+
+          {upsell ? <AtlasUpsell feature={upsell} signedIn={signedIn} onClose={closeUpsell} /> : null}
 
           <p className={styles.snapshot}>
             <span>Week of <b>{formatDate(initial.asOf)}</b></span>
-            <span>{initial.companyCount.toLocaleString('en-US')} companies in {initial.zoneCount} regions</span>
+            <span>{atlas.companyCount.toLocaleString('en-US')} companies in {atlas.zoneCount} regions{lens === 'total' && atlas.lens === 'total' ? ' · total co-movement' : ''}</span>
             {sentence ? <span>{sentence}</span> : null}
           </p>
         </div>
@@ -789,152 +1549,19 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
         {selection ? (
           <aside className={styles.panel} aria-live="polite" aria-label="Details" data-lenis-prevent="">
             <button type="button" className={styles.close} onClick={() => setSelection(null)} aria-label="Close details"><X size={16} aria-hidden="true" /></button>
-            <PanelBody panel={panel} zonesById={zonesById} onRetry={() => setSelection((current) => (current ? { ...current } : current))} />
+            <AtlasPanel
+              panel={panel}
+              zonesById={zonesById}
+              onRetry={() => setPanelAttempt((count) => count + 1)}
+              pro={pro}
+              then={pro && residual ? then : null}
+              farTies={overlay.farTies.length}
+              onAction={onPanelAction}
+              onCompany={selectSymbol}
+            />
           </aside>
         ) : null}
       </div>
-    </div>
-  )
-}
-
-function MapKey({ signedIn, onClose }: { signedIn: boolean; onClose: () => void }) {
-  const icon = (body: ReactNode) => <svg viewBox="0 0 36 24" width="36" height="24" aria-hidden="true">{body}</svg>
-  const accent = 'var(--accent)'
-  const muted = 'var(--text-muted)'
-  const items: Array<[ReactNode, string]> = [
-    [icon(<path d="M5 13 C4 5 14 3 19 6 S33 6 31 14 S20 22 13 20 S6 18 5 13Z" fill={accent} fillOpacity="0.16" stroke={accent} strokeOpacity="0.55" />),
-      signedIn ? 'Region: companies whose prices move together. The line holds 80% of its weight' : 'Region: where companies that move together sit. A free account shows its real outline'],
-    [icon(<><circle cx="6" cy="14" r="2.5" fill={muted} /><circle cx="15" cy="13" r="4" fill={muted} /><circle cx="27" cy="12" r="6.5" fill={muted} /></>), 'Size: market value'],
-  ]
-  if (signedIn) {
-    items.push(
-      [icon(<circle cx="18" cy="12" r="6" fill="none" stroke={muted} strokeWidth="1.6" strokeDasharray="2.5 2" />), 'Hollow: no strong ties, it moves on its own'],
-      [icon(<><ellipse cx="18" cy="13" rx="15" ry="7" fill="none" stroke={muted} strokeOpacity="0.35" /><ellipse cx="18" cy="13" rx="9.5" ry="4.5" fill="none" stroke={muted} strokeOpacity="0.6" /><circle cx="18" cy="13" r="3" fill="var(--text)" /></>), 'Well: how many companies move with it'],
-      [icon(<><circle cx="5" cy="17" r="2.4" fill={muted} /><circle cx="17" cy="8" r="2.4" fill={muted} /><circle cx="31" cy="15" r="2.4" fill={muted} /><path d="M5 17 L17 8 L31 15" fill="none" stroke={muted} strokeWidth="1.1" /></>), 'Line: the strongest ties inside a region'],
-      [icon(<path d="M3 4 C14 6 22 12 33 8 M3 11 C14 11 22 12 33 12 M3 19 C14 16 22 12 33 17" fill="none" stroke={accent} strokeWidth="1.1" strokeOpacity="0.8" />), 'Bundle: real ties between two regions. More strands, more ties'],
-    )
-  }
-  items.push([icon(<><rect x="2" y="5" width="32" height="14" rx="7" fill="var(--surface)" stroke={muted} strokeOpacity="0.4" /><text x="18" y="15.5" fontSize="8.5" textAnchor="middle" fill={accent}>38 ties</text></>),
-    signedIn ? 'Count: strong ties in a bundle, where it reaches the other region' : 'Count: strong ties between two regions'])
-  return (
-    <div id="atlas-key" className={styles.key} role="group" aria-label="Map key" data-lenis-prevent="">
-      <div className={styles.keyHead}>
-        <span className={styles.eyebrow}>Map key</span>
-        <button type="button" className={styles.keyClose} onClick={onClose} aria-label="Close the map key"><X size={14} aria-hidden="true" /></button>
-      </div>
-      <ul>
-        {items.map(([symbol, text]) => <li key={text}>{symbol}<span>{text}</span></li>)}
-      </ul>
-      <p className={styles.keyFoot}>Scroll or pinch to zoom · drag to move · select a region or company for details</p>
-    </div>
-  )
-}
-
-function CompanyLinks({ items }: { items: Array<{ symbol: string; name: string | null }> }) {
-  return (
-    <ul className={styles.refs}>
-      {items.map((item) => (
-        <li key={item.symbol}>
-          <Link href={`/stocks/${encodeURIComponent(item.symbol)}`}><b>{item.symbol}</b>{item.name ? ` ${item.name}` : ''}</Link>
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-function PanelBody({ panel, zonesById, onRetry }: { panel: PanelState; zonesById: Map<string, AtlasZone>; onRetry: () => void }) {
-  if (panel.status === 'idle' || panel.status === 'loading') return <p className={styles.muted} role="status">Loading…</p>
-  if (panel.status === 'error') {
-    return (
-      <div>
-        <p className={styles.muted}>These details could not load.</p>
-        <button type="button" className={styles.pill} onClick={onRetry}>Retry</button>
-      </div>
-    )
-  }
-  if (panel.status === 'denied') {
-    return panel.reason === 'sign_in_required' ? (
-      <div>
-        <h2 className={styles.panelTitle}>Sign in to see this</h2>
-        <p className={styles.muted}>Without an account the atlas shows each region and its largest companies. A free account shows every company, where it really sits and what it moves with.</p>
-        <Link className={styles.cta} href={SIGN_UP_HREF}>Create a free account</Link>
-      </div>
-    ) : (
-      <div>
-        <h2 className={styles.panelTitle}>History available on Pro</h2>
-        <p className={styles.muted}>Earlier weeks and how companies moved between them are part of Pro.</p>
-      </div>
-    )
-  }
-  if (panel.status === 'zone') {
-    const zone = panel.data
-    const signedOut = zone.access.tier === 'signedOut'
-    return (
-      <div>
-        <p className={styles.eyebrow}>Region</p>
-        <h2 className={styles.panelTitle}>{zone.label}</h2>
-        <p className={styles.muted}>{zone.memberCount} companies whose prices move together beyond the market.</p>
-        <h3 className={styles.panelHeading}>{signedOut ? 'Largest companies' : 'Leading companies'}</h3>
-        <CompanyLinks items={zone.leaders} />
-        {zone.members.length ? (
-          <>
-            <h3 className={styles.panelHeading}>All {zone.members.length} companies</h3>
-            <ul className={styles.refs}>
-              {zone.members.map((member) => (
-                <li key={member.symbol}>
-                  <Link href={`/stocks/${encodeURIComponent(member.symbol)}`}><b>{member.symbol}</b>{member.name ? ` ${member.name}` : ''}</Link>
-                  {member.share !== null ? <span className={styles.share}>{Math.round(member.share * 100)}% here</span> : null}
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : null}
-        {signedOut ? <Link className={styles.cta} href={SIGN_UP_HREF}>See every company in this region</Link> : null}
-      </div>
-    )
-  }
-  const company = panel.data
-  const signedOut = company.access.tier === 'signedOut'
-  const cap = formatCap(company.marketCap)
-  return (
-    <div>
-      <p className={styles.eyebrow}>{company.symbol}</p>
-      <h2 className={styles.panelTitle}>{company.name ?? company.symbol}</h2>
-      <p className={styles.muted}>
-        {[company.sector, company.industry, company.country, cap].filter(Boolean).join(' · ')}
-      </p>
-      <p>In <b>{company.zoneLabel ?? zonesById.get(company.zoneId)?.label ?? 'its region'}</b></p>
-      {company.memberships.length > 1 ? (
-        <>
-          <h3 className={styles.panelHeading}>Where its ties are</h3>
-          <ul className={styles.refs}>
-            {company.memberships.map((membership) => (
-              <li key={membership.zoneId}>{membership.label ?? membership.zoneId} <span className={styles.share}>{Math.round(membership.share * 100)}%</span></li>
-            ))}
-          </ul>
-        </>
-      ) : null}
-      {company.neighbours.length ? (
-        <>
-          <h3 className={styles.panelHeading}>Moves most with</h3>
-          <ul className={styles.refs}>
-            {company.neighbours.slice(0, 10).map((neighbour) => (
-              <li key={neighbour.symbol}>
-                <Link href={`/stocks/${encodeURIComponent(neighbour.symbol)}`}><b>{neighbour.symbol}</b>{neighbour.name ? ` ${neighbour.name}` : ''}</Link>
-                <span className={styles.share}>{strength(neighbour.correlation)}</span>
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : null}
-      {signedOut ? (
-        <>
-          <h3 className={styles.panelHeading}>Largest companies in this region</h3>
-          <CompanyLinks items={company.zoneLeaders} />
-          <Link className={styles.cta} href={SIGN_UP_HREF}>See what {company.symbol} moves with</Link>
-        </>
-      ) : null}
-      <Link className={styles.more} href={`/stocks/${encodeURIComponent(company.symbol)}`}>Open {company.symbol}</Link>
     </div>
   )
 }

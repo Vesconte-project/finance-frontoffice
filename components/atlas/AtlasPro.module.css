@@ -1,0 +1,944 @@
+/* The atlas's Pro and history pieces: time bar, tool rail, workbench, layers, cards and the upsell (pro-spec §1–§8). */
+
+.eyebrow {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.muted {
+  margin: 0.2rem 0 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.empty {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0.3rem 0 0.4rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px dashed color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.proTag {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  vertical-align: 1px;
+}
+
+.up {
+  color: var(--up);
+}
+
+.down {
+  color: var(--down);
+}
+
+.chip,
+.actions button,
+.tray button,
+.rowActions button,
+.save {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.chip:hover,
+.actions button:hover,
+.tray button:hover,
+.rowActions button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.save {
+  margin-bottom: 0.7rem;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* A Pro control seen without Pro: the accent dot, and the press opens the upsell. */
+.rail [data-locked],
+.seg [data-locked],
+.actions [data-locked] {
+  position: relative;
+}
+
+.rail [data-locked]::after,
+.seg [data-locked]::after,
+.actions [data-locked]::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.actions [data-locked],
+.seg [data-locked] {
+  opacity: 0.7;
+}
+
+.lockedNote {
+  cursor: pointer;
+}
+
+.chip:focus-visible,
+.actions button:focus-visible,
+.tray button:focus-visible,
+.tray input:focus-visible,
+.rowActions button:focus-visible,
+.save:focus-visible,
+.rail button:focus-visible,
+.seg button:focus-visible,
+.timeline button:focus-visible,
+.timeline input:focus-visible,
+.upsell a:focus-visible,
+.upsell button:focus-visible,
+.dock select:focus-visible,
+.dockClose:focus-visible,
+.menu button:focus-visible,
+.tabs button:focus-visible,
+.peer:focus-visible,
+.lockedNote:focus-visible,
+.rows textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* segmented control: Movement, lens, region size */
+.seg {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 7px;
+}
+
+.seg button {
+  min-height: 2rem;
+  padding: 0 0.65rem;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.seg button + button {
+  border-left: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+.seg button[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+}
+
+.seg button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* Layers */
+.layer {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.55rem 0 0.6rem;
+  border-top: 1px solid color-mix(in srgb, var(--line) 50%, transparent);
+}
+
+.layer:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.locked {
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.influenceList {
+  display: grid;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.influenceList p {
+  margin: 0;
+}
+
+.influenceList small {
+  color: var(--text-muted);
+}
+
+/* Theme menu */
+.themeControl {
+  position: relative;
+}
+
+.themeLabel {
+  overflow: hidden;
+  max-width: 12rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu {
+  position: absolute;
+  z-index: 45;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  width: min(17rem, calc(100vw - 2rem));
+  max-height: min(24rem, 60svh);
+  overflow: auto;
+  margin: 0;
+  padding: 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  list-style: none;
+  box-shadow: 0 10px 30px rgba(11, 18, 32, 0.16);
+}
+
+.menu button {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 2.2rem;
+  padding: 0 0.6rem;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.84rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu button small {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.menu button:hover,
+.menu button[aria-checked='true'] {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+
+.menu button[aria-checked='true'] {
+  color: var(--accent);
+}
+
+.menuNote {
+  padding: 0.45rem 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+/* Theme and influence cards, top right of the map */
+.cardSlot {
+  position: absolute;
+  z-index: 9;
+  top: 4.4rem;
+  right: 4rem;
+  width: min(17rem, calc(100% - 6rem));
+  max-height: calc(100% - 12rem);
+  overflow: auto;
+}
+
+.card {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  color: var(--text);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.card p {
+  margin: 0;
+}
+
+.card small {
+  color: var(--text-muted);
+}
+
+.cardTitle {
+  font-size: 0.95rem;
+}
+
+.verdict {
+  margin: 0;
+  font-weight: 600;
+}
+
+.verdict span {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Browse tabs */
+.tabs {
+  display: flex;
+  gap: 0.2rem;
+  margin: -0.2rem 0 0.7rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+}
+
+.tabs button {
+  min-height: 2.2rem;
+  padding: 0 0.6rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.tabs button[aria-selected='true'] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.metric {
+  margin: 0.2rem 0 0.6rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.metricBlock {
+  margin-top: 0.8rem;
+}
+
+.metricBlock .metric {
+  margin-bottom: 0.15rem;
+}
+
+.spark {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0.2rem 0 0.4rem;
+}
+
+/* Lists of groups and saved views */
+.rows {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+  border-radius: 8px;
+  font-size: 0.82rem;
+}
+
+.row b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row small {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.row textarea {
+  grid-column: 1 / -1;
+  min-height: 3.2rem;
+  box-sizing: border-box;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+  resize: vertical;
+}
+
+.rowActions {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.rowActions button {
+  min-height: 1.9rem;
+  padding: 0 0.55rem;
+  color: var(--accent);
+}
+
+/* Company panel */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.6rem 0 0.2rem;
+}
+
+.themeLine {
+  margin: 0.4rem 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.themeLine b {
+  color: var(--text);
+}
+
+.headingNote {
+  margin-left: 0.4rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.thenNow {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.6rem 0.7rem;
+  border-left: 2px solid color-mix(in srgb, var(--line) 80%, transparent);
+  font-size: 0.82rem;
+}
+
+.thenNow p {
+  margin: 0;
+}
+
+.thenNow small {
+  color: var(--text-muted);
+}
+
+.changed {
+  border-left-color: var(--accent);
+}
+
+.changed .verdict {
+  color: var(--accent);
+}
+
+.peer {
+  min-height: 1.6rem;
+  padding: 0 0.15rem;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.tieNumbers {
+  font-variant-numeric: tabular-nums;
+}
+
+.trend {
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* Tool rail: the left edge, vertically centred; above the time bar on phones */
+.rail {
+  position: absolute;
+  /* under the controls and their sheets, over the map */
+  z-index: 15;
+  top: 50%;
+  left: 0.8rem;
+  display: grid;
+  overflow: hidden;
+  transform: translateY(-50%);
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.rail button {
+  position: relative;
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.rail button + button {
+  border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+.rail button[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+}
+
+.lassoCursor {
+  cursor: crosshair;
+}
+
+/* Workbench: the dock and the selection tray, above the time bar */
+.workbench {
+  position: absolute;
+  z-index: 18;
+  bottom: 6.6rem;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(38rem, calc(100% - 9rem));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.workbench > * {
+  pointer-events: auto;
+}
+
+.tray,
+.dock {
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  box-shadow: 0 10px 30px rgba(11, 18, 32, 0.12);
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
+.tray {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.9rem;
+  padding: 0.5rem 0.6rem 0.5rem 0.9rem;
+}
+
+.traySummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.trayActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-left: auto;
+}
+
+.tray input {
+  width: 9rem;
+  min-height: 2rem;
+  box-sizing: border-box;
+  padding: 0 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+}
+
+.dock {
+  max-height: 46svh;
+  overflow: auto;
+  padding: 0.7rem 0.9rem 0.8rem;
+}
+
+.dockHead {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.dockHead h2 {
+  margin: 0;
+}
+
+.dockClose {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  margin-left: auto;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.dockPick {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.35rem 0.6rem;
+  margin-bottom: 0.6rem;
+}
+
+.dockPick label {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+}
+
+.dock select {
+  min-width: 0;
+  min-height: 2.1rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0.3rem 0 0.4rem;
+}
+
+.dockNumbers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.1rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.dockNumbers b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.dockFoot {
+  margin: 0.5rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  line-height: 1.6;
+}
+
+.testTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.testTable th,
+.testTable td {
+  padding: 0.28rem 0.2rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 50%, transparent);
+  font-weight: 400;
+  text-align: left;
+}
+
+.number {
+  text-align: right !important;
+}
+
+.pass,
+.fail {
+  text-align: center !important;
+}
+
+.pass {
+  color: var(--up);
+}
+
+.fail {
+  color: var(--down);
+}
+
+/* Time bar: centred above the week's line */
+.timeline {
+  position: absolute;
+  z-index: 9;
+  bottom: 3.1rem;
+  left: 50%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem 0.6rem;
+  box-sizing: border-box;
+  width: min(30rem, calc(100% - 2rem));
+  padding: 0.35rem 0.7rem;
+  transform: translateX(-50%);
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: 0 6px 18px rgba(11, 18, 32, 0.1);
+  font-size: 0.78rem;
+}
+
+.timeline:has(.timelineNote) {
+  border-radius: 1.1rem;
+}
+
+.play {
+  display: grid;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.play:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.track {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+}
+
+.track input {
+  width: 100%;
+  min-height: 1.8rem;
+  accent-color: var(--accent);
+}
+
+.weekLabel {
+  flex: none;
+  min-width: 5.5rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.timelineNote {
+  flex-basis: 100%;
+  padding-bottom: 0.15rem;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.timelineLocked .play {
+  opacity: 0.45;
+}
+
+.trackLock {
+  display: grid;
+  width: 100%;
+  height: 1.6rem;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--line) 70%, transparent) 0 4px, var(--surface) 4px 8px);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.trackLock svg {
+  padding: 1px;
+  border-radius: 3px;
+  background: var(--surface);
+}
+
+/* Upsell: non-modal, near the top of the map */
+.upsell {
+  position: absolute;
+  z-index: 40;
+  top: 4.4rem;
+  left: 50%;
+  box-sizing: border-box;
+  width: min(22rem, calc(100% - 2rem));
+  padding: 0.9rem 1rem;
+  transform: translateX(-50%);
+  border: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 16px 40px rgba(11, 18, 32, 0.18);
+  color: var(--text);
+  font-size: 0.84rem;
+}
+
+.upsell h3 {
+  margin: 0.25rem 0 0.3rem;
+  font-size: 0.98rem;
+}
+
+.upsell p {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.upsellTag .proTag {
+  margin-left: 0;
+}
+
+.upsellActions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.upsellActions a,
+.upsellActions button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.2rem;
+  padding: 0 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.upsellActions .primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.upsellAnon {
+  margin-top: 0.7rem !important;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.upsellAnon a {
+  color: var(--accent);
+}
+
+@media (max-width: 40rem) {
+  .rail {
+    top: auto;
+    bottom: 8.4rem;
+    left: 0.6rem;
+    transform: none;
+  }
+
+  .rail button {
+    width: 2.25rem;
+    height: 2.1rem;
+  }
+
+  /* Groups stays one tap away in Browse › Groups, so the rail fits short screens */
+  .rail [data-tool='groups'] {
+    display: none;
+  }
+
+  .timeline {
+    right: 4rem;
+    bottom: 3.5rem;
+    left: 0.6rem;
+    width: auto;
+    transform: none;
+  }
+
+  .weekLabel {
+    min-width: 4.6rem;
+  }
+
+  /* one line on a phone, so the bar stays clear of the rail */
+  .timelineNote {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .workbench {
+    right: 0.6rem;
+    bottom: 7.6rem;
+    left: 3.4rem;
+    width: auto;
+    transform: none;
+  }
+
+  .dock {
+    max-height: 40svh;
+  }
+
+  .testTable {
+    font-size: 0.74rem;
+  }
+
+  .cardSlot {
+    top: auto;
+    right: 3.6rem;
+    bottom: 7.6rem;
+    left: 3.4rem;
+    width: auto;
+    max-height: 34%;
+  }
+
+  .themeLabel {
+    max-width: 7rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seg button,
+  .tabs button {
+    transition: none;
+  }
+}

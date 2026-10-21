@@ -7,7 +7,8 @@
  * - signed out: zones in their true place with a circle, companies at levels 0–1
  *   placed schematically, and only tie counts between zones;
  * - free (signed in): the real map of the newest week;
- * - Pro: the same with history and movement (not registered yet: nobody is Pro).
+ * - Pro: the same with history, movement, the total lens and the tools (`access.pro`;
+ *   `atlas.pro` is not registered yet, so nobody is Pro in production).
  */
 
 export type AtlasTier = 'signedOut' | 'free' | 'pro'
@@ -21,7 +22,12 @@ export type AtlasAccess = {
   bundleTies: boolean
   truePositions: boolean
   movement: boolean
+  /** Pro: earlier weeks, movement, the total lens, influence and the tools. */
+  pro: boolean
 }
+
+/** What a map is built on: moves beyond the market (default) or total co-movement (Pro). */
+export type AtlasLens = 'residual' | 'total'
 
 export type AtlasPoint = [number, number]
 export type AtlasContour =
@@ -36,6 +42,8 @@ export type AtlasZone = {
   x: number | null
   y: number | null
   contour: AtlasContour | null
+  /** Pro only: the same outline with large companies counting more (region size by market value). */
+  contourByValue: AtlasContour | null
   leaders: string[]
 }
 
@@ -58,6 +66,12 @@ export type AtlasNode = {
   loner: boolean
   /** Signed in only: its regions by share of its strongest ties, largest first; the ring of a ball between regions. */
   memberships: AtlasShare[]
+  /** Signed in only: share of its 10 strongest ties among its 10 nearest on the map, 0–1. */
+  fidelity: number | null
+  /** Signed in only: theme ids from the thematic funds that hold it. */
+  themes: string[]
+  /** Signed in only: market value, when known. */
+  marketCap: number | null
 }
 
 export type AtlasShare = { zoneId: string; share: number }
@@ -81,10 +95,20 @@ export type AtlasOverview = {
   lines: AtlasLine[]
   bundles: AtlasBundle[]
   marketCorrelation: AtlasMarketCorrelation | null
+  lens: AtlasLens
 }
 
 export type AtlasCompanyRef = { symbol: string; name: string | null }
-export type AtlasNeighbour = AtlasCompanyRef & { zoneId: string | null; correlation: number }
+export type AtlasTrend = 'stronger' | 'weaker'
+export type AtlasNeighbour = AtlasCompanyRef & {
+  zoneId: string | null
+  correlation: number
+  /** Signed in only: the pair's correlation with the market left in. */
+  total: number | null
+  /** Pro only: the last six months against the six before, when the change is beyond the noise. */
+  trend: AtlasTrend | null
+}
+export type AtlasThemeRef = { themeId: string; label: string }
 export type AtlasMembership = { zoneId: string; label: string | null; share: number }
 
 export type AtlasCompanyPanel = {
@@ -102,6 +126,11 @@ export type AtlasCompanyPanel = {
   memberships: AtlasMembership[]
   neighbours: AtlasNeighbour[]
   marketCap: number | null
+  /** Signed in only: themes the thematic funds give it. */
+  themes: AtlasThemeRef[]
+  /** Signed in only: its map accuracy, 0–1. */
+  fidelity: number | null
+  lens: AtlasLens
 }
 
 export type AtlasZoneMember = AtlasCompanyRef & { share: number | null; marketCap: number | null }
@@ -171,6 +200,7 @@ export function parseAccess(value: unknown): AtlasAccess | null {
     bundleTies: raw.bundleTies === true,
     truePositions: raw.truePositions === true,
     movement: raw.movement === true,
+    pro: raw.pro === true || raw.tier === 'pro',
   }
 }
 
@@ -233,6 +263,7 @@ function parseZone(value: unknown): AtlasZone | null {
     x: anchor ? anchor[0] : null,
     y: anchor ? anchor[1] : null,
     contour,
+    contourByValue: parseContour(raw.contourByValue),
     leaders: list(raw.leaders).map(text).filter((symbol): symbol is string => symbol !== null),
   }
 }
@@ -277,7 +308,19 @@ export function sizeSteps(values: Map<string, number>): Map<string, number> {
   return new Map(ranked.map(([symbol], rank) => [symbol, Math.min(SIZE_STEPS - 1, Math.floor((rank * SIZE_STEPS) / Math.max(1, ranked.length)))]))
 }
 
-function parseNodes(values: unknown[]): AtlasNode[] {
+function share01(value: unknown): number | null {
+  const number = finite(value)
+  return number === null || number < 0 || number > 1 ? null : number
+}
+
+const THEME_ID = /^[A-Za-z0-9][A-Za-z0-9_.\-]{0,63}$/
+
+function themeIds(value: unknown): string[] {
+  const ids = list(value).map(text).filter((id): id is string => id !== null && THEME_ID.test(id))
+  return [...new Set(ids)]
+}
+
+export function parseNodes(values: unknown[]): AtlasNode[] {
   type Valid = { raw: Raw; symbol: string; zoneId: string; x: number; y: number }
   const valid: Valid[] = []
   const seen = new Set<string>()
@@ -311,13 +354,20 @@ function parseNodes(values: unknown[]): AtlasNode[] {
       y,
       level: Math.min(ATLAS_MAX_LEVEL, whole(raw.level)),
       size: step,
-      bulk: capBulk(size === null && cap !== null ? cap : STEP_CAPS[step]),
+      bulk: capBulk(cap !== null ? cap : STEP_CAPS[step]),
       reach: finite(raw.reach),
       well: well === null ? null : Math.max(0, Math.min(1, well)),
       loner: raw.loner === true,
       memberships: parseShares(raw.memberships),
+      fidelity: share01(raw.fidelity),
+      themes: themeIds(raw.themes),
+      marketCap: cap,
     }
   })
+}
+
+export function parseLens(value: unknown): AtlasLens {
+  return value === 'total' ? 'total' : 'residual'
 }
 
 function parseTie(value: unknown): AtlasTie | null {
@@ -377,6 +427,7 @@ export function parseOverview(value: unknown): AtlasOverview | null {
       })
       .filter((bundle): bundle is AtlasBundle => bundle !== null && bundle.tieCount > 0),
     marketCorrelation: parseMarketCorrelation(raw.marketCorrelation),
+    lens: parseLens(raw.lens),
   }
 }
 
@@ -419,12 +470,28 @@ export function parseCompanyPanel(value: unknown): AtlasCompanyPanel | null {
     neighbours: list(raw.neighbours)
       .map((entry) => {
         const ref = parseRef(entry)
-        const correlation = finite(record(entry)?.correlation)
-        return ref && correlation !== null ? { ...ref, zoneId: text(record(entry)?.zoneId), correlation } : null
+        const item = record(entry)
+        const value = finite(item?.correlation)
+        const trend: AtlasTrend | null = item?.trend === 'stronger' || item?.trend === 'weaker' ? item.trend : null
+        return ref && value !== null ? { ...ref, zoneId: text(item?.zoneId), correlation: value, total: correlation(item?.total), trend } : null
       })
       .filter((item): item is AtlasNeighbour => item !== null),
     marketCap: finite(raw.marketCap),
+    themes: parseThemeRefs(raw.themes),
+    fidelity: share01(raw.fidelity),
+    lens: parseLens(raw.lens),
   }
+}
+
+export function parseThemeRefs(value: unknown): AtlasThemeRef[] {
+  const refs: AtlasThemeRef[] = []
+  for (const entry of list(value)) {
+    const item = record(entry)
+    const themeId = text(item?.themeId)
+    if (!themeId || !THEME_ID.test(themeId) || refs.some((ref) => ref.themeId === themeId)) continue
+    refs.push({ themeId, label: text(item?.label) ?? themeId })
+  }
+  return refs
 }
 
 export function parseZonePanel(value: unknown): AtlasZonePanel | null {
@@ -450,10 +517,25 @@ export function parseZonePanel(value: unknown): AtlasZonePanel | null {
   }
 }
 
-/** The local route for an overview; signed-out readers never send a level above 1 or an area. */
-export function atlasOverviewPath(level: number, bbox?: [number, number, number, number] | null): string {
+export const ATLAS_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+
+export function atlasDate(value: string | null | undefined): string | null {
+  const date = (value ?? '').trim()
+  return ATLAS_DATE_PATTERN.test(date) && !Number.isNaN(Date.parse(`${date}T00:00:00Z`)) ? date : null
+}
+
+export type OverviewOptions = { asOf?: string | null; lens?: AtlasLens }
+
+/**
+ * The local route for an overview; signed-out readers never send a level above 1 or an area.
+ * An earlier week (`asOf`) and the total lens are Pro; the residual lens is the default and is not sent.
+ */
+export function atlasOverviewPath(level: number, bbox?: [number, number, number, number] | null, options: OverviewOptions = {}): string {
   const params = new URLSearchParams({ level: String(Math.max(0, Math.min(ATLAS_MAX_LEVEL, Math.round(level)))) })
   if (bbox) params.set('bbox', bbox.map((value) => value.toFixed(3)).join(','))
+  const asOf = atlasDate(options.asOf)
+  if (asOf) params.set('asOf', asOf)
+  if (options.lens === 'total') params.set('lens', 'total')
   return `/api/atlas?${params.toString()}`
 }
 

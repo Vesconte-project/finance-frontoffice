@@ -7,6 +7,7 @@
  * where the data does not put it.
  */
 import type { AtlasBundle, AtlasLine, AtlasNode, AtlasPoint, AtlasZone } from '@/lib/atlas-model'
+import { along, arrowHead, flowArrow, influenceArrow, type CurvedArrow } from '@/lib/atlas-pro'
 import {
   LEVEL_ZOOM,
   ballRadius,
@@ -21,7 +22,40 @@ import {
   type Viewport,
 } from '@/lib/atlas-view'
 
-export type Palette = { bg: string; surface: string; text: string; muted: string; accent: string; dark: boolean }
+export type Palette = { bg: string; surface: string; text: string; muted: string; accent: string; up: string; down: string; dark: boolean }
+
+/** A company's path over the time bar, in map units, oldest first. */
+export type PathLine = { points: AtlasPoint[]; selected: boolean }
+/** A movement arrow between two regions' movers, in map units. */
+export type FlowLine = { from: AtlasPoint; to: AtlasPoint; count: number; label: string }
+/** An influence arrow between two baskets, in map units. */
+export type InfluenceLine = { from: AtlasPoint; to: AtlasPoint; sign: 1 | -1; t: number; label: string }
+
+/** What the Pro and history layers add to a frame; every part is empty when not in use. */
+export type Overlay = {
+  /** An earlier week is shown: its ties are not on screen, they belong to today. */
+  past: boolean
+  paths: PathLine[]
+  flows: FlowLine[]
+  /** Companies drawn in the accent colour with a ring: the movers. */
+  movers: ReadonlySet<string>
+  /** Where a selected mover was, and how long ago. */
+  ghost: { at: AtlasPoint; label: string } | null
+  influence: InfluenceLine[]
+  /** A theme's members, or null when no theme is picked. */
+  theme: ReadonlySet<string> | null
+  /** The multi-selection. */
+  multi: ReadonlySet<string>
+  showFidelity: boolean
+  /** The selected company's strong ties the map could not keep near it. */
+  farTies: readonly string[]
+  /** The lasso being drawn, in screen pixels. */
+  lasso: AtlasPoint[] | null
+}
+
+export const NO_OVERLAY: Overlay = {
+  past: false, paths: [], flows: [], movers: new Set(), ghost: null, influence: [], theme: null, multi: new Set(), showFidelity: false, farTies: [], lasso: null,
+}
 
 export type Scene = {
   viewport: Viewport
@@ -49,6 +83,7 @@ export type Scene = {
   /** Companies tied to the one selected or under the pointer, and the lines between them. */
   related: ReadonlySet<string>
   relatedEdges: ReadonlySet<string>
+  overlay?: Overlay
 }
 
 type Rect = { x0: number; y0: number; x1: number; y1: number }
@@ -112,10 +147,19 @@ export function drawAtlas(context: CanvasRenderingContext2D, scene: Scene, ratio
   context.setTransform(ratio, 0, 0, ratio, 0, 0)
   context.clearRect(0, 0, viewport.width, viewport.height)
 
+  const overlay = scene.overlay ?? NO_OVERLAY
   drawGrid(context, scene, project, ground)
   drawTerritories(context, scene, project, ground, ratio)
 
   const shown = new Map(scene.nodes.map((node) => [node.symbol, node]))
+  if (overlay.past) {
+    // ties are today's: they do not belong on past positions
+    drawPaths(context, scene, overlay, project, ground)
+    const placed = drawBalls(context, scene, project, ground)
+    drawPills(context, scene, [], placed)
+    drawLasso(context, scene, overlay)
+    return
+  }
   const focusing = scene.selectedSymbol !== null || scene.hoverSymbol !== null
   const focusZone = scene.selectedZone ?? scene.hoverZone
 
@@ -149,8 +193,182 @@ export function drawAtlas(context: CanvasRenderingContext2D, scene: Scene, ratio
 
   const pills = scene.selectedSymbol === null ? drawBundles(context, scene, project, ground, shown, focusZone) : []
   if (focusing) drawRelatedTies(context, scene, project, ground, shown)
+  drawFarTies(context, scene, overlay, project, ground, shown)
+  if (scene.selectedSymbol === null) {
+    pills.push(...drawFlows(context, scene, overlay, project, ground))
+    pills.push(...drawInfluence(context, scene, overlay, project, ground))
+  }
   const placed = drawBalls(context, scene, project, ground)
+  drawGhost(context, scene, overlay, project, ground)
   drawPills(context, scene, pills, placed)
+  drawLasso(context, scene, overlay)
+}
+
+type Project = (x: number, y: number, z?: number) => AtlasPoint
+type Ground = (x: number, y: number) => number
+
+function strokeArrow(context: CanvasRenderingContext2D, arrow: CurvedArrow, color: string, alpha: number, headAlpha: number, dash: number[] = []) {
+  context.beginPath()
+  context.moveTo(arrow.start[0], arrow.start[1])
+  context.quadraticCurveTo(arrow.control[0], arrow.control[1], arrow.end[0], arrow.end[1])
+  context.strokeStyle = rgba(color, alpha)
+  context.lineWidth = arrow.width
+  context.lineCap = 'round'
+  context.setLineDash(dash)
+  context.stroke()
+  context.setLineDash([])
+  const [tip, left, right] = arrow.head
+  context.beginPath()
+  context.moveTo(tip[0], tip[1])
+  context.lineTo(left[0], left[1])
+  context.lineTo(right[0], right[1])
+  context.closePath()
+  context.fillStyle = rgba(color, headAlpha)
+  context.fill()
+}
+
+/** Movement: groups of at least two companies that moved between the same two regions (pro-spec §2c). */
+function drawFlows(context: CanvasRenderingContext2D, scene: Scene, overlay: Overlay, project: Project, ground: Ground): Pill[] {
+  const pills: Pill[] = []
+  const { accent } = scene.palette
+  for (const flow of overlay.flows) {
+    const start = project(flow.from[0], flow.from[1], ground(flow.from[0], flow.from[1]))
+    const tip = project(flow.to[0], flow.to[1], ground(flow.to[0], flow.to[1]))
+    const arrow = flowArrow(start, tip, flow.count)
+    if (!arrow) continue
+    strokeArrow(context, arrow, accent, 0.8, 0.9)
+    context.beginPath()
+    context.arc(start[0], start[1], 3, 0, Math.PI * 2)
+    context.fillStyle = rgba(accent, 0.9)
+    context.fill()
+    pills.push({ at: along(arrow, 0.5), text: flow.label, color: accent, strong: true, tries: [0.5, 0.35, 0.65, 0.25, 0.75].map((t) => along(arrow, t)) })
+  }
+  return pills
+}
+
+/** Influence: one group moving another on the same day around results; dashed, red down, green up (pro-spec §3c). */
+function drawInfluence(context: CanvasRenderingContext2D, scene: Scene, overlay: Overlay, project: Project, ground: Ground): Pill[] {
+  const pills: Pill[] = []
+  for (const line of overlay.influence) {
+    const start = project(line.from[0], line.from[1], ground(line.from[0], line.from[1]))
+    const tip = project(line.to[0], line.to[1], ground(line.to[0], line.to[1]))
+    const arrow = influenceArrow(start, tip, line.t)
+    if (!arrow) continue
+    const color = line.sign < 0 ? scene.palette.down : scene.palette.up
+    strokeArrow(context, arrow, color, 0.9, 0.95, [7, 5])
+    pills.push({ at: along(arrow, 0.5), text: line.label, color, strong: true, tries: [0.5, 0.35, 0.65].map((t) => along(arrow, t)) })
+  }
+  return pills
+}
+
+/** Paths on an earlier week: where movers and the selected company were, from the start of the span to the date shown. */
+function drawPaths(context: CanvasRenderingContext2D, scene: Scene, overlay: Overlay, project: Project, ground: Ground) {
+  const { accent } = scene.palette
+  const someone = scene.selectedSymbol !== null
+  context.lineJoin = 'round'
+  context.lineCap = 'round'
+  for (const path of [...overlay.paths].sort((a, b) => Number(a.selected) - Number(b.selected))) {
+    const points = path.points.map(([x, y]) => project(x, y, ground(x, y)))
+    if (points.length < 2) continue
+    const width = path.selected ? 2.4 : 1.4
+    context.beginPath()
+    points.forEach(([x, y], index) => (index ? context.lineTo(x, y) : context.moveTo(x, y)))
+    context.strokeStyle = rgba(accent, path.selected ? 0.95 : someone ? 0.14 : 0.55)
+    context.lineWidth = width
+    context.stroke()
+    context.beginPath()
+    context.arc(points[0][0], points[0][1], width + 1.2, 0, Math.PI * 2)
+    context.fillStyle = rgba(accent, path.selected ? 0.95 : someone ? 0.14 : 0.55)
+    context.fill()
+  }
+}
+
+/** The selected company's strong ties the flat map had to place far away: dashed red lines. */
+function drawFarTies(context: CanvasRenderingContext2D, scene: Scene, overlay: Overlay, project: Project, ground: Ground, shown: ReadonlyMap<string, AtlasNode>) {
+  const center = scene.selectedSymbol ? shown.get(scene.selectedSymbol) : undefined
+  if (!center || !overlay.farTies.length) return
+  const [cx, cy] = project(center.x, center.y, ground(center.x, center.y))
+  context.setLineDash([4, 5])
+  for (const symbol of overlay.farTies) {
+    const other = shown.get(symbol)
+    if (!other) continue
+    const [ox, oy] = project(other.x, other.y, ground(other.x, other.y))
+    context.beginPath()
+    context.moveTo(cx, cy)
+    context.lineTo(ox, oy)
+    context.strokeStyle = rgba(scene.palette.down, 0.6)
+    context.lineWidth = 1.2
+    context.stroke()
+  }
+  context.setLineDash([])
+}
+
+/** A selected mover's earlier place: a dashed ghost, how long ago, and a line to where it is now. */
+function drawGhost(context: CanvasRenderingContext2D, scene: Scene, overlay: Overlay, project: Project, ground: Ground) {
+  const ghost = overlay.ghost
+  const node = ghost && scene.selectedSymbol ? scene.nodes.find((item) => item.symbol === scene.selectedSymbol) : undefined
+  if (!ghost || !node) return
+  const { accent } = scene.palette
+  const sin = Math.sin(scene.camera.pitch)
+  const r = ballRadius(node.bulk, scene.zoom, scene.extent)
+  const [gx, gy] = project(ghost.at[0], ghost.at[1], ground(ghost.at[0], ghost.at[1]))
+  const [bx, by] = project(node.x, node.y, ground(node.x, node.y))
+  const from: AtlasPoint = [gx, gy - r * sin]
+  const to: AtlasPoint = [bx, by - r * sin]
+  context.setLineDash([3, 3])
+  context.beginPath()
+  context.arc(from[0], from[1], Math.max(r, 4), 0, Math.PI * 2)
+  context.strokeStyle = rgba(accent, 0.95)
+  context.lineWidth = 1.3
+  context.stroke()
+  context.setLineDash([])
+  const dx = to[0] - from[0]
+  const dy = to[1] - from[1]
+  const length = Math.hypot(dx, dy)
+  if (length > Math.max(r, 4) * 2 + 8) {
+    const ux = dx / length
+    const uy = dy / length
+    const start: AtlasPoint = [from[0] + ux * Math.max(r, 4), from[1] + uy * Math.max(r, 4)]
+    const tip: AtlasPoint = [to[0] - ux * (r + 2), to[1] - uy * (r + 2)]
+    context.beginPath()
+    context.moveTo(start[0], start[1])
+    context.lineTo(tip[0] - ux * 6, tip[1] - uy * 6)
+    context.strokeStyle = rgba(accent, 0.95)
+    context.lineWidth = 2
+    context.stroke()
+    const [a, b, c] = arrowHead(tip, ux, uy, 8)
+    context.beginPath()
+    context.moveTo(a[0], a[1])
+    context.lineTo(b[0], b[1])
+    context.lineTo(c[0], c[1])
+    context.closePath()
+    context.fillStyle = rgba(accent, 0.95)
+    context.fill()
+  }
+  context.font = `500 11px ${SANS}`
+  context.textAlign = 'center'
+  context.textBaseline = 'middle'
+  context.lineWidth = 3.5
+  context.strokeStyle = rgba(scene.palette.bg, 0.92)
+  context.strokeText(ghost.label, from[0], from[1] + Math.max(r, 4) + 10)
+  context.fillStyle = rgba(accent, 1)
+  context.fillText(ghost.label, from[0], from[1] + Math.max(r, 4) + 10)
+}
+
+/** The selection lasso, in screen space. */
+function drawLasso(context: CanvasRenderingContext2D, scene: Scene, overlay: Overlay) {
+  const lasso = overlay.lasso
+  if (!lasso || lasso.length < 2) return
+  context.beginPath()
+  lasso.forEach(([x, y], index) => (index ? context.lineTo(x, y) : context.moveTo(x, y)))
+  context.closePath()
+  context.fillStyle = rgba(scene.palette.accent, 0.08)
+  context.fill()
+  context.setLineDash([5, 4])
+  context.strokeStyle = rgba(scene.palette.accent, 0.9)
+  context.lineWidth = 1.4
+  context.stroke()
+  context.setLineDash([])
 }
 
 function drawGrid(
@@ -268,7 +486,7 @@ function drawTerritories(
   context.restore()
 }
 
-type Pill = { at: AtlasPoint; text: string }
+type Pill = { at: AtlasPoint; text: string; color?: string; strong?: boolean; tries?: AtlasPoint[] }
 
 function drawBundles(
   context: CanvasRenderingContext2D,
@@ -392,6 +610,7 @@ function drawBalls(
 ): Rect[] {
   const { palette, camera, viewport, zoom } = scene
   const focusing = scene.selectedSymbol !== null || scene.hoverSymbol !== null
+  const overlay = scene.overlay ?? NO_OVERLAY
   const node = mix(palette.muted, palette.bg, palette.dark ? 0.1 : 0.12)
   const sin = Math.sin(camera.pitch)
   const placedBalls = new Map<string, { x: number; y: number; r: number; alpha: number }>()
@@ -407,7 +626,10 @@ function drawBalls(
     const dimmed = focusing
       ? !scene.related.has(item.symbol) && item.symbol !== scene.selectedSymbol && item.symbol !== scene.hoverSymbol
       : scene.selectedZone !== null && item.zoneId !== scene.selectedZone
-    const alpha = dimmed ? 0.22 : 1
+    const inTheme = overlay.theme?.has(item.symbol) ?? false
+    // a theme is a highlight on top of the map: the rest steps back
+    const alpha = (dimmed ? 0.22 : 1) * (overlay.theme && !inTheme && item.symbol !== scene.selectedSymbol ? 0.2 : 1)
+    const marked = inTheme || overlay.movers.has(item.symbol)
     placedBalls.set(item.symbol, { x, y, r, alpha })
     if (sin > 0) {
       context.beginPath()
@@ -416,8 +638,8 @@ function drawBalls(
       context.fill()
     }
     const selected = item.symbol === scene.selectedSymbol
-    const base = selected ? palette.accent : item.symbol === scene.hoverSymbol ? mix(node, palette.text, 0.35) : node
-    if (item.loner && !selected) {
+    const base = selected || marked ? palette.accent : item.symbol === scene.hoverSymbol ? mix(node, palette.text, 0.35) : node
+    if (item.loner && !selected && !marked) {
       context.beginPath()
       context.arc(x, y, r * 0.85, 0, Math.PI * 2)
       context.fillStyle = rgba(palette.surface, 0.9 * alpha)
@@ -438,7 +660,14 @@ function drawBalls(
       context.fill()
       // a company between regions wears a ring split by where its strongest ties are
       const ring = ringShares(item)
-      if (ring.length > 0 && alpha > 0.3 && r > 3) {
+      if (overlay.showFidelity && item.fidelity !== null && alpha > 0.3) {
+        // red: the flat map had to stretch it; green: placed among its ties
+        context.beginPath()
+        context.arc(x, y, r + 2, 0, Math.PI * 2)
+        context.strokeStyle = rgba(mix(palette.down, palette.up, item.fidelity), 0.9)
+        context.lineWidth = 2
+        context.stroke()
+      } else if (ring.length > 0 && alpha > 0.3 && r > 3) {
         let start = -Math.PI / 2
         for (const { zoneId, share } of ring) {
           const end = start + Math.PI * 2 * share
@@ -451,12 +680,21 @@ function drawBalls(
         }
       }
     }
-    if (selected) {
+    if (selected || (marked && scene.selectedSymbol === null)) {
       context.lineWidth = 2
-      context.strokeStyle = rgba(palette.accent, 0.9)
+      context.strokeStyle = rgba(palette.accent, 0.9 * (selected ? 1 : alpha))
       context.beginPath()
       context.arc(x, y, Math.max(r + 3, 6), 0, Math.PI * 2)
       context.stroke()
+    }
+    if (overlay.multi.has(item.symbol)) {
+      context.setLineDash([3, 2])
+      context.lineWidth = 2
+      context.strokeStyle = rgba(palette.accent, 0.95)
+      context.beginPath()
+      context.arc(x, y, Math.max(r + 3.5, 6), 0, Math.PI * 2)
+      context.stroke()
+      context.setLineDash([])
     }
   }
   return drawLabels(context, scene, project, ground, placedBalls)
@@ -511,12 +749,15 @@ function drawLabels(
     }
   }
   // Company names: the selected one and its ties first, then the larger balls.
+  const overlay = scene.overlay ?? NO_OVERLAY
+  // a theme's members and the movers count as neighbours: their names come first
+  const near = (symbol: string) => scene.related.has(symbol) || (overlay.theme?.has(symbol) ?? false) || overlay.movers.has(symbol)
   const candidates = [...balls.entries()].filter(([symbol, ball]) =>
-    ball.alpha > 0.5 && (ball.r >= 6.5 || scene.related.has(symbol) || symbol === scene.selectedSymbol) &&
-    (scene.showNames || symbol === scene.selectedSymbol || scene.related.has(symbol)))
+    ball.alpha > 0.5 && (ball.r >= 6.5 || near(symbol) || symbol === scene.selectedSymbol) &&
+    (scene.showNames || symbol === scene.selectedSymbol || near(symbol)))
   candidates.sort(([a, ballA], [b, ballB]) =>
     Number(b === scene.selectedSymbol) - Number(a === scene.selectedSymbol) ||
-    Number(scene.related.has(b)) - Number(scene.related.has(a)) || ballB.r - ballA.r)
+    Number(near(b)) - Number(near(a)) || ballB.r - ballA.r)
   for (const [symbol, ball] of candidates) {
     const size = ball.r > 15 ? 12 : 11
     context.font = `500 ${size}px ${SANS}`
@@ -538,21 +779,23 @@ function drawPills(context: CanvasRenderingContext2D, scene: Scene, pills: Pill[
   context.font = `500 11px ${SANS}`
   context.textAlign = 'center'
   context.textBaseline = 'middle'
-  for (const { at: [x, y], text } of pills) {
+  for (const { at, text, color, strong, tries } of pills) {
     const width = context.measureText(text).width + 12
-    for (const dy of [0, -24, 24, -48, 48]) {
-      const rect = { x0: x - width / 2, x1: x + width / 2, y0: y + dy - 10, y1: y + dy + 10 }
+    // a pill on a curve tries points along it first, then steps off it
+    const spots: AtlasPoint[] = [...(tries ?? [at]), ...[-24, 24, -48, 48].map((dy): AtlasPoint => [at[0], at[1] + dy])]
+    for (const [x, y] of spots) {
+      const rect = { x0: x - width / 2, x1: x + width / 2, y0: y - 10, y1: y + 10 }
       if (placed.some((other) => overlaps(other, rect))) continue
       placed.push(rect)
       context.beginPath()
       context.roundRect(rect.x0, rect.y0, width, 20, 10)
-      context.fillStyle = rgba(palette.surface, 0.86)
+      context.fillStyle = rgba(palette.surface, strong ? 0.96 : 0.86)
       context.fill()
-      context.strokeStyle = rgba(palette.muted, 0.22)
+      context.strokeStyle = strong ? rgba(color ?? palette.accent, 0.65) : rgba(palette.muted, 0.22)
       context.lineWidth = 1
       context.stroke()
-      context.fillStyle = rgba(palette.accent, 1)
-      context.fillText(text, x, y + dy)
+      context.fillStyle = rgba(color ?? palette.accent, 1)
+      context.fillText(text, x, y)
       break
     }
   }

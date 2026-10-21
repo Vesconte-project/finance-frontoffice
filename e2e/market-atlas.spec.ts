@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 
 // Synthetic fixture atlas (e2e/fixtures/market-atlas.mjs) served signed out, as browser QA has no session.
+// The free and Pro specs run against the same stub started with E2E_STUB_SIGNED_IN=1 or E2E_STUB_TIER=pro.
+test.skip(Boolean(process.env.E2E_STUB_SIGNED_IN || process.env.E2E_STUB_TIER), 'the fixture backend answers as a signed-in reader')
 
 function watchConsole(page: Page): string[] {
   const errors: string[] = []
@@ -21,7 +23,14 @@ for (const width of [375, 1440]) {
     await expect(map).toBeVisible({ timeout: 30_000 })
     await expect(page.getByText('You are seeing a sketch')).toBeVisible()
     await expect(page.getByRole('link', { name: 'Create a free account' }).first()).toHaveAttribute('href', /^\/sign-up\?redirect_url=/)
-    await expect(page.getByText(/Create an account to follow the map/)).toBeVisible()
+    // Movement and the time bar are Pro: locked, and a press says what unlocks them.
+    await page.getByRole('button', { name: 'Movement over the last 6 months: Pro' }).click()
+    const upsell = page.getByRole('dialog', { name: 'A year of history' })
+    await expect(upsell).toBeVisible()
+    await expect(upsell.getByText('Pro tools need an account.')).toBeVisible()
+    await expect(upsell.getByRole('link', { name: 'See plans' })).toBeFocused()
+    await upsell.getByRole('button', { name: 'Not now' }).click()
+    await expect(upsell).toHaveCount(0)
     // The canvas is painted.
     await expect.poll(() => page.locator('canvas').evaluate((canvas: HTMLCanvasElement) => {
       const context = canvas.getContext('2d')

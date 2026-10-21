@@ -19,6 +19,17 @@ import {
   atlasZoneFixture,
   tickerIndexFixture,
 } from '../e2e/fixtures/market-atlas.mjs'
+import {
+  compareFixture,
+  influenceFixture,
+  movementFixture,
+  proCompanyFixture,
+  proOverviewFixture,
+  testFixture,
+  themeFixture,
+  themesFixture,
+  weeksFixture,
+} from '../e2e/fixtures/market-atlas-pro.mjs'
 import { calendarFixture } from '../e2e/fixtures/calendar.mjs'
 import {
   isFixtureTicker,
@@ -70,32 +81,21 @@ const server = createServer((request, response) => {
 
   // The weekly atlas: the map page, the calendar's region and "around" filters, panels.
   // A request with a session gets the free map; without one, the signed-out projection.
-  // E2E_STUB_SIGNED_IN=1 answers every request as free, to look at the signed-in map without Clerk.
-  const signedIn = Boolean(request.headers.authorization) || process.env.E2E_STUB_SIGNED_IN === '1'
-  if (path === '/v1/atlas') {
-    const level = Number.parseInt(url.searchParams.get('level') ?? '0', 10)
-    const bbox = url.searchParams.get('bbox')
-    if (!signedIn && (level > 1 || bbox || url.searchParams.get('asOf'))) {
-      send(response, 403, { detail: 'sign_in_required' })
-      return
-    }
-    send(response, 200, atlasOverviewFixture({ signedIn, level, bbox: bbox ? bbox.split(',').map(Number) : null }))
-    return
+  // E2E_STUB_SIGNED_IN=1 answers every request as free, to look at the signed-in map without Clerk;
+  // E2E_STUB_TIER=pro answers every request as a Pro reader (synthetic history, themes, tools).
+  const tier = process.env.E2E_STUB_TIER === 'pro'
+    ? 'pro'
+    : Boolean(request.headers.authorization) || process.env.E2E_STUB_SIGNED_IN === '1' ? 'free' : 'signedOut'
+  const signedIn = tier !== 'signedOut'
+  const refuse = (detail) => send(response, 403, { detail })
+  // Pro routes refuse alike: sign in first, then Pro.
+  const proOnly = () => {
+    if (tier === 'pro') return true
+    refuse(signedIn ? 'pro_required' : 'sign_in_required')
+    return false
   }
-  if (path === '/v1/atlas/weeks' || path === '/v1/atlas/movement') {
-    send(response, 403, { detail: signedIn ? 'pro_required' : 'sign_in_required' })
-    return
-  }
-  const atlasCompany = path.match(/^\/v1\/atlas\/companies\/([^/]+)$/)
-  if (atlasCompany) {
-    const { status, body } = atlasCompanyFixture(decodeURIComponent(atlasCompany[1]).toUpperCase(), signedIn)
-    send(response, status, body)
-    return
-  }
-  const atlasZone = path.match(/^\/v1\/atlas\/zones\/([^/]+)$/)
-  if (atlasZone) {
-    const { status, body } = atlasZoneFixture(decodeURIComponent(atlasZone[1]), signedIn)
-    send(response, status, body)
+  if (path.startsWith('/v1/atlas')) {
+    handleAtlas(request, response, url, path, { tier, signedIn, refuse, proOnly })
     return
   }
 
@@ -178,6 +178,64 @@ const server = createServer((request, response) => {
   // Anything this fixture does not model stays unavailable on purpose.
   send(response, 503, { error: 'fixture_backend_unavailable', path })
 })
+
+function handleAtlas(request, response, url, path, { tier, signedIn, refuse, proOnly }) {
+  const asOf = url.searchParams.get('asOf')
+  const lens = url.searchParams.get('lens')
+  if (path === '/v1/atlas') {
+    const level = Number.parseInt(url.searchParams.get('level') ?? '0', 10)
+    const bbox = url.searchParams.get('bbox')
+    if (!signedIn && (level > 1 || bbox || asOf || lens === 'total')) return refuse('sign_in_required')
+    const box = bbox ? bbox.split(',').map(Number) : null
+    if (tier === 'pro') {
+      const body = proOverviewFixture({ level, bbox: box, asOf, lens })
+      return body ? send(response, 200, body) : send(response, 404, { detail: `No weekly atlas for ${asOf}` })
+    }
+    if (asOf || lens === 'total') return refuse('pro_required')
+    return send(response, 200, atlasOverviewFixture({ signedIn, level, bbox: box }))
+  }
+  if (path === '/v1/atlas/weeks') return proOnly() && send(response, 200, weeksFixture())
+  if (path === '/v1/atlas/movement') {
+    if (!proOnly()) return
+    const body = movementFixture(url.searchParams.get('from'), url.searchParams.get('to'))
+    return body ? send(response, 200, body) : send(response, 404, { detail: 'No such weeks' })
+  }
+  if (path === '/v1/atlas/themes') {
+    if (!signedIn) return refuse('sign_in_required')
+    return send(response, 200, themesFixture(tier))
+  }
+  const theme = path.match(/^\/v1\/atlas\/themes\/([^/]+)$/)
+  if (theme) {
+    if (!signedIn) return refuse('sign_in_required')
+    const body = themeFixture(decodeURIComponent(theme[1]), tier)
+    return body ? send(response, 200, body) : send(response, 404, { detail: 'No such theme' })
+  }
+  if (path === '/v1/atlas/influence') return proOnly() && send(response, 200, influenceFixture())
+  if (path === '/v1/atlas/compare') {
+    if (!proOnly()) return
+    const body = compareFixture(url.searchParams.get('a'), url.searchParams.get('b'))
+    return body ? send(response, 200, body) : send(response, 422, { detail: 'Pick two different sets.' })
+  }
+  if (path === '/v1/atlas/test') {
+    if (!proOnly()) return
+    const answer = testFixture({ from: url.searchParams.get('from'), to: url.searchParams.get('to'), testsRun: Number(url.searchParams.get('testsRun')) })
+    return answer ? send(response, 200, answer) : send(response, 422, { detail: 'Pick two different sets.' })
+  }
+  const atlasCompany = path.match(/^\/v1\/atlas\/companies\/([^/]+)$/)
+  if (atlasCompany) {
+    const symbol = decodeURIComponent(atlasCompany[1]).toUpperCase()
+    if (tier !== 'pro' && lens === 'total') return refuse(signedIn ? 'pro_required' : 'sign_in_required')
+    const { status, body } = tier === 'pro' ? proCompanyFixture(symbol, lens) : atlasCompanyFixture(symbol, signedIn)
+    return send(response, status, body)
+  }
+  const atlasZone = path.match(/^\/v1\/atlas\/zones\/([^/]+)$/)
+  if (atlasZone) {
+    if (tier !== 'pro' && lens === 'total') return refuse(signedIn ? 'pro_required' : 'sign_in_required')
+    const { status, body } = atlasZoneFixture(decodeURIComponent(atlasZone[1]), signedIn)
+    return send(response, status, body)
+  }
+  send(response, 503, { error: 'fixture_backend_unavailable', path })
+}
 
 server.listen(PORT, HOST, () => {
   console.log(`[e2e-backend-stub] fixture backend listening on http://${HOST}:${PORT}`)

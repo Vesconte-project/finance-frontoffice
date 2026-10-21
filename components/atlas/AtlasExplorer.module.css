@@ -356,12 +356,12 @@ a.lockNote:hover {
   color: var(--accent);
 }
 
-/* Most connected: a quiet list in the corner, closed until asked for. */
+/* Most connected: a quiet list in the lower corner, clear of the tool rail and the time bar, closed until asked for. */
 .landmarks {
   position: absolute;
   z-index: 8;
-  bottom: 3.4rem;
-  left: 0.8rem;
+  bottom: 6.6rem;
+  left: 4rem;
   display: grid;
   width: 14rem;
   gap: 0.05rem;
@@ -716,7 +716,7 @@ button.loading {
 
 @media (max-width: 40rem) {
   .frame {
-    height: clamp(26rem, 72svh, 42rem);
+    height: clamp(32rem, 80svh, 46rem);
   }
 
   .wide {
