@@ -7,7 +7,7 @@ import type {
   WatchSettings,
 } from '../contract'
 import { describeThesis, type ThesisSentence, type WhoKey } from '../thesis-sentence'
-import { BENCH, BENCH_STATS, DATES, N, SNAPSHOT, downsample, shaped, stats } from './world'
+import { BENCH, BENCH_STATS, DATES, N, SNAPSHOT, daysAgoIso, downsample, shaped, stats } from './world'
 import { fixtureId, gauss, hash, hex, rng, round } from './random'
 
 export type ThesisSpec = Readonly<{
@@ -95,9 +95,7 @@ export function testId(key: string): string {
   return fixtureId(`test:${key}`)
 }
 
-function isoDaysAgo(days: number): string {
-  return new Date(Date.UTC(2026, 9, 14) - days * 86_400_000).toISOString()
-}
+const isoDaysAgo = (days: number): string => daysAgoIso(days)
 
 type Built = Readonly<{
   strategy: readonly number[]

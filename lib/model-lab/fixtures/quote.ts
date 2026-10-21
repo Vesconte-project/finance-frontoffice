@@ -24,7 +24,7 @@ function layerCount(values: Draft['values'], layer: Layer, skip?: string): numbe
 }
 
 /** The synthetic price list. A real quote comes from the platform. */
-export function quoteDraft(draft: Draft, remaining: number, data: 'ok' | 'stale', resetsOn: string): Quote {
+export function quoteDraft(draft: Draft, remaining: number, data: 'ok' | 'stale' | 'partial', resetsOn: string): Quote {
   const v = draft.values
   const assets = assetCount(draft)
   const reuse = draft.reuseTestId !== null
@@ -59,9 +59,8 @@ export function quoteDraft(draft: Draft, remaining: number, data: 'ok' | 'stale'
   const hist = Number((v.history ?? [3])[0])
   const train_ = Math.max(...(v.train ?? [504]).map(Number))
   const testLen = Number((v.test ?? [63])[0])
-  const horizon = Math.max(...(v.horizon ?? [10]).map(Number))
   const folds = Math.floor((hist * 252 - train_) / testLen)
-  if (draft.families.includes('Growth')) {
+  if (data === 'partial' && draft.families.includes('Growth')) {
     findings.push({ severity: 'block', title: 'Growth signals are out of date', detail: 'The latest Growth snapshot is 4 days old and tests need data from the last 3 days.', fix: { key: 'dropGrowth', label: 'Leave Growth out' } })
   }
   if (data === 'stale') findings.push({ severity: 'warn', title: 'Prices are 2 days old', detail: 'Results will use data up to 12 Oct. Run again tomorrow for the latest.', fix: null })

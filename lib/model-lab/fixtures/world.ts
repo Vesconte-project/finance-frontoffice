@@ -14,6 +14,13 @@ export const DATES: readonly string[] = Array.from({ length: N }, (_, i) =>
   new Date(START + Math.round((i * 365) / 251) * DAY).toISOString().slice(0, 10)
 )
 
+/** An ISO time `days` before today (UTC), so the fixtures always read as recent. */
+export function daysAgoIso(days: number, hour = 9): string {
+  const d = new Date()
+  d.setUTCHours(hour, 0, 0, 0)
+  return new Date(d.getTime() - days * DAY).toISOString()
+}
+
 export const SNAPSHOT = { id: 'snap-2026-10-14', hash: 'c4e90b17a2f6' } as const
 
 export type Stats = Readonly<{ ret: number; dd: number; sharpe: number }>

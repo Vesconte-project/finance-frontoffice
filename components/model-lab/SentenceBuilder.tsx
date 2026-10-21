@@ -7,15 +7,12 @@ import { cn } from '@/lib/utils'
 import {
   BENCHMARK_OPTIONS,
   CONDITION_OPTIONS,
-  DEFAULT_SENTENCE,
   DOES_OPTIONS,
   GAIN_TRACK,
   HORIZON_TRACK,
   LOSS_TRACK,
   UNIVERSE_OPTIONS,
   WHO_OPTIONS,
-  countVariants,
-  describeThesis,
   doesNeedsBenchmark,
   horizonText,
   horizonsText,
@@ -94,8 +91,14 @@ function valuesText(values: readonly number[], sign: '+' | '−'): string {
   return values.map((v) => percentText(v, sign)).join(', ')
 }
 
-export default function ThesisComposer() {
-  const [sentence, setSentence] = useState<ThesisSentence>(DEFAULT_SENTENCE)
+type SentenceBuilderProps = {
+  sentence: ThesisSentence
+  onChange: (next: ThesisSentence) => void
+}
+
+/** The thesis as one sentence: every underlined phrase opens a short list or a value line. */
+export default function SentenceBuilder({ sentence, onChange }: SentenceBuilderProps) {
+  const setSentence = (update: (current: ThesisSentence) => ThesisSentence) => onChange(update(sentence))
   const [open, setOpen] = useState<Slot | null>(null)
   const [several, setSeveral] = useState<Readonly<Record<TrackSlot, boolean>>>({
     horizons: false,
@@ -105,7 +108,6 @@ export default function ThesisComposer() {
   const panelId = useId()
   const switchId = useId()
 
-  const variants = countVariants(sentence)
   const barrier = sentence.does === 'barrier'
   const needsBenchmark = doesNeedsBenchmark(sentence.does)
 
@@ -131,8 +133,7 @@ export default function ThesisComposer() {
   const listOpen = open !== null && !isTrackSlot(open) ? open : null
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-      <div className="space-y-4">
+    <div className="space-y-4">
         <Card padding="lg">
           <p className="font-[var(--font-display)] text-[1.35rem] leading-[2.1] text-content-primary sm:text-[1.6rem]">
             I think{' '}
@@ -244,24 +245,6 @@ export default function ThesisComposer() {
             </label>
           </Card>
         ) : null}
-      </div>
-
-      <aside aria-label="Your test" className="lg:sticky lg:top-24 lg:self-start">
-        <Card padding="md">
-          <h2 className="text-card-title text-content-primary">Your test</h2>
-          <p className="mt-2 font-[var(--font-display)] text-base leading-snug text-content-primary" aria-live="polite">
-            {describeThesis(sentence)}.
-          </p>
-          <p className="mt-3 text-body-sm text-content-muted">
-            {variants === 1
-              ? 'One test.'
-              : `${variants} tests: every combination of the values you are comparing.`}
-          </p>
-          <p className="mt-3 border-t border-[var(--line)] pt-3 text-caption text-content-muted">
-            This page only builds the sentence. Nothing is run or saved yet.
-          </p>
-        </Card>
-      </aside>
     </div>
   )
 }

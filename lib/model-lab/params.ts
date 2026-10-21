@@ -109,7 +109,7 @@ export const PARAMS: readonly ParamDef[] = [
   choice('calib', 'model', 'Calibrate probabilities', 'Makes “60% sure” mean about 60%.', 'lab', false, [['none', 'No'], ['sigmoid', 'Sigmoid'], ['isotonic', 'Isotonic']], ['none']),
   choice('regime', 'signal', 'Only act when', 'Limits the idea to certain market conditions.', 'guided', true, [['any', 'In any conditions'], ['falling', 'When the market is falling'], ['rising', 'When the market is rising'], ['pullback', 'After a pullback'], ['calm', 'In calm markets'], ['volatile', 'When volatility is high']], ['any']),
   num('conf', 'signal', 'How sure before acting', 'The model must be at least this sure that the price will rise.', 'advanced', true, '%', [50, 55, 60], 50, 95, 1, [55], 'linear', [50, 65]),
-  num('exitgap', 'signal', 'Stay in until confidence falls below', 'A lower exit than entry stops constant flipping.', 'advanced', true, '%', [48, 50, 52], 40, 90, 1, [50]),
+  num('exitgap', 'signal', 'Stay in until confidence falls below', 'A lower exit than entry stops constant flipping.', 'advanced', true, '%', [45, 50, 55], 40, 90, 1, [50]),
   num('smooth', 'signal', 'Smooth the signal over', 'Averages recent predictions so one noisy day does not trigger a trade.', 'advanced', true, 'days', [1, 3, 5, 10], 1, 60, 1, [5], 'log', [3, 10]),
   num('minhold', 'signal', 'Minimum days to hold', 'After buying, hold at least this long.', 'advanced', true, 'days', [0, 3, 5, 10], 0, 60, 1, [0], 'sqrt', [0, 10]),
   num('cool', 'signal', 'Cool-off after selling', 'Days to wait before buying the same stock again.', 'lab', true, 'days', [0, 2, 5], 0, 30, 1, [0], 'sqrt'),

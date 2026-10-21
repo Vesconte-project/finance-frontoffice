@@ -2,13 +2,13 @@ import { expect, test, type Page } from '@playwright/test'
 
 /*
  * The thesis composer: a sentence whose blanks are choices, and value lines on
- * which every point is a value to compare. It builds a sentence only; nothing is
- * run or saved, so these tests need no backend.
+ * which every point is a value to compare. The QA server runs the Model Lab on
+ * its synthetic fixtures, so these tests need no backend.
  */
 
 async function open(page: Page) {
-  await page.goto('/models/lab/new')
-  await expect(page.getByRole('heading', { name: 'Test a thesis', level: 1 })).toBeVisible()
+  await page.goto('/models/new')
+  await expect(page.getByRole('heading', { name: 'Test a new thesis', level: 1 })).toBeVisible()
 }
 
 function summary(page: Page) {
@@ -51,7 +51,7 @@ test('the gain and loss version turns both targets into blanks', async ({ page }
 
 test('several values can be compared, and the number of tests follows', async ({ page }) => {
   await open(page)
-  await expect(summary(page)).toContainText('One test.')
+  await expect(summary(page)).toContainText('One test')
 
   await page.getByRole('button', { name: 'two weeks' }).click()
   await page.getByLabel('Compare several values').check()
@@ -59,8 +59,8 @@ test('several values can be compared, and the number of tests follows', async ({
   await page.getByRole('button', { name: 'a month', exact: true }).click()
 
   await expect(page.getByRole('slider')).toHaveCount(3)
-  await expect(summary(page)).toContainText('3 tests')
   await expect(summary(page)).toContainText('over 5, 10 and 20 days.')
+  await expect(summary(page)).toContainText('3 tests')
 })
 
 test('a point moves and is removed from the keyboard, and the last point stays', async ({ page }) => {

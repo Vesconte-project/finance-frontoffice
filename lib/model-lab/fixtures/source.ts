@@ -38,6 +38,7 @@ import { buildResults, resultsId, seedFor } from './sets'
 import { dataHealth, initialAccessRequests, initialCandidates, initialQueue, lineageOf, pipelineOf } from './team'
 import { DEFAULT_WATCH, THESIS_SPECS, evidenceOf, specId, summaryOf, testId, type ThesisSpec } from './theses'
 import { fixtureId, hash, rng } from './random'
+import { daysAgoIso } from './world'
 
 export type FixtureState = Readonly<{
   role: Role
@@ -121,9 +122,7 @@ type World = {
 
 const SET1_VALUES: ParamValues = { ...defaultValues(), model: ['logit', 'forest', 'gbm'], conf: [50, 55, 60], horizon: [5, 10, 20] }
 
-function isoDaysAgo(days: number): string {
-  return new Date(Date.UTC(2026, 9, 14) - days * 86_400_000).toISOString()
-}
+const isoDaysAgo = (days: number): string => daysAgoIso(days)
 
 function createWorld(): World {
   const specs = [...THESIS_SPECS]
@@ -263,7 +262,7 @@ export class FixtureSource implements ModelLabSource {
   }
 
   async quote(draft: Draft): Promise<Quote> {
-    const quote = quoteDraft(draft, this.remaining(), this.state.data === 'stale' ? 'stale' : 'ok', '3 Nov')
+    const quote = quoteDraft(draft, this.remaining(), this.state.data === 'stale' ? 'stale' : this.state.data === 'partial' ? 'partial' : 'ok', '3 Nov')
     if (this.state.plan === 'free') {
       return { ...quote, findings: [{ severity: 'block', title: 'Running tests needs Pro', detail: 'Free accounts can read results but not run new tests.', fix: null }, ...quote.findings] }
     }
@@ -459,21 +458,26 @@ export class FixtureSource implements ModelLabSource {
       const n = panel.members.length
       const rule = `Agreement needed: ${panel.agreementNeeded} of ${n}, held ${panel.holdDays} days`
       panelToday(panel).rows.filter((r) => r.changed).slice(0, 3).forEach((row, i) => {
-        const nowFlag = row.exposure > 0
+        const nowFlag = row.votes >= panel.agreementNeeded
+        const wasFlag = row.previousVotes >= panel.agreementNeeded
+        const state = (flag: boolean) => (flag ? 'flagged' : 'not flagged')
         items.push({
-          id: fixtureId(`alert:p:${panel.id}:${row.ticker}`), kind: 'panel', source: panel.name, sourceId: panel.id, tone: nowFlag ? 'ok' : 'warn', at: `2026-10-14T07:4${i}:00.000Z`,
-          title: `${row.ticker} went from ${row.previousVotes >= panel.agreementNeeded ? 'flagged' : 'not flagged'} to ${nowFlag ? 'flagged' : 'not flagged'}`,
+          id: fixtureId(`alert:p:${panel.id}:${row.ticker}`), kind: 'panel', source: panel.name, sourceId: panel.id, tone: nowFlag ? 'ok' : 'warn', at: daysAgoIso(0, 7 + i),
+          title:
+            nowFlag === wasFlag
+              ? `${row.ticker} is still ${state(nowFlag)}, but agreement moved`
+              : `${row.ticker} went from ${state(wasFlag)} to ${state(nowFlag)}`,
           why: `${row.votes} of ${n} models now flag it, against ${row.previousVotes} yesterday.`, rule,
           before: { count: row.previousVotes, of: n }, after: { count: row.votes, of: n },
         })
       })
-      items.push({ id: fixtureId(`alert:cond:${panel.id}`), kind: 'panel', source: panel.name, sourceId: panel.id, tone: 'ok', at: '2026-10-14T07:40:00.000Z', title: 'Conditions changed: high volatility', why: 'The volatility flag has been on for 6 days. Two of the four models have a good record on days like this.', rule: 'Alert: conditions change, held 2 days', before: null, after: null })
-      items.push({ id: fixtureId(`alert:split:${panel.id}`), kind: 'panel', source: panel.name, sourceId: panel.id, tone: 'warn', at: '2026-10-12T08:10:00.000Z', title: 'INTC: the models split', why: 'Agreement dropped from 4 of 4 to 2 of 4 in one day.', rule: 'Alert: models split', before: { count: 4, of: 4 }, after: { count: 2, of: 4 } })
+      items.push({ id: fixtureId(`alert:cond:${panel.id}`), kind: 'panel', source: panel.name, sourceId: panel.id, tone: 'ok', at: daysAgoIso(0, 7), title: 'Conditions changed: high volatility', why: 'The volatility flag has been on for 6 days. Two of the four models have a good record on days like this.', rule: 'Alert: conditions change, held 2 days', before: null, after: null })
+      items.push({ id: fixtureId(`alert:split:${panel.id}`), kind: 'panel', source: panel.name, sourceId: panel.id, tone: 'warn', at: daysAgoIso(2, 8), title: 'INTC: the models split', why: 'Agreement dropped from 4 of 4 to 2 of 4 in one day.', rule: 'Alert: models split', before: { count: 4, of: 4 }, after: { count: 2, of: 4 } })
     }
     items.push(
-      { id: fixtureId('alert:t:quiet'), kind: 'thesis', source: 'Quiet stocks hold up', sourceId: specId('quiet'), tone: 'warn', at: '2026-10-13T18:05:00.000Z', title: 'Checks that hold: 4 to 3 of 5', why: 'The last three months were weaker than the full period. This is the third test in a row that has moved the same way.', rule: 'Monthly re-test · alert on weaker evidence', before: { count: 4, of: 5 }, after: { count: 3, of: 5 } },
-      { id: fixtureId('alert:t:winners'), kind: 'thesis', source: 'Winners keep winning', sourceId: specId('winners'), tone: 'ok', at: '2026-10-13T09:20:00.000Z', title: 'Re-test finished on 27 variants', why: `${this.world.results.get(resultsId('set-1'))?.variants.filter((v) => v.excessPoints > 0).length ?? 0} of 27 stayed ahead after costs.`, rule: 'Monthly re-test', before: null, after: null },
-      { id: fixtureId('alert:t:cheap'), kind: 'thesis', source: 'Cheap and sound recovers', sourceId: specId('cheap'), tone: 'bad', at: '2026-10-11T10:00:00.000Z', title: 'Still behind the benchmark after costs', why: 'Nothing has changed since the last test. We stopped re-testing it until you edit the idea.', rule: 'Monthly re-test', before: null, after: null }
+      { id: fixtureId('alert:t:quiet'), kind: 'thesis', source: 'Quiet stocks hold up', sourceId: specId('quiet'), tone: 'warn', at: daysAgoIso(1, 18), title: 'Checks that hold: 4 to 3 of 5', why: 'The last three months were weaker than the full period. This is the third test in a row that has moved the same way.', rule: 'Monthly re-test · alert on weaker evidence', before: { count: 4, of: 5 }, after: { count: 3, of: 5 } },
+      { id: fixtureId('alert:t:winners'), kind: 'thesis', source: 'Winners keep winning', sourceId: specId('winners'), tone: 'ok', at: daysAgoIso(1, 9), title: 'Re-test finished on 27 variants', why: `${this.world.results.get(resultsId('set-1'))?.variants.filter((v) => v.excessPoints > 0).length ?? 0} of 27 stayed ahead after costs.`, rule: 'Monthly re-test', before: null, after: null },
+      { id: fixtureId('alert:t:cheap'), kind: 'thesis', source: 'Cheap and sound recovers', sourceId: specId('cheap'), tone: 'bad', at: daysAgoIso(3, 10), title: 'Still behind the benchmark after costs', why: 'Nothing has changed since the last test. We stopped re-testing it until you edit the idea.', rule: 'Monthly re-test', before: null, after: null }
     )
     items.sort((a, b) => b.at.localeCompare(a.at))
     return items.map((item, i) => ({ ...item, read: this.world.read.has(item.id) || i >= 5 }))

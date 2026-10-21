@@ -14,6 +14,7 @@ Inventário método/caminho, ficheiro, autenticação e origem:
 | Conta/research/artefactos/billing | `/v1/me`, `/v1/accounts/*`, `/v1/research/*`, `/v1/artifacts/*`, `/v1/billing/*` | `/api/platform/*` ou SSR, sessão obrigatória |
 | Watchlist | `/v1/watchlist` | BFF, GET/POST/DELETE, owner da sessão |
 | AI e feedback | `/v1/ai-research/*` | BFF, sessão; geração também `research.ai` |
+| Model Lab (alvo, ainda não servido) | `/v1/model-lab/*` | BFF `/api/model-lab/*`, sessão; equipa com `research.internal.run`. Ver `docs/api/model-lab.md` |
 | Analytics | `/v1/analytics/events` | BFF, só sessão; telemetria anónima fica no frontoffice |
 
 As rotas antigas dão 404, incluindo cron/CSV/direcionais/synthetic legado.

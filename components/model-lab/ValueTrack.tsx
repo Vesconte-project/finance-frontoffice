@@ -123,13 +123,27 @@ export default function ValueTrack({ label, spec, values, onChange, format, tick
         aria-label={`${label}, value line`}
         aria-describedby={helpId}
         onPointerDown={full ? undefined : onRailPointerDown}
-        className="relative h-16 cursor-pointer touch-none select-none"
+        className="relative h-[5.5rem] cursor-pointer touch-none select-none"
       >
         <div
           aria-hidden="true"
           className="absolute top-[22px] h-1 rounded-sm bg-[var(--line-strong)]"
           style={{ left: RAIL_PAD, right: RAIL_PAD }}
         />
+        {spec.presets.map((preset) => {
+          const active = values.includes(preset)
+          return (
+            <span
+              key={`dot-${preset}`}
+              aria-hidden="true"
+              className={cn(
+                'absolute top-[17px] block h-3 w-3 -translate-x-1/2 rounded-full border',
+                active ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-[var(--line-strong)] bg-[var(--surface)]'
+              )}
+              style={{ left: leftOf(spec, preset) }}
+            />
+          )
+        })}
         {spec.presets.map((preset) => {
           const active = values.includes(preset)
           return (
@@ -140,19 +154,10 @@ export default function ValueTrack({ label, spec, values, onChange, format, tick
               aria-label={format(preset)}
               onPointerDown={(event) => event.stopPropagation()}
               onClick={() => place(preset)}
-              className="absolute top-0 flex h-11 w-8 -translate-x-1/2 cursor-pointer flex-col items-center justify-start focus-visible:outline-2 focus-visible:outline-[var(--accent)] [@media(pointer:coarse)]:w-11"
+              className="absolute top-[38px] flex h-11 w-7 -translate-x-1/2 cursor-pointer items-start justify-center focus-visible:outline-2 focus-visible:outline-[var(--accent)] [@media(pointer:coarse)]:w-11"
               style={{ left: leftOf(spec, preset) }}
             >
-              <span
-                aria-hidden="true"
-                className={cn(
-                  'mt-[17px] block h-3 w-3 rounded-full border',
-                  active
-                    ? 'border-[var(--accent)] bg-[var(--accent)]'
-                    : 'border-[var(--line-strong)] bg-[var(--surface)]'
-                )}
-              />
-              <span aria-hidden="true" className="mt-4 text-caption text-content-muted">
+              <span aria-hidden="true" className={cn('text-caption', active ? 'font-medium text-content-primary' : 'text-content-muted')}>
                 {(tickLabel ?? format)(preset)}
               </span>
             </button>

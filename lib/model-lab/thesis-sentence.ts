@@ -58,9 +58,9 @@ export type DoesKey = (typeof DOES_OPTIONS)[number]['key']
 export type BenchmarkKey = (typeof BENCHMARK_OPTIONS)[number]['key']
 export type ConditionKey = (typeof CONDITION_OPTIONS)[number]['key']
 
-export const HORIZON_TRACK: TrackSpec = { min: 1, max: 120, step: 1, scale: 'sqrt', presets: [5, 10, 20] }
-export const GAIN_TRACK: TrackSpec = { min: 1, max: 50, step: 0.5, scale: 'sqrt', presets: [3, 5, 10] }
-export const LOSS_TRACK: TrackSpec = { min: 1, max: 50, step: 0.5, scale: 'sqrt', presets: [2, 3, 5] }
+export const HORIZON_TRACK: TrackSpec = { min: 1, max: 120, step: 1, scale: 'log', presets: [5, 10, 20] }
+export const GAIN_TRACK: TrackSpec = { min: 1, max: 50, step: 0.5, scale: 'log', presets: [3, 5, 10] }
+export const LOSS_TRACK: TrackSpec = { min: 1, max: 50, step: 0.5, scale: 'log', presets: [2, 3, 5] }
 
 export type ThesisSentence = Readonly<{
   who: WhoKey
