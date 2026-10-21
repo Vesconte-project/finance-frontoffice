@@ -347,6 +347,31 @@ export function parseTest(value: unknown): AtlasTest | null {
   return result.reportDays.value === null && result.sameDayT.value === null ? null : result
 }
 
+// ------------------------------------------------------------------ a selection's cohesion
+
+/** How tightly a set of companies moves together: the mean pairwise correlation of the ones on the map. */
+export type AtlasSetCohesion = { count: number; found: number; meanCorrelation: number | null; available: boolean; reason: string | null }
+
+export function parseSetCohesion(value: unknown): AtlasSetCohesion | null {
+  const raw = record(value)
+  if (!raw) return null
+  const meanCorrelation = correlation(raw.meanCorrelation)
+  return {
+    count: whole(raw.count) ?? 0,
+    found: whole(raw.found) ?? 0,
+    meanCorrelation,
+    available: raw.available !== false && meanCorrelation !== null,
+    reason: text(raw.reason),
+  }
+}
+
+/** The local route for a selection's cohesion; null when the set is empty or too large to send. */
+export function atlasSetPath(symbols: Iterable<string>, asOf: string): string | null {
+  const members = [...new Set([...symbols].map((symbol) => symbol.trim().toUpperCase()))].filter((symbol) => SET_SYMBOL.test(symbol)).sort()
+  if (members.length < 2 || members.length > ATLAS_SET_LIMIT) return null
+  return `/api/atlas/set?${new URLSearchParams({ members: members.join(','), asOf }).toString()}`
+}
+
 // ------------------------------------------------------------------ sets
 
 /** The most companies one set may name, as the backend accepts. */

@@ -110,6 +110,8 @@ export type AtlasOverview = {
   bundles: AtlasBundle[]
   marketCorrelation: AtlasMarketCorrelation | null
   lens: AtlasLens
+  /** Signed in only: the week's largest reach over every company, for "Moves with others". */
+  reachMax: number | null
 }
 
 export type AtlasCompanyRef = { symbol: string; name: string | null }
@@ -482,6 +484,7 @@ export function parseOverview(value: unknown): AtlasOverview | null {
       .filter((bundle): bundle is AtlasBundle => bundle !== null && bundle.tieCount > 0),
     marketCorrelation: parseMarketCorrelation(raw.marketCorrelation),
     lens: parseLens(raw.lens),
+    reachMax: positive(raw.reachMax),
   }
 }
 

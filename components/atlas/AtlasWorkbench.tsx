@@ -13,8 +13,10 @@ export type DockKind = 'compare' | 'test'
 export type DockSource = { key: string; label: string; count: number }
 
 /** The selection tray (pro-spec §7): what is selected, and what can be done with it. */
-export function AtlasTray({ summary, groupCount, onCompare, onTest, onSave, onNote, onClear }: {
+export function AtlasTray({ summary, meanCorrelation, groupCount, onCompare, onTest, onSave, onNote, onClear }: {
   summary: SelectionSummary
+  /** Mean pairwise correlation of the selection, when the backend could measure it. */
+  meanCorrelation: number | null
   groupCount: number
   onCompare: () => void
   onTest: () => void
@@ -39,6 +41,7 @@ export function AtlasTray({ summary, groupCount, onCompare, onTest, onSave, onNo
       <span className={styles.traySummary}>
         <span><b>{summary.companies}</b> {summary.companies === 1 ? 'company' : 'companies'}</span>
         <span><b>{summary.regions}</b> {summary.regions === 1 ? 'region' : 'regions'}</span>
+        {meanCorrelation !== null ? <span>avg corr <b>{meanCorrelation.toFixed(2)}</b></span> : null}
         {cap ? <span><b>{cap}</b></span> : null}
       </span>
       <span className={styles.trayActions}>

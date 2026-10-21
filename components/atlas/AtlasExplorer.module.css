@@ -29,6 +29,15 @@
   display: none;
 }
 
+/* The theme, the search and movement: in the row on a wide screen, behind "More" on a phone. */
+.foldGroup {
+  display: contents;
+}
+
+.moreToggle {
+  display: none;
+}
+
 .pill:focus-visible,
 .frame:focus-visible,
 .zoom button:focus-visible,
@@ -728,7 +737,20 @@ button.loading {
   }
 
   .pill {
+    min-height: 2.75rem;
     padding: 0 0.8rem;
+  }
+
+  .moreToggle {
+    display: inline-flex;
+  }
+
+  .chrome[data-more='false'] .foldable {
+    display: none;
+  }
+
+  .search input {
+    min-height: 2.65rem;
   }
 
   .search {
@@ -739,8 +761,26 @@ button.loading {
     width: 100%;
   }
 
+  /* above the tool rail, at the left: the zoom stack keeps the right edge */
   .landmarks {
-    display: none;
+    right: auto;
+    bottom: 11.5rem;
+    left: 0.6rem;
+    width: auto;
+    max-width: min(14rem, calc(100% - 5rem));
+  }
+
+  .landmarks:has(.landmarksHead[aria-expanded='true']) {
+    width: min(14rem, calc(100% - 5rem));
+  }
+
+  .landmarksHead {
+    min-height: 2.75rem;
+  }
+
+  .zoom button {
+    width: 2.75rem;
+    height: 2.75rem;
   }
 
   .zoom {
@@ -758,7 +798,13 @@ button.loading {
     max-height: 58%;
   }
 
+  /* full width under the time bar, so it wraps to two short lines at most */
   .snapshot {
-    max-width: calc(100% - 4.5rem);
+    right: 0.6rem;
+    bottom: 0.5rem;
+    left: 0.6rem;
+    max-width: none;
+    gap: 0 0.6rem;
+    font-size: 0.72rem;
   }
 }

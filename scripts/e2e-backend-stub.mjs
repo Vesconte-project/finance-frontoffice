@@ -23,6 +23,7 @@ import {
   compareFixture,
   influenceFixture,
   movementFixture,
+  setFixture,
   proCompanyFixture,
   proOverviewFixture,
   testFixture,
@@ -210,6 +211,7 @@ function handleAtlas(request, response, url, path, { tier, signedIn, refuse, pro
     const body = themeFixture(decodeURIComponent(theme[1]), tier)
     return body ? send(response, 200, body) : send(response, 404, { detail: 'No such theme' })
   }
+  if (path === '/v1/atlas/set') return proOnly() && send(response, 200, setFixture(url.searchParams.get('members')))
   if (path === '/v1/atlas/influence') return proOnly() && send(response, 200, influenceFixture())
   if (path === '/v1/atlas/compare') {
     if (!proOnly()) return

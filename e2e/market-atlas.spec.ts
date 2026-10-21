@@ -23,7 +23,14 @@ for (const width of [375, 1440]) {
     await expect(map).toBeVisible({ timeout: 30_000 })
     await expect(page.getByText('You are seeing a sketch')).toBeVisible()
     await expect(page.getByRole('link', { name: 'Create a free account' }).first()).toHaveAttribute('href', /^\/sign-up\?redirect_url=/)
-    // Movement and the time bar are Pro: locked, and a press says what unlocks them.
+    // Movement and the time bar are Pro: locked, and a press says what unlocks them. On a phone movement folds behind "More".
+    if (width < 640) {
+      const more = page.getByRole('button', { name: 'Find and movement' })
+      await expect(more).toHaveAttribute('aria-expanded', 'false')
+      await expect(page.getByRole('combobox', { name: 'Find a company or region on the map' })).toBeHidden()
+      await more.click()
+      await expect(more).toHaveAttribute('aria-expanded', 'true')
+    }
     await page.getByRole('button', { name: 'Movement over the last 6 months: Pro' }).click()
     const upsell = page.getByRole('dialog', { name: 'A year of history' })
     await expect(upsell).toBeVisible()

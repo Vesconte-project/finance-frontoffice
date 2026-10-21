@@ -4,6 +4,14 @@ import { expect, test, type Page } from '@playwright/test'
 // 53 synthetic weeks in which FXA2 and FXA3 moved from Fixture Beta to Fixture Alpha.
 test.skip(process.env.E2E_STUB_TIER !== 'pro', 'needs the fixture backend answering as a Pro reader')
 
+// Under `next dev` the first request to a dynamic route can answer the 404 page while it compiles;
+// ask each one until it answers as itself, so the specs test the atlas and not the compiler.
+test.beforeAll(async ({ request }) => {
+  for (const path of ['/api/atlas/companies/FXA1', '/api/atlas/zones/fx-zone-alpha', '/api/atlas/themes/fx-ai']) {
+    await expect.poll(async () => (await request.get(path)).headers()['content-type'] ?? '', { timeout: 60_000 }).toContain('application/json')
+  }
+})
+
 const weeksAgo = (k: number) => new Date(Date.parse('2026-10-16T00:00:00Z') - k * 7 * 86400000).toISOString().slice(0, 10)
 
 function watchConsole(page: Page): string[] {
@@ -194,6 +202,8 @@ test('the tool rail compares, tests a link, selects, saves a group and keeps a n
   await page.mouse.up()
   const tray = page.getByRole('region', { name: 'Selection' })
   await expect(tray).toContainText(/\d+ companies/, { timeout: 30_000 })
+  // the selection's cohesion comes from the backend once the selection settles
+  await expect(tray).toContainText(/avg corr 0\.\d\d/, { timeout: 30_000 })
   await tray.getByRole('button', { name: 'Save group' }).click()
   await tray.getByRole('textbox', { name: 'Group name' }).fill('Fixture picks')
   await tray.getByRole('button', { name: 'Save', exact: true }).click()
@@ -220,6 +230,9 @@ test('the tool rail compares, tests a link, selects, saves a group and keeps a n
 
 test('the local routes pass Pro answers on and validate what they forward', async ({ request }) => {
   expect((await request.get('/api/atlas/weeks')).status()).toBe(200)
+  expect((await request.get('/api/atlas/set?members=FXA1,FXA2&asOf=2026-10-16')).status()).toBe(200)
+  expect((await request.get(`/api/atlas/set?members=${Array.from({ length: 201 }, (_, i) => `S${i}`).join(',')}`)).status()).toBe(400)
+  expect((await request.get('/api/atlas/set?members=../x')).status()).toBe(400)
   expect((await request.get(`/api/atlas?level=1&asOf=${weeksAgo(3)}`)).status()).toBe(200)
   expect((await request.get('/api/atlas?level=1&asOf=2026-13-40')).status()).toBe(400)
   expect((await request.get('/api/atlas?level=1&lens=market')).status()).toBe(400)

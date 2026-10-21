@@ -176,6 +176,14 @@ export function compareFixture(a, b) {
   return { asOf: AS_OF, access: PRO, a: setLabel(a), b: setLabel(b), series, year: 0.31, firstHalf: 0.22, secondHalf: 0.39, last3Months: 0.44 }
 }
 
+/** A selection's cohesion: a fixed synthetic mean for two or more fixture companies. */
+export function setFixture(members) {
+  const symbols = (members ?? '').split(',').filter(Boolean)
+  const found = symbols.filter((symbol) => MEMBERS.some((member) => member.symbol === symbol))
+  if (found.length < 2) return { asOf: AS_OF, access: PRO, count: symbols.length, found: found.length, meanCorrelation: null, available: false, reason: 'too_few' }
+  return { asOf: AS_OF, access: PRO, count: symbols.length, found: found.length, meanCorrelation: round(0.18 + 0.01 * found.length), available: true, reason: null }
+}
+
 export function testFixture(body) {
   const from = typeof body?.from === 'string' ? body.from : null
   const to = typeof body?.to === 'string' ? body.to : null

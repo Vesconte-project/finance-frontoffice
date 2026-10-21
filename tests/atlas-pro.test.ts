@@ -38,6 +38,8 @@ import {
 } from '../lib/atlas-pro'
 import {
   atlasSetKey,
+  atlasSetPath,
+  parseSetCohesion,
   parseCompare,
   parseInfluence,
   parseMovement,
@@ -186,6 +188,17 @@ test('every reader reads its own output again unchanged, as the local routes pas
   again(parseCompare, { a: { label: 'A', count: 2 }, b: { label: 'B', count: 3 }, series: [{ asOf: '2026-10-16', value: 0.2 }], year: 0.3 })
   again(parseTest, { reportDays: 31, reportDaysPass: true, sameDayT: -3, direction: 'down', permutationP: 0.01, from: { label: 'A', count: 6 }, to: { count: 1 } })
   again(parseTest, { available: false, reason: 'needs_two_years' })
+})
+
+test('a selection\'s cohesion is read defensively and only asked for two to 200 companies', () => {
+  assert.deepEqual(parseSetCohesion({ count: 3, found: 2, meanCorrelation: 0.21, available: true }), { count: 3, found: 2, meanCorrelation: 0.21, available: true, reason: null })
+  assert.equal(parseSetCohesion({ count: 3, found: 1, meanCorrelation: null, available: false, reason: 'too_few' })?.available, false)
+  assert.equal(parseSetCohesion({ meanCorrelation: 4 })?.available, false)
+  assert.equal(atlasSetPath(['fxb1', 'FXA1', 'FXA1'], '2026-10-16'), '/api/atlas/set?members=FXA1%2CFXB1&asOf=2026-10-16')
+  assert.equal(atlasSetPath(['FXA1'], '2026-10-16'), null)
+  assert.equal(atlasSetPath(Array.from({ length: 201 }, (_, i) => `S${i}`), '2026-10-16'), null)
+  assert.equal(parseOverview({ asOf: '2026-10-16', access: proAccess, zones: [], nodes: [], reachMax: 0.9 })?.reachMax, 0.9)
+  assert.equal(parseOverview({ asOf: '2026-10-16', access: proAccess, zones: [], nodes: [], reachMax: -1 })?.reachMax, null)
 })
 
 test('set keys follow the backend syntax and refuse anything else', () => {
