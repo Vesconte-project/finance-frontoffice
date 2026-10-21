@@ -19,6 +19,7 @@ export const WHO_OPTIONS = [
 ] as const satisfies readonly Option<string>[]
 
 export const UNIVERSE_OPTIONS = [
+  { key: 'picks', text: 'my stocks', hint: 'The ones you choose.' },
   { key: 'watchlist', text: 'my whole watchlist', hint: 'Every stock you follow.' },
   { key: 'covered', text: 'everything we cover', hint: 'Every stock with a ready data snapshot.' },
   { key: 'us', text: 'US stocks', hint: 'Stocks we cover in the US region.' },

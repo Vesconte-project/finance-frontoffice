@@ -22,6 +22,8 @@ type ValueTrackProps = {
   values: readonly number[]
   onChange: (values: number[]) => void
   format: (value: number) => string
+  /** A shorter form for the labels under the line. Defaults to `format`. */
+  tickLabel?: (value: number) => string
   /** Whether several points can be placed on the line. */
   multi: boolean
   unit: string
@@ -36,7 +38,7 @@ function leftOf(spec: TrackSpec, value: number): string {
  * drag a point to move it, use the arrow keys on a focused point, or type an exact
  * number. Every action has a keyboard route; the line is never the only way in.
  */
-export default function ValueTrack({ label, spec, values, onChange, format, multi, unit }: ValueTrackProps) {
+export default function ValueTrack({ label, spec, values, onChange, format, tickLabel, multi, unit }: ValueTrackProps) {
   const railRef = useRef<HTMLDivElement>(null)
   const dragging = useRef<number | null>(null)
   const [typed, setTyped] = useState('')
@@ -138,7 +140,7 @@ export default function ValueTrack({ label, spec, values, onChange, format, mult
               aria-label={format(preset)}
               onPointerDown={(event) => event.stopPropagation()}
               onClick={() => place(preset)}
-              className="absolute top-0 flex h-11 w-11 -translate-x-1/2 cursor-pointer flex-col items-center justify-start focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
+              className="absolute top-0 flex h-11 w-8 -translate-x-1/2 cursor-pointer flex-col items-center justify-start focus-visible:outline-2 focus-visible:outline-[var(--accent)] [@media(pointer:coarse)]:w-11"
               style={{ left: leftOf(spec, preset) }}
             >
               <span
@@ -151,7 +153,7 @@ export default function ValueTrack({ label, spec, values, onChange, format, mult
                 )}
               />
               <span aria-hidden="true" className="mt-4 text-caption text-content-muted">
-                {format(preset)}
+                {(tickLabel ?? format)(preset)}
               </span>
             </button>
           )
@@ -159,25 +161,29 @@ export default function ValueTrack({ label, spec, values, onChange, format, mult
         {values.map((value, index) => (
           <div
             key={`thumb-${index}`}
-            role="slider"
-            tabIndex={0}
-            aria-label={multi && values.length > 1 ? `${label}, point ${index + 1} of ${values.length}` : label}
-            aria-valuemin={spec.min}
-            aria-valuemax={spec.max}
-            aria-valuenow={value}
-            aria-valuetext={format(value)}
-            onPointerDown={(event) => onThumbPointerDown(event, value)}
-            onPointerMove={onThumbPointerMove}
-            onPointerUp={onThumbPointerUp}
-            onPointerCancel={onThumbPointerUp}
-            onKeyDown={(event) => onThumbKeyDown(event, value)}
-            className="group absolute top-0 flex h-11 w-11 -translate-x-1/2 cursor-grab touch-none items-center justify-center focus-visible:outline-none active:cursor-grabbing"
+            className="pointer-events-none absolute top-0 flex h-11 w-11 -translate-x-1/2 items-center justify-center"
             style={{ left: leftOf(spec, value) }}
           >
-            <span
-              aria-hidden="true"
-              className="block h-5 w-5 rounded-full border-2 border-[var(--surface)] bg-[var(--accent)] shadow-[0_0_0_1px_var(--accent)] group-focus-visible:shadow-[0_0_0_3px_var(--surface),0_0_0_5px_var(--accent)]"
-            />
+            <div
+              role="slider"
+              tabIndex={0}
+              aria-label={multi && values.length > 1 ? `${label}, point ${index + 1} of ${values.length}` : label}
+              aria-valuemin={spec.min}
+              aria-valuemax={spec.max}
+              aria-valuenow={value}
+              aria-valuetext={format(value)}
+              onPointerDown={(event) => onThumbPointerDown(event, value)}
+              onPointerMove={onThumbPointerMove}
+              onPointerUp={onThumbPointerUp}
+              onPointerCancel={onThumbPointerUp}
+              onKeyDown={(event) => onThumbKeyDown(event, value)}
+              className="group pointer-events-auto flex h-7 w-7 cursor-grab touch-none items-center justify-center focus-visible:outline-none active:cursor-grabbing [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
+            >
+              <span
+                aria-hidden="true"
+                className="block h-5 w-5 rounded-full border-2 border-[var(--surface)] bg-[var(--accent)] shadow-[0_0_0_1px_var(--accent)] group-focus-visible:shadow-[0_0_0_3px_var(--surface),0_0_0_5px_var(--accent)]"
+              />
+            </div>
           </div>
         ))}
       </div>

@@ -51,12 +51,13 @@ type TrackConfig = Readonly<{
   title: string
   unit: string
   format: (value: number) => string
+  tick: (value: number) => string
 }>
 
 const TRACKS: Readonly<Record<TrackSlot, TrackConfig>> = {
-  horizons: { spec: HORIZON_TRACK, title: 'Over how long', unit: 'days', format: horizonText },
-  gains: { spec: GAIN_TRACK, title: 'Target gain', unit: '%', format: (v) => percentText(v, '+') },
-  losses: { spec: LOSS_TRACK, title: 'Stop-loss', unit: '%', format: (v) => percentText(v, '−') },
+  horizons: { spec: HORIZON_TRACK, title: 'Over how long', unit: 'days', format: horizonText, tick: (v) => `${v}d` },
+  gains: { spec: GAIN_TRACK, title: 'Target gain', unit: '%', format: (v) => percentText(v, '+'), tick: (v) => percentText(v, '+') },
+  losses: { spec: LOSS_TRACK, title: 'Stop-loss', unit: '%', format: (v) => percentText(v, '−'), tick: (v) => percentText(v, '−') },
 }
 
 function isTrackSlot(slot: Slot): slot is TrackSlot {
@@ -226,6 +227,7 @@ export default function ThesisComposer() {
                 values={sentence[trackOpen]}
                 onChange={(values) => setValues(trackOpen, values)}
                 format={TRACKS[trackOpen].format}
+                tickLabel={TRACKS[trackOpen].tick}
                 multi={several[trackOpen] || sentence[trackOpen].length > 1}
                 unit={TRACKS[trackOpen].unit}
               />
