@@ -11,7 +11,7 @@ Inventário método/caminho, ficheiro, autenticação e origem:
 | Calendário | `/v1/calendar` | SSR, público, mesmos tetos nos três níveis |
 | Rankings reduzidos | `/v1/screener/rankings` | SSR, top 10: posição/ticker/score |
 | Ranking completo | `/v1/rankings` | BFF, sessão + `rankings.read` |
-| Mapa | `/v1/network*`, `/v1/relationships/*` | SSR/BFF, sessão obrigatória |
+| Atlas semanal | `/v1/atlas`, `/v1/atlas/zones/{id}`, `/v1/atlas/companies/{ticker}` (`/weeks` e `/movement` só Pro) | SSR e BFF `/api/atlas*`, sessão opcional: sem sessão a projeção da regra 7 do backend; com sessão o mapa real da semana mais recente |
 | Conta/research/artefactos/billing | `/v1/me`, `/v1/accounts/*`, `/v1/research/*`, `/v1/artifacts/*`, `/v1/billing/*` | `/api/platform/*` ou SSR, sessão obrigatória |
 | Watchlist | `/v1/watchlist` | BFF, GET/POST/DELETE, owner da sessão |
 | AI e feedback | `/v1/ai-research/*` | BFF, sessão; geração também `research.ai` |

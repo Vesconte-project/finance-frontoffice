@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import gsap from 'gsap'
 import { useScrollRuntime } from '@/components/motion/ScrollRuntime'
 import { scrollMotionTokens } from '@/components/motion/scroll-tokens'
+import { parseCompanyPanel } from '@/lib/atlas-model'
 import { PICK_READING_CONTENT, PICK_READING_KEYS } from '@/lib/picks-content'
 import { provideUniverse, startFlight } from '@/lib/universe-flight'
 
@@ -546,18 +547,11 @@ export default function HeroConstellation() {
       }
       focusConnections.append(label, list)
     }
-    const readConnections = (ticker: string, payload: { focus?: unknown; edges?: Array<{ source?: unknown; target?: unknown; strength?: unknown }> }) => {
-      if (String(payload.focus ?? '').trim().toUpperCase() !== ticker) return []
-      const strengths = new Map<string, number>()
-      for (const edge of payload.edges ?? []) {
-        const source = String(edge.source ?? '').trim().toUpperCase()
-        const target = String(edge.target ?? '').trim().toUpperCase()
-        const symbol = source === ticker ? target : target === ticker ? source : ''
-        const strength = Number(edge.strength)
-        if (!symbol || !Number.isFinite(strength)) continue
-        strengths.set(symbol, Math.max(strengths.get(symbol) ?? -Infinity, strength))
-      }
-      return [...strengths.entries()].sort((left, right) => right[1] - left[1]).slice(0, 3).map(([symbol]) => symbol)
+    // The company's strongest ties on the weekly atlas, strongest first.
+    const readConnections = (ticker: string, payload: unknown) => {
+      const panel = parseCompanyPanel(payload)
+      if (!panel || panel.symbol !== ticker) return []
+      return panel.neighbours.filter((neighbour) => neighbour.symbol !== ticker).slice(0, 3).map((neighbour) => neighbour.symbol)
     }
     const updateCard = () => {
       fL.style.opacity = focus.t > 0.001 ? '1' : '0'
@@ -594,9 +588,12 @@ export default function HeroConstellation() {
       if (neighborhoodCache.has(ticker)) return
       const controller = new AbortController()
       focusAbort = controller
-      void fetch('/api/network/atlas/neighborhoods/' + encodeURIComponent(ticker), { signal: controller.signal })
+      void fetch('/api/atlas/companies/' + encodeURIComponent(ticker), { signal: controller.signal })
         .then(async (response) => {
-          if (response.status === 401 || response.status === 403) {
+          const payload: unknown = response.ok ? await response.json() : null
+          // Signed out the atlas sends a company's zone but never its ties, or refuses it outright.
+          const signedOut = response.status === 401 || response.status === 403 || parseCompanyPanel(payload)?.access.tier === 'signedOut'
+          if (signedOut) {
             if (generation === focusGeneration) {
               const container=$('hc-fcC')
               container.replaceChildren()
@@ -607,7 +604,7 @@ export default function HeroConstellation() {
             }
             return null
           }
-          return response.ok ? response.json() as Promise<{ focus?: unknown; edges?: Array<{ source?: unknown; target?: unknown; strength?: unknown }> }> : null
+          return payload
         })
         .then((payload) => {
           if (!payload || controller.signal.aborted) return

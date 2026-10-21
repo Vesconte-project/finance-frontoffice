@@ -102,6 +102,8 @@ type StockOverviewClientProps = {
   sectorWeights: OverviewSectorWeight[]
   nextEarnings: OverviewEarnings | null
   relatedAssets: Promise<OverviewRelatedAsset[]>
+  /** `signedOut` when the atlas keeps a company's ties for signed-in readers. */
+  relationshipsGate?: 'signedOut' | null
   /** Company events for the expanded chart; resolves to null when unavailable. */
   chartEvents: Promise<EventMarker[] | null>
   scorecard: Scorecard
@@ -247,9 +249,11 @@ function movesCopy(strength: number | null): string | null {
 function RelatedAssetsContent({
   ticker,
   relatedAssetsPromise,
+  gate,
 }: {
   ticker: string
   relatedAssetsPromise: Promise<OverviewRelatedAsset[]>
+  gate: 'signedOut' | null
 }) {
   const relatedAssets = use(relatedAssetsPromise)
   const rankedAssets = [...relatedAssets]
@@ -295,6 +299,10 @@ function RelatedAssetsContent({
             )
           })}
         </ul>
+      ) : gate === 'signedOut' ? (
+        <p className={styles.chartStatus}>
+          <Link href={`/sign-up?redirect_url=/stocks/${ticker}`}>Create a free account</Link> to see the companies that move most closely with {ticker}.
+        </p>
       ) : (
         <BeingBuilt size="inline">The companies that move most closely with {ticker} are being added.</BeingBuilt>
       )}
@@ -591,6 +599,7 @@ export default function StockOverviewClient({
   sectorWeights,
   nextEarnings,
   relatedAssets: relatedAssetsPromise,
+  relationshipsGate = null,
   chartEvents,
   scorecard,
   revenue: revenuePromise,
@@ -886,7 +895,7 @@ export default function StockOverviewClient({
 
   const relationshipsSection = (
     <Suspense fallback={<ResearchChapter id="relationships" label="Relationships" band><p className={styles.chartStatus} role="status">Loading related companies.</p></ResearchChapter>}>
-      <RelatedAssetsContent ticker={ticker} relatedAssetsPromise={relatedAssetsPromise} />
+      <RelatedAssetsContent ticker={ticker} relatedAssetsPromise={relatedAssetsPromise} gate={relationshipsGate} />
     </Suspense>
   )
 
