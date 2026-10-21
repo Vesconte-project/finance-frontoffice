@@ -33,7 +33,8 @@ const MEMBERS = ZONES.flatMap((zone, zoneIndex) => Array.from({ length: 6 }, (_,
     y: zone.y + Math.sin(angle) * 0.9,
     level: i === 0 ? 0 : i === 1 ? 1 : i < 4 ? 2 : 3,
     importance: 0.9 - i * 0.12,
-    marketCap: 900_000_000_000 - i * 60_000_000_000,
+    // from a $3T leader down to a $2B small cap, so balls span the prototype's sizes
+    marketCap: [3e12, 400e9, 120e9, 40e9, 9e9, 2e9][i],
   }
 }))
 
@@ -96,8 +97,15 @@ export function atlasOverviewFixture({ signedIn, level, bbox }) {
     })),
     nodes: nodes.map((member) => ({
       symbol: member.symbol, name: member.name, zoneId: member.zoneId, x: member.x, y: member.y, level: member.level,
-      loner: false, importance: member.importance, marketCap: member.marketCap, well: 0.5,
+      // The last member of each zone moves on its own; the first is its deepest well.
+      loner: member.symbol.endsWith('6'), importance: member.importance, reach: Number((member.importance * 0.8).toFixed(4)),
+      marketCap: member.marketCap, well: Number(Math.max(0, 1 - (Number(member.symbol.slice(-1)) - 1) * 0.18).toFixed(3)),
+      // the second member of each zone bridges into the next zone, so it wears a ring
+      memberships: member.symbol.endsWith('2')
+        ? [{ zoneId: member.zoneId, share: 0.6 }, { zoneId: ZONES[(ZONES.findIndex((zone) => zone.zoneId === member.zoneId) + 1) % 3].zoneId, share: 0.4 }]
+        : [{ zoneId: member.zoneId, share: 1 }],
     })),
+    marketCorrelation: { value: 0.0712, comparedWithLastYear: null, weeksCompared: 1 },
     skeleton: ZONES.flatMap((zone) => {
       const members = MEMBERS.filter((member) => member.zoneId === zone.zoneId && shown.has(member.symbol))
       return members.slice(1).map((member) => ({ source: members[0].symbol, target: member.symbol, zoneId: zone.zoneId, correlation: 0.5 }))

@@ -6,16 +6,7 @@
   background: var(--bg);
 }
 
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
-}
-
-.pill,
-.locked {
+.pill {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -27,18 +18,26 @@
   color: var(--text);
   font: inherit;
   font-size: 0.88rem;
+  cursor: pointer;
 }
 
-.pill {
-  cursor: pointer;
+.pill[aria-expanded='true'] {
+  border-color: var(--accent);
+}
+
+.narrow {
+  display: none;
 }
 
 .pill:focus-visible,
 .frame:focus-visible,
 .zoom button:focus-visible,
 .close:focus-visible,
-.browse button:focus-visible,
-.lockNote:focus-visible {
+.sheet button:focus-visible,
+.landmarks button:focus-visible,
+.keyClose:focus-visible,
+.lockNote:focus-visible,
+.toggle input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -92,14 +91,11 @@ a.lockNote:hover {
 
 .frame {
   position: relative;
-  height: clamp(28rem, calc(100svh - 13rem), 58rem);
+  height: clamp(30rem, calc(100svh - 11rem), 60rem);
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
   border-radius: 10px;
-  background:
-    linear-gradient(color-mix(in srgb, var(--line) 35%, transparent) 1px, transparent 1px) 0 0 / 48px 48px,
-    linear-gradient(90deg, color-mix(in srgb, var(--line) 35%, transparent) 1px, transparent 1px) 0 0 / 48px 48px,
-    var(--bg);
+  background: var(--bg);
 }
 
 .canvas {
@@ -114,29 +110,360 @@ a.lockNote:hover {
   cursor: grabbing;
 }
 
-.tip,
+/* Controls float over the map, like the prototype's chrome. */
+.chrome {
+  position: absolute;
+  z-index: 20;
+  top: 0.8rem;
+  right: 0.8rem;
+  left: 0.8rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+  pointer-events: none;
+}
+
+.chrome > * {
+  pointer-events: auto;
+}
+
+.chromeLeft,
+.chromeRight {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.chromeRight {
+  min-height: 2.5rem;
+  padding: 0 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.search {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  padding: 0 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-muted);
+}
+
+.search:focus-within {
+  border-color: var(--accent);
+}
+
+.search input {
+  width: 11.5rem;
+  min-height: 2.4rem;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+.results {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  width: min(24rem, calc(100vw - 2rem));
+  margin: 0;
+  padding: 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  list-style: none;
+  box-shadow: 0 10px 30px rgba(11, 18, 32, 0.16);
+}
+
+.results li {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.results li[aria-selected='true'],
+.results li:hover {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+
+.results b {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.results span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.results small {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.results li.none {
+  display: block;
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.results li.none:hover {
+  background: transparent;
+}
+
+/* Browse, How to read and Layers open over the map, on their own line under the controls. */
+.break {
+  flex-basis: 100%;
+  height: 0;
+}
+
+.sheet {
+  width: min(23rem, 100%);
+  max-height: min(34rem, 58svh);
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 1rem 1.1rem 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 10px 30px rgba(11, 18, 32, 0.12);
+}
+
+.sheet h2 {
+  margin: 0 0 0.7rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.sheet h3 {
+  margin: 0.4rem 0 0.5rem;
+}
+
+.helpList {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.helpList dt {
+  margin-top: 0.5rem;
+  font-weight: 600;
+}
+
+.helpList dd {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.2rem;
+  font-size: 0.86rem;
+}
+
+.toggle input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--accent);
+}
+
+.browse {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.zoneButton,
+.companies button {
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.zoneButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.25rem;
+  padding: 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.zoneButton i {
+  flex: none;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 40% 60% 50% 45%;
+  opacity: 0.6;
+}
+
+.zoneButton span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 400;
+}
+
+.companies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.6rem;
+  margin: 0;
+  padding: 0 0 0 1.15rem;
+  list-style: none;
+}
+
+.companies button {
+  min-height: 2rem;
+  padding: 0;
+  color: var(--text-muted);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.8rem;
+}
+
+.companies button:hover {
+  color: var(--accent);
+}
+
+/* Most connected: a quiet list in the corner, closed until asked for. */
+.landmarks {
+  position: absolute;
+  z-index: 8;
+  bottom: 3.4rem;
+  left: 0.8rem;
+  display: grid;
+  width: 14rem;
+  gap: 0.05rem;
+  padding: 0.3rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.landmarks:has(.landmarksHead[aria-expanded='false']) {
+  width: auto;
+}
+
+.landmarks button {
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.landmarksHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  min-height: 2rem;
+  padding: 0 0.5rem;
+  color: var(--text-muted);
+}
+
+.landmark {
+  display: grid;
+  grid-template-columns: 0.45rem 4.4rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 1.85rem;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.landmark:hover {
+  background: var(--surface);
+}
+
+.landmark i {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--text);
+}
+
+.landmark b {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.landmark small {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tip {
+  position: absolute;
+  z-index: 30;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  color: var(--text);
+  font-size: 0.74rem;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 12px));
+}
+
+.tip b {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-weight: 500;
+}
+
 .loading {
   position: absolute;
+  z-index: 21;
+  top: 4.1rem;
   left: 50%;
-  transform: translateX(-50%);
   padding: 0.3rem 0.7rem;
+  transform: translateX(-50%);
   border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
   border-radius: 999px;
   background: var(--surface);
-  color: var(--text);
+  color: var(--text-muted);
   font: inherit;
   font-size: 0.78rem;
   white-space: nowrap;
   pointer-events: none;
-}
-
-.tip {
-  bottom: 2.6rem;
-}
-
-.loading {
-  top: 0.8rem;
-  color: var(--text-muted);
 }
 
 button.loading {
@@ -146,6 +473,7 @@ button.loading {
 
 .zoom {
   position: absolute;
+  z-index: 8;
   top: 50%;
   right: 0.8rem;
   display: grid;
@@ -169,27 +497,114 @@ button.loading {
   cursor: pointer;
 }
 
-.level {
+.zoom button:last-child {
   border-bottom: 0;
+}
+
+.level {
+  height: 1.8rem;
   color: var(--text-muted);
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   cursor: default;
 }
 
-.footnote {
+.zoom button.text {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.zoom button.text[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+}
+
+.zoom button.text[aria-label='Names on the map'][aria-pressed='false'] {
+  text-decoration: line-through;
+}
+
+.key {
   position: absolute;
-  bottom: 0.7rem;
-  left: 0.9rem;
+  z-index: 24;
+  right: 4rem;
+  bottom: 3.2rem;
+  width: min(21rem, calc(100% - 1.6rem));
+  max-height: calc(100% - 7rem);
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 0.75rem 0.9rem 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  color: var(--text);
+  font-size: 0.78rem;
+}
+
+.key ul {
+  display: grid;
+  gap: 0.45rem;
   margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.key li {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  gap: 0.65rem;
+  line-height: 1.3;
+}
+
+.keyHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.keyClose {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.keyFoot {
+  margin: 0.6rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.snapshot {
+  position: absolute;
+  z-index: 8;
+  bottom: 0.8rem;
+  left: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  max-width: min(36rem, calc(100% - 5rem));
+  margin: 0;
+  gap: 0.2rem 0.8rem;
   color: var(--text-muted);
   font-size: 0.76rem;
   pointer-events: none;
 }
 
+.snapshot b {
+  color: var(--text);
+  font-weight: 500;
+}
+
 .panel {
   position: relative;
-  max-height: clamp(28rem, calc(100svh - 13rem), 58rem);
+  max-height: clamp(30rem, calc(100svh - 11rem), 60rem);
   overflow-y: auto;
   padding: 1.1rem 1.2rem 1.3rem;
   border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
@@ -289,79 +704,61 @@ button.loading {
 
 .cta + .more {
   display: flex;
-  margin-left: 0;
   margin-top: 0.6rem;
+  margin-left: 0;
 }
 
-.browse {
-  padding: 1rem 1.2rem;
-  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
-  border-radius: 10px;
-  background: var(--surface);
-}
-
-.browse > ul {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-  gap: 0.9rem 1.4rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.zoneButton,
-.companies button {
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  cursor: pointer;
-  text-align: left;
-}
-
-.zoneButton {
-  min-height: 2.25rem;
-  padding: 0;
-  font-weight: 600;
-}
-
-.zoneButton span {
-  margin-left: 0.35rem;
-  color: var(--text-muted);
-  font-size: 0.78rem;
-  font-weight: 400;
-}
-
-.companies {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem 0.6rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.companies button {
-  min-height: 2rem;
-  padding: 0;
-  color: var(--text-muted);
-  font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 0.8rem;
-}
-
-.companies button:hover {
-  color: var(--accent);
+@media (max-width: 52rem) {
+  .chromeRight .eyebrow {
+    display: none;
+  }
 }
 
 @media (max-width: 40rem) {
   .frame {
-    height: clamp(24rem, 68svh, 40rem);
+    height: clamp(26rem, 72svh, 42rem);
+  }
+
+  .wide {
+    display: none;
+  }
+
+  .narrow {
+    display: inline;
+  }
+
+  .pill {
+    padding: 0 0.8rem;
+  }
+
+  .search {
+    flex: 1 1 100%;
+  }
+
+  .search input {
+    width: 100%;
+  }
+
+  .landmarks {
+    display: none;
   }
 
   .zoom {
     top: auto;
     right: 0.6rem;
-    bottom: 2.4rem;
+    bottom: 3.2rem;
     transform: none;
+  }
+
+  .key {
+    right: 0.8rem;
+    left: 0.8rem;
+    bottom: 3.2rem;
+    width: auto;
+    max-height: 58%;
+  }
+
+  .snapshot {
+    max-width: calc(100% - 4.5rem);
   }
 }
