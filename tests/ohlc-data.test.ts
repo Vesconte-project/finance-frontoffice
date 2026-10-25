@@ -13,8 +13,8 @@ function readRepoFile(relativePath: string): string {
 }
 
 const fixtureRows = [
-  { date: '2026-07-08', open: 210.12, high: 214.3, low: 209.5, close: 213.91, volume: 52100000 },
-  { date: '2026-07-09', open: 214, high: 216.2, low: 212.7, close: 215.43821, volume: 49800000 },
+  { price_basis: 'adjusted' as const, date: '2026-07-08', open: 210.12, high: 214.3, low: 209.5, close: 213.91, volume: 52100000 },
+  { price_basis: 'adjusted' as const, date: '2026-07-09', open: 214, high: 216.2, low: 212.7, close: 215.43821, volume: 49800000 },
 ]
 
 test('priced ticker OHLC rows load as a typed loaded result', () => {
@@ -53,11 +53,11 @@ test('malformed OHLC payload is not normalized into cacheable empty rows', () =>
   )
 
   assert.throws(
-    () => normalizeOhlcPayload([{ date: '2026-07-09', close: null }], { coverageExpectsPrices: false }),
+    () => normalizeOhlcPayload([{ price_basis: 'adjusted' as const, date: '2026-07-09', close: null }], { coverageExpectsPrices: false }),
     (error) => {
       assert.ok(error instanceof OhlcPayloadError)
       assert.equal(error.result.status, 'malformed')
-      assert.equal(error.result.reason, 'ohlc_payload_has_no_valid_rows')
+      assert.equal(error.result.reason, 'adjusted_price_input_invalid')
       return true
     }
   )
@@ -74,7 +74,7 @@ test('coverage without prices can represent true empty OHLC data', () => {
 test('stock OHLC uses request-local memoization rather than a shared viewer cache', () => {
   const source = readRepoFile('lib/finance.ts')
 
-  assert.equal(STOCK_OHLC_CACHE_KEY, 'stock-ohlc-cache-v2')
+  assert.equal(STOCK_OHLC_CACHE_KEY, 'stock-ohlc-cache-adjusted-v3')
   assert.match(source, /cache } from .react./)
   assert.doesNotMatch(source, /unstable_cache/)
   assert.doesNotMatch(source, /stock-ohlc-cache-v1/)

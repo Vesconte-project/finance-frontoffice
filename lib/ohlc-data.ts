@@ -1,6 +1,7 @@
-export const STOCK_OHLC_CACHE_KEY = 'stock-ohlc-cache-v2'
+export const STOCK_OHLC_CACHE_KEY = 'stock-ohlc-cache-adjusted-v3'
 
 export type OhlcPoint = {
+  price_basis: 'adjusted'
   date: string
   open: number | null
   high: number | null
@@ -43,6 +44,7 @@ function numberOrNull(value: unknown): number | null {
 function normalizeOhlcRow(value: unknown): OhlcPoint | null {
   if (!value || typeof value !== 'object') return null
   const row = value as {
+    price_basis?: unknown
     date?: unknown
     open?: unknown
     high?: unknown
@@ -52,9 +54,10 @@ function normalizeOhlcRow(value: unknown): OhlcPoint | null {
   }
   const date = typeof row.date === 'string' && row.date.trim() ? row.date : null
   const close = numberOrNull(row.close)
-  if (!date || close === null) return null
+  if (!date || close === null || close <= 0 || row.price_basis !== 'adjusted') return null
   return {
     date,
+    price_basis: 'adjusted',
     open: numberOrNull(row.open),
     high: numberOrNull(row.high),
     low: numberOrNull(row.low),
@@ -88,6 +91,10 @@ export function normalizeOhlcPayload(
     .map((row) => normalizeOhlcRow(row))
     .filter((row): row is OhlcPoint => row !== null)
 
+  if (rows.length !== payload.length) {
+    throw new OhlcPayloadError({status: 'malformed', rows: [], reason: 'adjusted_price_input_invalid',
+      cacheKey: STOCK_OHLC_CACHE_KEY, backendStatus, rawRows: payload.length, validRows: 0})
+  }
   if (rows.length > 0) {
     return {
       status: 'loaded',

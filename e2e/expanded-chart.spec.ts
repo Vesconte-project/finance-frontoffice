@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { tickerTechnicalSeriesFixture } from './fixtures/ticker-page.mjs'
 
 /*
  * The expanded ticker chart (PRD-74) on the synthetic fixture ticker QAS. Its
@@ -131,7 +132,7 @@ test('expanded chart reads, draws and explains what is missing', async ({ page }
   // Intraday ranges and indicators answer with an explicit error and draw nothing.
   await dialog.getByRole('button', { name: '1D, intraday prices missing' }).click()
   await expect(dialog.getByRole('alert')).toContainText('Intraday prices are missing for 1D.')
-  await dialog.getByRole('button', { name: 'RSI, not available yet' }).click()
+  await dialog.getByRole('button', { name: 'RSI', exact: true }).click()
   await expect(dialog.getByRole('alert')).toContainText('RSI is not available yet.')
   await expect(dialog.getByRole('alert')).not.toContainText('ENG-152')
 
@@ -203,4 +204,42 @@ test('dark theme and reduced motion keep the chart painted', async ({ page }) =>
   if (capture) await page.screenshot({ path: 'test-results/expanded-chart-dark.png' })
   await dialog.getByRole('button', { name: 'Close' }).click()
   await expect(dialog).toBeHidden()
+})
+
+
+test('adjusted chart draws only ready same-basis overlays', async ({ page }) => {
+  const payload = tickerTechnicalSeriesFixture(TICKER, { ready: true })
+  await page.route('**/api/stocks/QAS/technical-series', route => route.fulfill({ json: payload }))
+  const loaded = page.waitForResponse(response => response.url().includes('/api/stocks/QAS/technical-series') && response.status() === 200)
+  const { errors, watchConsole } = trackErrors(page)
+  const { dialog } = await openExpandedChart(page, watchConsole)
+  await loaded
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+  await expect(dialog).toContainText('ajustado a splits e dividendos')
+  const rsi = dialog.getByRole('button', { name: 'RSI', exact: true })
+  const canvas = dialog.locator('[data-expanded-chart-canvas] canvas')
+  await expect.poll(() => paintedPixels(page)).toBeGreaterThan(500)
+  const before = await canvas.evaluate((element: HTMLCanvasElement) => element.toDataURL())
+  await rsi.click()
+  await expect(rsi).toHaveAttribute('aria-pressed', 'true')
+  await expect.poll(() => canvas.evaluate((element: HTMLCanvasElement) => element.toDataURL())).not.toBe(before)
+  if (capture) await page.screenshot({ path: 'test-results/expanded-chart-ready-rsi.png' })
+  await rsi.click()
+  await expect(rsi).toHaveAttribute('aria-pressed', 'false')
+  expect(errors).toEqual([])
+})
+
+test('ready overlays with an incorrect price basis stay unavailable', async ({ page }) => {
+  const payload = tickerTechnicalSeriesFixture(TICKER, { ready: true })
+  const mismatched = { ...payload, series: payload.series.map(series => ({ ...series, price_basis: 'raw' })) }
+  await page.route('**/api/stocks/QAS/technical-series', route => route.fulfill({ json: mismatched }))
+  const loaded = page.waitForResponse(response => response.url().includes('/api/stocks/QAS/technical-series') && response.status() === 200)
+  const { errors, watchConsole } = trackErrors(page)
+  const { dialog } = await openExpandedChart(page, watchConsole)
+  await loaded
+  const rsi = dialog.getByRole('button', { name: 'RSI', exact: true })
+  await rsi.click()
+  await expect(rsi).toHaveAttribute('aria-pressed', 'false')
+  await expect(dialog.getByRole('alert')).toContainText('RSI is not available yet.')
+  expect(errors).toEqual([])
 })

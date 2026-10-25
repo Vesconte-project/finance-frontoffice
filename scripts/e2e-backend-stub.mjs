@@ -42,6 +42,7 @@ import {
   tickerHistoryFixture,
   tickerMarketMetricsFixture,
   tickerOhlcFixture,
+  tickerTechnicalSeriesFixture,
   tickerSummaryFixture,
 } from '../e2e/fixtures/ticker-page.mjs'
 
@@ -166,11 +167,12 @@ const server = createServer((request, response) => {
     return
   }
 
-  const tickerRoute = path.match(/^\/v1\/tickers\/([^/]+)\/(summary|ohlc|history)$/)
+  const tickerRoute = path.match(/^\/v1\/tickers\/([^/]+)\/(summary|ohlc|history|technical-series)$/)
   if (tickerRoute && isFixtureTicker(decodeURIComponent(tickerRoute[1]))) {
     const ticker = decodeURIComponent(tickerRoute[1])
     const periodDays = url.searchParams.get('period_days')
     if (tickerRoute[2] === 'summary') send(response, 200, tickerSummaryFixture(ticker))
+    else if (tickerRoute[2] === 'technical-series') send(response, 200, tickerTechnicalSeriesFixture(ticker))
     else if (tickerRoute[2] === 'ohlc') send(response, 200, tickerOhlcFixture(ticker, periodDays))
     else send(response, 200, tickerHistoryFixture(ticker, periodDays))
     return

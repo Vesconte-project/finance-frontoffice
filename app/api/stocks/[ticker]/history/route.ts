@@ -32,7 +32,7 @@ export async function GET(
 
     return NextResponse.json(points, {
       headers: {
-        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=900',
+        'Cache-Control': 'private, no-store',
       },
     })
   } catch {

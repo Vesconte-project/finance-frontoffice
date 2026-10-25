@@ -301,7 +301,7 @@ export default async function TickerPage({
     ohlcCacheKey: ohlcResult.cacheKey,
     scorecardReadiness: scorecard.readiness,
   })
-  const historicalData = ohlcData.map((point) => ({ date: point.date, close: point.close }))
+  const historicalData = ohlcData.map((point) => ({ date: point.date, close: point.close, price_basis: point.price_basis }))
   const historicalChartState =
     ohlcResult.status === 'loaded'
       ? 'loaded'
