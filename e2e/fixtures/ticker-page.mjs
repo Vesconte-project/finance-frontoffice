@@ -39,7 +39,7 @@ function closes(ticker, periodDays) {
     if (weekday === 0 || weekday === 6) continue
     const wave = Math.sin(offset / 9) * 0.04 + Math.sin(offset / 37) * 0.07
     const drift = offset / days * 0.18
-    rows.push({ date: new Date(time).toISOString().slice(0, 10), close: Number((price * (1 + wave - drift)).toFixed(2)) })
+    rows.push({ price_basis: 'adjusted', date: new Date(time).toISOString().slice(0, 10), close: Number((price * (1 + wave - drift)).toFixed(2)) })
   }
   rows[rows.length - 1].close = price
   return rows
@@ -51,6 +51,7 @@ export function tickerHistoryFixture(ticker, periodDays) {
 
 export function tickerOhlcFixture(ticker, periodDays) {
   return closes(ticker, periodDays).map(({ date, close }) => ({
+    price_basis: 'adjusted',
     date,
     open: close,
     high: Number((close * 1.01).toFixed(2)),
@@ -58,6 +59,34 @@ export function tickerOhlcFixture(ticker, periodDays) {
     close,
     volume: 1_000_000,
   }))
+}
+
+/** Invented technical values; stale is the default browser-fixture state. */
+export function tickerTechnicalSeriesFixture(ticker, { ready = false } = {}) {
+  const rows = closes(ticker, 3650)
+  const definitions = [
+    ['sma_20', 'moving_average', { kind: 'simple', window: 20 }, 'price'],
+    ['sma_50', 'moving_average', { kind: 'simple', window: 50 }, 'price'],
+    ['sma_200', 'moving_average', { kind: 'simple', window: 200 }, 'price'],
+    ['bb_20_2', 'band', { window: 20, stdDev: 2 }, 'price'],
+    ['rsi_14', 'oscillator', { period: 14 }, 'index_0_100'],
+  ]
+  return {
+    ticker,
+    asOf: rows.at(-1).date,
+    methodologyVersion: 'feature_store.technical_features_daily/adjusted-v2',
+    price_basis: 'adjusted',
+    availability_status: ready ? 'ready' : 'stale',
+    unavailable_reason: ready ? null : 'adjusted_price_history_stale',
+    series: definitions.map(([key, family, params, unit]) => ({
+      key, family, params, unit, price_basis: 'adjusted',
+      points: rows.map(({ date, close }, index) => ({
+        date,
+        value: ready ? (unit === 'price' ? close * 0.99 : 45 + index % 10) : null,
+        ...(key === 'bb_20_2' ? { upper: ready ? close * 1.02 : null, lower: ready ? close * 0.96 : null } : {}),
+      })),
+    })),
+  }
 }
 
 export function tickerSummaryFixture(ticker) {
@@ -68,6 +97,7 @@ export function tickerSummaryFixture(ticker) {
     ticker,
     asset: { assetType: 'equity', currency: 'USD', exchange: fixture.exchange ?? 'NASDAQ', exchangeMic: null, region: 'US' },
     quote: {
+      price_basis: 'raw',
       ticker,
       name: fixture.name,
       price: fixture.price,

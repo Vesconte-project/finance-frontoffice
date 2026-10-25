@@ -46,3 +46,13 @@ Not yet proved: browser rendering, pointer/keyboard layout at the RSI pane,
 responsive/reduced-motion checks, authenticated proxy/real runtime integration,
 and Francisco's visual review. No production data, credentials, merge or deploy
 was used for this draft. CI owns the remaining complete frontend regression suite.
+
+
+CI fixture correction: the synthetic browser backend now explicitly publishes
+adjusted history/OHLC and raw quote metadata. It also models a stale technical
+response, rather than returning an unmodelled HTTP error for the new consumer.
+A fast contract test feeds all three fixture tickers through the production
+normalizers before browser QA. Missing/raw basis continues to be refused.
+Browser regressions cover ready adjusted RSI rendering and a ready response whose
+series basis is wrong; the existing stale/unavailable flow stays covered. The
+ready-RSI state is captured when the owned harness enables PLAYWRIGHT_CAPTURE.
