@@ -17,6 +17,7 @@ import {
   type ChartView,
   type ExpandedChartRange,
 } from '@/lib/expanded-chart'
+import { ADJUSTED_PRICE_LABEL, readyAdjustedOverlays, type TechnicalChartPayload } from '@/lib/price-basis'
 import type { OhlcPoint } from '@/lib/ohlc-data'
 import { cn } from '@/lib/utils'
 import ExpandedPriceCanvas, {
@@ -79,11 +80,23 @@ export type ExpandedChartDialogProps = {
  *
  * Full-screen price chart for one ticker: candles or a close line, volume,
  * zoom and pan, a reading crosshair, and two reader-drawn tools. Indicator
- * series and intraday ranges are listed but answer with an explicit error
- * until the backend supplies them (ENG-152, ENG-153); nothing is approximated.
+ * series draw only when the backend marks their adjusted basis ready.
+ * Missing/stale indicators and intraday ranges remain explicit unavailable states.
  */
 export default function ExpandedChartDialog({ open, onClose, ticker, currency, bars, kind, onKindChange, returnFocusRef, events = [] }: ExpandedChartDialogProps) {
   const ranges = useMemo(() => availableRanges(bars), [bars])
+  const [overlayPayload, setOverlayPayload] = useState<TechnicalChartPayload | null>(null)
+  const [selectedIndicators, setSelectedIndicators] = useState<string[]>([])
+  useEffect(() => {
+    const controller = new AbortController()
+    void fetch(`/api/stocks/${encodeURIComponent(ticker)}/technical-series`, { cache: 'no-store', signal: controller.signal })
+      .then(async response => response.ok ? response.json() as Promise<TechnicalChartPayload> : null)
+      .then(payload => { if (!controller.signal.aborted) setOverlayPayload(payload) })
+      .catch(() => { if (!controller.signal.aborted) setOverlayPayload(null) })
+    return () => controller.abort()
+  }, [ticker])
+  const readyOverlays = readyAdjustedOverlays(overlayPayload, bars)
+
   const [range, setRange] = useState<ExpandedChartRange>('1Y')
   const [viewRequest, setViewRequest] = useState(() => ({ view: viewForRange(bars, '1Y'), id: 0 }))
   const [measure, setMeasure] = useState<ChartMeasure | null>(null)
@@ -182,14 +195,18 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
     setPending(null)
     setDrawTool(null)
     setStatus(null)
-  }, [drawTool, pending])
+  }, [drawTool, pending, setDrawings, setAnnouncement, setPending, setDrawTool, setStatus])
 
-  const showIndicatorError = (indicator: (typeof INDICATORS)[number]) => {
-    setStatus({
-      kind: 'error',
-      title: indicator.missing,
-      body: `${indicator.about} The data for this indicator does not reach the site yet, so nothing is drawn rather than an approximation.`,
-    })
+  const toggleIndicator = (indicator: (typeof INDICATORS)[number]) => {
+    const keys = indicator.key === 'moving-averages' ? ['sma_20', 'sma_50', 'sma_200']
+      : indicator.key === 'bollinger' ? ['bb_20_2'] : ['rsi_14']
+    if (!keys.every(key => readyOverlays.some(series => series.key === key))) {
+      setStatus({ kind: 'error', title: indicator.missing,
+        body: 'Os indicadores estão indisponíveis ou aguardam recálculo. Nada é desenhado enquanto a base não estiver validada.' })
+      return
+    }
+    setSelectedIndicators(current => keys.every(key => current.includes(key)) ? current.filter(key => !keys.includes(key)) : [...new Set([...current, ...keys])])
+    setStatus(null)
   }
 
   const showIntradayError = (label: string) => {
@@ -246,7 +263,7 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
       <div className={styles.layout}>
         <header className={styles.header}>
           <h2 id="expanded-chart-title" className={styles.title}>{ticker}</h2>
-          <p className={styles.subtitle}>Price chart · daily · {currency}</p>
+          <p className={styles.subtitle}>Price chart · daily · {currency} · {ADJUSTED_PRICE_LABEL}</p>
         </header>
 
         {measurement ? (
@@ -268,6 +285,8 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
           <ExpandedPriceCanvas
             focusRef={canvasFocusRef}
             bars={bars}
+            overlayPayload={overlayPayload}
+            selectedIndicators={selectedIndicators}
             currency={currency}
             kind={kind}
             showVolume={showVolume}
@@ -410,10 +429,10 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
             <button
               key={indicator.key}
               type="button"
-              className={cn(styles.tool, styles.unavailableTool)}
-              aria-label={`${indicator.label}, not available yet`}
+              className={styles.tool}
+              aria-pressed={(indicator.key === 'moving-averages' ? ['sma_20'] : indicator.key === 'bollinger' ? ['bb_20_2'] : ['rsi_14']).some(key => selectedIndicators.includes(key) && readyOverlays.some(series => series.key === key))}
               data-indicator={indicator.key}
-              onClick={() => showIndicatorError(indicator)}
+              onClick={() => toggleIndicator(indicator)}
             >
               <span className={styles.toolDot} aria-hidden="true" />{indicator.label}
             </button>

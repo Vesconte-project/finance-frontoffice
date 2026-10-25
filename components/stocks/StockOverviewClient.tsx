@@ -6,6 +6,7 @@ import { Suspense, use, useMemo, useRef, useState } from 'react'
 import { ChartCandlestick, ChartLine, Maximize2 } from 'lucide-react'
 import SegmentedControl from '@/components/ui/SegmentedControl'
 import TemporalLineChart, { type TemporalLinePoint } from '@/components/charts/TemporalLineChart'
+import { ADJUSTED_PRICE_LABEL, ADJUSTED_CHART_VERSION, normalizeAdjustedHistory } from '@/lib/price-basis'
 import type { OhlcPoint, PricePoint } from '@/lib/finance'
 import type { Scorecard } from '@/lib/scorecard-types'
 import {
@@ -564,18 +565,12 @@ export default function StockOverviewClient({
     setHeroTimeframe(timeframe)
     setFullHistoryState('loading')
 
-    void fetch(`/api/stocks/${encodeURIComponent(ticker)}/history`)
+    void fetch(`/api/stocks/${encodeURIComponent(ticker)}/history?price_basis=${ADJUSTED_CHART_VERSION}`, { cache: 'no-store' })
       .then(async (response) => {
         const payload: unknown = await response.json().catch(() => null)
         if (!response.ok || !Array.isArray(payload)) throw new Error('Full history request failed.')
 
-        const points = payload.filter((point): point is PricePoint => {
-          if (!point || typeof point !== 'object') return false
-          const candidate = point as Partial<PricePoint>
-          return typeof candidate.date === 'string'
-            && typeof candidate.close === 'number'
-            && Number.isFinite(candidate.close)
-        })
+        const points = normalizeAdjustedHistory(payload)
         if (points.length < 2) throw new Error('Full history is empty.')
 
         setFullHistoricalData(points)
@@ -751,6 +746,7 @@ export default function StockOverviewClient({
         <div className={styles.heroBody}>
           <div className={styles.heroChartColumn}>
             <h2 className="sr-only">Quick Read</h2>
+            <p className={styles.chartStatus}>{ADJUSTED_PRICE_LABEL}</p>
             <div className={styles.heroChartWrap} aria-busy={fullHistoryState === 'loading'}>
               <HeroPriceChart
                 points={heroPoints}

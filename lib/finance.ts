@@ -1,4 +1,5 @@
 import { cache } from 'react'
+import { normalizeAdjustedHistory } from './price-basis'
 import { BackendDataError, fetchBackendJson } from './backend'
 import {
   normalizeOhlcPayload,
@@ -20,6 +21,7 @@ export interface StockQuote {
 }
 
 export interface PricePoint {
+  price_basis: 'adjusted'
   date: string
   close: number
 }
@@ -507,15 +509,7 @@ async function loadHistorical(tickerRaw: string, periodDays: number): Promise<Pr
     `/v1/tickers/${encodeURIComponent(ticker)}/history?period_days=${safeDays}`,
     { context: 'backend.tickers.history' }
   )
-  if (!Array.isArray(payload)) return []
-  return payload
-    .map((row) => {
-      const date = typeof row?.date === 'string' ? row.date : null
-      const close = typeof row?.close === 'number' ? row.close : null
-      if (!date || close === null || !Number.isFinite(close)) return null
-      return { date, close: Number(close.toFixed(2)) }
-    })
-    .filter((point): point is PricePoint => point !== null)
+  return normalizeAdjustedHistory(payload)
 }
 
 async function loadOhlc(
