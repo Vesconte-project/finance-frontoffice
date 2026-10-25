@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { BackendDataError } from '@/lib/backend'
 import { DISPLAY_CURRENCY_PARAM } from '@/lib/display-currency'
 import { resolveDisplayCurrency } from '@/lib/display-currency-server'
 import { BACKEND_HISTORY_PERIOD_DAYS_MAX, getConvertedCloses, getHistoricalData } from '@/lib/finance'
@@ -53,7 +54,11 @@ export async function GET(
         'Cache-Control': 'private, no-store',
       },
     })
-  } catch {
+  } catch (error) {
+    if (error instanceof BackendDataError && error.status === 409) {
+      return NextResponse.json({ availability_status: 'unavailable', unavailable_reason: 'adjusted_price_input_invalid', price_basis: 'adjusted' },
+        { status: 409, headers: { 'Cache-Control': 'private, no-store' } })
+    }
     return NextResponse.json(
       { error: 'Historical price data is temporarily unavailable.' },
       { status: 502 },

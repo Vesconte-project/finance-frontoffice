@@ -651,7 +651,7 @@ export default function StockOverviewClient({
     setConvertedRequested(true)
     if (convertedSeries || convertedState === 'loading') return
     setConvertedState('loading')
-    void fetch(`/api/stocks/${encodeURIComponent(ticker)}/history?${DISPLAY_CURRENCY_PARAM}=${encodeURIComponent(displayCurrency)}`)
+    void fetch(`/api/stocks/${encodeURIComponent(ticker)}/history?${DISPLAY_CURRENCY_PARAM}=${encodeURIComponent(displayCurrency)}&price_basis=${ADJUSTED_CHART_VERSION}`, { cache: 'no-store' })
       .then(async (response) => {
         const points = parseConvertedCloses(await response.json().catch(() => null))
         if (!response.ok || points.length < 2) throw new Error('Converted history unavailable.')

@@ -96,7 +96,7 @@ export function tickerTechnicalSeriesFixture(ticker, { ready = false } = {}) {
     series: definitions.map(([key, family, params, unit]) => ({
       key, family, params, unit, price_basis: 'adjusted',
       points: rows.map(({ date, close }, index) => ({
-        date,
+        date, price_basis: 'adjusted',
         value: ready ? (unit === 'price' ? close * 0.99 : 45 + index % 10) : null,
         ...(key === 'bb_20_2' ? { upper: ready ? close * 1.02 : null, lower: ready ? close * 0.96 : null } : {}),
       })),

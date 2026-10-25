@@ -42,6 +42,7 @@ export async function GET(
     return NextResponse.json({
       ticker,
       currency,
+      price_basis: 'raw',
       // The latest price as reported stays the page's price; this is the backend's conversion of it.
       converted: conversion ? { value: conversion.value, currency: conversion.currency, rateDate: conversion.rateDate } : null,
       unconvertedReason: conversion ? null : entry?.unconvertedReason ?? 'no_rate',

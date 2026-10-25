@@ -33,6 +33,7 @@ export type MoneyConversion = {
 }
 
 export type MoneyEntry = {
+  price_basis: 'adjusted' | 'raw' | null
   /** The original amount in its ISO currency (a provider minor unit is already scaled into its parent). */
   value: number | null
   currency: string | null
@@ -108,6 +109,7 @@ export function parseMoneyEntry(raw: unknown): MoneyEntry | null {
       }
     : null
   return {
+    price_basis: record.price_basis === 'adjusted' || record.price_basis === 'raw' ? record.price_basis : null,
     value: finite(record.value),
     currency: text(record.currency),
     sourceCurrency: text(record.sourceCurrency),
@@ -126,7 +128,10 @@ export function moneyEntryOf(holder: unknown, field: string): MoneyEntry | null 
 
 /** The backend's conversion of `holder[field]` into `target`, or null when there is none. */
 export function convertedValueOf(holder: unknown, field: string, target: string): MoneyConversion | null {
-  const conversion = moneyEntryOf(holder, field)?.converted
+  const entry = moneyEntryOf(holder, field)
+  const basis = asRecord(holder)?.price_basis
+  if ((basis !== 'adjusted' && basis !== 'raw') || entry?.price_basis !== basis) return null
+  const conversion = entry.converted
   return conversion && conversion.currency === target ? conversion : null
 }
 
@@ -233,6 +238,7 @@ export function parseTrackedListings(raw: unknown): TrackedListings | null {
 
 /** A day's close as reported, and the backend's conversion of it (null when it has none). */
 export type ConvertedClose = {
+  price_basis: 'adjusted'
   date: string
   close: number
   converted: number | null
@@ -251,8 +257,9 @@ export function convertedClosesFromHistory(rows: unknown, target: string): Conve
     const date = text(row?.date)?.slice(0, 10) ?? null
     const close = finite(row?.close)
     if (!row || !date || close === null || close <= 0) continue
+    if (row.price_basis !== 'adjusted') throw new Error('adjusted_price_input_invalid')
     const conversion = convertedValueOf(row, 'close', target)
-    byDate.set(date, { date, close, converted: conversion && conversion.value > 0 ? conversion.value : null })
+    byDate.set(date, { date, close, price_basis: 'adjusted', converted: conversion && conversion.value > 0 ? conversion.value : null })
   }
   return [...byDate.values()].sort((left, right) => left.date.localeCompare(right.date))
 }
@@ -265,8 +272,8 @@ export function parseConvertedCloses(raw: unknown): ConvertedClose[] {
     const date = text(row?.date)
     const close = finite(row?.close)
     const converted = row?.converted === null ? null : finite(row?.converted)
-    if (!row || !date || close === null || (row.converted !== null && converted === null)) return []
-    return [{ date, close, converted }]
+    if (!row || !date || close === null || close <= 0 || row.price_basis !== 'adjusted' || (row.converted !== null && (converted === null || converted <= 0))) return []
+    return [{ date, close, converted, price_basis: 'adjusted' as const }]
   })
 }
 

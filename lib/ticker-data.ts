@@ -3,6 +3,7 @@ import { BackendDataError, fetchBackendJson } from './backend'
 import { fetchInDisplayCurrency } from './display-currency-server'
 
 export type MarketQuoteSnapshot = {
+  price_basis?: 'raw'
   ticker: string
   name: string | null
   price: number | null
@@ -13,6 +14,7 @@ export type MarketQuoteSnapshot = {
 }
 
 export type MarketStatsSnapshot = {
+  price_basis?: 'raw'
   ticker: string
   lastPrice: number | null
   asOfDate: string | null

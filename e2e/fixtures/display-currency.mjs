@@ -68,7 +68,7 @@ function entry(value, currency, day, target) {
 function add(holder, field, currency, day, target) {
   if (!holder || typeof holder[field] !== 'number') return
   holder.money ??= {}
-  holder.money[field] = entry(holder[field], currency, day, target)
+  holder.money[field] = { ...entry(holder[field], currency, day, target), price_basis: holder.price_basis ?? null }
 }
 
 /** The payload of a fixture ticker read, annotated for `target` as the backend would. */

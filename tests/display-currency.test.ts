@@ -16,6 +16,7 @@ import {
 } from '../lib/display-currency'
 
 const converted = (value: number, original: number, currency = 'KRW') => ({
+  price_basis: 'adjusted',
   value: original,
   currency,
   sourceCurrency: currency,
@@ -25,6 +26,7 @@ const converted = (value: number, original: number, currency = 'KRW') => ({
 })
 
 const unconverted = (original: number, reason: string, currency: string | null = 'KRW') => ({
+  price_basis: 'adjusted',
   value: original,
   currency,
   sourceCurrency: currency,
@@ -34,7 +36,7 @@ const unconverted = (original: number, reason: string, currency: string | null =
 })
 
 test('a conversion is read only into the currency asked for, never from a malformed block', () => {
-  const holder = { price: 75000, money: { price: converted(54.12, 75000), change: unconverted(500, 'no_rate') } }
+  const holder = { price_basis: 'raw', price: 75000, money: { price: {...converted(54.12, 75000), price_basis:'raw'}, change: unconverted(500, 'no_rate') } }
   assert.deepEqual(convertedValueOf(holder, 'price', 'USD'), { value: 54.12, currency: 'USD', rate: 54.12 / 75000, rateDate: '2026-10-12' })
   assert.equal(convertedValueOf(holder, 'price', 'EUR'), null)
   assert.equal(convertedValueOf(holder, 'change', 'USD'), null)
@@ -48,31 +50,31 @@ test('a conversion is read only into the currency asked for, never from a malfor
 
 test('history keeps every reported close and the backend conversion of each day, null when it has none', () => {
   const rows = [
-    { date: '2026-01-05', close: 70000, money: { close: converted(49, 70000) } },
-    { date: '2026-01-06', close: 71000, money: { close: unconverted(71000, 'no_rate') } },
-    { date: '2026-01-07', close: 72000 },
-    { date: '2026-01-02', close: 69000, money: { close: converted(48.3, 69000) } },
-    { date: 'bad', close: null },
+    { price_basis: 'adjusted' as const, date: '2026-01-05', close: 70000, money: { close: converted(49, 70000) } },
+    { price_basis: 'adjusted' as const, date: '2026-01-06', close: 71000, money: { close: unconverted(71000, 'no_rate') } },
+    { price_basis: 'adjusted' as const, date: '2026-01-07', close: 72000 },
+    { price_basis: 'adjusted' as const, date: '2026-01-02', close: 69000, money: { close: converted(48.3, 69000) } },
+    { price_basis: 'adjusted' as const, date: 'bad', close: null },
   ]
   const points = convertedClosesFromHistory(rows, 'USD')
   assert.deepEqual(points, [
-    { date: '2026-01-02', close: 69000, converted: 48.3 },
-    { date: '2026-01-05', close: 70000, converted: 49 },
-    { date: '2026-01-06', close: 71000, converted: null },
-    { date: '2026-01-07', close: 72000, converted: null },
+    { price_basis: 'adjusted' as const, date: '2026-01-02', close: 69000, converted: 48.3 },
+    { price_basis: 'adjusted' as const, date: '2026-01-05', close: 70000, converted: 49 },
+    { price_basis: 'adjusted' as const, date: '2026-01-06', close: 71000, converted: null },
+    { price_basis: 'adjusted' as const, date: '2026-01-07', close: 72000, converted: null },
   ])
   assert.deepEqual(parseConvertedCloses(points), points)
-  assert.deepEqual(parseConvertedCloses([{ date: 'x', close: 1, converted: 'y' }, { date: 'x', close: 2, converted: null }]), [{ date: 'x', close: 2, converted: null }])
+  assert.deepEqual(parseConvertedCloses([{ price_basis: 'adjusted' as const, date: 'x', close: 1, converted: 'y' }, { price_basis: 'adjusted' as const, date: 'x', close: 2, converted: null }]), [{ price_basis: 'adjusted' as const, date: 'x', close: 2, converted: null }])
   assert.deepEqual(parseConvertedCloses({}), [])
 })
 
 test('the range return splits exactly into the local return and the currency effect; days without a rate are counted', () => {
   const { result, excludedDays } = currencyDecomposition([
-    { date: '2026-01-01', close: 100, converted: null },
-    { date: '2026-01-02', close: 100, converted: 50 },
-    { date: '2026-01-03', close: 105, converted: null },
-    { date: '2026-01-04', close: 110, converted: 60.5 },
-    { date: '2026-01-05', close: 120, converted: null },
+    { price_basis: 'adjusted' as const, date: '2026-01-01', close: 100, converted: null },
+    { price_basis: 'adjusted' as const, date: '2026-01-02', close: 100, converted: 50 },
+    { price_basis: 'adjusted' as const, date: '2026-01-03', close: 105, converted: null },
+    { price_basis: 'adjusted' as const, date: '2026-01-04', close: 110, converted: 60.5 },
+    { price_basis: 'adjusted' as const, date: '2026-01-05', close: 120, converted: null },
   ])
   assert.equal(excludedDays, 3)
   assert.ok(result)
@@ -85,7 +87,7 @@ test('the range return splits exactly into the local return and the currency eff
   // (1 + r_ccy) = (1 + r_local)(1 + r_fx)
   assert.ok(Math.abs((1 + result.convertedReturn) - (1 + result.localReturn) * (1 + result.currencyEffect)) < 1e-12)
 
-  const thin = currencyDecomposition([{ date: '2026-01-01', close: 1, converted: 1 }, { date: '2026-01-02', close: 1, converted: null }])
+  const thin = currencyDecomposition([{ price_basis: 'adjusted' as const, date: '2026-01-01', close: 1, converted: 1 }, { price_basis: 'adjusted' as const, date: '2026-01-02', close: 1, converted: null }])
   assert.equal(thin.result, null)
   assert.equal(thin.excludedDays, 1)
 })
