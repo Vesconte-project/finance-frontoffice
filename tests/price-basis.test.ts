@@ -34,3 +34,11 @@ test('full history changes cache identity and refuses an old raw cache response'
   assert.match(source,/normalizeAdjustedHistory\(payload\)/)
   assert.throws(() => normalizeAdjustedHistory([{date:'2026-01-05',close:200}]))
 })
+
+
+test('ready series still refuse overlays with raw or unlabelled individual points', () => {
+  for (const price_basis of ['raw', undefined]) {
+    const payload = { ...ready, series: [{ ...ready.series![0], points: [{ date: '2026-01-05', value: 100, price_basis }] }] }
+    assert.deepEqual(readyAdjustedOverlays(payload as TechnicalChartPayload, bars), [])
+  }
+})

@@ -10,7 +10,7 @@ These notes describe how the frontoffice consumes them; they are not contract tr
   USD comes first. Without the FX tables the list is USD alone with `available: false`.
 - `?currency=XXX` on the ticker reads. Without it every response is unchanged. With it,
   every original amount stays in place and each object holding amounts gains
-  `money: {<field>: {value, currency, sourceCurrency, date, converted: {value, currency, rate, rateDate} | null, unconvertedReason}}`,
+  `money: {<field>: {value, currency, sourceCurrency, date, price_basis: "adjusted" | "raw" | null, converted: {value, currency, rate, rateDate} | null, unconvertedReason}}`,
   each amount at the rate of its own date. An unlisted code is 422 `unsupported_currency`.
 - `GET /v1/tickers/{ticker}/summary` carries a top-level `listings` block, unaffected by
   `?currency=`: `{available, reason, items: [{symbol, exchange, exchangeMic, country, currency, isPrimary, isCurrent}]}`,
@@ -45,7 +45,7 @@ These notes describe how the frontoffice consumes them; they are not contract tr
 | --- | --- |
 | Local route for the list | `GET /api/currencies` (`app/api/currencies/route.ts`) |
 | Header conversion (the layout does not see `?currency=`) | `GET /api/stocks/{ticker}/quote?currency=XXX` → `{ticker, currency, converted: {value, currency, rateDate} \| null, unconvertedReason}` |
-| Chart in a currency | `GET /api/stocks/{ticker}/history?currency=XXX` → `[{date, close, converted \| null}]` (422 for an unlisted code) |
+| Chart in a currency | `GET /api/stocks/{ticker}/history?currency=XXX` → `[{date, close, price_basis: "adjusted", converted \| null}]` (422 for an unlisted code) |
 | Listings | `summary.listings`, read by `lib/stock-ticker-chrome.ts` with `parseTrackedListings` |
 | Server reads | `lib/display-currency-server.ts` (`resolveDisplayCurrency`, `fetchInDisplayCurrency`), used by `lib/ticker-data.ts` and `lib/finance.ts` (`getConvertedCloses`) |
 | Parsing and the decomposition | `lib/display-currency.ts` (pure, unit-tested in `tests/display-currency.test.ts`) |
@@ -60,3 +60,26 @@ them carry `?currency=` so the header keeps its conversion.
 Synthetic browser fixtures: `e2e/fixtures/display-currency.mjs` (rates; no KRW rate before
 2019 nor in June 2026) and `e2e/fixtures/ticker-page.mjs` (`listings`: two for QAK, one
 primary; unavailable for QAS; QAM alone; none for QAL).
+
+## Adjusted prices, availability and rollout (2026-10-25)
+
+Backend contract `2026-10-25.2` retains `price_basis` on every historical
+point and its `money` entry. The native chart and the optional converted line
+use adjusted closes (splits and dividends); the visible label is
+“ajustado a splits e dividendos”. The header quote and daily movement remain raw;
+its additional conversion must carry raw basis too. Missing or mismatched basis
+is refused, never replaced with a raw price under an adjusted label.
+
+Candles and technical overlays stay in the listing currency. Overlays require
+`availability_status: ready`, adjusted series and adjusted points. Stale/invalid
+inputs hide overlays. The history proxy preserves the backend's typed HTTP 409
+`adjusted_price_input_invalid`, instead of returning a raw series. Converted
+history uses `cache: no-store`; native chart cache identity is
+`adjusted-fx-v4`. Missing/stale FX produces null converted points and explicit
+excluded-day counts; no browser-side FX calculation or rate fill occurs.
+
+The latest product decision in this PR supersedes the original page-wide
+conversion proposal: research, statements and indicators remain native.
+No merge or deploy before the Vercel reopening (ENG-196). Backend #63 must be
+reviewed first; merging it requires regeneration and review of the reopening
+blocks currently pinned to backend `d0bffc1`. Francisco reviews this frontend.

@@ -156,3 +156,17 @@ test('indicators, signals, scorecards and statements never read a display curren
   // The bars that feed the technical summary are read as reported.
   assert.match(overview, /getOhlcData\(context\.ticker, 3650, expectsPrices\)/)
 })
+
+
+test('price conversion refuses a different or missing basis without substituting raw prices', () => {
+  const adjusted = { price_basis: 'adjusted', date: '2026-01-05', close: 100, money: { close: converted(50, 100) } }
+  assert.equal(convertedClosesFromHistory([adjusted], 'USD')[0].converted, 50)
+  for (const basis of ['raw', undefined]) {
+    assert.throws(() => convertedClosesFromHistory([{ ...adjusted, price_basis: basis }], 'USD'), /adjusted_price_input_invalid/)
+    assert.deepEqual(parseConvertedCloses([{ ...adjusted, price_basis: basis, converted: 50 }]), [])
+    assert.equal(convertedClosesFromHistory([{ ...adjusted, money: { close: { ...converted(50, 100), price_basis: basis } } }], 'USD')[0].converted, null)
+  }
+  const quote = { price_basis: 'raw', price: 100, money: { price: converted(50, 100) } }
+  assert.equal(convertedValueOf(quote, 'price', 'USD'), null)
+  assert.equal(convertedValueOf({ ...quote, money: { price: { ...converted(50, 100), price_basis: 'raw' } } }, 'price', 'USD')?.value, 50)
+})
