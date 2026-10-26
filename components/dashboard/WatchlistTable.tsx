@@ -8,7 +8,7 @@ export default function WatchlistTable({ rows }: { rows: WatchlistWorkspaceRow[]
     <TableHeaderCell>Ticker</TableHeaderCell><TableHeaderCell>Company scorecard</TableHeaderCell>
   </tr></TableHead><TableBody>{rows.map(({ ticker, scorecard }, index) =>
     <TableRow key={ticker} index={index}>
-      <TableCell><Link href={`/stocks/${encodeURIComponent(ticker)}`} className="text-accent-text hover:underline">{ticker}</Link></TableCell>
+      <TableCell><Link prefetch={false} href={`/stocks/${encodeURIComponent(ticker)}`} className="text-accent-text hover:underline">{ticker}</Link></TableCell>
       <TableCell>{scorecard ? <OrbitMini scorecard={scorecard} size={80} /> : <span className="text-content-muted">Unavailable</span>}</TableCell>
     </TableRow>)}</TableBody></TableBase></TableShell>
 }

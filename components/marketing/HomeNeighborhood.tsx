@@ -140,11 +140,11 @@ export default async function HomeNeighborhood({ items }: { items: PickItem[] })
             <div className={styles.focusIdentity}>
               <h3 className={styles.focusName}>
                 {focusHasDistinctName ? panel.name : (
-                  <Link href={`/stocks/${encodeURIComponent(panel.symbol)}`} className={styles.focusSymbol}>{panel.symbol}</Link>
+                  <Link prefetch={false} href={`/stocks/${encodeURIComponent(panel.symbol)}`} className={styles.focusSymbol}>{panel.symbol}</Link>
                 )}
               </h3>
               {focusHasDistinctName ? (
-                <Link href={`/stocks/${encodeURIComponent(panel.symbol)}`} className={`${styles.focusSymbol} numeric-tabular`}>
+                <Link prefetch={false} href={`/stocks/${encodeURIComponent(panel.symbol)}`} className={`${styles.focusSymbol} numeric-tabular`}>
                   {panel.symbol}
                 </Link>
               ) : null}
@@ -172,7 +172,7 @@ export default async function HomeNeighborhood({ items }: { items: PickItem[] })
               {connections.map((node) => {
                 const hasDistinctName = node.name && node.name !== node.symbol
                 return (
-                  <Link
+                  <Link prefetch={false}
                     key={node.symbol}
                     href={`/stocks/${encodeURIComponent(node.symbol)}`}
                     className={styles.connection}

@@ -234,3 +234,14 @@ export async function getStockResearchData(tickerRaw: string): Promise<StockRese
         : 'Partial coverage',
   }
 }
+
+
+export type StockResearchIdentity = Pick<StockResearchData, 'ticker' | 'name' | 'kind' | 'currency' | 'summary'>
+
+export async function getStockResearchIdentity(tickerRaw: string): Promise<StockResearchIdentity> {
+  const ticker = tickerRaw.trim().toUpperCase()
+  const summary = await getTickerPageSummary(ticker)
+  const name = summary.quote?.name?.trim() || ticker
+  const kind = resolveStockAsset({ assetType: summary.asset?.assetType, ticker, name, latestFundamentals: summary.latestFundamentals }).kind
+  return { ticker, summary, name, kind, currency: summary.fundamentalsSummary?.currency || currencyForTicker(ticker) }
+}

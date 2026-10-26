@@ -24,7 +24,7 @@ export default async function WorkspacePage() {
     {workspace.tickers.length ? <WatchlistTable rows={workspace.watchlistRows.slice(0, 5)} /> :
       <Card><h2 className="text-section-title">Your watchlist is empty</h2>
         <p className="text-body mt-2">Open a ticker page and choose Add to Watchlist.</p>
-        <Link href="/stocks/SPY" className={buttonClass({ variant: 'secondary' })}>Open SPY</Link></Card>}
+        <Link prefetch={false} href="/stocks/SPY" className={buttonClass({ variant: 'secondary' })}>Open SPY</Link></Card>}
     <Link href="/dashboard/watchlist" className={buttonClass({ variant: 'secondary' })}>Open full watchlist</Link>
     <h2 className="text-section-title">Recent AI Research</h2>
     <RecentAiResearchRuns title="Saved research" emptyMessage="No saved AI research yet." runs={workspace.recentAiRuns} />

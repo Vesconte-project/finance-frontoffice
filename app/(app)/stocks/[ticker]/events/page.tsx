@@ -3,7 +3,7 @@ import ResearchUnavailable from '@/components/stocks/ResearchUnavailable'
 import { getTickerDisclosures, getTickerEvents } from '@/lib/canonical-research'
 import { getPublicCalendar } from '@/lib/calendar-events'
 import { calendarMonth, type CalendarCategory } from '@/lib/calendar-model'
-import { getStockResearchData } from '@/lib/stock-research'
+import { getStockResearchIdentity } from '@/lib/stock-research'
 
 function isoDate(value: Date): string {
   return value.toISOString().slice(0, 10)
@@ -28,7 +28,7 @@ export default async function EventsPage({ params, searchParams }: {
   end.setUTCFullYear(end.getUTCFullYear() + 1)
 
   const [data, events, disclosures, calendar] = await Promise.all([
-    getStockResearchData(ticker).catch(() => null),
+    getStockResearchIdentity(ticker).catch(() => null),
     getTickerEvents(ticker, {
       startDate: isoDate(start),
       endDate: isoDate(end),

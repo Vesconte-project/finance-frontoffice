@@ -70,7 +70,7 @@ export default function RecentAiResearchRuns({
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <Link href={`/stocks/${run.ticker}`} className="text-label-lg numeric-tabular text-accent-text hover:underline">
+                    <Link prefetch={false} href={`/stocks/${run.ticker}`} className="text-label-lg numeric-tabular text-accent-text hover:underline">
                       {run.ticker}
                     </Link>
                     <Badge variant={statusVariant(run.status)}>{run.status.toUpperCase()}</Badge>

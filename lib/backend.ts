@@ -6,12 +6,14 @@ import { backendErrorDetails, logBackendRequestEvent } from './backend-request-l
 export class BackendDataError extends Error {
   readonly context: string
   readonly status: number | null
+  readonly retryAfter: string | null
 
-  constructor(context: string, message: string, status: number | null = null) {
+  constructor(context: string, message: string, status: number | null = null, retryAfter: string | null = null) {
     super(message)
     this.name = 'BackendDataError'
     this.context = context
     this.status = status
+    this.retryAfter = retryAfter
   }
 }
 
@@ -118,7 +120,7 @@ export async function fetchBackendJson<T>(
   const response = await fetchBackendResponse(path, { context, timeoutMs, init })
 
   if (!response.ok) {
-    throw new BackendDataError(context, `${context} failed with status ${response.status}`, response.status)
+    throw new BackendDataError(context, `${context} failed with status ${response.status}`, response.status, response.headers.get('retry-after'))
   }
 
   try {

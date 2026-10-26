@@ -71,8 +71,6 @@ export type ExpandedChartDialogProps = {
   kind: ChartKind
   onKindChange: (kind: ChartKind) => void
   returnFocusRef: RefObject<HTMLElement | null>
-  /** Company events for the Events layer; `null` when they could not be loaded. */
-  events?: readonly EventMarker[] | null
 }
 
 /**
@@ -83,7 +81,9 @@ export type ExpandedChartDialogProps = {
  * series draw only when the backend marks their adjusted basis ready.
  * Missing/stale indicators and intraday ranges remain explicit unavailable states.
  */
-export default function ExpandedChartDialog({ open, onClose, ticker, currency, bars, kind, onKindChange, returnFocusRef, events = [] }: ExpandedChartDialogProps) {
+export default function ExpandedChartDialog({ open, onClose, ticker, currency, bars, kind, onKindChange, returnFocusRef }: ExpandedChartDialogProps) {
+  const [events, setEvents] = useState<readonly EventMarker[] | null>([])
+  const [eventsLoading, setEventsLoading] = useState(true)
   const ranges = useMemo(() => availableRanges(bars), [bars])
   const [overlayPayload, setOverlayPayload] = useState<TechnicalChartPayload | null>(null)
   const [selectedIndicators, setSelectedIndicators] = useState<string[]>([])
@@ -93,6 +93,10 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
       .then(async response => response.ok ? response.json() as Promise<TechnicalChartPayload> : null)
       .then(payload => { if (!controller.signal.aborted) setOverlayPayload(payload) })
       .catch(() => { if (!controller.signal.aborted) setOverlayPayload(null) })
+    void fetch(`/api/stocks/${encodeURIComponent(ticker)}/chart-events`, { cache: 'no-store', signal: controller.signal })
+      .then(async response => response.ok ? response.json() as Promise<EventMarker[]> : null)
+      .then(payload => { if (!controller.signal.aborted) { setEvents(Array.isArray(payload) ? payload : null); setEventsLoading(false) } })
+      .catch(() => { if (!controller.signal.aborted) { setEvents(null); setEventsLoading(false) } })
     return () => controller.abort()
   }, [ticker])
   const readyOverlays = readyAdjustedOverlays(overlayPayload, bars)
@@ -412,10 +416,11 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
             className={cn(styles.tool, events === null && styles.unavailableTool)}
             aria-pressed={events === null ? undefined : showEvents}
             aria-label={events === null ? 'Events, not available right now' : undefined}
+            disabled={eventsLoading}
             data-events-toggle=""
             onClick={toggleEvents}
           >
-            <span className={styles.toolDot} aria-hidden="true" />Events
+            <span className={styles.toolDot} aria-hidden="true" />{eventsLoading ? 'Loading events…' : 'Events'}
           </button>
           <button type="button" className={cn(styles.tool, styles.drawTool)} aria-pressed={drawTool === 'fibonacci'} onClick={() => chooseDrawTool('fibonacci')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M3 5h18M3 10h18M3 14h18M3 19h18" /></svg>
