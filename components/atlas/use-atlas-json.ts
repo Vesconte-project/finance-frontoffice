@@ -1,5 +1,7 @@
 'use client'
 
+import { browserRead } from '@/lib/read-client'
+
 import { useEffect, useState } from 'react'
 import { atlasDenial, type AtlasDenial } from '@/lib/atlas-model'
 
@@ -15,7 +17,7 @@ export type Remote<T> =
 /** Reads a local atlas route; never throws, a refusal keeps its reason. */
 export async function fetchAtlasJson<T>(path: string, parse: (value: unknown) => T | null, init?: RequestInit): Promise<Remote<T>> {
   try {
-    const response = await fetch(path, init)
+    const response = await browserRead(path, init)
     const body: unknown = await response.json().catch(() => null)
     if (response.status === 403) {
       const reason = atlasDenial(body)

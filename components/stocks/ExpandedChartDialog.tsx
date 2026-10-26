@@ -1,5 +1,7 @@
 'use client'
 
+import { browserRead } from '@/lib/read-client'
+
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import MeasureSummary, { describeMeasurement } from '@/components/charts/MeasureSummary'
 import Dialog from '@/components/ui/Dialog'
@@ -89,7 +91,7 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
   const [selectedIndicators, setSelectedIndicators] = useState<string[]>([])
   useEffect(() => {
     const controller = new AbortController()
-    void fetch(`/api/stocks/${encodeURIComponent(ticker)}/technical-series`, { cache: 'no-store', signal: controller.signal })
+    void browserRead(`/api/stocks/${encodeURIComponent(ticker)}/technical-series`, { cache: 'no-store', signal: controller.signal })
       .then(async response => response.ok ? response.json() as Promise<TechnicalChartPayload> : null)
       .then(payload => { if (!controller.signal.aborted) setOverlayPayload(payload) })
       .catch(() => { if (!controller.signal.aborted) setOverlayPayload(null) })

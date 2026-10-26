@@ -1,5 +1,7 @@
 'use client'
 
+import { browserRead } from '@/lib/read-client'
+
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { Suspense, use, useMemo, useRef, useState } from 'react'
@@ -565,7 +567,7 @@ export default function StockOverviewClient({
     setHeroTimeframe(timeframe)
     setFullHistoryState('loading')
 
-    void fetch(`/api/stocks/${encodeURIComponent(ticker)}/history?price_basis=${ADJUSTED_CHART_VERSION}`, { cache: 'no-store' })
+    void browserRead(`/api/stocks/${encodeURIComponent(ticker)}/history?price_basis=${ADJUSTED_CHART_VERSION}`, { cache: 'no-store' })
       .then(async (response) => {
         const payload: unknown = await response.json().catch(() => null)
         if (!response.ok || !Array.isArray(payload)) throw new Error('Full history request failed.')
