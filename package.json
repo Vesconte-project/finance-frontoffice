@@ -26,7 +26,8 @@
     "dev:platform:down": "node scripts/dev-platform.mjs down",
     "dev:platform:reset": "node scripts/dev-platform.mjs reset",
     "dev:platform:status": "node scripts/dev-platform.mjs status",
-    "qa:platform": "playwright test --config playwright.platform.config.ts"
+    "qa:platform": "playwright test --config playwright.platform.config.ts",
+    "qa:http-boundary": "node scripts/qa-http-boundary.mjs"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.0.11",
