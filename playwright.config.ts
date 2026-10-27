@@ -40,11 +40,14 @@ export default defineConfig({
   outputDir: 'test-results',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
-  retries: process.env.CI ? 2 : 0,
+  // A systemic auth/runtime failure must not turn 201 tests into 400+ attempts.
+  retries: 0,
+  maxFailures: process.env.CI ? 3 : 0,
+  globalTimeout: process.env.CI ? 10 * 60_000 : 0,
   // Keep the local Next server responsive while several image/canvas routes
   // compile and Clerk hydrates. CI already uses one worker.
   workers: process.env.CI ? 1 : 2,
-  reporter: 'line',
+  reporter: [['line'], ['html', { open: 'never' }], ['json', { outputFile: 'test-results/browser-results.json' }]],
   use: {
     baseURL,
     trace: 'retain-on-failure',
@@ -52,8 +55,11 @@ export default defineConfig({
     video: 'retain-on-failure',
   },
   projects: [
+    { name: 'runtime', testMatch: '**/setup/*.setup.ts' },
     {
       name: 'chromium',
+      testIgnore: ['**/local/**', '**/setup/**'],
+      dependencies: ['runtime'],
       use: { ...devices['Desktop Chrome'] },
     },
   ],
