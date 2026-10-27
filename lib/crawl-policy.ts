@@ -43,7 +43,7 @@ export function crawlRules(): MetadataRoute.Robots['rules'] {
 
 export function publicSitemap(baseUrl: string, tickers: string[]): MetadataRoute.Sitemap {
   const symbols = [...new Set(tickers.map(ticker => ticker.trim().toUpperCase()))]
-    .filter(ticker => /^[A-Z0-9][A-Z0-9.^=-]{0,31}$/.test(ticker))
+    .filter(ticker => /^(?=.*[A-Z0-9])[A-Z0-9.^=-]{1,32}$/.test(ticker))
     .sort()
   return [
     ...INDEXABLE_PAGES.map(({ path, ...metadata }) => ({ url: `${baseUrl}${path === '/' ? '/' : path}`, ...metadata })),

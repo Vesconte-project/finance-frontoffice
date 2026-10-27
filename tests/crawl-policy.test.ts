@@ -41,9 +41,10 @@ test('AI product tokens refuse every page, including Google-Extended', () => {
 })
 
 test('sitemap deduplicates tickers, rejects paths, and invents no modification dates', () => {
-  const entries = publicSitemap('https://www.vesconte.com', ['aapl', ' AAPL ', '../events', 'BAD/NAME', '', 'BRK.B'])
+  const entries = publicSitemap('https://www.vesconte.com', ['aapl', ' AAPL ', '../events', '.', '..', 'BAD/NAME', '', 'BRK.B', '^GSPC'])
   assert.equal(entries.filter(entry => entry.url.endsWith('/stocks/AAPL')).length, 1)
-  assert.equal(entries.filter(entry => entry.url.includes('/stocks/')).length, 2)
+  assert.equal(entries.filter(entry => entry.url.includes('/stocks/')).length, 3)
+  assert.ok(entries.some(entry => entry.url.endsWith('/stocks/%5EGSPC')))
   for (const entry of entries) {
     assert.equal(entry.lastModified, undefined)
     assert.equal(allowed(new URL(entry.url).pathname), true)
