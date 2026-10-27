@@ -25,11 +25,13 @@ export const AI_SEARCH_INSTITUTIONAL_PATHS = ['/', '/product', '/pricing', '/faq
 export const BLOCKED_AI_ROBOTS = [
   'meta-externalagent', 'meta-externalfetcher', 'meta-webindexer', 'meta-externalads',
   'GPTBot', 'ChatGPT-User',
-  'ClaudeBot', 'Claude-User', 'anthropic-ai',
+  'ClaudeBot', 'Claude-User',
+  'anthropic-ai', // Legacy, unconfirmed current token; does not count as protection.
   'CCBot', 'Bytespider', 'Perplexity-User',
   'Amazonbot', 'Amzn-SearchBot', 'Amzn-User',
   'Applebot-Extended', 'Google-Extended', 'Google-Agent', 'Google-GeminiNotebook',
-  'cohere-ai', 'Diffbot', 'Diffbot-User',
+  'cohere-ai', // Legacy, unconfirmed current token; does not count as protection.
+  'Diffbot', 'Diffbot-User',
 ] as const
 
 export function crawlRules(): MetadataRoute.Robots['rules'] {

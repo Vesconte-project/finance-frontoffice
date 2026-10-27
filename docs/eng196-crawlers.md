@@ -74,6 +74,10 @@ directly from the official URLs with HTTP 200. Other tokens above were checked
 on the linked official pages. The two precautionary legacy tokens remain an
 explicit evidence gap, not a claim of official confirmation. Unknown or future
 AI operators cannot be exhaustively denied by a finite robots token list.
+The inline legacy-token comments explicitly state that these two tokens do not
+count as protection. Per Francisco, Bytespider remains blocked by the Vercel
+AI Bots rule independently of robots compliance; this PR does not change or
+independently verify that Firewall configuration.
 
 No Crawl-delay promise: Google ignores it. Actual protection is Vercel Firewall,
 backend admission/rate budgets, and cache behind admission. robots.txt is voluntary
