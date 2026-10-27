@@ -1,5 +1,7 @@
 'use client'
 
+import { browserRead } from '@/lib/read-client'
+
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { Suspense, use, useMemo, useRef, useState } from 'react'
@@ -16,7 +18,6 @@ import {
   type TechnicalGaugeData,
   type TechnicalTimeframe,
 } from '@/lib/technicalSignals'
-import type { EventMarker } from '@/lib/event-markers'
 import type { ScorecardAxis } from '@/lib/scorecard-types'
 import BeingBuilt, { BeingBuiltBadge } from '@/components/stocks/research/BeingBuilt'
 import MiniBars from '@/components/stocks/research/MiniBars'
@@ -28,7 +29,6 @@ import { cn } from '@/lib/utils'
 import styles from './StockOverviewClient.module.css'
 import expandedChartStyles from './ExpandedChart.module.css'
 import ScorecardDisc from './ScorecardDisc'
-import type { ExpandedChartDialogProps } from './ExpandedChartDialog'
 
 // The expanded chart's code loads only when a reader opens it.
 const ExpandedChartDialog = dynamic(() => import('./ExpandedChartDialog'), { ssr: false })
@@ -45,11 +45,8 @@ type OverviewStat = {
 type OverviewRelatedAsset = {
   symbol: string
   name: string | null
-  price: number | null
   changePercent: number | null
-  relation: string
   strength: number | null
-  confidence: number | null
 }
 
 /** A latest reported figure and the date it refers to. */
@@ -91,8 +88,6 @@ type StockOverviewClientProps = {
   relatedAssets: Promise<OverviewRelatedAsset[]>
   /** `signedOut` when the atlas keeps a company's ties for signed-in readers. */
   relationshipsGate?: 'signedOut' | null
-  /** Company events for the expanded chart; resolves to null when unavailable. */
-  chartEvents: Promise<EventMarker[] | null>
   scorecard: Scorecard
   /** Reported annual revenue, oldest first, the same series the Fundamentals tab draws; null when unavailable. */
   revenue: Promise<ReportedPoint[] | null>
@@ -252,7 +247,7 @@ function RelatedAssetsContent({
       id="relationships"
       label="Relationships"
       band
-      actions={<Link href={`/stocks/${ticker}/relationships`} className={styles.inlineArrow}>View all →</Link>}
+      actions={<Link prefetch={false} href={`/stocks/${ticker}/relationships`} className={styles.inlineArrow}>View all →</Link>}
     >
       {rankedAssets.length > 0 ? (
         <ul className={styles.relatedAssets} aria-label={`Companies related to ${ticker}`}>
@@ -262,7 +257,7 @@ function RelatedAssetsContent({
             const moves = movesCopy(strength)
             return (
               <li key={asset.symbol}>
-                <Link href={`/stocks/${asset.symbol}`} className={styles.relatedRow} data-related-row="">
+                <Link prefetch={false} href={`/stocks/${asset.symbol}`} className={styles.relatedRow} data-related-row="">
                   <span className={styles.relatedIdentity}>
                     <span className={styles.chipTicker}>{asset.symbol}</span>
                     {asset.name ? <span className={styles.relatedName}>{asset.name}</span> : null}
@@ -288,7 +283,7 @@ function RelatedAssetsContent({
         </ul>
       ) : gate === 'signedOut' ? (
         <p className={styles.chartStatus}>
-          <Link href={`/sign-up?redirect_url=/stocks/${ticker}`}>Create a free account</Link> to see the companies that move most closely with {ticker}.
+          <Link prefetch={false} href={`/sign-up?redirect_url=/stocks/${ticker}`}>Create a free account</Link> to see the companies that move most closely with {ticker}.
         </p>
       ) : (
         <BeingBuilt size="inline">The companies that move most closely with {ticker} are being added.</BeingBuilt>
@@ -461,15 +456,6 @@ function RevenueCard({ revenuePromise, currency }: { revenuePromise: Promise<Rep
   )
 }
 
-/** The expanded chart, with the company events once they have arrived. */
-function ExpandedChartWithEvents({
-  eventsPromise,
-  ...props
-}: Omit<ExpandedChartDialogProps, 'events'> & { eventsPromise: Promise<EventMarker[] | null> }) {
-  const events = use(eventsPromise)
-  return <ExpandedChartDialog {...props} events={events} />
-}
-
 export default function StockOverviewClient({
   ticker,
   currency,
@@ -483,7 +469,6 @@ export default function StockOverviewClient({
   nextEarnings,
   relatedAssets: relatedAssetsPromise,
   relationshipsGate = null,
-  chartEvents,
   scorecard,
   revenue: revenuePromise,
   operatingMargin,
@@ -565,7 +550,7 @@ export default function StockOverviewClient({
     setHeroTimeframe(timeframe)
     setFullHistoryState('loading')
 
-    void fetch(`/api/stocks/${encodeURIComponent(ticker)}/history?price_basis=${ADJUSTED_CHART_VERSION}`, { cache: 'no-store' })
+    void browserRead(`/api/stocks/${encodeURIComponent(ticker)}/history?price_basis=${ADJUSTED_CHART_VERSION}`, { cache: 'no-store' })
       .then(async (response) => {
         const payload: unknown = await response.json().catch(() => null)
         if (!response.ok || !Array.isArray(payload)) throw new Error('Full history request failed.')
@@ -647,7 +632,7 @@ export default function StockOverviewClient({
               </div>
             ))}
           </dl>
-          <Link href={`/stocks/${ticker}/signals`} className={styles.inlineArrow}>Indicator details →</Link>
+          <Link prefetch={false} href={`/stocks/${ticker}/signals`} className={styles.inlineArrow}>Indicator details →</Link>
         </ChapterCard>
       )}
     >
@@ -690,7 +675,7 @@ export default function StockOverviewClient({
     <ResearchChapter
       id="fundamentals"
       label="Fundamentals"
-      actions={<Link href={`/stocks/${ticker}/fundamentals`} className={styles.inlineArrow}>Full fundamentals →</Link>}
+      actions={<Link prefetch={false} href={`/stocks/${ticker}/fundamentals`} className={styles.inlineArrow}>Full fundamentals →</Link>}
     >
       <div className={styles.fundamentalCards} data-fundamental-cards="">
         {isFund ? fundCards.map((card) => (
@@ -788,8 +773,7 @@ export default function StockOverviewClient({
               ) : null}
               {chartExpanded ? (
                 <Suspense fallback={null}>
-                  <ExpandedChartWithEvents
-                    eventsPromise={chartEvents}
+                  <ExpandedChartDialog
                     open
                     onClose={() => setChartExpanded(false)}
                     ticker={ticker}

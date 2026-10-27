@@ -1,5 +1,7 @@
 'use client'
 
+import { browserRead } from '@/lib/read-client'
+
 import Link from 'next/link'
 import { Layers, Maximize2, Minus, Network, Plus, Search, X } from 'lucide-react'
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
@@ -615,7 +617,7 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
       setLoadingArea(true)
       setAreaError(false)
       try {
-        const response = await fetch(atlasOverviewPath(level, [area.x0, area.y0, area.x1, area.y1], { lens: areaLens }), { signal: controller.signal })
+        const response = await browserRead(atlasOverviewPath(level, [area.x0, area.y0, area.x1, area.y1], { lens: areaLens }), { signal: controller.signal })
         const parsed = response.ok ? parseOverview(await response.json()) : null
         if (!parsed) throw new Error('atlas area unavailable')
         setDetail({ level, lens: areaLens, area, nodes: parsed.nodes, lines: parsed.lines })
@@ -644,7 +646,7 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     const path = selection.kind === 'company'
       ? `/api/atlas/companies/${encodeURIComponent(selection.symbol)}${lensQuery}`
       : `/api/atlas/zones/${encodeURIComponent(selection.zoneId)}${lensQuery}`
-    fetch(path, { signal: controller.signal })
+    browserRead(path, { signal: controller.signal })
       .then(async (response) => {
         const body: unknown = await response.json().catch(() => null)
         if (response.status === 403) {
