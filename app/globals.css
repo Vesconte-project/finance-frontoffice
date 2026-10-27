@@ -848,6 +848,24 @@
     var(--bg);
 }
 
+/* The atlas ground extends behind the shared navigation. */
+.app-shell > main:has(> [data-atlas-root]) {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.app-shell:has([data-atlas-root]) .site-header__row:not([data-menu-open]):not([data-search-open])::before {
+  opacity: 0 !important;
+}
+
+.app-shell:has([data-atlas-root]) :is(.site-header, .site-header__inner, .site-header__row) {
+  pointer-events: none;
+}
+
+.app-shell:has([data-atlas-root]) .site-header :is(a, button, input, [data-header-search], [data-pill-search], [data-mobile-search], .site-header__dropdowns) {
+  pointer-events: auto;
+}
+
 /* ── Immersive atlas route (/markets/network) ──────────────────────────────
    Full-screen dashboard: lock page scroll and let the map fill the whole
    viewport. The app top bar is replaced (in the route) by the compact marketing

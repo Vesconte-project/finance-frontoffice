@@ -20,7 +20,7 @@ const TOOLS: Array<{ tool: AtlasTool; label: string; feature: ProFeature | null;
 ]
 
 /**
- * The left tool rail (pro-spec §7). Every tool but Explore is Pro: readers
+ * The top tool row (pro-spec §7). Every tool but Explore is Pro: readers
  * without it see a small accent dot, and a press opens the upsell instead.
  */
 export default function AtlasToolRail({ pro, active, onTool, onLocked }: {
@@ -30,7 +30,7 @@ export default function AtlasToolRail({ pro, active, onTool, onLocked }: {
   onLocked: (feature: ProFeature, anchor: HTMLElement) => void
 }) {
   return (
-    <nav className={styles.rail} aria-label="Tools" data-atlas-left="">
+    <nav className={styles.rail} aria-label="Tools">
       {TOOLS.map(({ tool, label, feature, icon: glyph }) => (
         <button
           key={tool}

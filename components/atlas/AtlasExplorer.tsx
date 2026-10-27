@@ -1,10 +1,11 @@
 'use client'
 
 import { browserRead } from '@/lib/read-client'
+import AtlasHelp from './AtlasHelp'
 
 import Link from 'next/link'
 import { Layers, Maximize2, Minus, Network, Plus, Search, X } from 'lucide-react'
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import {
   ATLAS_MAX_LEVEL,
   atlasOverviewPath,
@@ -148,6 +149,7 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
   const pro = access.pro
   const frameRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const helpButtonRef = useRef<HTMLButtonElement>(null)
   const viewportRef = useRef<Viewport>({ width: 0, height: 0 })
   const fitRef = useRef<Camera | null>(null)
   const cameraRef = useRef<Camera | null>(null)
@@ -172,7 +174,7 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
   const [moreOpen, setMoreOpen] = useState(false)
   const [browseTab, setBrowseTab] = useState<BrowseTab>('regions')
   const [showNames, setShowNames] = useState(true)
-  const [keyOpen, setKeyOpen] = useState(false)
+  const [keyOpen, setKeyOpen] = useState(true)
   const [landmarksOpen, setLandmarksOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [activeResult, setActiveResult] = useState(0)
@@ -548,26 +550,35 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
 
   // size, fit and theme
   const fittedAtlas = useRef<AtlasOverview | null>(null)
-  useEffect(() => {
+  useLayoutEffect(() => {
     const frame = frameRef.current
     const canvas = canvasRef.current
     if (!frame || !canvas) return
+    const invite = frame.closest('[data-atlas-root]')?.querySelector<HTMLElement>('[data-atlas-invite]')
     const resize = () => {
+      frame.style.setProperty('--atlas-invite-height', `${invite?.getBoundingClientRect().height ?? 0}px`)
+      frame.style.setProperty('--atlas-legend-height', `${frame.querySelector('[data-atlas-legend]')?.getBoundingClientRect().height ?? 32}px`)
       const rect = frame.getBoundingClientRect()
+      // Start with the legend folded on short phones so the map and time strip fit.
+      // Once the reader opens it, subsequent resizes preserve that choice.
+      if (!fittedAtlas.current && rect.width < 640 && rect.height < 640) setKeyOpen(false)
       const ratio = window.devicePixelRatio || 1
       viewportRef.current = { width: rect.width, height: rect.height }
       canvas.width = Math.round(rect.width * ratio)
       canvas.height = Math.round(rect.height * ratio)
       const previousFit = fitRef.current
-      // The map fits under the controls, clear of the zoom stack, the tool rail and the time bar.
+      // Fit the map between the top toolbars and the independent bottom controls.
       const edge = (selector: string) => [...frame.querySelectorAll<HTMLElement>(selector)].map((element) => element.getBoundingClientRect())
-      const top = Math.max(0, ...edge('[data-atlas-controls]').map((box) => box.bottom - rect.top)) + 10
-      const narrow = rect.width < 640
-      // on a phone the rail lies along the bottom too
-      const bottom = Math.max(narrow ? 72 : 44, ...edge(narrow ? '[data-atlas-bottom], [data-atlas-left]' : '[data-atlas-bottom]').map((box) => rect.bottom - box.top + 8))
-      const left = narrow ? 16 : Math.max(16, ...edge('[data-atlas-left]').map((box) => box.right - rect.left + 8))
-      fitRef.current = fitCamera(bounds, viewportRef.current, pitch, { top, right: narrow ? 16 : 64, bottom, left })
-      if (!cameraRef.current || !previousFit || fittedAtlas.current !== atlas) cameraRef.current = { ...fitRef.current }
+      const top = Math.max(72, ...edge('[data-atlas-controls]').map((box) => box.bottom - rect.top)) + 10
+      frame.style.setProperty('--atlas-controls-bottom', `${top}px`)
+      const bottom = Math.max(44, ...edge('[data-atlas-bottom]').map((box) => rect.bottom - box.top + 8))
+      // On short phones the floating controls may overlay the map; keep the map readable.
+      const fitBottom = rect.width < 640 ? Math.min(bottom, Math.max(44, rect.height - top - 180)) : bottom
+      const right = 16
+      fitRef.current = fitCamera(bounds, viewportRef.current, pitch, { top, right, bottom: fitBottom, left: 16 })
+      const wasFitted = previousFit && cameraRef.current && Math.abs(cameraRef.current.k / previousFit.k - 1) < 0.001
+        && Math.abs(cameraRef.current.cx - previousFit.cx) < 0.001 && Math.abs(cameraRef.current.cy - previousFit.cy) < 0.001
+      if (!cameraRef.current || !previousFit || fittedAtlas.current !== atlas || wasFitted) cameraRef.current = { ...fitRef.current }
       else cameraRef.current = { ...cameraRef.current, k: cameraRef.current.k * (fitRef.current.k / previousFit.k) }
       fittedAtlas.current = atlas
       const fit = fitRef.current
@@ -577,6 +588,8 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     resize()
     const observer = new ResizeObserver(resize)
     observer.observe(frame)
+    if (invite) observer.observe(invite)
+    frame.querySelectorAll<HTMLElement>('[data-atlas-controls], [data-atlas-bottom], [data-atlas-legend]').forEach((element) => observer.observe(element))
     const scheme = window.matchMedia('(prefers-color-scheme: dark)')
     const theme = () => {
       paletteRef.current = null
@@ -952,9 +965,16 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
       // the innermost thing open closes first, and focus goes back to what opened it
       if (upsell) closeUpsell()
       else if (themeMenu) setThemeMenu(false)
+      else if (landmarksOpen) {
+        setLandmarksOpen(false)
+        frameRef.current?.querySelector<HTMLButtonElement>('[aria-controls="atlas-landmarks"]')?.focus()
+      }
       else if (openSheet) closeSheet()
       else if (dock) closeDock()
-      else if (keyOpen) setKeyOpen(false)
+      else if (keyOpen && event.target instanceof Element && event.target.closest('#atlas-key')) {
+        setKeyOpen(false)
+        frameRef.current?.querySelector<HTMLButtonElement>('[aria-controls="atlas-legend"]')?.focus()
+      }
       else if (selection) setSelection(null)
       else if (tool === 'select') setTool('explore')
       return
@@ -1223,9 +1243,9 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
   ])
 
   return (
-    <div className={styles.shell}>
+    <div className={styles.shell} data-atlas-root="">
       {!signedIn ? (
-        <p className={styles.invite}>
+        <p className={styles.invite} data-atlas-invite="">
           You are seeing a sketch: the regions are in their real place, the largest companies are arranged inside them by size, and only the number of ties between regions is shown.{' '}
           <Link href={SIGN_UP_HREF}>Create a free account</Link> to see where every company really sits and what it moves with.
         </p>
@@ -1276,10 +1296,11 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
               </button>
               <button
                 type="button"
-                ref={(element) => { sheetButtons.current.set('help', element) }}
+                ref={(element) => { sheetButtons.current.set('help', element); helpButtonRef.current = element }}
                 className={styles.pill}
                 aria-expanded={openSheet === 'help'}
                 aria-controls="atlas-help"
+                aria-haspopup="dialog"
                 aria-label="How to read"
                 onClick={() => toggleSheet('help')}
               >
@@ -1390,8 +1411,16 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
                 ))}
               </div>
             </div>
+            <div className={styles.toolsRow} data-atlas-controls="">
+              <AtlasToolRail pro={pro} active={railActive} onTool={onTool} onLocked={gate} />
+              <div className={styles.mapSummary} role="group" aria-label="Latest map snapshot">
+                <p className={styles.mapWeek}>Week of <time dateTime={initial.asOf}>{formatDate(initial.asOf)}</time></p>
+                <p className={styles.mapCoverage}>Latest map · {atlas.companyCount.toLocaleString('en-US')} companies · {atlas.zoneCount} regions{lens === 'total' && atlas.lens === 'total' ? ' · total co-movement' : ''}</p>
+                {sentence ? <p className={styles.mapCorrelation}>{sentence}</p> : null}
+              </div>
+            </div>
             {/* The open sheet starts on its own line, under the controls however many lines they take. */}
-            {openSheet ? <span className={styles.break} aria-hidden="true" /> : null}
+            {openSheet && openSheet !== 'help' ? <span className={styles.break} aria-hidden="true" /> : null}
 
             {openSheet === 'browse' ? (
               <section id="atlas-browse" className={styles.sheet} aria-labelledby="atlas-browse-title" data-lenis-prevent="">
@@ -1423,25 +1452,6 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
               </section>
             ) : null}
 
-            {openSheet === 'help' ? (
-              <section id="atlas-help" className={styles.sheet} aria-labelledby="atlas-help-title" data-lenis-prevent="">
-                <h2 id="atlas-help-title">How to read the atlas</h2>
-                <dl className={styles.helpList}>
-                  <dt>Position</dt><dd>Companies whose prices move together sit close, after removing what the whole market does that day.</dd>
-                  <dt>Regions</dt><dd>Areas of companies that move together, measured from prices. The line holds 80% of a region&apos;s weight; a company can sit between two.</dd>
-                  <dt>Themes</dt><dd>What thematic funds hold together. A theme is a label, not a measurement: it can cross regions, and its companies need not move together. The theme card says whether prices confirm it.{signedIn ? '' : ' Shown with a free account.'}</dd>
-                  <dt>Size</dt><dd>Market value.</dd>
-                  <dt>Wells</dt><dd>How many companies move with it in its region. A small ball in a deep well is a small company many others move with.{signedIn ? '' : ' Shown with a free account.'}</dd>
-                  <dt>Lines</dt><dd>The strongest ties inside each region. Every region shows the same share of its companies at each zoom level, and the lines join the ones on screen.</dd>
-                  <dt>Bundles</dt><dd>Real ties between two regions. Point at a region to see its strongest bundles and how many strong ties each holds; select a company to see its own ties.</dd>
-                  <dt>Average correlation</dt><dd>How much companies move together this week, against the last year&apos;s weeks.</dd>
-                  <dt>Movement</dt><dd>Arrows show groups of companies that moved from one region to another in the last 6 months or year.{pro ? '' : ' Part of Pro.'}</dd>
-                  <dt>Time</dt><dd>Drag the bar at the bottom to see where companies were in the past year.{pro ? '' : ' Part of Pro.'}</dd>
-                  <dt>Influence</dt><dd>Arrows that show one group moving another on the same day: when the first group reports results, the second moves too, and not the other way round. Shown only when this repeats in both of the last two years. Turn it on in Layers; when nothing passes the test, nothing is drawn and the list says so.{pro ? '' : ' Part of Pro.'}</dd>
-                </dl>
-              </section>
-            ) : null}
-
             {openSheet === 'layers' ? (
               <section id="atlas-layers" className={styles.sheet} aria-labelledby="atlas-layers-title" data-lenis-prevent="">
                 <h2 id="atlas-layers-title">Layers</h2>
@@ -1452,14 +1462,10 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
                   showFidelity={showFidelity}
                   showInfluence={showInfluence}
                   influence={influenceRemote}
-                  showNames={showNames}
-                  keyOpen={keyOpen}
                   onLens={changeLens}
                   onByValue={setByValue}
                   onFidelity={setShowFidelity}
                   onInfluence={setShowInfluence}
-                  onNames={setShowNames}
-                  onKey={setKeyOpen}
                   onLocked={gate}
                 />
                 {pro && lens === 'total' && lensRemote.status === 'loading' ? <p className={pro$.muted} role="status">Loading the total co-movement map…</p> : null}
@@ -1491,22 +1497,39 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
             <div className={pro$.cardSlot}><ThemeCard theme={themeShown} labelOf={labelOf} /></div>
           ) : null}
 
-          {signedIn && landmarks.length ? (
-            <div className={styles.landmarks} role="group" aria-label="Most connected companies">
-              <button type="button" className={styles.landmarksHead} aria-expanded={landmarksOpen} onClick={() => setLandmarksOpen((open) => !open)}>
-                <span className={styles.eyebrow}>Most connected</span><span aria-hidden="true">{landmarksOpen ? '▾' : '▸'}</span>
-              </button>
-              {landmarksOpen ? landmarks.map((node) => (
-                <button key={node.symbol} type="button" className={styles.landmark} onClick={() => selectCompany(node)}>
-                  <i style={{ opacity: 0.3 + 0.7 * ((node.reach ?? 0) / (maxReach || 1)) }} aria-hidden="true" />
-                  <b>{node.symbol}</b>
-                  <small>{zonesById.get(node.zoneId)?.label ?? ''}</small>
-                </button>
-              )) : null}
-            </div>
+          {hover ? (
+            <span className={styles.tip} role="status" style={{ left: hover.x, top: hover.y }}>
+              <b>{hover.node.symbol}</b>{hover.node.name ? ` ${hover.node.name}` : ''}{zonesById.get(hover.node.zoneId) ? ` · ${zonesById.get(hover.node.zoneId)?.label}` : ''}
+            </span>
+          ) : null}
+          {!hover && zoneTip && zonesById.get(zoneTip.zoneId) ? (() => {
+            const zone = zonesById.get(zoneTip.zoneId) as AtlasZone
+            const source = nameSourceLine(zone.labelSource, zone.labelSupport)
+            return (
+              <span className={styles.tip} role="status" style={{ left: zoneTip.x, top: zoneTip.y }}>
+                <span style={{ fontWeight: 600 }}>{zone.label.replace(/_/g, ' ')}</span> · {zone.memberCount} companies{source ? <><br /><small>{source}</small></> : null}
+              </span>
+            )
+          })() : null}
+          {loadingArea ? <span className={styles.loading} role="status">Loading companies in this area</span> : null}
+          {areaError ? (
+            <button type="button" className={styles.loading} onClick={() => { setAreaError(false); setDetail(null) }}>
+              Companies in this area could not load. Retry
+            </button>
           ) : null}
 
-          <AtlasToolRail pro={pro} active={railActive} onTool={onTool} onLocked={gate} />
+          <AtlasMapKey
+              signedIn={signedIn}
+              extras={{
+                arrowsSince: cmp && shownWeek === 0 ? spanAgo(cmp) : null,
+                paths: shownWeek > 0,
+                fidelity: pro && showFidelity,
+                influence: pro && showInfluence && residual,
+                theme: theme !== null,
+              }}
+              open={keyOpen}
+              onOpen={setKeyOpen}
+          />
 
           {pro && (dock || multi.size) ? (
             <div className={pro$.workbench}>
@@ -1540,72 +1563,47 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
             </div>
           ) : null}
 
-          {hover ? (
-            <span className={styles.tip} role="status" style={{ left: hover.x, top: hover.y }}>
-              <b>{hover.node.symbol}</b>{hover.node.name ? ` ${hover.node.name}` : ''}{zonesById.get(hover.node.zoneId) ? ` · ${zonesById.get(hover.node.zoneId)?.label}` : ''}
-            </span>
-          ) : null}
-          {!hover && zoneTip && zonesById.get(zoneTip.zoneId) ? (() => {
-            const zone = zonesById.get(zoneTip.zoneId) as AtlasZone
-            const source = nameSourceLine(zone.labelSource, zone.labelSupport)
-            return (
-              <span className={styles.tip} role="status" style={{ left: zoneTip.x, top: zoneTip.y }}>
-                <span style={{ fontWeight: 600 }}>{zone.label.replace(/_/g, ' ')}</span> · {zone.memberCount} companies{source ? <><br /><small>{source}</small></> : null}
-              </span>
-            )
-          })() : null}
-          {loadingArea ? <span className={styles.loading} role="status">Loading companies in this area</span> : null}
-          {areaError ? (
-            <button type="button" className={styles.loading} onClick={() => { setAreaError(false); setDetail(null) }}>
-              Companies in this area could not load. Retry
-            </button>
+          {signedIn && landmarks.length ? (
+            <div className={styles.landmarks} role="group" aria-label="Most connected companies">
+              <button type="button" className={styles.landmarksHead} aria-expanded={landmarksOpen} aria-controls="atlas-landmarks" onClick={() => setLandmarksOpen((open) => !open)}>
+                <span className={styles.eyebrow}>Most connected</span><span aria-hidden="true">{landmarksOpen ? '▾' : '▸'}</span>
+              </button>
+              {landmarksOpen ? <div id="atlas-landmarks" className={styles.landmarksList}>{landmarks.map((node) => (
+                <button key={node.symbol} type="button" className={styles.landmark} onClick={() => { setLandmarksOpen(false); selectCompany(node) }}>
+                  <i style={{ opacity: 0.3 + 0.7 * ((node.reach ?? 0) / (maxReach || 1)) }} aria-hidden="true" />
+                  <b>{node.symbol}</b>
+                  <small>{zonesById.get(node.zoneId)?.label ?? ''}</small>
+                </button>
+              ))}</div> : null}
+            </div>
           ) : null}
 
-          <div className={styles.zoom} role="group" aria-label="Zoom and reading">
-            <button type="button" onClick={() => zoomBy(1.4)} aria-label="Zoom in"><Plus size={16} aria-hidden="true" /></button>
-            <button type="button" onClick={() => zoomBy(1 / 1.4)} aria-label="Zoom out"><Minus size={16} aria-hidden="true" /></button>
-            <button type="button" onClick={fitAll} aria-label="Show the whole map"><Maximize2 size={14} aria-hidden="true" /></button>
-            <span className={styles.level} aria-label={`Detail level ${level}`}>L{level}</span>
-            <button type="button" className={styles.text} aria-pressed={showNames} onClick={() => setShowNames((value) => !value)} aria-label="Names on the map" title="Names on the map">Aa</button>
-            <button type="button" className={styles.text} aria-pressed={keyOpen} aria-controls="atlas-key" onClick={() => setKeyOpen((value) => !value)} title="Map key">Key</button>
+          <div className={styles.mapActions} data-atlas-bottom="">
+            <div className={styles.zoom} role="group" aria-label="Zoom and reading">
+              <button type="button" onClick={() => zoomBy(1.4)} aria-label="Zoom in"><Plus size={16} aria-hidden="true" /></button>
+              <button type="button" onClick={() => zoomBy(1 / 1.4)} aria-label="Zoom out"><Minus size={16} aria-hidden="true" /></button>
+              <button type="button" onClick={fitAll} aria-label="Show the whole map"><Maximize2 size={14} aria-hidden="true" /></button>
+              <span className={styles.level} aria-label={`Detail level ${level}`}>L{level}</span>
+              <button type="button" className={styles.text} aria-pressed={showNames} onClick={() => setShowNames((value) => !value)} aria-label="Names on the map" title="Names on the map">Aa</button>
+            </div>
+
           </div>
 
-          {keyOpen ? (
-            <AtlasMapKey
-              signedIn={signedIn}
-              extras={{
-                arrowsSince: cmp && shownWeek === 0 ? spanAgo(cmp) : null,
-                paths: shownWeek > 0,
-                fidelity: pro && showFidelity,
-                influence: pro && showInfluence && residual,
-                theme: theme !== null,
-              }}
-              onClose={() => setKeyOpen(false)}
-            />
-          ) : null}
-
-          {residual || !pro ? (
-            <AtlasTimeBar
-              pro={pro}
-              span={span}
-              week={shownWeek}
-              label={weekLabel(weeks, shownWeek)}
-              playing={playing}
-              note={note}
-              loading={loadingWeeks}
-              onWeek={onWeek}
-              onPlay={togglePlay}
-              onLocked={gate}
-            />
-          ) : null}
+          <AtlasTimeBar
+            pro={pro}
+            historyAvailable={residual || !pro}
+            span={span}
+            week={shownWeek}
+            label={weekLabel(weeks, shownWeek)}
+            playing={playing}
+            note={note}
+            loading={loadingWeeks}
+            onWeek={onWeek}
+            onPlay={togglePlay}
+            onLocked={gate}
+          />
 
           {upsell ? <AtlasUpsell feature={upsell} signedIn={signedIn} onClose={closeUpsell} /> : null}
-
-          <p className={styles.snapshot}>
-            <span>Week of <b>{formatDate(initial.asOf)}</b></span>
-            <span>{atlas.companyCount.toLocaleString('en-US')} companies in {atlas.zoneCount} regions{lens === 'total' && atlas.lens === 'total' ? ' · total co-movement' : ''}</span>
-            {sentence ? <span>{sentence}</span> : null}
-          </p>
         </div>
 
         {selection ? (
@@ -1631,6 +1629,14 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
           </aside>
         ) : null}
       </div>
+      <AtlasHelp
+        open={openSheet === 'help'}
+        onClose={() => setOpenSheet(null)}
+        returnFocusRef={helpButtonRef}
+        signedIn={signedIn}
+        pro={pro}
+        lens={lens}
+      />
     </div>
   )
 }
