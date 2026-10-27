@@ -1,5 +1,7 @@
 'use client'
 
+import { browserRead } from '@/lib/read-client'
+
 import { CircleAlert, History, Loader2, Radar, Search } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useRouter } from 'next/navigation'
@@ -80,7 +82,7 @@ function writeSessionTickerIndex(value: CachedTickerIndex): void {
 async function fetchTickerIndex(
   existing: CachedTickerIndex | null
 ): Promise<CachedTickerIndex | null> {
-  const response = await fetch('/api/tickers/index', {
+  const response = await browserRead('/api/tickers/index', {
     cache: 'no-store',
     headers: existing?.etag ? { 'If-None-Match': existing.etag } : undefined,
   })

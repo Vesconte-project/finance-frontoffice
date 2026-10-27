@@ -1,7 +1,11 @@
 {
-  "baseline_commit": "0dd5f3a2402f",
-  "scope": "synthetic anonymous ticker fixture; full site Clerk and Google Fonts excluded; actual route/components/search included",
+  "baseline_commit": "c5d445ba839332e13324bdd67c66662114547831",
+  "measurement_date": "2026-10-27",
+  "scope": "synthetic anonymous ticker fixture; full site Clerk and Google Fonts excluded; actual routes/components/search and common browserRead included; refusal probes excluded from visit counts",
   "before": {
+    "baseline": true,
+    "completeVisit": 30,
+    "chartEventChecks": null,
     "prefetchRequests": 5,
     "fixture": "real ticker routes/components, synthetic anonymous backend, isolated shell without Clerk or Google Fonts",
     "rows": [
@@ -12,7 +16,7 @@
         "calls": [
           "/v1/tickers/QAS/summary",
           "/v1/tickers/QAS/financial-statements?statementType=income_statement&periodType=annual&limit=500",
-          "/v1/tickers/QAS/events?startDate=2016-10-28&endDate=2026-10-26&latestOnly=true&limit=200",
+          "/v1/tickers/QAS/events?startDate=2016-10-29&endDate=2026-10-27&latestOnly=true&limit=200",
           "/v1/tickers/QAS/disclosures?latestOnly=true&limit=100",
           "/v1/tickers/QAS/ohlc?period_days=3650",
           "/v1/tickers/QAS/profile",
@@ -25,7 +29,7 @@
         "count": 5,
         "calls": [
           "/v1/tickers/QAS/summary",
-          "/v1/tickers/QAS/events?startDate=2016-10-26&endDate=2027-10-26&latestOnly=true&limit=200",
+          "/v1/tickers/QAS/events?startDate=2016-10-27&endDate=2027-10-27&latestOnly=true&limit=200",
           "/v1/tickers/QAS/disclosures?latestOnly=true&limit=100",
           "/v1/calendar?startDate=2026-10-01&endDate=2026-10-31&category=all&symbol=QAS",
           "/v1/tickers/QAS/profile"
@@ -77,7 +81,7 @@
         "calls": [
           "/v1/tickers/QAS/summary",
           "/v1/tickers/QAS/financial-statements?statementType=income_statement&periodType=annual&limit=500",
-          "/v1/tickers/QAS/events?startDate=2016-10-28&endDate=2026-10-26&latestOnly=true&limit=200",
+          "/v1/tickers/QAS/events?startDate=2016-10-29&endDate=2026-10-27&latestOnly=true&limit=200",
           "/v1/tickers/QAS/disclosures?latestOnly=true&limit=100",
           "/v1/tickers/QAS/ohlc?period_days=3650",
           "/v1/tickers/QAS/profile",
@@ -90,7 +94,7 @@
         "count": 5,
         "calls": [
           "/v1/tickers/QAS/summary",
-          "/v1/tickers/QAS/events?startDate=2016-10-26&endDate=2027-10-26&latestOnly=true&limit=200",
+          "/v1/tickers/QAS/events?startDate=2016-10-27&endDate=2027-10-27&latestOnly=true&limit=200",
           "/v1/tickers/QAS/disclosures?latestOnly=true&limit=100",
           "/v1/calendar?startDate=2026-10-01&endDate=2026-10-31&category=all&symbol=QAS",
           "/v1/tickers/QAS/profile"
@@ -140,7 +144,7 @@
         "calls": [
           "/v1/tickers/QAS/summary",
           "/v1/tickers/QAS/financial-statements?statementType=income_statement&periodType=annual&limit=500",
-          "/v1/tickers/QAS/events?startDate=2016-10-28&endDate=2026-10-26&latestOnly=true&limit=200",
+          "/v1/tickers/QAS/events?startDate=2016-10-29&endDate=2026-10-27&latestOnly=true&limit=200",
           "/v1/tickers/QAS/disclosures?latestOnly=true&limit=100",
           "/v1/tickers/QAS/ohlc?period_days=3650",
           "/v1/tickers/QAS/profile",
@@ -158,6 +162,14 @@
     ]
   },
   "after": {
+    "baseline": false,
+    "completeVisit": 25,
+    "chartEventChecks": {
+      "successfulReadAttempts": 1,
+      "recoveryAttempts": 2,
+      "recoveryPauseMs": 2375,
+      "closeDuringBackoffAttempts": 1
+    },
     "prefetchRequests": 0,
     "fixture": "real ticker routes/components, synthetic anonymous backend, isolated shell without Clerk or Google Fonts",
     "rows": [
@@ -179,7 +191,7 @@
         "count": 4,
         "calls": [
           "/v1/tickers/QAS/summary",
-          "/v1/tickers/QAS/events?startDate=2016-10-26&endDate=2027-10-26&latestOnly=true&limit=200",
+          "/v1/tickers/QAS/events?startDate=2016-10-27&endDate=2027-10-27&latestOnly=true&limit=200",
           "/v1/tickers/QAS/disclosures?latestOnly=true&limit=100",
           "/v1/calendar?startDate=2026-10-01&endDate=2026-10-31&category=all&symbol=QAS"
         ]
@@ -239,7 +251,7 @@
         "count": 4,
         "calls": [
           "/v1/tickers/QAS/summary",
-          "/v1/tickers/QAS/events?startDate=2016-10-26&endDate=2027-10-26&latestOnly=true&limit=200",
+          "/v1/tickers/QAS/events?startDate=2016-10-27&endDate=2027-10-27&latestOnly=true&limit=200",
           "/v1/tickers/QAS/disclosures?latestOnly=true&limit=100",
           "/v1/calendar?startDate=2026-10-01&endDate=2026-10-31&category=all&symbol=QAS"
         ]
@@ -297,7 +309,7 @@
         "count": 3,
         "calls": [
           "/v1/tickers/QAS/technical-series?indicators=sma_20,sma_50,sma_200,bb_20_2,rsi_14&period_days=0",
-          "/v1/tickers/QAS/events?startDate=2016-10-28&endDate=2026-10-26&latestOnly=true&limit=200",
+          "/v1/tickers/QAS/events?startDate=2016-10-29&endDate=2026-10-27&latestOnly=true&limit=200",
           "/v1/tickers/QAS/disclosures?latestOnly=true&limit=100"
         ]
       }
