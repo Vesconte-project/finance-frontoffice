@@ -581,7 +581,6 @@ export default function HeroConstellation() {
       $('hc-fcN').textContent = tickerName(ticker)
       renderConnections(neighborhoodCache.get(ticker) ?? [])
       ;($('hc-fcO') as HTMLAnchorElement).href = '/stocks/' + encodeURIComponent(n.label)
-      routerRef.current.prefetch('/stocks/' + encodeURIComponent(n.label))
       focusReturn = document.activeElement instanceof HTMLElement ? document.activeElement : null
       focus.i = idx; fL.setAttribute('aria-hidden', 'false'); fL.style.pointerEvents = 'auto'; releaseScrollLock ??= runtime.acquireLock()
       if (reducedMotion) { focus.t = 1; updateCard(); backBtn.focus() } else gsap.to(focus, { t: 1, duration: 0.55, ease: 'power2.out', onUpdate: updateCard, onComplete: () => backBtn.focus() })
