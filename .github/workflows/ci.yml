@@ -18,6 +18,7 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Proportional validation
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,45 +32,22 @@ jobs:
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.sha }}
         shell: bash
-        run: |
-          set -euo pipefail
-          if [[ "$EVENT_NAME" == "pull_request" ]]; then
-            base="$PR_BASE"
-          elif [[ -n "${BEFORE:-}" && ! "$BEFORE" =~ ^0+$ ]]; then
-            base="$BEFORE"
-          else
-            base="$(git rev-list --max-parents=0 "$HEAD_SHA")"
-          fi
-
-          verify=false
-          frontend=false
-          while IFS= read -r file; do
-            case "$file" in
-              app/*|components/*|hooks/*|public/*|e2e/*|playwright.config.*|next.config.*|postcss.config.*|proxy.ts|vercel.json)
-                frontend=true ;;
-              *.ts|*.tsx|*.js|*.jsx|*.mjs|*.cjs|*.json|*.toml|*.yml|*.yaml|lib/*|tests/*|scripts/*|supabase/*|.github/workflows/*)
-                verify=true ;;
-            esac
-          done < <(git diff --name-only "$base" "$HEAD_SHA")
-
-          if [[ "$frontend" == true ]]; then verify=false; fi
-          echo "verify=$verify" >> "$GITHUB_OUTPUT"
-          echo "needed=$verify" >> "$GITHUB_OUTPUT"
+        run: node scripts/ci-scope.mjs
 
       - uses: actions/setup-node@v4
-        if: steps.route.outputs.needed == 'true'
+        if: steps.route.outputs.verify == 'true' && steps.route.outputs.build != 'true'
         with:
           node-version: 22
           cache: npm
 
       - name: Install dependencies
-        if: steps.route.outputs.needed == 'true'
+        if: steps.route.outputs.verify == 'true' && steps.route.outputs.build != 'true'
         run: npm ci
 
       - name: Verify non-visual changes
-        if: steps.route.outputs.verify == 'true'
+        if: steps.route.outputs.verify == 'true' && steps.route.outputs.build != 'true'
         run: npm run verify
 
       - name: Record not-applicable result
-        if: steps.route.outputs.needed != 'true'
+        if: steps.route.outputs.verify != 'true' || steps.route.outputs.build == 'true'
         run: echo "No non-visual runtime validation applies to these changes."
