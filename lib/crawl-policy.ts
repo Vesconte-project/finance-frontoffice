@@ -14,14 +14,22 @@ export const INDEXABLE_PAGES = [
   { path: '/about', changeFrequency: 'monthly', priority: 0.5 },
 ] as const
 
-// These are robots product tokens, not a manually maintained Firewall ruleset.
-// In particular Google-Extended has no separate HTTP User-Agent.
-export const AI_ROBOTS = [
-  'meta-externalagent', 'meta-externalfetcher', 'meta-webindexer',
-  'GPTBot', 'ChatGPT-User', 'OAI-SearchBot',
-  'ClaudeBot', 'Claude-User', 'Claude-SearchBot', 'anthropic-ai',
-  'CCBot', 'Bytespider', 'PerplexityBot', 'Perplexity-User',
-  'Amazonbot', 'Applebot-Extended', 'Google-Extended', 'cohere-ai', 'Diffbot',
+// Phase 2 proposal; edge admission is a separate Vercel-owner decision.
+export const AI_SEARCH_ROBOTS = ['OAI-SearchBot', 'Claude-SearchBot', 'PerplexityBot'] as const
+export const AI_SEARCH_INSTITUTIONAL_PATHS = ['/', '/product', '/pricing', '/faq', '/about'] as const
+
+// Product tokens, not authenticated identities or a Firewall ruleset.
+// Includes on-demand agents and unapproved search, not only training.
+// Google-Extended and Applebot-Extended are usage-control tokens.
+// Sources and unconfirmed legacy tokens: docs/eng196-crawlers.md.
+export const BLOCKED_AI_ROBOTS = [
+  'meta-externalagent', 'meta-externalfetcher', 'meta-webindexer', 'meta-externalads',
+  'GPTBot', 'ChatGPT-User',
+  'ClaudeBot', 'Claude-User', 'anthropic-ai',
+  'CCBot', 'Bytespider', 'Perplexity-User',
+  'Amazonbot', 'Amzn-SearchBot', 'Amzn-User',
+  'Applebot-Extended', 'Google-Extended', 'Google-Agent', 'Google-GeminiNotebook',
+  'cohere-ai', 'Diffbot', 'Diffbot-User',
 ] as const
 
 export function crawlRules(): MetadataRoute.Robots['rules'] {
@@ -37,7 +45,17 @@ export function crawlRules(): MetadataRoute.Robots['rules'] {
       // Only the ticker overview; no subpages, filters or dated URL spaces.
       disallow: ['/', '/stocks/*/', '/stocks/*?'],
     },
-    { userAgent: [...AI_ROBOTS], disallow: '/' },
+    {
+      userAgent: [...AI_SEARCH_ROBOTS],
+      // Specific groups replace *, so repeat all relevant exclusions here.
+      allow: [
+        ...AI_SEARCH_INSTITUTIONAL_PATHS.map(path => `${path}$`),
+        '/stocks/', '/_next/', '/marketing/', '/favicon.ico$',
+        '/robots.txt$', '/sitemap.xml$', '/.well-known/security.txt$',
+      ],
+      disallow: ['/', '/stocks/*/', '/stocks/*?'],
+    },
+    { userAgent: [...BLOCKED_AI_ROBOTS], disallow: '/' },
   ]
 }
 
