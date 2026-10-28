@@ -20,7 +20,7 @@ const stubBaseUrl = `http://127.0.0.1:${process.env.E2E_BACKEND_STUB_PORT || 310
 const useProductionServer = process.env.PLAYWRIGHT_SERVER_MODE?.trim() === 'production'
 
 // The synthetic origin exposes native contracts; it has no shared-secret mode.
-const appServerEnv = { BACKEND_BASE_URL: stubBaseUrl }
+const appServerEnv = { BACKEND_BASE_URL: stubBaseUrl, NEXT_PUBLIC_CLERK_KEYLESS_DISABLED: 'true' }
 
 const appServer = useProductionServer
   ? {

@@ -84,6 +84,8 @@ async function fetchTickerIndex(
 ): Promise<CachedTickerIndex | null> {
   const response = await browserRead('/api/tickers/index', {
     cache: 'no-store',
+    // Include the response body and any retry delays in the loading deadline.
+    signal: AbortSignal.timeout(6000),
     headers: existing?.etag ? { 'If-None-Match': existing.etag } : undefined,
   })
 

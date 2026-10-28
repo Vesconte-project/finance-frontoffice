@@ -1,6 +1,7 @@
 import { constants } from 'node:fs'
 import { access } from 'node:fs/promises'
 import { connect } from 'node:net'
+import { clerkQaConfigurationError } from './browser-qa-clerk.mjs'
 
 const QA_HOST = '127.0.0.1'
 const QA_PORT = 3100
@@ -16,6 +17,19 @@ function fail(message, remediation) {
 }
 
 let chromium
+
+if (!process.env.PLAYWRIGHT_BASE_URL?.trim()) {
+  try {
+    const { default: { loadEnvConfig } } = await import('@next/env')
+    // Match the environment Next will load, without printing loaded values.
+    loadEnvConfig(process.cwd(), process.env.PLAYWRIGHT_SERVER_MODE?.trim() !== 'production',
+      { info() {}, error() {} })
+    const error = clerkQaConfigurationError(process.env)
+    if (error) fail(error, 'Configure the existing QA Development keys in the process or local env file and retry. Do not create or claim a keyless instance.')
+  } catch {
+    fail('The Next.js environment could not be loaded for browser QA.', 'Run `npm ci` and retry `npm run qa:browser`.')
+  }
+}
 
 try {
   chromium = (await import('@playwright/test')).chromium
