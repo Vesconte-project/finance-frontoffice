@@ -31,7 +31,13 @@ const dialog = (page: Page) => page.getByRole('dialog', { name: 'Listings and cu
 test.use({ viewport: { width: 1440, height: 900 } })
 
 test('the page reads in the listing currency until a currency is chosen; nothing is remembered', async ({ page }) => {
+  const currencyReads: string[] = []
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/api/currencies') currencyReads.push(request.url())
+  })
   await page.goto('/stocks/QAK')
+  await page.waitForLoadState('networkidle')
+  expect(currencyReads).toEqual([])
   await expect(page.locator('[data-ticker-price]')).toHaveText('₩75,000')
   await expect(page.locator('[data-ticker-price-converted]')).toHaveCount(0)
   await expect(page.locator('[data-chart-currency-toggle]')).toHaveCount(0)

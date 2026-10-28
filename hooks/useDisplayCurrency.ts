@@ -41,15 +41,16 @@ function loadCurrencies(): Promise<CurrenciesPayload> {
 }
 
 /** The currencies the backend lists, loaded once per page session. */
-export function useDisplayCurrencies(): CurrenciesState {
+export function useDisplayCurrencies(enabled: boolean): CurrenciesState {
   const [state, setState] = useState<CurrenciesState>({ status: 'loading', payload: null })
   useEffect(() => {
+    if (!enabled) return
     let active = true
     loadCurrencies()
       .then((payload) => { if (active) setState({ status: 'ready', payload }) })
       .catch(() => { if (active) setState({ status: 'error', payload: null }) })
     return () => { active = false }
-  }, [])
+  }, [enabled])
   return state
 }
 
