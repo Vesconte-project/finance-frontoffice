@@ -20,3 +20,14 @@ Inventário método/caminho, ficheiro, autenticação e origem:
 As rotas antigas dão 404, incluindo cron/CSV/direcionais/synthetic legado.
 As páginas de sinais apresentam indisponibilidade sem fallback; watchlist continua.
 Nenhuma chamada de browser recebe Access, chave IP ou credencial de serviço.
+
+A pesquisa carrega `/api/tickers/index` e filtra o catálogo completo no browser;
+as sugestões visíveis não são uma página a completar por novas chamadas enquanto
+se escreve. O BFF devolve `private, no-store`, inclusive em `304` e erros, para
+não saltar admissão/quotas através de cache pública. Memória e sessionStorage
+continuam a reutilizar o catálogo na sessão. O BFF preserva recusas de aplicação
+`401`, `403`, `429`, `503` e `Retry-After`; recusas do transporte Cloudflare Access
+continuam a ser indisponibilidade da origem, sem lhes conferir identidade de
+utilizador. O prazo total do BFF é 5 s; o carregamento no browser tem prazo de 6 s,
+incluindo corpo e esperas de retry. A preparação/atualização do catálogo pertence
+ao backend e não é desencadeada por um pedido de pesquisa.
