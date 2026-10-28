@@ -32,7 +32,9 @@ import {
   weeksFixture,
 } from '../e2e/fixtures/market-atlas-pro.mjs'
 import { calendarFixture } from '../e2e/fixtures/calendar.mjs'
+import { annotateFixture, currenciesFixture, isListedCurrency, unsupportedCurrencyFixture } from '../e2e/fixtures/display-currency.mjs'
 import {
+  fixtureCurrency,
   isFixtureTicker,
   tickerCorporateActionsFixture,
   tickerDisclosuresFixture,
@@ -59,9 +61,32 @@ function send(response, status, payload) {
   response.end(body)
 }
 
+/**
+ * A fixture ticker read, annotated with converted amounts when the request
+ * names a display currency (`?currency=`), as finance-backend does.
+ */
+function sendTickerRead(response, url, kind, ticker, payload) {
+  const target = url.searchParams.get('currency')
+  if (target === null) {
+    send(response, 200, payload)
+    return
+  }
+  if (!isListedCurrency(target)) {
+    send(response, 422, unsupportedCurrencyFixture())
+    return
+  }
+  send(response, 200, annotateFixture(kind, payload, { listingCurrency: fixtureCurrency(ticker), target }))
+}
+
 const server = createServer((request, response) => {
   const url = new URL(request.url ?? '/', `http://${HOST}:${PORT}`)
   const path = url.pathname.replace(/\/+$/, '') || '/'
+
+  // Display currencies, synthetic (e2e/fixtures/display-currency.mjs).
+  if (path === '/v1/currencies') {
+    send(response, 200, currenciesFixture())
+    return
+  }
 
   if (path === '/health') {
     send(response, 200, { status: 'ok', fixture: true })
@@ -139,19 +164,22 @@ const server = createServer((request, response) => {
 
   const statementsRoute = path.match(/^\/v1\/tickers\/([^/]+)\/financial-statements$/)
   if (statementsRoute && isFixtureTicker(decodeURIComponent(statementsRoute[1]))) {
-    send(response, 200, tickerFinancialStatementsFixture(decodeURIComponent(statementsRoute[1]), url.searchParams.get('statementType')))
+    const ticker = decodeURIComponent(statementsRoute[1])
+    sendTickerRead(response, url, 'financial-statements', ticker, tickerFinancialStatementsFixture(ticker, url.searchParams.get('statementType')))
     return
   }
 
   const metricsRoute = path.match(/^\/v1\/tickers\/([^/]+)\/market-metrics$/)
   if (metricsRoute && isFixtureTicker(decodeURIComponent(metricsRoute[1]))) {
-    send(response, 200, tickerMarketMetricsFixture(decodeURIComponent(metricsRoute[1]), url.searchParams.get('metric')))
+    const ticker = decodeURIComponent(metricsRoute[1])
+    sendTickerRead(response, url, 'market-metrics', ticker, tickerMarketMetricsFixture(ticker, url.searchParams.get('metric')))
     return
   }
 
   const capitalRoute = path.match(/^\/v1\/tickers\/([^/]+)\/equity-capital-events$/)
   if (capitalRoute && isFixtureTicker(decodeURIComponent(capitalRoute[1]))) {
-    send(response, 200, tickerEquityCapitalEventsFixture(decodeURIComponent(capitalRoute[1])))
+    const ticker = decodeURIComponent(capitalRoute[1])
+    sendTickerRead(response, url, 'equity-capital-events', ticker, tickerEquityCapitalEventsFixture(ticker))
     return
   }
 
@@ -163,7 +191,8 @@ const server = createServer((request, response) => {
 
   const actionsRoute = path.match(/^\/v1\/tickers\/([^/]+)\/corporate-actions$/)
   if (actionsRoute && isFixtureTicker(decodeURIComponent(actionsRoute[1]))) {
-    send(response, 200, tickerCorporateActionsFixture(decodeURIComponent(actionsRoute[1])))
+    const ticker = decodeURIComponent(actionsRoute[1])
+    sendTickerRead(response, url, 'corporate-actions', ticker, tickerCorporateActionsFixture(ticker))
     return
   }
 
@@ -171,10 +200,10 @@ const server = createServer((request, response) => {
   if (tickerRoute && isFixtureTicker(decodeURIComponent(tickerRoute[1]))) {
     const ticker = decodeURIComponent(tickerRoute[1])
     const periodDays = url.searchParams.get('period_days')
-    if (tickerRoute[2] === 'summary') send(response, 200, tickerSummaryFixture(ticker))
-    else if (tickerRoute[2] === 'technical-series') send(response, 200, tickerTechnicalSeriesFixture(ticker))
-    else if (tickerRoute[2] === 'ohlc') send(response, 200, tickerOhlcFixture(ticker, periodDays))
-    else send(response, 200, tickerHistoryFixture(ticker, periodDays))
+    if (tickerRoute[2] === 'summary') sendTickerRead(response, url, 'summary', ticker, tickerSummaryFixture(ticker))
+    else if (tickerRoute[2] === 'technical-series') sendTickerRead(response, url, 'technical-series', ticker, tickerTechnicalSeriesFixture(ticker))
+    else if (tickerRoute[2] === 'ohlc') sendTickerRead(response, url, 'ohlc', ticker, tickerOhlcFixture(ticker, periodDays))
+    else sendTickerRead(response, url, 'history', ticker, tickerHistoryFixture(ticker, periodDays))
     return
   }
 

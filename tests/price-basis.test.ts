@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import test from 'node:test'
 import { normalizeAdjustedHistory, readyAdjustedOverlays, type TechnicalChartPayload } from '../lib/price-basis'
 const bars = [{date:'2026-01-05',close:100,price_basis:'adjusted' as const}]
-const ready: TechnicalChartPayload = {price_basis:'adjusted',availability_status:'ready',unavailable_reason:null,series:[{key:'sma_20',unit:'price',price_basis:'adjusted',points:[{date:'2026-01-05',value:100}]}]}
+const ready: TechnicalChartPayload = {price_basis:'adjusted',availability_status:'ready',unavailable_reason:null,series:[{key:'sma_20',unit:'price',price_basis:'adjusted',points:[{date:'2026-01-05',price_basis:'adjusted',value:100}]}]}
 test('history keeps its adjusted basis without substituting raw/unknown rows', () => {
   assert.deepEqual(normalizeAdjustedHistory(bars), bars)
   for (const row of [{date:'2026-01-05',close:200},{...bars[0],price_basis:'raw'},{...bars[0],close:NaN}]) {
@@ -33,4 +33,12 @@ test('full history changes cache identity and refuses an old raw cache response'
   assert.match(source,/history\?price_basis=\$\{ADJUSTED_CHART_VERSION\}/)
   assert.match(source,/normalizeAdjustedHistory\(payload\)/)
   assert.throws(() => normalizeAdjustedHistory([{date:'2026-01-05',close:200}]))
+})
+
+
+test('ready series still refuse overlays with raw or unlabelled individual points', () => {
+  for (const price_basis of ['raw', undefined]) {
+    const payload = { ...ready, series: [{ ...ready.series![0], points: [{ date: '2026-01-05', value: 100, price_basis }] }] }
+    assert.deepEqual(readyAdjustedOverlays(payload as TechnicalChartPayload, bars), [])
+  }
 })

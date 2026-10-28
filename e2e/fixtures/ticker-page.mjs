@@ -19,6 +19,21 @@ const FIXTURE_TICKERS = {
     // The longest exchange label the site renders.
     exchange: 'NYQ',
   },
+  // A won-listed company for the display-currency checks (lib/display-currency.ts).
+  QAK: {
+    name: 'Qa Korea Electronics Co., Ltd.',
+    price: 75000,
+    change: 1200,
+    changePercent: 1.63,
+    marketCapText: '₩447.7T',
+    exchange: 'KSC',
+    currency: 'KRW',
+  },
+}
+
+/** The listing currency of a fixture ticker. */
+export function fixtureCurrency(ticker) {
+  return FIXTURE_TICKERS[ticker]?.currency ?? 'USD'
 }
 
 const LAST_DATE = Date.UTC(2026, 8, 30)
@@ -81,7 +96,7 @@ export function tickerTechnicalSeriesFixture(ticker, { ready = false } = {}) {
     series: definitions.map(([key, family, params, unit]) => ({
       key, family, params, unit, price_basis: 'adjusted',
       points: rows.map(({ date, close }, index) => ({
-        date,
+        date, price_basis: 'adjusted',
         value: ready ? (unit === 'price' ? close * 0.99 : 45 + index % 10) : null,
         ...(key === 'bb_20_2' ? { upper: ready ? close * 1.02 : null, lower: ready ? close * 0.96 : null } : {}),
       })),
@@ -95,7 +110,7 @@ export function tickerSummaryFixture(ticker) {
   const asOfDate = asOf.slice(0, 10)
   return {
     ticker,
-    asset: { assetType: 'equity', currency: 'USD', exchange: fixture.exchange ?? 'NASDAQ', exchangeMic: null, region: 'US' },
+    asset: { assetType: 'equity', currency: fixtureCurrency(ticker), exchange: fixture.exchange ?? 'NASDAQ', exchangeMic: null, region: fixture.currency === 'KRW' ? 'KR' : 'US' },
     quote: {
       price_basis: 'raw',
       ticker,
@@ -139,7 +154,40 @@ export function tickerSummaryFixture(ticker) {
     },
     earningsHistory: [],
     componentMissingInputs: [],
+    ...listingsFixture(ticker),
   }
+}
+
+/**
+ * The summary's `listings` block (finance-backend Entity Layer), synthetic:
+ * QAK has two tracked listings (its primary won listing and a dollar one), QAS
+ * is not resolved (unavailable, no items), QAM is its only tracked listing,
+ * and QAL has no block at all, as an older backend would send.
+ */
+function listingsFixture(ticker) {
+  if (ticker === 'QAK') {
+    return {
+      listings: {
+        available: true,
+        reason: null,
+        items: [
+          { symbol: 'QAK', exchange: 'KSC', exchangeMic: 'XKRX', country: 'KR', currency: 'KRW', isPrimary: true, isCurrent: true },
+          { symbol: 'QAKY', exchange: null, exchangeMic: 'OTCM', country: 'US', currency: 'USD', isPrimary: false, isCurrent: false },
+        ],
+      },
+    }
+  }
+  if (ticker === 'QAS') return { listings: { available: false, reason: 'symbol_absent', items: [] } }
+  if (ticker === 'QAM') {
+    return {
+      listings: {
+        available: true,
+        reason: null,
+        items: [{ symbol: 'QAM', exchange: 'NMS', exchangeMic: 'XNAS', country: 'US', currency: 'USD', isPrimary: true, isCurrent: true }],
+      },
+    }
+  }
+  return {}
 }
 
 /**
@@ -206,6 +254,12 @@ const STATEMENT_FIXTURES = {
     { year: 2025, revenue: 47e9, gross_profit: 22e9, operating_income: 5.3e9, net_income: 3.8e9 },
   ],
   QAL: [],
+  // Won amounts: ten years, so the earliest ones fall before the fixture's first KRW rate.
+  QAK: Array.from({ length: 10 }, (_, index) => {
+    const year = 2016 + index
+    const revenue = 200e12 * 1.06 ** index
+    return { year, revenue, gross_profit: revenue * 0.38, operating_income: revenue * 0.12, net_income: revenue * 0.09 }
+  }),
 }
 
 const LINE_LABELS = {
@@ -226,7 +280,7 @@ export function tickerFinancialStatementsFixture(ticker, statementType) {
         lineItemId,
         displayLabel: LINE_LABELS[lineItemId],
         value: entry[lineItemId],
-        currency: 'USD',
+        currency: fixtureCurrency(ticker),
         periodType: 'annual',
         fiscalYear: entry.year,
         fiscalQuarter: null,
@@ -277,6 +331,19 @@ export function tickerCorporateActionsFixture(ticker) {
       }
     }
   }
+  if (ticker === 'QAK') {
+    for (let year = 2017; year <= 2026; year += 1) {
+      for (const month of ['03', '06', '09', '12']) {
+        const exDate = `${year}-${month}-27`
+        if (exDate > '2026-09-30') continue
+        rows.push({
+          eventId: `qak-dividend-${exDate}`, symbol: 'QAK', actionType: 'dividend', exDate, paymentDate: null,
+          cashAmount: 361, adjustedCashAmount: 361, frequency: 'quarterly', currency: 'KRW',
+          knownAt: `${exDate}T00:00:00Z`, source: 'fixture', methodologyVersion: 'fixture',
+        })
+      }
+    }
+  }
   rows.reverse()
   return {
     available: true,
@@ -292,6 +359,7 @@ export function tickerLatestFundamentalsFixture(ticker) {
   const rows = {
     QAS: [['operating_margin', 'Operating Margin', 0.302], ['net_margin', 'Net Margin', 0.241], ['net_cash', 'Net Cash', 42e9]],
     QAM: [['operating_margin', 'Operating Margin', 0.113], ['net_cash', 'Net Cash', -12.5e9]],
+    QAK: [['operating_margin', 'Operating Margin', 0.121], ['net_cash', 'Net Cash', 82e12]],
   }[ticker] ?? []
   return rows.map(([metric, metricLabel, valueNumber]) => ({
     ticker,
