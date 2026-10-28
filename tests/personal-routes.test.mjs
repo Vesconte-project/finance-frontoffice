@@ -52,7 +52,8 @@ function setup(options = {}) {
     if (parsed.pathname === '/v1/ai-research/runs') return Response.json(init.method === 'GET' ? { runs: [] } : { runId })
     return Response.json(parsed.pathname === '/v1/watchlist' && init.method === 'GET' ? { tickers: ['SYNTH'] } : { ok: true })
   }
-  const platform = load('lib/platform-client.ts', {}, env, fetch)
+  const retryPolicy = load('lib/retry-policy.ts', {}, env, fetch)
+  const platform = load('lib/platform-client.ts', { './retry-policy': retryPolicy }, env, fetch)
   const session = load('lib/platform-server.ts', { 'server-only': {}, './platform-client': platform, './backend-origin': {backendOriginHeaders:async()=>({})},
     '@clerk/nextjs/server': { auth: async () => ({ userId: options.anonymous ? null : 'user_synthetic001',
       orgId: options.org, getToken: async () => options.anonymous ? null : token }) } }, env, fetch)

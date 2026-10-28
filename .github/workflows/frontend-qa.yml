@@ -18,6 +18,7 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Frontend candidate
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,45 +32,29 @@ jobs:
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.sha }}
         shell: bash
-        run: |
-          set -euo pipefail
-          if [[ "$EVENT_NAME" == "pull_request" ]]; then
-            base="$PR_BASE"
-          elif [[ -n "${BEFORE:-}" && ! "$BEFORE" =~ ^0+$ ]]; then
-            base="$BEFORE"
-          else
-            base="$(git rev-list --max-parents=0 "$HEAD_SHA")"
-          fi
-
-          needed=false
-          while IFS= read -r file; do
-            case "$file" in
-              app/*|components/*|hooks/*|public/*|e2e/*|playwright.config.*|next.config.*|postcss.config.*|proxy.ts|vercel.json)
-                needed=true
-                break ;;
-            esac
-          done < <(git diff --name-only "$base" "$HEAD_SHA")
-          echo "needed=$needed" >> "$GITHUB_OUTPUT"
+        run: node scripts/ci-scope.mjs
 
       - uses: actions/setup-node@v4
-        if: steps.route.outputs.needed == 'true'
+        if: steps.route.outputs.build == 'true'
         with:
           node-version: 22
           cache: npm
 
       - name: Install dependencies
-        if: steps.route.outputs.needed == 'true'
+        if: steps.route.outputs.build == 'true'
         run: npm ci
 
-      - name: Install Chromium
-        if: steps.route.outputs.needed == 'true'
-        run: npx playwright install --with-deps chromium
+      - name: Verify source and contracts
+        if: steps.route.outputs.build == 'true'
+        timeout-minutes: 5
+        run: npm run verify
 
-      - name: Run complete frontend candidate check
-        if: steps.route.outputs.needed == 'true'
+      - name: Build production candidate
+        timeout-minutes: 5
+        if: steps.route.outputs.build == 'true'
         env:
           # A dedicated disposable Clerk development application, scoped to this
-          # step alone rather than the job or workflow. clerkMiddleware() needs a
+          # build/browser steps rather than the job or workflow. clerkMiddleware() needs a
           # publishable key wherever it runs, and without one it throws on every
           # matched route.
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.CLERK_CI_PUBLISHABLE_KEY }}
@@ -80,22 +65,35 @@ jobs:
           # useId() and breaks hydration. NEXT_PUBLIC_ is inlined into both, so
           # both agree.
           NEXT_PUBLIC_CLERK_KEYLESS_DISABLED: '1'
-          # qa:frontend already runs `npm run build`. Point the browser suite at
-          # that production build via `next start`, instead of spawning a second
-          # `next dev` server, so QA exercises the runtime Vercel serves.
+        run: npm run build
+
+      - name: Install Chromium
+        if: steps.route.outputs.browser == 'true'
+        timeout-minutes: 3
+        run: npx playwright install --with-deps chromium
+
+      - name: Check browser runtime and interface
+        if: steps.route.outputs.browser == 'true'
+        timeout-minutes: 12
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.CLERK_CI_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_CI_SECRET_KEY }}
+          NEXT_PUBLIC_CLERK_KEYLESS_DISABLED: '1'
           PLAYWRIGHT_SERVER_MODE: production
           PLAYWRIGHT_CAPTURE: '1'
-        run: npm run qa:frontend
+        run: npm run qa:browser
 
-      - name: Keep viewport screenshots for review
-        if: always() && steps.route.outputs.needed == 'true'
+      - name: Keep browser report and failure evidence for review
+        if: always() && steps.route.outputs.browser == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-viewport-screenshots
-          path: test-results/**/*.png
+          name: frontend-browser-evidence
+          path: |
+            test-results/
+            playwright-report/
           if-no-files-found: warn
           retention-days: 14
 
       - name: Record not-applicable result
-        if: steps.route.outputs.needed != 'true'
+        if: steps.route.outputs.build != 'true'
         run: echo "No frontend/runtime candidate paths changed; frontend QA is not applicable."

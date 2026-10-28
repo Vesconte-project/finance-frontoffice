@@ -12,15 +12,39 @@ npm run qa:browser
 
 Do not start or stop a server manually, select another port, invoke Chromium directly, or repair browser locks during a QA run. The committed smoke test is deliberately content-light and checks homepage load, console/page errors, horizontal overflow, and deliberate screenshot capture across representative viewports.
 
-`.github/workflows/frontend-qa.yml` runs the complete candidate check for browser/runtime paths. Its applicable job installs Chromium and calls the canonical command:
+`.github/workflows/frontend-qa.yml` uses the shared `scripts/ci-scope.mjs`
+classifier with the non-visual CI workflow. Browser/runtime changes still run
+verify, a production build and the full browser candidate set. Metadata-only
+`app/robots.ts` / `app/sitemap.ts` changes run verify and a production build,
+without UI/browser assertions. Adding any UI path restores full browser QA.
+Package dependencies, runtime scripts and QA harness/workflow changes always
+select the full candidate. Only a package.json `scripts.test` edit can stay on
+the non-visual path. Mixed changes never use the narrowest file's scope.
 
-```bash
-npm ci
-npx playwright install --with-deps chromium
-npm run qa:frontend
-```
+CI calls the same canonical `npm run verify`, `npm run build` and
+`npm run qa:browser` commands as `qa:frontend`, as separate timed steps. It does
+not repeat their internals or run verification twice. The complete browser
+candidate remains available locally as `npm run qa:frontend`.
+GitHub-connected Vercel—not Actions—creates the frontend Preview.
 
-The workflow does not reproduce the command's internal lint, typecheck, test, build, or Playwright steps. GitHub-connected Vercel—not Actions—creates the frontend Preview.
+The CI candidate job has a 25-minute upper bound. Verify and build each have
+5-minute step limits; browser QA has a 12-minute step limit around Playwright's
+10-minute global timeout, leaving time to flush reports. CI stops after three
+failed tests and does not automatically retry failures. It still cancels obsolete
+runs on new pushes. These are safety ceilings, not promised healthy durations.
+The non-visual job is capped at 10 minutes.
+
+The `runtime` Playwright dependency first checks that the real anonymous home
+request stays on the app origin, returns successful HTML, renders main content
+and loads the real Clerk SDK. A redirect to a Clerk JSON error or unavailable
+SDK therefore stops before the viewport/interaction suite. It does not bypass
+middleware, replace Clerk or turn failed auth into a passing test. No real
+account is created or signed in by this probe. Local-only account-management
+specifications remain excluded from both projects.
+
+CI retains the HTML/JSON browser reports and all failure evidence (including
+traces, videos and error contexts), not only screenshots. This distinguishes an
+auth/service failure from a missing visual component without another full run.
 
 ## Harness invariants
 

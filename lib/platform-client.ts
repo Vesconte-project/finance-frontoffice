@@ -1,3 +1,4 @@
+import { retryAfterMs } from './retry-policy'
 /** Native user API. Commercial decisions belong to FastAPI, never Clerk metadata. */
 type GetToken = (options?: { skipCache?: boolean }) => Promise<string | null>
 type Options = { baseUrl: string; getToken: GetToken; fetcher?: typeof fetch; originHeaders?: (url: URL, method: string) => Promise<Record<string, string>> }
@@ -61,7 +62,8 @@ export function createPlatformClient({ baseUrl, getToken, fetcher = fetch, origi
       if (response.status === 401 && attempt === 0) continue
       if (!response.ok) {
         const raw = response.headers.get('Retry-After')
-        const retryAfter = raw && /^\d{1,9}$/.test(raw) ? Number(raw) : null
+        const milliseconds = retryAfterMs(raw)
+        const retryAfter = milliseconds === null ? null : Math.ceil(milliseconds / 1000)
         throw new PlatformError(response.status, retryAfter)
       }
       return response
