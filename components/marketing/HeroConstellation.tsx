@@ -564,11 +564,11 @@ export default function HeroConstellation() {
     // The camera for the search view is worked out from the nodes themselves, so it
     // fits whatever the screen: project them as they would be seen from above, take
     // the span they cover (leaving out the few strays at each end) and scale and
-    // shift that to fill SEARCH_FILL of the screen, centred. The search box and its
-    // suggestions sit over the middle of it, so what shows is the universe round them
-    // and at the corners. The result is eased, as the nodes sway and the universe turns.
+    // shift that to fill SEARCH_FILL of the screen, centred: far enough back to see the
+    // universe as one body with room round it, part of it behind the search box and its
+    // suggestions. The result is eased, as the nodes sway and the universe turns.
     const SEARCH_TILT = 0.6
-    const SEARCH_FILL = 0.88
+    const SEARCH_FILL = 0.6
     const searchFit = { zoom: 0, mx: 0, my: 0, ready: false }
     const fitXs: number[] = [], fitYs: number[] = []
     function fitSearchView(ay: number) {
