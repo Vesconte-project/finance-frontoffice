@@ -111,6 +111,12 @@ export default function HeroConstellation() {
     root.dataset.reducedMotion = String(reducedMotion)
 
     let W = 0, H = 0, DPR = 1, cx = 0, cy = 0, R = 0, cam = 0
+    // Half the extent of the universe in each direction: across and up it follows the
+    // screen (wide on a wide screen, tall on a phone) and is larger than it, so the
+    // field runs off every edge instead of ending in a shape; in depth it is as deep
+    // as the sphere it replaced, because the contrast between near and far is what
+    // gives the field a background.
+    let spanX = 0, spanY = 0, spanZ = 0
     let nodes: HcNode[] = [], pairs: number[] = [], pairLengths: number[] = []
     // Each link grows out of one of its two nodes: how far it has grown, 0..1, which
     // node it grows from, and how quickly (a link's own pace, so they do not all
@@ -204,7 +210,6 @@ export default function HeroConstellation() {
 
     const TICKERS = ['VT','ASML','NVDA','SPY','TSM','AAPL','VEA','MSFT','BABA','QQQ','AMZN','NVO','META','VWO','TSLA','SHEL','GOOGL','GLD','JPM','SONY','XOM','AVGO','AMD','LLY','V','COST','NFLX','HD','BRK.B']
     const ETF_TICKERS = new Set(['VT', 'VEA', 'VWO', 'SPY', 'QQQ', 'GLD'])
-    const ETF_COUNT = ETF_TICKERS.size
     const COLORS: [number, number, number][] = [themeRgb('--network-node')]
     const G: [number, number, number] = themeRgb('--accent')
     const spark = themeColor('--accent')
@@ -218,7 +223,6 @@ export default function HeroConstellation() {
     const LIGHT_FLOOR = 0.08
     const LIGHT_STOPS = [0, 0.25, 0.5, 0.75, 1]
     const smooth = (a: number, b: number, t: number) => { t = Math.min(1, Math.max(0, (t - a) / (b - a))); return t * t * (3 - 2 * t) }
-    const fib = (i: number, n: number) => { const y = 1 - (i / Math.max(1, n - 1)) * 2; const r = Math.sqrt(Math.max(0, 1 - y * y)); const th = i * 2.399963; return [Math.cos(th) * r, y, Math.sin(th) * r] }
 
     // On a phone the browser's URL bar shows and hides as the reader scrolls,
     // changing the window's height each time. The field is sized to the tallest
@@ -234,27 +238,53 @@ export default function HeroConstellation() {
       c.width = W * DPR; c.height = H * DPR; c.style.width = W + 'px'; c.style.height = H + 'px'
       front.width = c.width; front.height = c.height; front.style.width = c.style.width; front.style.height = c.style.height
       cx = W * 0.5; cy = H * 0.5; R = Math.max(W, H) * 0.62; cam = R * 1.9
+      spanX = W * 0.78; spanY = H * 0.62; spanZ = R * 0.9
     }
     function build() {
-      nodes = []; const HUBS = TICKERS.length, EXTRA = Math.max(90, Math.floor(W / 12)), N = HUBS + EXTRA
+      nodes = []; const HUBS = TICKERS.length, EXTRA = Math.min(260, Math.max(120, Math.round(Math.sqrt(W * H) / 5.8))), N = HUBS + EXTRA
+      // Nothing about the layout is regular: a few clusters at random places, with
+      // the rest of the nodes scattered between them. The ETFs take a random cell of
+      // a loose 3x2 grid over the visible part, so there is always one near each
+      // part of the screen but never a pattern.
+      const rand = (half: number) => (Math.random() * 2 - 1) * half
+      const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) * 1.6
+      // One cluster in each cell of a grid whose shape follows the screen's, at a random
+      // place in its cell, so no part of the screen is left without one.
+      const cols = Math.max(1, Math.round(Math.sqrt(8 * W / H))), rows = Math.ceil(8 / cols)
+      const clusters = Array.from({ length: cols * rows }, (_, i) => [
+        (-1 + ((i % cols) + Math.random()) * (2 / cols)) * spanX * 0.9,
+        (-1 + (((i / cols) | 0) + Math.random()) * (2 / rows)) * spanY * 0.9,
+        rand(spanZ * 0.85),
+      ])
+      // Every node belongs to a cell, dealt round the cells in turn, so each part of
+      // the screen gets the same share of nodes whatever the random draw; within its
+      // cell a node either gathers round the cell's cluster or lands anywhere in it.
+      const order = Array.from({ length: cols * rows }, (_, i) => i).sort(() => Math.random() - 0.5)
+      const place = (index: number, clustered: boolean): [number, number, number] => {
+        const cell = order[index % order.length]
+        if (!clustered) return [(-1 + ((cell % cols) + Math.random()) * (2 / cols)) * spanX, (-1 + (((cell / cols) | 0) + Math.random()) * (2 / rows)) * spanY, rand(spanZ)]
+        const c = clusters[cell]
+        const clamp = (v: number, half: number) => Math.max(-half * 1.15, Math.min(half * 1.15, v))
+        return [clamp(c[0] + gauss() * spanX * 0.22, spanX), clamp(c[1] + gauss() * spanY * 0.22, spanY), clamp(c[2] + gauss() * spanZ * 0.22, spanZ)]
+      }
+      const etfCols = Math.max(1, Math.round(Math.sqrt(ETF_TICKERS.size * W / H))), etfRows = Math.ceil(ETF_TICKERS.size / etfCols)
+      const cells = Array.from({ length: etfCols * etfRows }, (_, i) => i).sort(() => Math.random() - 0.5)
       for (let i = 0; i < N; i++) {
         let bx: number, by: number, bz: number, label: string | null = null, rad: number
         if (i < HUBS) {
           label = TICKERS[i]
           const etfIndex = [...ETF_TICKERS].indexOf(label)
           if (etfIndex >= 0) {
-            const angle = (etfIndex / ETF_COUNT) * Math.PI * 2 + 0.35
-            bx = Math.cos(angle) * R * 0.64
-            by = Math.sin(angle) * R * 0.43
-            bz = Math.sin(angle * 2) * R * 0.12
+            const cell = cells[etfIndex], col = cell % etfCols, row = (cell / etfCols) | 0
+            bx = (-0.6 + (col + Math.random()) * (1.2 / etfCols)) * W
+            by = (-0.55 + (row + Math.random()) * (1.1 / etfRows)) * H
+            bz = rand(spanZ * 0.5)
             rad = 6
           } else {
-            const v = fib(i, HUBS)
-            const rr = R * (0.45 + Math.random() * 0.5)
-            bx = v[0] * rr; by = v[1] * rr; bz = v[2] * rr; rad = 3.0
+            [bx, by, bz] = place(i, Math.random() < 0.5); rad = 3.0
           }
         }
-        else { const th = Math.random() * 6.283, ph = Math.acos(2 * Math.random() - 1), rr = R * (0.12 + Math.random() * 0.92); bx = rr * Math.sin(ph) * Math.cos(th); by = rr * Math.cos(ph); bz = rr * Math.sin(ph) * Math.sin(th); rad = 1.1 + Math.random() * 1.3 }
+        else { [bx, by, bz] = place(i, Math.random() < 0.55); rad = 1.1 + Math.random() * 1.3 }
         const isEtf = label !== null && ETF_TICKERS.has(label)
         nodes.push({ bx, by, bz, r: rad, label, signal: isEtf, rgb: isEtf ? G : COLORS[(Math.random() * COLORS.length) | 0],
           A1: R * (0.02 + Math.random() * 0.05), A2: R * (0.02 + Math.random() * 0.05), A3: R * (0.02 + Math.random() * 0.05),
@@ -262,10 +292,23 @@ export default function HeroConstellation() {
           P1: Math.random() * 6.28, P2: Math.random() * 6.28, P3: Math.random() * 6.28,
           ph: Math.random() * 6.28, sx: 0, sy: 0, sc: 1, da: 1, hover: 0, clar: 1, light: 0, fg: 1, cov: 0 })
       }
-      pairs = []; const TH = R * 0.34
+      // Nearby nodes link at random, but each takes only a handful of links and the
+      // shortest first, so the links are spread over the whole universe instead of
+      // being used up on the nodes that happen to come first; the ETFs take more so
+      // their light still spreads.
+      pairs = []; const TH = R * 0.7
+      const candidates: [number, number, number][] = []
       for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
         const dx = nodes[i].bx - nodes[j].bx, dy = nodes[i].by - nodes[j].by, dz = nodes[i].bz - nodes[j].bz
-        if (dx * dx + dy * dy + dz * dz < TH * TH && Math.random() < 0.5) { pairs.push(i, j); if (pairs.length > 1500) break }
+        const d2 = dx * dx + dy * dy + dz * dz
+        if (d2 < TH * TH && Math.random() < 0.5) candidates.push([i, j, d2])
+      }
+      candidates.sort((u, v) => u[2] - v[2])
+      const degree = new Array<number>(N).fill(0)
+      const maxDegree = (i: number) => nodes[i].signal ? 9 : 5
+      for (const [i, j] of candidates) {
+        if (degree[i] >= maxDegree(i) || degree[j] >= maxDegree(j)) continue
+        degree[i]++; degree[j]++; pairs.push(i, j)
       }
       edgeV = new Float32Array(pairs.length / 2).fill(1)
       edgeDir = Uint8Array.from({ length: pairs.length / 2 }, () => (Math.random() < 0.5 ? 1 : 0))
@@ -381,11 +424,17 @@ export default function HeroConstellation() {
       return true
     }
     const updateOcclusion = (now: number) => {
-      const carving = focus.i < 0 && focus.t < 0.01
+      const live = focus.i < 0 && focus.t < 0.01
+      // While the search is open the camera draws back over the whole universe and
+      // everything sweeps across the screen, so no link is taken away for the copy:
+      // the ones that were held back grow out again, and none is taken away again.
+      // The nodes still fade under the copy, so their names do not run through it.
+      const carving = live
+      const cutLinks = live && searchMode < 0.02
       const dt = Math.min(64, now - occludedAt); occludedAt = now
       // The first pass after the links are built, reduced motion and the focus
       // view all settle at once; only a live field animates.
-      const animate = carving && !reducedMotion && occlusionPrimed
+      const animate = live && !reducedMotion && occlusionPrimed
       if (carving) readBoxes(now); else boxes = []
       const dimEase = 1 - Math.exp(-dt / 260)
       for (let k = 0; k < pairs.length; k += 2) {
@@ -393,7 +442,7 @@ export default function HeroConstellation() {
         const a = nodes[pairs[k]], b = nodes[pairs[k + 1]]
         const dx = b.sx - a.sx, dy = b.sy - a.sy
         let want = 1, dimTarget = 1, hit = false
-        if (boxes.length) {
+        if (boxes.length && cutLinks) {
           const held = edgeBlocked[e] === 1
           const minX = Math.min(a.sx, b.sx), maxX = Math.max(a.sx, b.sx), minY = Math.min(a.sy, b.sy), maxY = Math.max(a.sy, b.sy)
           for (const box of boxes) {
@@ -432,30 +481,58 @@ export default function HeroConstellation() {
       g.lineTo(v >= 0.999 ? t.sx : s.sx + (t.sx - s.sx) * v, v >= 0.999 ? t.sy : s.sy + (t.sy - s.sy) * v)
     }
 
+    // Scratch lists for drawScene: links grouped by opacity, and the ETF-lit ones.
+    const ALPHA_LEVELS = 20
+    const alphaBuckets: number[][] = Array.from({ length: ALPHA_LEVELS + 1 }, () => [])
+    const litEdges: number[] = []
     function drawScene(g: CanvasRenderingContext2D, sig: number, mode: string) {
       const nodeReveal = smooth(0, 0.45, reveal)
       const edgeReveal = smooth(0.35, 1, reveal)
       for (let k = 0; k < pairs.length; k += 2) {
         const ia = pairs[k], ib = pairs[k + 1], conn = (ia === focus.i || ib === focus.i)
         if (mode === 'conn' && !conn) continue; if (mode === 'bg' && conn) continue
-        const a = nodes[ia], b = nodes[ib], da = Math.min(a.da, b.da), hv = Math.max(a.hover, b.hover)
+        const a = nodes[ia], b = nodes[ib]
+        // A link wholly outside the screen is not worth drawing (not while the focus
+        // view has the field scaled around a node).
+        if (focus.t < 0.01 && ((a.sx < -40 && b.sx < -40) || (a.sx > W + 40 && b.sx > W + 40) || (a.sy < -40 && b.sy < -40) || (a.sy > H + 40 && b.sy > H + 40))) continue
+        const da = Math.min(a.da, b.da), hv = Math.max(a.hover, b.hover)
         const clar = conn ? 1 : Math.min(a.clar, b.clar), ld = 1 - focus.t * (1 - (0.06 + 0.94 * clar))
-        const aA = conn ? (0.32 + 0.5 * focus.t) : ((0.03 + 0.11 * da + 0.05 * p + 0.25 * hv) * ld * edgeDim[k >> 1] * smooth(0, 0.7, edgeV[k >> 1]))
-        g.strokeStyle = 'rgba(' + (conn ? sparkRgb : lineRgb) + ',' + (aA * edgeReveal) + ')'; g.lineWidth = 1 + hv * 0.5 + (conn ? focus.t * 2 : 0)
-        g.beginPath(); edgePath(g, a, b, edgeV[k >> 1], edgeDir[k >> 1]); g.stroke()
+        const aA = (conn ? (0.32 + 0.5 * focus.t) : ((0.03 + 0.11 * da + 0.05 * p + 0.25 * hv) * ld * edgeDim[k >> 1] * smooth(0, 0.7, edgeV[k >> 1]))) * edgeReveal
+        const peak = Math.max(a.light, b.light)
+        const lit = !conn && peak > LIGHT_FLOOR
+        if (conn || hv >= 0.02) {
+          // Under the pointer, or joined to the focused node: drawn on its own.
+          g.strokeStyle = 'rgba(' + (conn ? sparkRgb : lineRgb) + ',' + aA + ')'; g.lineWidth = 1 + hv * 0.5 + (conn ? focus.t * 2 : 0)
+          g.beginPath(); edgePath(g, a, b, edgeV[k >> 1], edgeDir[k >> 1]); g.stroke()
+        } else {
+          // Every other link shares a stroke with the others of about its opacity,
+          // so the field costs a handful of draws rather than one per link.
+          const q = Math.min(ALPHA_LEVELS, Math.round(aA * ALPHA_LEVELS * 2))
+          if (q > 0) alphaBuckets[q].push(k)
+        }
         // The ETF light along this link: strongest at the end nearer an ETF,
         // fading towards the other, and never a flat colour across the link.
-        const peak = Math.max(a.light, b.light)
-        if (!conn && peak > LIGHT_FLOOR) {
-          const length = pairLengths[k / 2]
-          const along = (s: number) => Math.max(a.light * Math.exp(-s * length / lightReach), b.light * Math.exp(-(1 - s) * length / lightReach))
-          const strength = LIGHT_STRENGTH * edgeReveal * ld * edgeDim[k >> 1] * smooth(0, 0.7, edgeV[k >> 1])
-          const gradient = g.createLinearGradient(a.sx, a.sy, b.sx, b.sy)
-          for (const s of LIGHT_STOPS) gradient.addColorStop(s, 'rgba(' + sparkRgb + ',' + (Math.max(0, (along(s) - LIGHT_FLOOR) / (1 - LIGHT_FLOOR)) * strength) + ')')
-          g.strokeStyle = gradient; g.lineWidth = 1 + LIGHT_WIDTH * peak + hv * 0.5
-          g.beginPath(); edgePath(g, a, b, edgeV[k >> 1], edgeDir[k >> 1]); g.stroke()
-        }
+        if (lit) litEdges.push(k, LIGHT_STRENGTH * edgeReveal * ld * edgeDim[k >> 1] * smooth(0, 0.7, edgeV[k >> 1]), 1 + LIGHT_WIDTH * peak + hv * 0.5)
       }
+      for (let q = 1; q <= ALPHA_LEVELS; q++) {
+        const bucket = alphaBuckets[q]
+        if (!bucket.length) continue
+        g.strokeStyle = 'rgba(' + lineRgb + ',' + q / (ALPHA_LEVELS * 2) + ')'; g.lineWidth = 1
+        g.beginPath()
+        for (const k of bucket) edgePath(g, nodes[pairs[k]], nodes[pairs[k + 1]], edgeV[k >> 1], edgeDir[k >> 1])
+        g.stroke()
+        bucket.length = 0
+      }
+      for (let m = 0; m < litEdges.length; m += 3) {
+        const k = litEdges[m], strength = litEdges[m + 1]
+        const a = nodes[pairs[k]], b = nodes[pairs[k + 1]], length = pairLengths[k / 2]
+        const along = (s: number) => Math.max(a.light * Math.exp(-s * length / lightReach), b.light * Math.exp(-(1 - s) * length / lightReach))
+        const gradient = g.createLinearGradient(a.sx, a.sy, b.sx, b.sy)
+        for (const s of LIGHT_STOPS) gradient.addColorStop(s, 'rgba(' + sparkRgb + ',' + (Math.max(0, (along(s) - LIGHT_FLOOR) / (1 - LIGHT_FLOOR)) * strength) + ')')
+        g.strokeStyle = gradient; g.lineWidth = litEdges[m + 2]
+        g.beginPath(); edgePath(g, a, b, edgeV[k >> 1], edgeDir[k >> 1]); g.stroke()
+      }
+      litEdges.length = 0
       if (mode !== 'conn') {
         for (let idx = 0; idx < nodes.length; idx++) { const n = nodes[idx]
           if (idx === focus.i) continue
@@ -484,6 +561,39 @@ export default function HeroConstellation() {
     const applyCanvasFilter = () => {
       c.style.filter = 'none'
     }
+    // The camera for the search view is worked out from the nodes themselves, so it
+    // fits whatever the screen: project them as they would be seen from above, take
+    // the span they cover (leaving out the few strays at each end) and scale and
+    // shift that to fill SEARCH_FILL of the screen, centred: far enough back to see the
+    // universe as one body with room round it, part of it behind the search box and its
+    // suggestions. The result is eased, as the nodes sway and the universe turns.
+    const SEARCH_TILT = 0.6
+    const SEARCH_FILL = 0.6
+    const searchFit = { zoom: 0, mx: 0, my: 0, ready: false }
+    // Where the middle of the universe sits in the search view: the middle of the screen,
+    // and a little higher the taller the screen is than it is wide. The suggestions fill
+    // the top of the screen and, on a phone, the on-screen keyboard takes the bottom,
+    // so what is left in view is a band in the upper half; the universe is already
+    // there, rather than being moved or remade when the keyboard comes.
+    const searchCentre = () => (0.5 - 0.1 * Math.min(1, Math.max(0, H / W - 1))) * H
+    const fitXs: number[] = [], fitYs: number[] = []
+    function fitSearchView(ay: number) {
+      const cA = Math.cos(SEARCH_TILT), sA = Math.sin(SEARCH_TILT), cB = Math.cos(ay), sB = Math.sin(ay)
+      fitXs.length = 0; fitYs.length = 0
+      for (const n of nodes) {
+        const X0 = n.bx * cB - n.bz * sB, Z0 = n.bx * sB + n.bz * cB
+        const Y1 = n.by * cA - Z0 * sA, Z1 = n.by * sA + Z0 * cA
+        const k = cam / (cam - Z1)
+        fitXs.push(X0 * k); fitYs.push(Y1 * k)
+      }
+      fitXs.sort((a, b) => a - b); fitYs.sort((a, b) => a - b)
+      const lo = Math.floor(fitXs.length * 0.04), hi = Math.ceil(fitXs.length * 0.96) - 1
+      const zoom = Math.min(1.2, SEARCH_FILL * Math.min(W / Math.max(1, fitXs[hi] - fitXs[lo]), H / Math.max(1, fitYs[hi] - fitYs[lo])))
+      const mx = (fitXs[lo] + fitXs[hi]) / 2, my = (fitYs[lo] + fitYs[hi]) / 2
+      const ease = searchFit.ready && !reducedMotion ? 0.1 : 1
+      searchFit.zoom += (zoom - searchFit.zoom) * ease; searchFit.mx += (mx - searchFit.mx) * ease; searchFit.my += (my - searchFit.my) * ease
+      searchFit.ready = true
+    }
     function render() {
       rafId = 0
       if (document.hidden) return
@@ -502,11 +612,16 @@ export default function HeroConstellation() {
       searchMode += (searchModeTarget - searchMode) * 0.08
       const sig = smooth(0.15, 0.95, p)
       const breathe = reducedMotion ? 1 : 1 + 0.07 * Math.sin(tt * 0.10)
-      // Start a touch closer (base 1.2), keeping the scrolled-in end roughly the
-      // same; pull the camera back while searching ("scanning the universe").
-      const zoom = breathe * (1.2 + smooth(0, 1, p) * 0.95) * (1 - 0.42 * searchMode)
+      // Start a touch closer (base 1.2), keeping the scrolled-in end roughly the same.
+      // While searching the camera rises over the universe and draws back until the
+      // whole of it is in view, centred, as one body with room round it.
+      const heroZoom = 1.2 + smooth(0, 1, p) * 0.95
       const ay = (reducedMotion ? 0 : tt * 0.016) + p * Math.PI * 1.4 + mx * 0.4
-      const ax = 0.16 + (reducedMotion ? 0 : Math.sin(tt * 0.028) * 0.05) + my * 0.26
+      const heroTilt = 0.16 + (reducedMotion ? 0 : Math.sin(tt * 0.028) * 0.05) + my * 0.26
+      if (searchMode > 0.001) fitSearchView(ay)
+      const zoom = breathe * (heroZoom + (searchFit.zoom - heroZoom) * searchMode)
+      const ax = heroTilt + (SEARCH_TILT - heroTilt) * searchMode
+      const panX = -zoom * searchFit.mx * searchMode, panY = (searchCentre() - cy - zoom * searchFit.my) * searchMode
       viewAx = ax; viewAy = ay; viewZoom = zoom
       const cA = Math.cos(ax), sA = Math.sin(ax), cB = Math.cos(ay), sB = Math.sin(ay)
       for (const n of nodes) {
@@ -514,7 +629,7 @@ export default function HeroConstellation() {
         const X0 = bx * cB - bz * sB, Z0 = bx * sB + bz * cB, Y0 = by
         const Y1 = Y0 * cA - Z0 * sA, Z1 = Y0 * sA + Z0 * cA
         const sc = cam / (cam - Z1) * zoom
-        const SX = cx + X0 * sc, SY = cy + Y1 * sc
+        const SX = cx + panX + X0 * sc, SY = cy + panY + Y1 * sc
         const dx = mpx - SX, dy = mpy - SY, dd = Math.sqrt(dx * dx + dy * dy), RAD = 120
         const h = (focus.i < 0 && dd < RAD) ? (1 - dd / RAD) : 0; n.hover += (h - n.hover) * 0.1
         n.sx = SX; n.sy = SY; n.sc = sc; n.da = 0.26 + 0.74 * ((Z1 + R) / (2 * R))
