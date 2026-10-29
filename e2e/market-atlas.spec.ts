@@ -96,24 +96,28 @@ test('the map controls read, filter and find, and keep to what a signed-out read
   const map = page.getByRole('application', { name: /Relationship atlas/ })
   await expect(map).toBeVisible({ timeout: 30_000 })
 
-  // How to read and Layers open over the map, one at a time, and Escape returns to the button.
+  // Help is a modal overlay. Dismiss it before interacting with the map layers.
   const help = page.getByRole('button', { name: 'How to read' })
   await help.click()
-  await expect(page.getByRole('region', { name: 'How to read the atlas' })).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'How to read the atlas' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog', { name: 'How to read the atlas' })).not.toBeVisible()
+  await expect(help).toBeFocused()
   await page.getByRole('button', { name: 'Layers' }).click()
-  await expect(page.getByRole('region', { name: 'How to read the atlas' })).toHaveCount(0)
+  await expect(page.getByRole('dialog', { name: 'How to read the atlas' })).not.toBeVisible()
   const layers = page.getByRole('region', { name: 'Layers' })
-  await layers.getByLabel('Map key').check()
+  await expect(layers.getByLabel('Map key')).toHaveCount(0)
+  await expect(layers.getByLabel('Names on the map')).toHaveCount(0)
   await expect(page.getByRole('group', { name: 'Map key' })).toBeVisible()
   // Signed out the key explains only what is drawn: no wells, lines or bundles.
   await expect(page.getByRole('group', { name: 'Map key' }).getByText(/^Well/)).toHaveCount(0)
-  await layers.getByLabel('Names on the map').uncheck()
+  await page.getByRole('button', { name: 'Names on the map', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Names on the map' })).toHaveAttribute('aria-pressed', 'false')
   await page.keyboard.press('Escape')
   await expect(layers).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Layers' })).toBeFocused()
-  await page.getByRole('button', { name: 'Close the map key' }).click()
-  await expect(page.getByRole('group', { name: 'Map key' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Legend', exact: true }).click()
+  await expect(page.locator('#atlas-legend')).toBeHidden()
 
   // Search finds a region and a company on the map and opens its panel.
   const search = page.getByRole('combobox', { name: 'Find a company or region on the map' })
@@ -131,7 +135,7 @@ test('the map controls read, filter and find, and keep to what a signed-out read
 
   // Signed out there is no reach, so no "Most connected" list, and no correlation sentence.
   await expect(page.getByRole('group', { name: 'Most connected companies' })).toHaveCount(0)
-  await expect(page.getByText(/Average correlation/)).toHaveCount(0)
+  await expect(map.getByText(/Average correlation/)).toHaveCount(0)
   await expect(page.getByText(/Week of/)).toBeVisible()
   if (process.env.PLAYWRIGHT_CAPTURE) await page.screenshot({ path: 'test-results/market-atlas-controls-1440.png' })
   expect(errors).toEqual([])

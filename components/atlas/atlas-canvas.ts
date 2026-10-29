@@ -16,6 +16,7 @@ import {
   groundAt,
   ringShares,
   toScreen,
+  visibleBounds,
   type Bounds,
   type Camera,
   type Sheet,
@@ -378,10 +379,20 @@ function drawGrid(
   ground: (x: number, y: number) => number,
 ) {
   // A light grid on the ground that bends into the wells; flat when the map has none.
-  const { camera, bounds, palette } = scene
+  const { camera, palette } = scene
   const raw = 44 / camera.k
   const power = 10 ** Math.floor(Math.log10(raw))
   const step = [1, 2, 5, 10].map((m) => m * power).find((value) => value >= raw) ?? raw
+  // Draw the ground across the viewport, independently of the atlas footprint.
+  // Overscan covers line ends and the vertical displacement of tilted wells.
+  const visible = visibleBounds(camera, scene.viewport)
+  const relief = (scene.sheet?.depth ?? 0) * Math.abs(Math.tan(camera.pitch))
+  const bounds = {
+    x0: visible.x0 - step,
+    x1: visible.x1 + step,
+    y0: visible.y0 - step,
+    y1: visible.y1 + step + relief,
+  }
   // Flat ground needs only the ends of each line; a sheet with wells is sampled along it.
   const samples = (from: number, to: number) => {
     const every = scene.sheet ? step / 6 : to - from

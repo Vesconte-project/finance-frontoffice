@@ -15,14 +15,10 @@ type Props = {
   showFidelity: boolean
   showInfluence: boolean
   influence: Remote<AtlasInfluence>
-  showNames: boolean
-  keyOpen: boolean
   onLens: (lens: AtlasLens) => void
   onByValue: (value: boolean) => void
   onFidelity: (value: boolean) => void
   onInfluence: (value: boolean) => void
-  onNames: (value: boolean) => void
-  onKey: (value: boolean) => void
   onLocked: (feature: ProFeature, anchor: HTMLElement) => void
 }
 
@@ -79,15 +75,6 @@ export default function AtlasLayers(props: Props) {
   const { pro, onLocked } = props
   return (
     <>
-      <div className={styles.layer}>
-        <h3 className={base.eyebrow}>Reading</h3>
-        <label className={base.toggle}>
-          <input type="checkbox" checked={props.showNames} onChange={(event) => props.onNames(event.target.checked)} /> Names on the map
-        </label>
-        <label className={base.toggle}>
-          <input type="checkbox" checked={props.keyOpen} onChange={(event) => props.onKey(event.target.checked)} /> Map key
-        </label>
-      </div>
       <Layer feature="lens" title="What moves together" pro={pro} onLocked={onLocked}>
         <Segmented label="What moves together" locked={!pro} value={pro ? props.lens : 'residual'} onChange={(value) => props.onLens(value as AtlasLens)}
           options={[['residual', 'Beyond the market'], ['total', 'Total co-movement']]} />
