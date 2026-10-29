@@ -319,8 +319,8 @@ export default function HeroConstellation() {
     // The share of links crossing the foreground that stay up behind it, so the
     // field thins there rather than opening a hole, and how much of their
     // strength they keep so the copy still reads over them.
-    const FG_KEEP = 0.22
-    const FG_DIM = 0.5
+    const FG_KEEP = 0.6
+    const FG_DIM = 0.85
     // How fast a link grows or draws back, in screen pixels a second.
     const EDGE_SPEED = 650
     type Box = { l: number; t: number; r: number; b: number }
