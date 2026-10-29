@@ -111,9 +111,11 @@ export default function HeroConstellation() {
     root.dataset.reducedMotion = String(reducedMotion)
 
     let W = 0, H = 0, DPR = 1, cx = 0, cy = 0, R = 0, cam = 0
-    // Half the extent of the universe in each direction, sized to the screen (wide on
-    // a wide screen, tall on a phone) and larger than it, so that however the camera
-    // turns the field runs off every edge of the screen instead of ending in a shape.
+    // Half the extent of the universe in each direction: across and up it follows the
+    // screen (wide on a wide screen, tall on a phone) and is larger than it, so the
+    // field runs off every edge instead of ending in a shape; in depth it is as deep
+    // as the sphere it replaced, because the contrast between near and far is what
+    // gives the field a background.
     let spanX = 0, spanY = 0, spanZ = 0
     let nodes: HcNode[] = [], pairs: number[] = [], pairLengths: number[] = []
     // Each link grows out of one of its two nodes: how far it has grown, 0..1, which
@@ -236,17 +238,24 @@ export default function HeroConstellation() {
       c.width = W * DPR; c.height = H * DPR; c.style.width = W + 'px'; c.style.height = H + 'px'
       front.width = c.width; front.height = c.height; front.style.width = c.style.width; front.style.height = c.style.height
       cx = W * 0.5; cy = H * 0.5; R = Math.max(W, H) * 0.62; cam = R * 1.9
-      spanX = W * 0.78; spanY = H * 0.62; spanZ = W * 0.5
+      spanX = W * 0.78; spanY = H * 0.62; spanZ = R * 0.9
     }
     function build() {
-      nodes = []; const HUBS = TICKERS.length, EXTRA = Math.max(110, Math.floor(W / 9)), N = HUBS + EXTRA
+      nodes = []; const HUBS = TICKERS.length, EXTRA = Math.max(130, Math.floor(W / 8)), N = HUBS + EXTRA
       // Nothing about the layout is regular: a few clusters at random places, with
       // the rest of the nodes scattered between them. The ETFs take a random cell of
       // a loose 3x2 grid over the visible part, so there is always one near each
       // part of the screen but never a pattern.
       const rand = (half: number) => (Math.random() * 2 - 1) * half
       const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) * 1.6
-      const clusters = Array.from({ length: 8 }, () => [rand(spanX * 0.85), rand(spanY * 0.85), rand(spanZ * 0.85)])
+      // One cluster in each cell of a 4x2 grid (2x4 on a tall screen), at a random place
+      // in its cell, so no part of the screen is left without one and none repeats.
+      const cols = W >= H ? 4 : 2, rows = W >= H ? 2 : 4
+      const clusters = Array.from({ length: cols * rows }, (_, i) => [
+        (-1 + ((i % cols) + Math.random()) * (2 / cols)) * spanX * 0.9,
+        (-1 + (((i / cols) | 0) + Math.random()) * (2 / rows)) * spanY * 0.9,
+        rand(spanZ * 0.85),
+      ])
       const place = (clustered: boolean): [number, number, number] => {
         if (!clustered) return [rand(spanX), rand(spanY), rand(spanZ)]
         const c = clusters[(Math.random() * clusters.length) | 0]
@@ -261,15 +270,15 @@ export default function HeroConstellation() {
           const etfIndex = [...ETF_TICKERS].indexOf(label)
           if (etfIndex >= 0) {
             const cell = cells[etfIndex], col = cell % 3, row = (cell / 3) | 0
-            bx = (-0.4 + (col + Math.random()) * (0.8 / 3)) * W
-            by = (-0.4 + (row + Math.random()) * 0.4) * H
+            bx = (-0.6 + (col + Math.random()) * (1.2 / 3)) * W
+            by = (-0.55 + (row + Math.random()) * (1.1 / 2)) * H
             bz = rand(spanZ * 0.5)
             rad = 6
           } else {
             [bx, by, bz] = place(Math.random() < 0.5); rad = 3.0
           }
         }
-        else { [bx, by, bz] = place(Math.random() < 0.6); rad = 1.1 + Math.random() * 1.3 }
+        else { [bx, by, bz] = place(Math.random() < 0.55); rad = 1.1 + Math.random() * 1.3 }
         const isEtf = label !== null && ETF_TICKERS.has(label)
         nodes.push({ bx, by, bz, r: rad, label, signal: isEtf, rgb: isEtf ? G : COLORS[(Math.random() * COLORS.length) | 0],
           A1: R * (0.02 + Math.random() * 0.05), A2: R * (0.02 + Math.random() * 0.05), A3: R * (0.02 + Math.random() * 0.05),
@@ -281,7 +290,7 @@ export default function HeroConstellation() {
       // shortest first, so the links are spread over the whole universe instead of
       // being used up on the nodes that happen to come first; the ETFs take more so
       // their light still spreads.
-      pairs = []; const TH = R * 0.5
+      pairs = []; const TH = R * 0.7
       const candidates: [number, number, number][] = []
       for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
         const dx = nodes[i].bx - nodes[j].bx, dy = nodes[i].by - nodes[j].by, dz = nodes[i].bz - nodes[j].bz
@@ -409,11 +418,17 @@ export default function HeroConstellation() {
       return true
     }
     const updateOcclusion = (now: number) => {
-      const carving = focus.i < 0 && focus.t < 0.01
+      const live = focus.i < 0 && focus.t < 0.01
+      // While the search is open the camera draws back over the whole universe and
+      // everything sweeps across the screen, so no link is taken away for the copy:
+      // the ones that were held back grow out again, and none is taken away again.
+      // The nodes still fade under the copy, so their names do not run through it.
+      const carving = live
+      const cutLinks = live && searchMode < 0.02
       const dt = Math.min(64, now - occludedAt); occludedAt = now
       // The first pass after the links are built, reduced motion and the focus
       // view all settle at once; only a live field animates.
-      const animate = carving && !reducedMotion && occlusionPrimed
+      const animate = live && !reducedMotion && occlusionPrimed
       if (carving) readBoxes(now); else boxes = []
       const dimEase = 1 - Math.exp(-dt / 260)
       for (let k = 0; k < pairs.length; k += 2) {
@@ -421,7 +436,7 @@ export default function HeroConstellation() {
         const a = nodes[pairs[k]], b = nodes[pairs[k + 1]]
         const dx = b.sx - a.sx, dy = b.sy - a.sy
         let want = 1, dimTarget = 1, hit = false
-        if (boxes.length) {
+        if (boxes.length && cutLinks) {
           const held = edgeBlocked[e] === 1
           const minX = Math.min(a.sx, b.sx), maxX = Math.max(a.sx, b.sx), minY = Math.min(a.sy, b.sy), maxY = Math.max(a.sy, b.sy)
           for (const box of boxes) {
@@ -562,7 +577,7 @@ export default function HeroConstellation() {
       // same; pull the camera back while searching ("scanning the universe").
       // While searching, the camera rises over the universe and draws back far
       // enough to take it all in (SEARCH_TILT looks down on it from above).
-      const SEARCH_TILT = 0.8
+      const SEARCH_TILT = 0.6
       // Far enough back that the whole universe is in view as one body with room round
       // it, rather than filling the screen: it is the same universe, seen from afar.
       const searchZoom = Math.min(0.4 * W / spanX, 0.4 * H / (spanZ * Math.sin(SEARCH_TILT) + spanY * Math.cos(SEARCH_TILT)))
