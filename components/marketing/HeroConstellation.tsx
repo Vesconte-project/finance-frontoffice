@@ -10,6 +10,8 @@ import { PICK_READING_CONTENT, PICK_READING_KEYS } from '@/lib/picks-content'
 import { provideUniverse, startFlight } from '@/lib/universe-flight'
 
 
+type Rect = { l: number; t: number; r: number; b: number }
+
 type HcNode = {
   bx: number; by: number; bz: number; r: number; label: string | null; signal: boolean
   rgb: [number, number, number]
@@ -24,6 +26,12 @@ type HcNode = {
   fg: number
   // Whether it counts as under the foreground, which it keeps until it is well clear.
   cov: number
+  // Presence: 1 while the node is part of the field, easing to 0 when it is retired.
+  // A retired node is moved (while nobody can see it) to the place in `goto`, then returns.
+  pres: number
+  retire: number
+  retireAt: number
+  goto: { to: Rect; avoid: Rect | null } | null
 }
 
 const CSS = `
@@ -133,6 +141,13 @@ export default function HeroConstellation() {
     // reaches a box and lets go only once the link is well clear of it, so a link
     // swaying along the edge of a box does not go in and out with every swing.
     let edgeBlocked = new Uint8Array(0)
+    // The part of the screen the field is populated for, and the part that can be seen
+    // now. They differ while the on-screen keyboard is open: the nodes under it are
+    // retired and new ones appear in what is left, rather than the field being
+    // stretched or moved to fit.
+    let popArea: Rect = { l: 0, t: 0, r: 0, b: 0 }, seenArea: Rect = { l: 0, t: 0, r: 0, b: 0 }, seenAt = 0, popReady = false
+    // The camera of the frame, kept so that a node can be put where it will be seen.
+    const cameraNow = { cA: 1, sA: 0, cB: 1, sB: 0, zoom: 1, panX: 0, panY: 0 }
     let edgeWant = new Uint8Array(0), edgeWantSince = new Float64Array(0), edgeTarget = new Uint8Array(0)
     let occlusionPrimed = false
     let mx = 0, my = 0, tmx = 0, tmy = 0, mpx = -1e4, mpy = -1e4
@@ -290,40 +305,61 @@ export default function HeroConstellation() {
           A1: R * (0.02 + Math.random() * 0.05), A2: R * (0.02 + Math.random() * 0.05), A3: R * (0.02 + Math.random() * 0.05),
           S1: 0.2 + Math.random() * 0.4, S2: 0.2 + Math.random() * 0.4, S3: 0.2 + Math.random() * 0.4,
           P1: Math.random() * 6.28, P2: Math.random() * 6.28, P3: Math.random() * 6.28,
-          ph: Math.random() * 6.28, sx: 0, sy: 0, sc: 1, da: 1, hover: 0, clar: 1, light: 0, fg: 1, cov: 0 })
+          ph: Math.random() * 6.28, sx: 0, sy: 0, sc: 1, da: 1, hover: 0, clar: 1, light: 0, fg: 1, cov: 0, pres: 1, retire: 0, retireAt: 0, goto: null })
       }
-      // Nearby nodes link at random, but each takes only a handful of links and the
-      // shortest first, so the links are spread over the whole universe instead of
-      // being used up on the nodes that happen to come first; the ETFs take more so
-      // their light still spreads.
-      pairs = []; const TH = R * 0.7
+      relink(null)
+      computeLight()
+      popArea = { l: 0, t: 0, r: W, b: H }; seenArea = { ...popArea }; seenAt = 0; popReady = false
+    }
+
+    // Links: nearby nodes link at random, but each takes only a handful of links and
+    // the shortest first, so the links are spread over the whole universe instead of
+    // being used up on the nodes that happen to come first; the ETFs take more so their
+    // light still spreads. With `moved` only the links of those nodes are made again
+    // (the others, and how far they have grown, are kept); the new ones grow from nothing.
+    function relink(moved: Set<number> | null) {
+      const N = nodes.length, TH = R * 0.7, was = { pairs, V: edgeV, dir: edgeDir, spd: edgeSpd, keep: edgeKeep, dim: edgeDim, blocked: edgeBlocked, want: edgeWant, target: edgeTarget, since: edgeWantSince }
+      const next: number[] = [], from: number[] = [], degree = new Array<number>(N).fill(0)
+      const maxDegree = (i: number) => nodes[i].signal ? 9 : 5
+      if (moved) for (let k = 0; k < was.pairs.length; k += 2) {
+        const i = was.pairs[k], j = was.pairs[k + 1]
+        if (moved.has(i) || moved.has(j)) continue
+        next.push(i, j); from.push(k >> 1); degree[i]++; degree[j]++
+      }
       const candidates: [number, number, number][] = []
       for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
+        if (moved && !moved.has(i) && !moved.has(j)) continue
         const dx = nodes[i].bx - nodes[j].bx, dy = nodes[i].by - nodes[j].by, dz = nodes[i].bz - nodes[j].bz
         const d2 = dx * dx + dy * dy + dz * dz
         if (d2 < TH * TH && Math.random() < 0.5) candidates.push([i, j, d2])
       }
       candidates.sort((u, v) => u[2] - v[2])
-      const degree = new Array<number>(N).fill(0)
-      const maxDegree = (i: number) => nodes[i].signal ? 9 : 5
       for (const [i, j] of candidates) {
         if (degree[i] >= maxDegree(i) || degree[j] >= maxDegree(j)) continue
-        degree[i]++; degree[j]++; pairs.push(i, j)
+        degree[i]++; degree[j]++; next.push(i, j); from.push(-1)
       }
-      edgeV = new Float32Array(pairs.length / 2).fill(1)
-      edgeDir = Uint8Array.from({ length: pairs.length / 2 }, () => (Math.random() < 0.5 ? 1 : 0))
-      edgeSpd = Float32Array.from({ length: pairs.length / 2 }, () => 0.7 + Math.random() * 0.8)
-      edgeKeep = Float32Array.from({ length: pairs.length / 2 }, () => Math.random())
-      edgeDim = new Float32Array(pairs.length / 2).fill(1)
-      edgeBlocked = new Uint8Array(pairs.length / 2)
-      edgeWant = new Uint8Array(pairs.length / 2).fill(1)
-      edgeTarget = new Uint8Array(pairs.length / 2).fill(1)
-      edgeWantSince = new Float64Array(pairs.length / 2)
-      occlusionPrimed = false
-      // Each ETF is a light source. The light travels outward along the links,
-      // weakening with the distance it has covered, so it reaches three or four
-      // links before it fades out. A node lit by several paths keeps the
-      // strongest (the shortest path from any ETF).
+      pairs = next
+      const E = pairs.length / 2, born = moved ? 0 : 1
+      const keepOr = <T extends Float32Array | Uint8Array | Float64Array>(old: T, make: (e: number) => number, fresh: T): T => { for (let e = 0; e < E; e++) fresh[e] = from[e] >= 0 ? old[from[e]] : make(e); return fresh }
+      edgeV = keepOr(was.V, () => born, new Float32Array(E))
+      edgeDir = keepOr(was.dir, () => (Math.random() < 0.5 ? 1 : 0), new Uint8Array(E))
+      edgeSpd = keepOr(was.spd, () => 0.7 + Math.random() * 0.8, new Float32Array(E))
+      edgeKeep = keepOr(was.keep, () => Math.random(), new Float32Array(E))
+      edgeDim = keepOr(was.dim, () => 1, new Float32Array(E))
+      edgeBlocked = keepOr(was.blocked, () => 0, new Uint8Array(E))
+      edgeWant = keepOr(was.want, () => 1, new Uint8Array(E))
+      edgeTarget = keepOr(was.target, () => 1, new Uint8Array(E))
+      edgeWantSince = keepOr(was.since, () => 0, new Float64Array(E))
+      // Made again for the whole field (not for a few nodes), the links start settled.
+      if (!moved) occlusionPrimed = false
+    }
+
+    // Each ETF is a light source. The light travels outward along the links, weakening
+    // with the distance it has covered, so it reaches three or four links before it
+    // fades out. A node lit by several paths keeps the strongest (the shortest path
+    // from any ETF).
+    function computeLight() {
+      const N = nodes.length
       const adjacency: [number, number][][] = nodes.map(() => [])
       pairLengths = []
       for (let k = 0; k < pairs.length; k += 2) {
@@ -454,11 +490,14 @@ export default function HeroConstellation() {
         edgeBlocked[e] = hit ? 1 : 0
         if (hit) { if (edgeKeep[e] < FG_KEEP) dimTarget = FG_DIM; else want = 0 }
         if (!animate) { edgeWant[e] = want; edgeTarget[e] = want; edgeV[e] = want; edgeDim[e] = dimTarget; continue }
+        // A link of a node that is being retired draws back at once, without the wait.
+        if (a.retire || b.retire) { edgeWant[e] = 0; edgeTarget[e] = 0; edgeWantSince[e] = now }
         if (want !== edgeWant[e]) { edgeWant[e] = want; edgeWantSince[e] = now }
         if (want !== edgeTarget[e] && now - edgeWantSince[e] >= EDGE_DWELL) edgeTarget[e] = want
         const target = edgeTarget[e]
         edgeDim[e] += (dimTarget - edgeDim[e]) * dimEase
-        const step = (dt * edgeSpd[e]) / EDGE_MS
+        // The links of a retired node draw back a little faster, so it is soon free to go.
+        const step = (dt * edgeSpd[e] * (a.retire || b.retire ? 1.6 : 1)) / EDGE_MS
         edgeV[e] = target > edgeV[e] ? Math.min(target, edgeV[e] + step) : Math.max(target, edgeV[e] - step)
       }
       occlusionPrimed = true
@@ -471,6 +510,7 @@ export default function HeroConstellation() {
         }
         n.cov = covered ? 1 : 0
         n.fg += ((covered ? 0.25 : 1) - n.fg) * nodeEase
+        n.pres += ((n.retire ? 0 : 1) - n.pres) * (animate ? 1 - Math.exp(-dt / 200) : 1)
       }
     }
     // A link as far as it has grown from its own node: the whole link at 1, none of it at 0.
@@ -540,11 +580,11 @@ export default function HeroConstellation() {
           let col: string; if (n.signal) col = spark; else { col = 'rgb(' + n.rgb.join(',') + ')' }
           const r = Math.min(15, Math.max(0.5, ((n.signal ? (n.r + sig * 1.2) : n.r) + n.hover * 3) * n.sc))
           const dim = 1 - focus.t * (1 - (0.10 + 0.90 * n.clar))
-          g.globalAlpha = Math.min(1, (n.da + n.hover * 0.6) * dim * nodeReveal) * n.fg
+          g.globalAlpha = Math.min(1, (n.da + n.hover * 0.6) * dim * nodeReveal) * n.fg * n.pres
           g.beginPath(); g.arc(n.sx, n.sy, r, 0, 6.28); g.fillStyle = col; g.fill()
           const lab = n.label
           // The label fades in and out with the node's depth, its hover and the foreground, rather than switching at a threshold.
-          const labelAlpha = Math.max(smooth(0.32, 0.5, n.da), smooth(0.15, 0.3, n.hover)) * smooth(0.3, 0.75, n.fg)
+          const labelAlpha = Math.max(smooth(0.32, 0.5, n.da), smooth(0.15, 0.3, n.hover)) * smooth(0.3, 0.75, n.fg) * n.pres
           if (lab && labelAlpha > 0.01) { g.globalAlpha = labelAlpha; g.font = n.signal ? '600 12px IBM Plex Mono, monospace' : '500 11px IBM Plex Mono, monospace'; g.fillStyle = n.signal ? spark : labelColor; g.fillText(lab, n.sx + r + 4, n.sy + 3) }
           g.globalAlpha = 1
         }
@@ -561,73 +601,92 @@ export default function HeroConstellation() {
     const applyCanvasFilter = () => {
       c.style.filter = 'none'
     }
-    // The camera for the search view is worked out from the nodes themselves and from
-    // the part of the screen that can actually be seen, so it fits whatever the window
-    // is: project the nodes as they would be seen from above, take the span they cover
-    // (leaving out the few strays at each end), and fit that to SEARCH_FILL of the
-    // visible area, centred in it. The visible area is the visual viewport, so when the
-    // on-screen keyboard takes the lower half of a phone the universe moves up into
-    // what is left; and as that area is wider than it is tall the span is stretched
-    // across it (up to MAX_STRETCH), so the universe spreads along the free width
-    // instead of staying a narrow column. The result is eased, as the nodes sway and
-    // the universe turns.
+    // The camera for the search view: from above, drawn back until the whole of the
+    // universe's box is in view as one body with room round it (SEARCH_FILL of the
+    // screen), centred. It depends on the screen and on how the universe has turned
+    // and on nothing else, so it does not move when nodes come and go.
     const SEARCH_TILT = 0.6
     const SEARCH_FILL = 0.6
-    const MAX_STRETCH = 2.4
-    const searchFit = { zoom: 0, sx: 1, sy: 1, mx: 0, my: 0, ox: 0, oy: 0, ready: false }
-    // The visible area is not followed as it changes: the on-screen keyboard opens and
-    // closes in steps, and chasing every one of them whips the universe about. A change
-    // only counts once it has held for AREA_SETTLE ms, and then the area moves to it in
-    // one eased transition of AREA_MS, whatever the steps in between were.
-    const AREA_SETTLE = 140
-    const AREA_MS = 800
-    type Area = { l: number; t: number; r: number; b: number }
-    const area = { from: { l: 0, t: 0, r: 0, b: 0 } as Area, to: { l: 0, t: 0, r: 0, b: 0 } as Area, seen: { l: 0, t: 0, r: 0, b: 0 } as Area, seenAt: 0, startedAt: 0, ready: false }
-    const sameArea = (a: Area, b: Area, tol: number) => Math.abs(a.l - b.l) <= tol && Math.abs(a.t - b.t) <= tol && Math.abs(a.r - b.r) <= tol && Math.abs(a.b - b.b) <= tol
-    const lerpArea = (a: Area, b: Area, k: number): Area => ({ l: a.l + (b.l - a.l) * k, t: a.t + (b.t - a.t) * k, r: a.r + (b.r - a.r) * k, b: a.b + (b.b - a.b) * k })
-    function visibleArea(now: number): Area {
-      const vv = window.visualViewport
-      const left = Math.max(0, vv?.offsetLeft ?? 0), top = Math.max(0, vv?.offsetTop ?? 0)
-      const seen = { l: left, t: top, r: Math.min(W, left + (vv?.width ?? window.innerWidth)), b: Math.min(H, top + (vv?.height ?? window.innerHeight)) }
-      if (!area.ready || reducedMotion) {
-        area.from = seen; area.to = seen; area.seen = seen; area.seenAt = now; area.startedAt = now - AREA_MS; area.ready = true
-        return seen
-      }
-      if (!sameArea(seen, area.seen, 2)) { area.seen = seen; area.seenAt = now }
-      if (!sameArea(area.seen, area.to, 6) && now - area.seenAt >= AREA_SETTLE) {
-        const k = Math.min(1, (now - area.startedAt) / AREA_MS)
-        area.from = lerpArea(area.from, area.to, k * k * (3 - 2 * k)); area.to = area.seen; area.startedAt = now
-      }
-      const k = Math.min(1, (now - area.startedAt) / AREA_MS)
-      return lerpArea(area.from, area.to, k * k * (3 - 2 * k))
-    }
-    const fitXs: number[] = [], fitYs: number[] = []
-    function fitSearchView(ay: number, now: number) {
+    // How much of the box's corners count: the nodes are spread through the box, so they
+    // cover less than its extreme corners do once the depth and the tilt are applied.
+    const CORNER = 0.6
+    const searchFit = { zoom: 0, mx: 0, my: 0, ready: false }
+    function fitSearchView(ay: number) {
       const cA = Math.cos(SEARCH_TILT), sA = Math.sin(SEARCH_TILT), cB = Math.cos(ay), sB = Math.sin(ay)
-      fitXs.length = 0; fitYs.length = 0
-      for (const n of nodes) {
-        const X0 = n.bx * cB - n.bz * sB, Z0 = n.bx * sB + n.bz * cB
-        const Y1 = n.by * cA - Z0 * sA, Z1 = n.by * sA + Z0 * cA
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+      for (const ux of [-1, 1]) for (const uy of [-1, 1]) for (const uz of [-1, 1]) {
+        const bx = ux * spanX * CORNER, by = uy * spanY * CORNER, bz = uz * spanZ * CORNER
+        const X0 = bx * cB - bz * sB, Z0 = bx * sB + bz * cB
+        const Y1 = by * cA - Z0 * sA, Z1 = by * sA + Z0 * cA
         const k = cam / (cam - Z1)
-        fitXs.push(X0 * k); fitYs.push(Y1 * k)
+        minX = Math.min(minX, X0 * k); maxX = Math.max(maxX, X0 * k); minY = Math.min(minY, Y1 * k); maxY = Math.max(maxY, Y1 * k)
       }
-      fitXs.sort((a, b) => a - b); fitYs.sort((a, b) => a - b)
-      const lo = Math.floor(fitXs.length * 0.04), hi = Math.ceil(fitXs.length * 0.96) - 1
-      const spanW = Math.max(1, fitXs[hi] - fitXs[lo]), spanH = Math.max(1, fitYs[hi] - fitYs[lo])
-      const { l: left, t: top, r: right, b: bottom } = visibleArea(now)
-      const areaW = Math.max(1, right - left), areaH = Math.max(1, bottom - top)
-      const zx = SEARCH_FILL * areaW / spanW, zy = SEARCH_FILL * areaH / spanH
-      const zoom = Math.min(1.2, zx, zy)
-      const sx = Math.min(MAX_STRETCH, Math.max(1, zx / zoom)), sy = Math.min(MAX_STRETCH, Math.max(1, zy / zoom))
-      const mx = (fitXs[lo] + fitXs[hi]) / 2, my = (fitYs[lo] + fitYs[hi]) / 2
-      const ox = (left + right) / 2 - W / 2, oy = (top + bottom) / 2 - H / 2
+      const zoom = Math.min(1.2, SEARCH_FILL * Math.min(W / Math.max(1, maxX - minX), H / Math.max(1, maxY - minY)))
+      const mx = (minX + maxX) / 2, my = (minY + maxY) / 2
       const ease = searchFit.ready && !reducedMotion ? 0.2 : 1
-      searchFit.zoom += (zoom - searchFit.zoom) * ease
-      searchFit.sx += (sx - searchFit.sx) * ease; searchFit.sy += (sy - searchFit.sy) * ease
-      searchFit.mx += (mx - searchFit.mx) * ease; searchFit.my += (my - searchFit.my) * ease
-      searchFit.ox += (ox - searchFit.ox) * ease; searchFit.oy += (oy - searchFit.oy) * ease
+      searchFit.zoom += (zoom - searchFit.zoom) * ease; searchFit.mx += (mx - searchFit.mx) * ease; searchFit.my += (my - searchFit.my) * ease
       searchFit.ready = true
     }
+
+    // The part of the screen that can be seen: the visual viewport, which the on-screen
+    // keyboard shrinks to the space above it.
+    const AREA_SETTLE = 160
+    const sameArea = (a: Rect, b: Rect, tolX: number, tolY: number) => Math.abs(a.l - b.l) <= tolX && Math.abs(a.r - b.r) <= tolX && Math.abs(a.t - b.t) <= tolY && Math.abs(a.b - b.b) <= tolY
+    function watchArea(now: number) {
+      if (reducedMotion || !heroVisible || focus.i >= 0 || focus.t > 0.01) return
+      const vv = window.visualViewport
+      const left = Math.max(0, vv?.offsetLeft ?? 0), top = Math.max(0, vv?.offsetTop ?? 0)
+      const seen: Rect = { l: left, t: top, r: Math.min(W, left + (vv?.width ?? window.innerWidth)), b: Math.min(H, top + (vv?.height ?? window.innerHeight)) }
+      if (!popReady) { popReady = true; seenArea = seen; seenAt = now }
+      if (!sameArea(seen, seenArea, 2, 2)) { seenArea = seen; seenAt = now }
+      // The browser's own bar showing and hiding is not a change of what is seen: only
+      // a real change (the keyboard is a third of the height or more) is.
+      if (now - seenAt >= AREA_SETTLE && !sameArea(seenArea, popArea, 0.12 * W, 0.12 * H)) {
+        rebalance(popArea, seenArea, now); popArea = seenArea
+      }
+      relocateRetired(now)
+    }
+    // A node that falls outside the new area is retired; where the area has grown, some
+    // of the nodes that were already in it are retired as well, so that the part that
+    // came into view gets its share. Each is then put somewhere in the area it is
+    // wanted in. Nothing moves in view: a node is only moved while it is invisible.
+    function rebalance(from: Rect, to: Rect, now: number) {
+      const present = nodes.filter((n) => !n.retire)
+      const margin = 16
+      const within = (n: HcNode, r: Rect) => n.sx >= r.l - margin && n.sx <= r.r + margin && n.sy >= r.t - margin && n.sy <= r.b + margin
+      const inside = present.filter((n) => within(n, to)), outside = present.filter((n) => !within(n, to))
+      const area = (r: Rect) => Math.max(0, r.r - r.l) * Math.max(0, r.b - r.t)
+      const overlap = { l: Math.max(from.l, to.l), t: Math.max(from.t, to.t), r: Math.min(from.r, to.r), b: Math.min(from.b, to.b) }
+      const fresh = area(to) > 0 ? Math.max(0, area(to) - area(overlap)) / area(to) : 0
+      const extra = Math.min(inside.length, Math.round(inside.length * fresh))
+      const retire = (list: HcNode[], avoid: Rect | null) => { for (const n of list) { n.retire = 1; n.retireAt = now; n.goto = { to, avoid } } }
+      retire(outside, null)
+      retire(inside.sort(() => Math.random() - 0.5).slice(0, extra), area(overlap) > 0 ? overlap : null)
+    }
+    // Put the retired nodes that have finished fading where they are wanted and make
+    // their links again.
+    function relocateRetired(now: number) {
+      const moved = new Set<number>()
+      const { cA, sA, cB, sB, zoom, panX, panY } = cameraNow
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i]
+        if (!n.retire || !n.goto || n.pres > 0.03 || now - n.retireAt < 800) continue
+        let X = 0, Y = 0
+        for (let tries = 0; tries < 30; tries++) {
+          X = n.goto.to.l + Math.random() * (n.goto.to.r - n.goto.to.l); Y = n.goto.to.t + Math.random() * (n.goto.to.b - n.goto.to.t)
+          const av = n.goto.avoid
+          if (!av || X < av.l || X > av.r || Y < av.t || Y > av.b) break
+        }
+        const Z1 = (Math.random() * 2 - 1) * spanZ * 0.5
+        const sc = cam / (cam - Z1) * zoom
+        const X0 = (X - cx - panX) / sc, Y1 = (Y - cy - panY) / sc
+        const Z0 = Z1 * cA - Y1 * sA
+        n.by = Y1 * cA + Z1 * sA; n.bx = X0 * cB + Z0 * sB; n.bz = Z0 * cB - X0 * sB
+        n.retire = 0; n.goto = null; n.cov = 0; moved.add(i)
+      }
+      if (moved.size) { relink(moved); computeLight() }
+    }
+
     function render() {
       rafId = 0
       if (document.hidden) return
@@ -652,25 +711,26 @@ export default function HeroConstellation() {
       const heroZoom = 1.2 + smooth(0, 1, p) * 0.95
       const ay = (reducedMotion ? 0 : tt * 0.016) + p * Math.PI * 1.4 + mx * 0.4
       const heroTilt = 0.16 + (reducedMotion ? 0 : Math.sin(tt * 0.028) * 0.05) + my * 0.26
-      if (searchMode > 0.001) fitSearchView(ay, now)
+      if (searchMode > 0.001) fitSearchView(ay)
       const zoom = breathe * (heroZoom + (searchFit.zoom - heroZoom) * searchMode)
       const ax = heroTilt + (SEARCH_TILT - heroTilt) * searchMode
-      const stX = 1 + (searchFit.sx - 1) * searchMode, stY = 1 + (searchFit.sy - 1) * searchMode
-      const panX = (searchFit.ox - zoom * stX * searchFit.mx) * searchMode, panY = (searchFit.oy - zoom * stY * searchFit.my) * searchMode
+      const panX = -zoom * searchFit.mx * searchMode, panY = -zoom * searchFit.my * searchMode
       viewAx = ax; viewAy = ay; viewZoom = zoom
       const cA = Math.cos(ax), sA = Math.sin(ax), cB = Math.cos(ay), sB = Math.sin(ay)
+      cameraNow.cA = cA; cameraNow.sA = sA; cameraNow.cB = cB; cameraNow.sB = sB; cameraNow.zoom = zoom; cameraNow.panX = panX; cameraNow.panY = panY
       for (const n of nodes) {
         const bx = n.bx + Math.sin(tt * n.S1 + n.P1) * n.A1, by = n.by + Math.cos(tt * n.S2 + n.P2) * n.A2, bz = n.bz + Math.sin(tt * n.S3 + n.P3) * n.A3
         const X0 = bx * cB - bz * sB, Z0 = bx * sB + bz * cB, Y0 = by
         const Y1 = Y0 * cA - Z0 * sA, Z1 = Y0 * sA + Z0 * cA
         const sc = cam / (cam - Z1) * zoom
-        const SX = cx + panX + X0 * sc * stX, SY = cy + panY + Y1 * sc * stY
+        const SX = cx + panX + X0 * sc, SY = cy + panY + Y1 * sc
         const dx = mpx - SX, dy = mpy - SY, dd = Math.sqrt(dx * dx + dy * dy), RAD = 120
         const h = (focus.i < 0 && dd < RAD) ? (1 - dd / RAD) : 0; n.hover += (h - n.hover) * 0.1
         n.sx = SX; n.sy = SY; n.sc = sc; n.da = 0.26 + 0.74 * ((Z1 + R) / (2 * R))
       }
       if (focus.i >= 0 && nodes[focus.i]) { const fn = nodes[focus.i]; for (const n of nodes) { const ddx = n.bx - fn.bx, ddy = n.by - fn.by, ddz = n.bz - fn.bz; n.clar = 1 - smooth(R * 0.12, R * 0.95, Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz)) } } else { for (const n of nodes) n.clar = 1 }
       updateOcclusion(now)
+      watchArea(now)
       stageEl.style.opacity = String(Math.max(0, 1 - focus.t * 1.3))
       applyCanvasFilter()
       if (focus.t < 0.01 || focus.i < 0 || !nodes[focus.i]) {
