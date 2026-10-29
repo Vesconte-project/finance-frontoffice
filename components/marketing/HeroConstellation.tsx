@@ -114,6 +114,9 @@ export default function HeroConstellation() {
     // node it grows from, and how quickly (a link's own pace, so they do not all
     // move as one).
     let edgeV = new Float32Array(0), edgeDir = new Uint8Array(0), edgeSpd = new Float32Array(0)
+    // A fixed draw per link: the ones that fall under FG_KEEP stay up behind the
+    // foreground, and how strongly they show.
+    let edgeKeep = new Float32Array(0), edgeDim = new Float32Array(0)
     let occlusionPrimed = false
     let mx = 0, my = 0, tmx = 0, tmy = 0, mpx = -1e4, mpy = -1e4
     let rafId = 0
@@ -256,6 +259,8 @@ export default function HeroConstellation() {
       edgeV = new Float32Array(pairs.length / 2).fill(1)
       edgeDir = Uint8Array.from({ length: pairs.length / 2 }, () => (Math.random() < 0.5 ? 1 : 0))
       edgeSpd = Float32Array.from({ length: pairs.length / 2 }, () => 0.7 + Math.random() * 0.8)
+      edgeKeep = Float32Array.from({ length: pairs.length / 2 }, () => Math.random())
+      edgeDim = new Float32Array(pairs.length / 2).fill(1)
       occlusionPrimed = false
       // Each ETF is a light source. The light travels outward along the links,
       // weakening with the distance it has covered, so it reaches three or four
@@ -311,6 +316,11 @@ export default function HeroConstellation() {
     // is about to be read and built again where it has left. Nodes under a box
     // fade rather than go. Elsewhere the network stays full.
     const OBSTACLES = '[data-field-obstacle], [data-dock-search] :is(.dock-search__title, .dock-search__subtitle, .dock-search__field, .dock-search__cta), [data-field-foreground]:not([data-dock-search]) :is(h1, h2, h3, h4, p, li, a, button, input, th, td, label, figcaption)'
+    // The share of links crossing the foreground that stay up behind it, so the
+    // field thins there rather than opening a hole, and how much of their
+    // strength they keep so the copy still reads over them.
+    const FG_KEEP = 0.22
+    const FG_DIM = 0.5
     // How fast a link grows or draws back, in screen pixels a second.
     const EDGE_SPEED = 650
     type Box = { l: number; t: number; r: number; b: number }
@@ -356,19 +366,21 @@ export default function HeroConstellation() {
       // view all settle at once; only a live field animates.
       const animate = carving && !reducedMotion && occlusionPrimed
       if (carving) readBoxes(now); else boxes = []
+      const dimEase = 1 - Math.exp(-dt / 150)
       for (let k = 0; k < pairs.length; k += 2) {
         const e = k >> 1
         const a = nodes[pairs[k]], b = nodes[pairs[k + 1]]
         const dx = b.sx - a.sx, dy = b.sy - a.sy
-        let target = 1
+        let target = 1, dimTarget = 1
         if (boxes.length) {
           const minX = Math.min(a.sx, b.sx), maxX = Math.max(a.sx, b.sx), minY = Math.min(a.sy, b.sy), maxY = Math.max(a.sy, b.sy)
           for (const box of boxes) {
             if (box.r < minX || box.l > maxX || box.b < minY || box.t > maxY) continue
-            if (segmentHits(a.sx, a.sy, dx, dy, box)) { target = 0; break }
+            if (segmentHits(a.sx, a.sy, dx, dy, box)) { if (edgeKeep[e] < FG_KEEP) dimTarget = FG_DIM; else target = 0; break }
           }
         }
-        if (!animate) { edgeV[e] = target; continue }
+        if (!animate) { edgeV[e] = target; edgeDim[e] = dimTarget; continue }
+        edgeDim[e] += (dimTarget - edgeDim[e]) * dimEase
         const step = (dt * 0.001 * EDGE_SPEED * edgeSpd[e]) / Math.max(40, Math.hypot(dx, dy))
         edgeV[e] = target > edgeV[e] ? Math.min(target, edgeV[e] + step) : Math.max(target, edgeV[e] - step)
       }
@@ -377,7 +389,7 @@ export default function HeroConstellation() {
       for (const n of nodes) {
         let covered = false
         for (const box of boxes) if (n.sx >= box.l && n.sx <= box.r && n.sy >= box.t && n.sy <= box.b) { covered = true; break }
-        n.fg += ((covered ? 0.12 : 1) - n.fg) * nodeEase
+        n.fg += ((covered ? 0.25 : 1) - n.fg) * nodeEase
       }
     }
     // A link as far as it has grown from its own node: the whole link at 1, none of it at 0.
@@ -396,7 +408,7 @@ export default function HeroConstellation() {
         if (mode === 'conn' && !conn) continue; if (mode === 'bg' && conn) continue
         const a = nodes[ia], b = nodes[ib], da = Math.min(a.da, b.da), hv = Math.max(a.hover, b.hover)
         const clar = conn ? 1 : Math.min(a.clar, b.clar), ld = 1 - focus.t * (1 - (0.06 + 0.94 * clar))
-        const aA = conn ? (0.32 + 0.5 * focus.t) : ((0.03 + 0.11 * da + 0.05 * p + 0.25 * hv) * ld)
+        const aA = conn ? (0.32 + 0.5 * focus.t) : ((0.03 + 0.11 * da + 0.05 * p + 0.25 * hv) * ld * edgeDim[k >> 1])
         g.strokeStyle = 'rgba(' + (conn ? sparkRgb : lineRgb) + ',' + (aA * edgeReveal) + ')'; g.lineWidth = 1 + hv * 0.5 + (conn ? focus.t * 2 : 0)
         g.beginPath(); edgePath(g, a, b, edgeV[k >> 1], edgeDir[k >> 1]); g.stroke()
         // The ETF light along this link: strongest at the end nearer an ETF,
@@ -405,7 +417,7 @@ export default function HeroConstellation() {
         if (!conn && peak > LIGHT_FLOOR) {
           const length = pairLengths[k / 2]
           const along = (s: number) => Math.max(a.light * Math.exp(-s * length / lightReach), b.light * Math.exp(-(1 - s) * length / lightReach))
-          const strength = LIGHT_STRENGTH * edgeReveal * ld
+          const strength = LIGHT_STRENGTH * edgeReveal * ld * edgeDim[k >> 1]
           const gradient = g.createLinearGradient(a.sx, a.sy, b.sx, b.sy)
           for (const s of LIGHT_STOPS) gradient.addColorStop(s, 'rgba(' + sparkRgb + ',' + (Math.max(0, (along(s) - LIGHT_FLOOR) / (1 - LIGHT_FLOOR)) * strength) + ')')
           g.strokeStyle = gradient; g.lineWidth = 1 + LIGHT_WIDTH * peak + hv * 0.5
