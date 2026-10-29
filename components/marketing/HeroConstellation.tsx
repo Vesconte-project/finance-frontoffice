@@ -561,15 +561,20 @@ export default function HeroConstellation() {
     const applyCanvasFilter = () => {
       c.style.filter = 'none'
     }
-    // The camera for the search view is worked out from the nodes themselves, so it
-    // fits whatever the screen: project them as they would be seen from above, take
-    // the span they cover (leaving out the few strays at each end) and scale and
-    // shift that to fill SEARCH_FILL of the screen, centred: far enough back to see the
-    // universe as one body with room round it, part of it behind the search box and its
-    // suggestions. The result is eased, as the nodes sway and the universe turns.
+    // The camera for the search view is worked out from the nodes themselves and from
+    // the part of the screen that can actually be seen, so it fits whatever the window
+    // is: project the nodes as they would be seen from above, take the span they cover
+    // (leaving out the few strays at each end), and fit that to SEARCH_FILL of the
+    // visible area, centred in it. The visible area is the visual viewport, so when the
+    // on-screen keyboard takes the lower half of a phone the universe moves up into
+    // what is left; and as that area is wider than it is tall the span is stretched
+    // across it (up to MAX_STRETCH), so the universe spreads along the free width
+    // instead of staying a narrow column. The result is eased, as the nodes sway and
+    // the universe turns.
     const SEARCH_TILT = 0.6
     const SEARCH_FILL = 0.6
-    const searchFit = { zoom: 0, mx: 0, my: 0, ready: false }
+    const MAX_STRETCH = 2.4
+    const searchFit = { zoom: 0, sx: 1, sy: 1, mx: 0, my: 0, ox: 0, oy: 0, ready: false }
     const fitXs: number[] = [], fitYs: number[] = []
     function fitSearchView(ay: number) {
       const cA = Math.cos(SEARCH_TILT), sA = Math.sin(SEARCH_TILT), cB = Math.cos(ay), sB = Math.sin(ay)
@@ -582,10 +587,21 @@ export default function HeroConstellation() {
       }
       fitXs.sort((a, b) => a - b); fitYs.sort((a, b) => a - b)
       const lo = Math.floor(fitXs.length * 0.04), hi = Math.ceil(fitXs.length * 0.96) - 1
-      const zoom = Math.min(1.2, SEARCH_FILL * Math.min(W / Math.max(1, fitXs[hi] - fitXs[lo]), H / Math.max(1, fitYs[hi] - fitYs[lo])))
+      const spanW = Math.max(1, fitXs[hi] - fitXs[lo]), spanH = Math.max(1, fitYs[hi] - fitYs[lo])
+      const vv = window.visualViewport
+      const left = Math.max(0, vv?.offsetLeft ?? 0), top = Math.max(0, vv?.offsetTop ?? 0)
+      const right = Math.min(W, left + (vv?.width ?? window.innerWidth)), bottom = Math.min(H, top + (vv?.height ?? window.innerHeight))
+      const areaW = Math.max(1, right - left), areaH = Math.max(1, bottom - top)
+      const zx = SEARCH_FILL * areaW / spanW, zy = SEARCH_FILL * areaH / spanH
+      const zoom = Math.min(1.2, zx, zy)
+      const sx = Math.min(MAX_STRETCH, Math.max(1, zx / zoom)), sy = Math.min(MAX_STRETCH, Math.max(1, zy / zoom))
       const mx = (fitXs[lo] + fitXs[hi]) / 2, my = (fitYs[lo] + fitYs[hi]) / 2
+      const ox = (left + right) / 2 - W / 2, oy = (top + bottom) / 2 - H / 2
       const ease = searchFit.ready && !reducedMotion ? 0.1 : 1
-      searchFit.zoom += (zoom - searchFit.zoom) * ease; searchFit.mx += (mx - searchFit.mx) * ease; searchFit.my += (my - searchFit.my) * ease
+      searchFit.zoom += (zoom - searchFit.zoom) * ease
+      searchFit.sx += (sx - searchFit.sx) * ease; searchFit.sy += (sy - searchFit.sy) * ease
+      searchFit.mx += (mx - searchFit.mx) * ease; searchFit.my += (my - searchFit.my) * ease
+      searchFit.ox += (ox - searchFit.ox) * ease; searchFit.oy += (oy - searchFit.oy) * ease
       searchFit.ready = true
     }
     function render() {
@@ -615,7 +631,8 @@ export default function HeroConstellation() {
       if (searchMode > 0.001) fitSearchView(ay)
       const zoom = breathe * (heroZoom + (searchFit.zoom - heroZoom) * searchMode)
       const ax = heroTilt + (SEARCH_TILT - heroTilt) * searchMode
-      const panX = -zoom * searchFit.mx * searchMode, panY = -zoom * searchFit.my * searchMode
+      const stX = 1 + (searchFit.sx - 1) * searchMode, stY = 1 + (searchFit.sy - 1) * searchMode
+      const panX = (searchFit.ox - zoom * stX * searchFit.mx) * searchMode, panY = (searchFit.oy - zoom * stY * searchFit.my) * searchMode
       viewAx = ax; viewAy = ay; viewZoom = zoom
       const cA = Math.cos(ax), sA = Math.sin(ax), cB = Math.cos(ay), sB = Math.sin(ay)
       for (const n of nodes) {
@@ -623,7 +640,7 @@ export default function HeroConstellation() {
         const X0 = bx * cB - bz * sB, Z0 = bx * sB + bz * cB, Y0 = by
         const Y1 = Y0 * cA - Z0 * sA, Z1 = Y0 * sA + Z0 * cA
         const sc = cam / (cam - Z1) * zoom
-        const SX = cx + panX + X0 * sc, SY = cy + panY + Y1 * sc
+        const SX = cx + panX + X0 * sc * stX, SY = cy + panY + Y1 * sc * stY
         const dx = mpx - SX, dy = mpy - SY, dd = Math.sqrt(dx * dx + dy * dy), RAD = 120
         const h = (focus.i < 0 && dd < RAD) ? (1 - dd / RAD) : 0; n.hover += (h - n.hover) * 0.1
         n.sx = SX; n.sy = SY; n.sc = sc; n.da = 0.26 + 0.74 * ((Z1 + R) / (2 * R))
