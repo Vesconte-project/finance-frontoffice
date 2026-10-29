@@ -34,18 +34,7 @@ const CSS = `
 .hc-root .hc-veil{position:fixed;inset:0;z-index:1;pointer-events:none}
 .hc-root .hc-veil::before,.hc-root .hc-veil::after{content:"";position:absolute;inset:0}
 .hc-root .hc-veil::after{background:var(--bg);opacity:calc(var(--hc-field-progress,0) * .65)}
-.hc-root .hc-veil::before{
-  /* Dark only: a calm behind the headline and search. On the light page the same
-     veil reads as a hollow disc, so there its tint is transparent. */
-  --hc-veil-tint:light-dark(transparent,var(--bg));
-  background:radial-gradient(ellipse 62% 48% at 50% 44%,
-    color-mix(in srgb,var(--hc-veil-tint) 50%,transparent) 0%,
-    color-mix(in srgb,var(--hc-veil-tint) 42%,transparent) 30%,
-    color-mix(in srgb,var(--hc-veil-tint) 26%,transparent) 55%,
-    color-mix(in srgb,var(--hc-veil-tint) 10%,transparent) 78%,
-    transparent 100%);
-  opacity:calc(1 - var(--hc-field-progress,0));
-}
+.hc-root .hc-veil::before{background:none}
 .hc-root .hc-progress{display:none}
 .hc-root #hc-stage{position:relative;height:100vh;z-index:10;pointer-events:none}
 .hc-root .hc-beat{position:absolute;inset:0;display:flex;align-items:center;padding:0 clamp(24px,6vw,90px);will-change:opacity,transform}
@@ -200,13 +189,12 @@ export default function HeroConstellation() {
     const sparkRgb = G.join(',')
     const lineRgb = themeRgb('--network-node').join(',')
     const labelColor = themeColor('--text-muted')
-    // Blue on a light page carries far more contrast than gold on navy, so the
-    // ETF light is thinner and fainter there for the same presence.
-    const bgRgb = themeRgb('--bg')
-    const darkTheme = bgRgb[0] * 0.2126 + bgRgb[1] * 0.7152 + bgRgb[2] * 0.0722 < 128
-    const LIGHT_STRENGTH = darkTheme ? 0.5 : 0.3
-    const LIGHT_WIDTH = darkTheme ? 0.9 : 0.5
-    const LIGHT_CALM = darkTheme ? 0.5 : 0.35
+    // The ETF light is thin and faint, and calmer still behind the headline and
+    // search, so it travels past the first node without competing with the
+    // foreground in either theme.
+    const LIGHT_STRENGTH = 0.35
+    const LIGHT_WIDTH = 0.6
+    const LIGHT_CALM = 0.4
     const LIGHT_FLOOR = 0.08
     const LIGHT_STOPS = [0, 0.25, 0.5, 0.75, 1]
     const smooth = (a: number, b: number, t: number) => { t = Math.min(1, Math.max(0, (t - a) / (b - a))); return t * t * (3 - 2 * t) }
@@ -254,10 +242,22 @@ export default function HeroConstellation() {
           P1: Math.random() * 6.28, P2: Math.random() * 6.28, P3: Math.random() * 6.28,
           ph: Math.random() * 6.28, sx: 0, sy: 0, sc: 1, da: 1, hover: 0, clar: 1, light: 0 })
       }
+      // Nearby nodes link at random, but each node takes only a few links and the
+      // shortest ones first, so a tight group of nodes stays an open web rather
+      // than a solid mesh. The ETFs may take more so their light still spreads.
       pairs = []; const TH = R * 0.34
+      const candidates: [number, number, number][] = []
       for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
         const dx = nodes[i].bx - nodes[j].bx, dy = nodes[i].by - nodes[j].by, dz = nodes[i].bz - nodes[j].bz
-        if (dx * dx + dy * dy + dz * dz < TH * TH && Math.random() < 0.5) { pairs.push(i, j); if (pairs.length > 1500) break }
+        const d2 = dx * dx + dy * dy + dz * dz
+        if (d2 < TH * TH && Math.random() < 0.5) candidates.push([i, j, d2])
+      }
+      candidates.sort((u, v) => u[2] - v[2])
+      const degree = new Array<number>(N).fill(0)
+      const maxDegree = (i: number) => nodes[i].signal ? 9 : 5
+      for (const [i, j] of candidates) {
+        if (degree[i] >= maxDegree(i) || degree[j] >= maxDegree(j)) continue
+        degree[i]++; degree[j]++; pairs.push(i, j)
       }
       // Each ETF is a light source. The light travels outward along the links,
       // weakening with the distance it has covered, so it reaches three or four
