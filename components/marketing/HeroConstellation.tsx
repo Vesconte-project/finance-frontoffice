@@ -111,6 +111,11 @@ export default function HeroConstellation() {
     root.dataset.reducedMotion = String(reducedMotion)
 
     let W = 0, H = 0, DPR = 1, cx = 0, cy = 0, R = 0, cam = 0
+    // The universe is an ellipsoid sized to the screen rather than a sphere: wide on
+    // a wide screen, tall on a phone, and shallower in depth than it is wide. A
+    // sphere of radius R (R follows the larger screen side) kept most of its volume
+    // off the screen, and perspective gathered what was left at the middle.
+    let Rx = 0, Ry = 0, Rz = 0
     let nodes: HcNode[] = [], pairs: number[] = [], pairLengths: number[] = []
     // Each link grows out of one of its two nodes: how far it has grown, 0..1, which
     // node it grows from, and how quickly (a link's own pace, so they do not all
@@ -234,9 +239,10 @@ export default function HeroConstellation() {
       c.width = W * DPR; c.height = H * DPR; c.style.width = W + 'px'; c.style.height = H + 'px'
       front.width = c.width; front.height = c.height; front.style.width = c.style.width; front.style.height = c.style.height
       cx = W * 0.5; cy = H * 0.5; R = Math.max(W, H) * 0.62; cam = R * 1.9
+      Rx = W * 0.55; Ry = H * 0.52; Rz = W * 0.42
     }
     function build() {
-      nodes = []; const HUBS = TICKERS.length, EXTRA = Math.max(90, Math.floor(W / 12)), N = HUBS + EXTRA
+      nodes = []; const HUBS = TICKERS.length, EXTRA = Math.max(150, Math.floor(W / 8)), N = HUBS + EXTRA
       for (let i = 0; i < N; i++) {
         let bx: number, by: number, bz: number, label: string | null = null, rad: number
         if (i < HUBS) {
@@ -244,17 +250,17 @@ export default function HeroConstellation() {
           const etfIndex = [...ETF_TICKERS].indexOf(label)
           if (etfIndex >= 0) {
             const angle = (etfIndex / ETF_COUNT) * Math.PI * 2 + 0.35
-            bx = Math.cos(angle) * R * 0.64
-            by = Math.sin(angle) * R * 0.43
-            bz = Math.sin(angle * 2) * R * 0.12
+            bx = Math.cos(angle) * Rx * 0.72
+            by = Math.sin(angle) * Ry * 0.78
+            bz = Math.sin(angle * 2) * Rz * 0.2
             rad = 6
           } else {
             const v = fib(i, HUBS)
-            const rr = R * (0.45 + Math.random() * 0.5)
-            bx = v[0] * rr; by = v[1] * rr; bz = v[2] * rr; rad = 3.0
+            const f = 0.45 + Math.random() * 0.5
+            bx = v[0] * f * Rx; by = v[1] * f * Ry; bz = v[2] * f * Rz; rad = 3.0
           }
         }
-        else { const th = Math.random() * 6.283, ph = Math.acos(2 * Math.random() - 1), rr = R * (0.12 + Math.random() * 0.92); bx = rr * Math.sin(ph) * Math.cos(th); by = rr * Math.cos(ph); bz = rr * Math.sin(ph) * Math.sin(th); rad = 1.1 + Math.random() * 1.3 }
+        else { const th = Math.random() * 6.283, ph = Math.acos(2 * Math.random() - 1), rr = Math.cbrt(0.03 + 0.97 * Math.random()); bx = rr * Math.sin(ph) * Math.cos(th) * Rx; by = rr * Math.cos(ph) * Ry; bz = rr * Math.sin(ph) * Math.sin(th) * Rz; rad = 1.1 + Math.random() * 1.3 }
         const isEtf = label !== null && ETF_TICKERS.has(label)
         nodes.push({ bx, by, bz, r: rad, label, signal: isEtf, rgb: isEtf ? G : COLORS[(Math.random() * COLORS.length) | 0],
           A1: R * (0.02 + Math.random() * 0.05), A2: R * (0.02 + Math.random() * 0.05), A3: R * (0.02 + Math.random() * 0.05),
@@ -262,10 +268,23 @@ export default function HeroConstellation() {
           P1: Math.random() * 6.28, P2: Math.random() * 6.28, P3: Math.random() * 6.28,
           ph: Math.random() * 6.28, sx: 0, sy: 0, sc: 1, da: 1, hover: 0, clar: 1, light: 0, fg: 1, cov: 0 })
       }
+      // Nearby nodes link at random, but each takes only a handful of links and the
+      // shortest first, so the links are spread over the whole universe instead of
+      // being used up on the nodes that happen to come first; the ETFs take more so
+      // their light still spreads.
       pairs = []; const TH = R * 0.34
+      const candidates: [number, number, number][] = []
       for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
         const dx = nodes[i].bx - nodes[j].bx, dy = nodes[i].by - nodes[j].by, dz = nodes[i].bz - nodes[j].bz
-        if (dx * dx + dy * dy + dz * dz < TH * TH && Math.random() < 0.5) { pairs.push(i, j); if (pairs.length > 1500) break }
+        const d2 = dx * dx + dy * dy + dz * dz
+        if (d2 < TH * TH && Math.random() < 0.5) candidates.push([i, j, d2])
+      }
+      candidates.sort((u, v) => u[2] - v[2])
+      const degree = new Array<number>(N).fill(0)
+      const maxDegree = (i: number) => nodes[i].signal ? 9 : 5
+      for (const [i, j] of candidates) {
+        if (degree[i] >= maxDegree(i) || degree[j] >= maxDegree(j)) continue
+        degree[i]++; degree[j]++; pairs.push(i, j)
       }
       edgeV = new Float32Array(pairs.length / 2).fill(1)
       edgeDir = Uint8Array.from({ length: pairs.length / 2 }, () => (Math.random() < 0.5 ? 1 : 0))
@@ -432,30 +451,58 @@ export default function HeroConstellation() {
       g.lineTo(v >= 0.999 ? t.sx : s.sx + (t.sx - s.sx) * v, v >= 0.999 ? t.sy : s.sy + (t.sy - s.sy) * v)
     }
 
+    // Scratch lists for drawScene: links grouped by opacity, and the ETF-lit ones.
+    const ALPHA_LEVELS = 20
+    const alphaBuckets: number[][] = Array.from({ length: ALPHA_LEVELS + 1 }, () => [])
+    const litEdges: number[] = []
     function drawScene(g: CanvasRenderingContext2D, sig: number, mode: string) {
       const nodeReveal = smooth(0, 0.45, reveal)
       const edgeReveal = smooth(0.35, 1, reveal)
       for (let k = 0; k < pairs.length; k += 2) {
         const ia = pairs[k], ib = pairs[k + 1], conn = (ia === focus.i || ib === focus.i)
         if (mode === 'conn' && !conn) continue; if (mode === 'bg' && conn) continue
-        const a = nodes[ia], b = nodes[ib], da = Math.min(a.da, b.da), hv = Math.max(a.hover, b.hover)
+        const a = nodes[ia], b = nodes[ib]
+        // A link wholly outside the screen is not worth drawing (not while the focus
+        // view has the field scaled around a node).
+        if (focus.t < 0.01 && ((a.sx < -40 && b.sx < -40) || (a.sx > W + 40 && b.sx > W + 40) || (a.sy < -40 && b.sy < -40) || (a.sy > H + 40 && b.sy > H + 40))) continue
+        const da = Math.min(a.da, b.da), hv = Math.max(a.hover, b.hover)
         const clar = conn ? 1 : Math.min(a.clar, b.clar), ld = 1 - focus.t * (1 - (0.06 + 0.94 * clar))
-        const aA = conn ? (0.32 + 0.5 * focus.t) : ((0.03 + 0.11 * da + 0.05 * p + 0.25 * hv) * ld * edgeDim[k >> 1] * smooth(0, 0.7, edgeV[k >> 1]))
-        g.strokeStyle = 'rgba(' + (conn ? sparkRgb : lineRgb) + ',' + (aA * edgeReveal) + ')'; g.lineWidth = 1 + hv * 0.5 + (conn ? focus.t * 2 : 0)
-        g.beginPath(); edgePath(g, a, b, edgeV[k >> 1], edgeDir[k >> 1]); g.stroke()
+        const aA = (conn ? (0.32 + 0.5 * focus.t) : ((0.03 + 0.11 * da + 0.05 * p + 0.25 * hv) * ld * edgeDim[k >> 1] * smooth(0, 0.7, edgeV[k >> 1]))) * edgeReveal
+        const peak = Math.max(a.light, b.light)
+        const lit = !conn && peak > LIGHT_FLOOR
+        if (conn || hv >= 0.02) {
+          // Under the pointer, or joined to the focused node: drawn on its own.
+          g.strokeStyle = 'rgba(' + (conn ? sparkRgb : lineRgb) + ',' + aA + ')'; g.lineWidth = 1 + hv * 0.5 + (conn ? focus.t * 2 : 0)
+          g.beginPath(); edgePath(g, a, b, edgeV[k >> 1], edgeDir[k >> 1]); g.stroke()
+        } else {
+          // Every other link shares a stroke with the others of about its opacity,
+          // so the field costs a handful of draws rather than one per link.
+          const q = Math.min(ALPHA_LEVELS, Math.round(aA * ALPHA_LEVELS * 2))
+          if (q > 0) alphaBuckets[q].push(k)
+        }
         // The ETF light along this link: strongest at the end nearer an ETF,
         // fading towards the other, and never a flat colour across the link.
-        const peak = Math.max(a.light, b.light)
-        if (!conn && peak > LIGHT_FLOOR) {
-          const length = pairLengths[k / 2]
-          const along = (s: number) => Math.max(a.light * Math.exp(-s * length / lightReach), b.light * Math.exp(-(1 - s) * length / lightReach))
-          const strength = LIGHT_STRENGTH * edgeReveal * ld * edgeDim[k >> 1] * smooth(0, 0.7, edgeV[k >> 1])
-          const gradient = g.createLinearGradient(a.sx, a.sy, b.sx, b.sy)
-          for (const s of LIGHT_STOPS) gradient.addColorStop(s, 'rgba(' + sparkRgb + ',' + (Math.max(0, (along(s) - LIGHT_FLOOR) / (1 - LIGHT_FLOOR)) * strength) + ')')
-          g.strokeStyle = gradient; g.lineWidth = 1 + LIGHT_WIDTH * peak + hv * 0.5
-          g.beginPath(); edgePath(g, a, b, edgeV[k >> 1], edgeDir[k >> 1]); g.stroke()
-        }
+        if (lit) litEdges.push(k, LIGHT_STRENGTH * edgeReveal * ld * edgeDim[k >> 1] * smooth(0, 0.7, edgeV[k >> 1]), 1 + LIGHT_WIDTH * peak + hv * 0.5)
       }
+      for (let q = 1; q <= ALPHA_LEVELS; q++) {
+        const bucket = alphaBuckets[q]
+        if (!bucket.length) continue
+        g.strokeStyle = 'rgba(' + lineRgb + ',' + q / (ALPHA_LEVELS * 2) + ')'; g.lineWidth = 1
+        g.beginPath()
+        for (const k of bucket) edgePath(g, nodes[pairs[k]], nodes[pairs[k + 1]], edgeV[k >> 1], edgeDir[k >> 1])
+        g.stroke()
+        bucket.length = 0
+      }
+      for (let m = 0; m < litEdges.length; m += 3) {
+        const k = litEdges[m], strength = litEdges[m + 1]
+        const a = nodes[pairs[k]], b = nodes[pairs[k + 1]], length = pairLengths[k / 2]
+        const along = (s: number) => Math.max(a.light * Math.exp(-s * length / lightReach), b.light * Math.exp(-(1 - s) * length / lightReach))
+        const gradient = g.createLinearGradient(a.sx, a.sy, b.sx, b.sy)
+        for (const s of LIGHT_STOPS) gradient.addColorStop(s, 'rgba(' + sparkRgb + ',' + (Math.max(0, (along(s) - LIGHT_FLOOR) / (1 - LIGHT_FLOOR)) * strength) + ')')
+        g.strokeStyle = gradient; g.lineWidth = litEdges[m + 2]
+        g.beginPath(); edgePath(g, a, b, edgeV[k >> 1], edgeDir[k >> 1]); g.stroke()
+      }
+      litEdges.length = 0
       if (mode !== 'conn') {
         for (let idx = 0; idx < nodes.length; idx++) { const n = nodes[idx]
           if (idx === focus.i) continue
@@ -504,9 +551,15 @@ export default function HeroConstellation() {
       const breathe = reducedMotion ? 1 : 1 + 0.07 * Math.sin(tt * 0.10)
       // Start a touch closer (base 1.2), keeping the scrolled-in end roughly the
       // same; pull the camera back while searching ("scanning the universe").
-      const zoom = breathe * (1.2 + smooth(0, 1, p) * 0.95) * (1 - 0.42 * searchMode)
+      // While searching, the camera rises over the universe and draws back far
+      // enough to take it all in (SEARCH_TILT looks down on it from above).
+      const SEARCH_TILT = 0.95
+      const searchZoom = Math.min(0.5 * W / Rx, 0.62 * H / (Rz * Math.sin(SEARCH_TILT) + Ry * Math.cos(SEARCH_TILT)), 1.2)
+      const heroZoom = 1.2 + smooth(0, 1, p) * 0.95
+      const zoom = breathe * (heroZoom + (searchZoom - heroZoom) * searchMode)
       const ay = (reducedMotion ? 0 : tt * 0.016) + p * Math.PI * 1.4 + mx * 0.4
-      const ax = 0.16 + (reducedMotion ? 0 : Math.sin(tt * 0.028) * 0.05) + my * 0.26
+      const heroTilt = 0.16 + (reducedMotion ? 0 : Math.sin(tt * 0.028) * 0.05) + my * 0.26
+      const ax = heroTilt + (SEARCH_TILT - heroTilt) * searchMode
       viewAx = ax; viewAy = ay; viewZoom = zoom
       const cA = Math.cos(ax), sA = Math.sin(ax), cB = Math.cos(ay), sB = Math.sin(ay)
       for (const n of nodes) {
