@@ -110,9 +110,11 @@ export default function HeroConstellation() {
 
     let W = 0, H = 0, DPR = 1, cx = 0, cy = 0, R = 0, cam = 0
     let nodes: HcNode[] = [], pairs: number[] = [], pairLengths: number[] = []
-    // How far each link currently reaches in from its two ends, 0..1. Both 1 is
-    // the whole link; a link running under the foreground is held shorter.
-    let edgeA = new Float32Array(0), edgeB = new Float32Array(0)
+    // Each link grows out of one of its two nodes: how far it has grown, 0..1, which
+    // node it grows from, and how quickly (a link's own pace, so they do not all
+    // move as one).
+    let edgeV = new Float32Array(0), edgeDir = new Uint8Array(0), edgeSpd = new Float32Array(0)
+    let occlusionPrimed = false
     let mx = 0, my = 0, tmx = 0, tmy = 0, mpx = -1e4, mpy = -1e4
     let rafId = 0
     let heroVisible = true
@@ -251,7 +253,10 @@ export default function HeroConstellation() {
         const dx = nodes[i].bx - nodes[j].bx, dy = nodes[i].by - nodes[j].by, dz = nodes[i].bz - nodes[j].bz
         if (dx * dx + dy * dy + dz * dz < TH * TH && Math.random() < 0.5) { pairs.push(i, j); if (pairs.length > 1500) break }
       }
-      edgeA = new Float32Array(pairs.length / 2).fill(1); edgeB = new Float32Array(pairs.length / 2).fill(1)
+      edgeV = new Float32Array(pairs.length / 2).fill(1)
+      edgeDir = Uint8Array.from({ length: pairs.length / 2 }, () => (Math.random() < 0.5 ? 1 : 0))
+      edgeSpd = Float32Array.from({ length: pairs.length / 2 }, () => 0.7 + Math.random() * 0.8)
+      occlusionPrimed = false
       // Each ETF is a light source. The light travels outward along the links,
       // weakening with the distance it has covered, so it reaches three or four
       // links before it fades out. A node lit by several paths keeps the
@@ -298,19 +303,16 @@ export default function HeroConstellation() {
       return { x: W * 0.5, y: (top + bottom) / 2 }
     }
 
-    // The foreground makes room in the field. Every block of copy, the search and
-    // its buttons claim a padded box; a link running under one is held short of
-    // it, so it breaks in two with each half retreating into its node, and a link
-    // that the foreground has left reaches back out until it joins again. Nodes
-    // under a box fade. It is the field yielding to what sits over it, rather
-    // than a veil laid across the field, so the network stays full wherever
-    // nothing is being read.
+    // The foreground makes room in the field. The headline, the search and its
+    // buttons and, further down, the copy of each section claim a padded box. A
+    // link that touches one is taken away: it draws back into one of its nodes
+    // and is gone. Once nothing is over it any more it grows out of that node to
+    // the other, so as the page scrolls the links are dismantled where something
+    // is about to be read and built again where it has left. Nodes under a box
+    // fade rather than go. Elsewhere the network stays full.
     const OBSTACLES = '[data-field-obstacle], [data-dock-search] :is(.dock-search__title, .dock-search__subtitle, .dock-search__field, .dock-search__cta), [data-field-foreground]:not([data-dock-search]) :is(h1, h2, h3, h4, p, li, a, button, input, th, td, label, figcaption)'
-    // A piece of a link shorter than this is not worth keeping: it would read as
-    // a stray mark beside the copy rather than as a link.
-    const MIN_PIECE = 26
-    // How long a link takes to close most of the way to where it is headed.
-    const EDGE_EASE_MS = 150
+    // How fast a link grows or draws back, in screen pixels a second.
+    const EDGE_SPEED = 650
     type Box = { l: number; t: number; r: number; b: number }
     let obstacles: { el: HTMLElement; dock: boolean; pad: number }[] = []
     let obstaclesReadAt = -1e9
@@ -322,7 +324,7 @@ export default function HeroConstellation() {
         obstacles = Array.from(document.querySelectorAll<HTMLElement>(OBSTACLES)).map((el) => ({
           el,
           dock: Boolean(el.closest('[data-dock-search]')),
-          pad: el.matches('.dock-search__title') ? 22 : el.matches('h1, h2, h3, h4') ? 18 : 12,
+          pad: el.matches('.dock-search__title') ? 16 : el.matches('h1, h2, h3, h4') ? 14 : 10,
         }))
       }
       // Once the hero column is docked into the header it is no longer over the field.
@@ -336,77 +338,54 @@ export default function HeroConstellation() {
         boxes.push({ l: rect.left - o.pad, t: rect.top - o.pad, r: rect.right + o.pad, b: rect.bottom + o.pad })
       }
     }
+    // Whether the segment a-b passes through the box (Liang-Barsky).
+    const segmentHits = (ax: number, ay: number, dx: number, dy: number, box: Box) => {
+      let t0 = 0, t1 = 1
+      const edges: [number, number][] = [[-dx, ax - box.l], [dx, box.r - ax], [-dy, ay - box.t], [dy, box.b - ay]]
+      for (const [pp, q] of edges) {
+        if (pp === 0) { if (q < 0) return false; continue }
+        const t = q / pp
+        if (pp < 0) { if (t > t1) return false; if (t > t0) t0 = t } else { if (t < t0) return false; if (t < t1) t1 = t }
+      }
+      return true
+    }
     const updateOcclusion = (now: number) => {
       const carving = focus.i < 0 && focus.t < 0.01
       const dt = Math.min(64, now - occludedAt); occludedAt = now
-      const ease = reducedMotion || !carving ? 1 : 1 - Math.exp(-dt / EDGE_EASE_MS)
+      // The first pass after the links are built, reduced motion and the focus
+      // view all settle at once; only a live field animates.
+      const animate = carving && !reducedMotion && occlusionPrimed
       if (carving) readBoxes(now); else boxes = []
       for (let k = 0; k < pairs.length; k += 2) {
         const e = k >> 1
-        let ta = 1, tb = 1
+        const a = nodes[pairs[k]], b = nodes[pairs[k + 1]]
+        const dx = b.sx - a.sx, dy = b.sy - a.sy
+        let target = 1
         if (boxes.length) {
-          const a = nodes[pairs[k]], b = nodes[pairs[k + 1]]
-          const dx = b.sx - a.sx, dy = b.sy - a.sy
           const minX = Math.min(a.sx, b.sx), maxX = Math.max(a.sx, b.sx), minY = Math.min(a.sy, b.sy), maxY = Math.max(a.sy, b.sy)
-          let first = 2, last = -1
           for (const box of boxes) {
             if (box.r < minX || box.l > maxX || box.b < minY || box.t > maxY) continue
-            // Liang-Barsky: the stretch of the link, as 0..1 from a, inside the box.
-            let t0 = 0, t1 = 1, hit = true
-            const edges: [number, number][] = [[-dx, a.sx - box.l], [dx, box.r - a.sx], [-dy, a.sy - box.t], [dy, box.b - a.sy]]
-            for (const [pp, q] of edges) {
-              if (pp === 0) { if (q < 0) { hit = false; break } continue }
-              const t = q / pp
-              if (pp < 0) { if (t > t1) { hit = false; break } if (t > t0) t0 = t } else { if (t < t0) { hit = false; break } if (t < t1) t1 = t }
-            }
-            if (!hit) continue
-            if (t0 < first) first = t0
-            if (t1 > last) last = t1
-          }
-          if (last >= 0) {
-            const length = Math.hypot(dx, dy)
-            ta = first; tb = 1 - last
-            if (ta * length < MIN_PIECE) ta = 0
-            if (tb * length < MIN_PIECE) tb = 0
+            if (segmentHits(a.sx, a.sy, dx, dy, box)) { target = 0; break }
           }
         }
-        edgeA[e] += (ta - edgeA[e]) * ease; edgeB[e] += (tb - edgeB[e]) * ease
+        if (!animate) { edgeV[e] = target; continue }
+        const step = (dt * 0.001 * EDGE_SPEED * edgeSpd[e]) / Math.max(40, Math.hypot(dx, dy))
+        edgeV[e] = target > edgeV[e] ? Math.min(target, edgeV[e] + step) : Math.max(target, edgeV[e] - step)
       }
+      occlusionPrimed = true
+      const nodeEase = animate ? 1 - Math.exp(-dt / 150) : 1
       for (const n of nodes) {
         let covered = false
         for (const box of boxes) if (n.sx >= box.l && n.sx <= box.r && n.sy >= box.t && n.sy <= box.b) { covered = true; break }
-        n.fg += ((covered ? 0.12 : 1) - n.fg) * ease
+        n.fg += ((covered ? 0.12 : 1) - n.fg) * nodeEase
       }
     }
-    // Where a link is held short of the foreground its end would stop on a hard
-    // line along the edge of the box. Fading the field out over the last stretch
-    // before each box lets the ends dissolve instead.
-    const FEATHER = 28
-    const featherBoxes = (g: CanvasRenderingContext2D) => {
-      g.save()
-      g.globalCompositeOperation = 'destination-out'
-      const ramp = (gradient: CanvasGradient) => {
-        gradient.addColorStop(0, 'rgba(0,0,0,0)'); gradient.addColorStop(0.5, 'rgba(0,0,0,0.22)'); gradient.addColorStop(1, 'rgba(0,0,0,1)')
-        return gradient
-      }
-      for (const { l, t, r, b } of boxes) {
-        g.fillStyle = ramp(g.createLinearGradient(0, t - FEATHER, 0, t)); g.fillRect(l, t - FEATHER, r - l, FEATHER)
-        g.fillStyle = ramp(g.createLinearGradient(0, b + FEATHER, 0, b)); g.fillRect(l, b, r - l, FEATHER)
-        g.fillStyle = ramp(g.createLinearGradient(l - FEATHER, 0, l, 0)); g.fillRect(l - FEATHER, t, FEATHER, b - t)
-        g.fillStyle = ramp(g.createLinearGradient(r + FEATHER, 0, r, 0)); g.fillRect(r, t, FEATHER, b - t)
-        for (const [cx0, cy0, qx, qy] of [[l, t, -1, -1], [r, t, 1, -1], [l, b, -1, 1], [r, b, 1, 1]] as const) {
-          const radial = g.createRadialGradient(cx0, cy0, 0, cx0, cy0, FEATHER)
-          radial.addColorStop(0, 'rgba(0,0,0,1)'); radial.addColorStop(0.5, 'rgba(0,0,0,0.22)'); radial.addColorStop(1, 'rgba(0,0,0,0)')
-          g.fillStyle = radial; g.fillRect(qx < 0 ? cx0 - FEATHER : cx0, qy < 0 ? cy0 - FEATHER : cy0, FEATHER, FEATHER)
-        }
-      }
-      g.restore()
-    }
-    // A link as the two pieces left to it: the whole link once they meet.
-    function edgePath(g: CanvasRenderingContext2D, a: HcNode, b: HcNode, ta: number, tb: number) {
-      if (ta + tb >= 0.999) { g.moveTo(a.sx, a.sy); g.lineTo(b.sx, b.sy); return }
-      if (ta > 0.002) { g.moveTo(a.sx, a.sy); g.lineTo(a.sx + (b.sx - a.sx) * ta, a.sy + (b.sy - a.sy) * ta) }
-      if (tb > 0.002) { g.moveTo(b.sx, b.sy); g.lineTo(b.sx + (a.sx - b.sx) * tb, b.sy + (a.sy - b.sy) * tb) }
+    // A link as far as it has grown from its own node: the whole link at 1, none of it at 0.
+    function edgePath(g: CanvasRenderingContext2D, a: HcNode, b: HcNode, v: number, from: number) {
+      if (v <= 0.002) return
+      const s = from ? a : b, t = from ? b : a
+      g.moveTo(s.sx, s.sy)
+      g.lineTo(v >= 0.999 ? t.sx : s.sx + (t.sx - s.sx) * v, v >= 0.999 ? t.sy : s.sy + (t.sy - s.sy) * v)
     }
 
     function drawScene(g: CanvasRenderingContext2D, sig: number, mode: string) {
@@ -419,7 +398,7 @@ export default function HeroConstellation() {
         const clar = conn ? 1 : Math.min(a.clar, b.clar), ld = 1 - focus.t * (1 - (0.06 + 0.94 * clar))
         const aA = conn ? (0.32 + 0.5 * focus.t) : ((0.03 + 0.11 * da + 0.05 * p + 0.25 * hv) * ld)
         g.strokeStyle = 'rgba(' + (conn ? sparkRgb : lineRgb) + ',' + (aA * edgeReveal) + ')'; g.lineWidth = 1 + hv * 0.5 + (conn ? focus.t * 2 : 0)
-        g.beginPath(); edgePath(g, a, b, edgeA[k >> 1], edgeB[k >> 1]); g.stroke()
+        g.beginPath(); edgePath(g, a, b, edgeV[k >> 1], edgeDir[k >> 1]); g.stroke()
         // The ETF light along this link: strongest at the end nearer an ETF,
         // fading towards the other, and never a flat colour across the link.
         const peak = Math.max(a.light, b.light)
@@ -430,7 +409,7 @@ export default function HeroConstellation() {
           const gradient = g.createLinearGradient(a.sx, a.sy, b.sx, b.sy)
           for (const s of LIGHT_STOPS) gradient.addColorStop(s, 'rgba(' + sparkRgb + ',' + (Math.max(0, (along(s) - LIGHT_FLOOR) / (1 - LIGHT_FLOOR)) * strength) + ')')
           g.strokeStyle = gradient; g.lineWidth = 1 + LIGHT_WIDTH * peak + hv * 0.5
-          g.beginPath(); edgePath(g, a, b, edgeA[k >> 1], edgeB[k >> 1]); g.stroke()
+          g.beginPath(); edgePath(g, a, b, edgeV[k >> 1], edgeDir[k >> 1]); g.stroke()
         }
       }
       if (mode !== 'conn') {
@@ -501,7 +480,6 @@ export default function HeroConstellation() {
       if (focus.t < 0.01 || focus.i < 0 || !nodes[focus.i]) {
         x.setTransform(DPR, 0, 0, DPR, 0, 0); x.clearRect(0, 0, W, H)
         drawScene(x, sig, 'all')
-        if (boxes.length) featherBoxes(x)
         if (frontDrawn) { fx.setTransform(1, 0, 0, 1, 0, 0); fx.clearRect(0, 0, front.width, front.height); frontDrawn = false }
       } else {
         const fn = nodes[focus.i], anchor = focusAnchor()
