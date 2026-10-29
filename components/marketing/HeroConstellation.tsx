@@ -34,7 +34,15 @@ const CSS = `
 .hc-root .hc-veil{position:fixed;inset:0;z-index:1;pointer-events:none}
 .hc-root .hc-veil::before,.hc-root .hc-veil::after{content:"";position:absolute;inset:0}
 .hc-root .hc-veil::after{background:var(--bg);opacity:calc(var(--hc-field-progress,0) * .65)}
-.hc-root .hc-veil::before{background:none}
+.hc-root .hc-veil::before{
+  background:radial-gradient(ellipse 62% 48% at 50% 44%,
+    color-mix(in srgb,var(--bg) 50%,transparent) 0%,
+    color-mix(in srgb,var(--bg) 42%,transparent) 30%,
+    color-mix(in srgb,var(--bg) 26%,transparent) 55%,
+    color-mix(in srgb,var(--bg) 10%,transparent) 78%,
+    transparent 100%);
+  opacity:calc(1 - var(--hc-field-progress,0));
+}
 .hc-root .hc-progress{display:none}
 .hc-root #hc-stage{position:relative;height:100vh;z-index:10;pointer-events:none}
 .hc-root .hc-beat{position:absolute;inset:0;display:flex;align-items:center;padding:0 clamp(24px,6vw,90px);will-change:opacity,transform}
@@ -304,7 +312,13 @@ export default function HeroConstellation() {
         if (!conn && peak > LIGHT_FLOOR) {
           const length = pairLengths[k / 2]
           const along = (s: number) => Math.max(a.light * Math.exp(-s * length / lightReach), b.light * Math.exp(-(1 - s) * length / lightReach))
-          const strength = 0.85 * edgeReveal * ld
+          // Softer than the links themselves, and softer still behind the
+          // headline and search, so the light still travels past the first
+          // node without competing with the foreground. Scrolling hands the
+          // calming over to the flat veil.
+          const mx = ((a.sx + b.sx) / 2 - W / 2) / (W * 0.32), my = ((a.sy + b.sy) / 2 - window.innerHeight * 0.44) / (window.innerHeight * 0.26)
+          const calm = 1 - 0.5 * Math.exp(-(mx * mx + my * my)) * (1 - Math.min(1, p * 2))
+          const strength = 0.5 * calm * edgeReveal * ld
           const gradient = g.createLinearGradient(a.sx, a.sy, b.sx, b.sy)
           for (const s of LIGHT_STOPS) gradient.addColorStop(s, 'rgba(' + sparkRgb + ',' + (Math.max(0, (along(s) - LIGHT_FLOOR) / (1 - LIGHT_FLOOR)) * strength) + ')')
           g.strokeStyle = gradient; g.lineWidth = 1 + 0.9 * peak + hv * 0.5
