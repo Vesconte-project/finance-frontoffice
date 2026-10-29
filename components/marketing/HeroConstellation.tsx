@@ -575,8 +575,34 @@ export default function HeroConstellation() {
     const SEARCH_FILL = 0.6
     const MAX_STRETCH = 2.4
     const searchFit = { zoom: 0, sx: 1, sy: 1, mx: 0, my: 0, ox: 0, oy: 0, ready: false }
+    // The visible area is not followed as it changes: the on-screen keyboard opens and
+    // closes in steps, and chasing every one of them whips the universe about. A change
+    // only counts once it has held for AREA_SETTLE ms, and then the area moves to it in
+    // one eased transition of AREA_MS, whatever the steps in between were.
+    const AREA_SETTLE = 140
+    const AREA_MS = 800
+    type Area = { l: number; t: number; r: number; b: number }
+    const area = { from: { l: 0, t: 0, r: 0, b: 0 } as Area, to: { l: 0, t: 0, r: 0, b: 0 } as Area, seen: { l: 0, t: 0, r: 0, b: 0 } as Area, seenAt: 0, startedAt: 0, ready: false }
+    const sameArea = (a: Area, b: Area, tol: number) => Math.abs(a.l - b.l) <= tol && Math.abs(a.t - b.t) <= tol && Math.abs(a.r - b.r) <= tol && Math.abs(a.b - b.b) <= tol
+    const lerpArea = (a: Area, b: Area, k: number): Area => ({ l: a.l + (b.l - a.l) * k, t: a.t + (b.t - a.t) * k, r: a.r + (b.r - a.r) * k, b: a.b + (b.b - a.b) * k })
+    function visibleArea(now: number): Area {
+      const vv = window.visualViewport
+      const left = Math.max(0, vv?.offsetLeft ?? 0), top = Math.max(0, vv?.offsetTop ?? 0)
+      const seen = { l: left, t: top, r: Math.min(W, left + (vv?.width ?? window.innerWidth)), b: Math.min(H, top + (vv?.height ?? window.innerHeight)) }
+      if (!area.ready || reducedMotion) {
+        area.from = seen; area.to = seen; area.seen = seen; area.seenAt = now; area.startedAt = now - AREA_MS; area.ready = true
+        return seen
+      }
+      if (!sameArea(seen, area.seen, 2)) { area.seen = seen; area.seenAt = now }
+      if (!sameArea(area.seen, area.to, 6) && now - area.seenAt >= AREA_SETTLE) {
+        const k = Math.min(1, (now - area.startedAt) / AREA_MS)
+        area.from = lerpArea(area.from, area.to, k * k * (3 - 2 * k)); area.to = area.seen; area.startedAt = now
+      }
+      const k = Math.min(1, (now - area.startedAt) / AREA_MS)
+      return lerpArea(area.from, area.to, k * k * (3 - 2 * k))
+    }
     const fitXs: number[] = [], fitYs: number[] = []
-    function fitSearchView(ay: number) {
+    function fitSearchView(ay: number, now: number) {
       const cA = Math.cos(SEARCH_TILT), sA = Math.sin(SEARCH_TILT), cB = Math.cos(ay), sB = Math.sin(ay)
       fitXs.length = 0; fitYs.length = 0
       for (const n of nodes) {
@@ -588,16 +614,14 @@ export default function HeroConstellation() {
       fitXs.sort((a, b) => a - b); fitYs.sort((a, b) => a - b)
       const lo = Math.floor(fitXs.length * 0.04), hi = Math.ceil(fitXs.length * 0.96) - 1
       const spanW = Math.max(1, fitXs[hi] - fitXs[lo]), spanH = Math.max(1, fitYs[hi] - fitYs[lo])
-      const vv = window.visualViewport
-      const left = Math.max(0, vv?.offsetLeft ?? 0), top = Math.max(0, vv?.offsetTop ?? 0)
-      const right = Math.min(W, left + (vv?.width ?? window.innerWidth)), bottom = Math.min(H, top + (vv?.height ?? window.innerHeight))
+      const { l: left, t: top, r: right, b: bottom } = visibleArea(now)
       const areaW = Math.max(1, right - left), areaH = Math.max(1, bottom - top)
       const zx = SEARCH_FILL * areaW / spanW, zy = SEARCH_FILL * areaH / spanH
       const zoom = Math.min(1.2, zx, zy)
       const sx = Math.min(MAX_STRETCH, Math.max(1, zx / zoom)), sy = Math.min(MAX_STRETCH, Math.max(1, zy / zoom))
       const mx = (fitXs[lo] + fitXs[hi]) / 2, my = (fitYs[lo] + fitYs[hi]) / 2
       const ox = (left + right) / 2 - W / 2, oy = (top + bottom) / 2 - H / 2
-      const ease = searchFit.ready && !reducedMotion ? 0.1 : 1
+      const ease = searchFit.ready && !reducedMotion ? 0.2 : 1
       searchFit.zoom += (zoom - searchFit.zoom) * ease
       searchFit.sx += (sx - searchFit.sx) * ease; searchFit.sy += (sy - searchFit.sy) * ease
       searchFit.mx += (mx - searchFit.mx) * ease; searchFit.my += (my - searchFit.my) * ease
@@ -628,7 +652,7 @@ export default function HeroConstellation() {
       const heroZoom = 1.2 + smooth(0, 1, p) * 0.95
       const ay = (reducedMotion ? 0 : tt * 0.016) + p * Math.PI * 1.4 + mx * 0.4
       const heroTilt = 0.16 + (reducedMotion ? 0 : Math.sin(tt * 0.028) * 0.05) + my * 0.26
-      if (searchMode > 0.001) fitSearchView(ay)
+      if (searchMode > 0.001) fitSearchView(ay, now)
       const zoom = breathe * (heroZoom + (searchFit.zoom - heroZoom) * searchMode)
       const ax = heroTilt + (SEARCH_TILT - heroTilt) * searchMode
       const stX = 1 + (searchFit.sx - 1) * searchMode, stY = 1 + (searchFit.sy - 1) * searchMode
