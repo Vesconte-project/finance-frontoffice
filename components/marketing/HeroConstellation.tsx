@@ -35,11 +35,14 @@ const CSS = `
 .hc-root .hc-veil::before,.hc-root .hc-veil::after{content:"";position:absolute;inset:0}
 .hc-root .hc-veil::after{background:var(--bg);opacity:calc(var(--hc-field-progress,0) * .65)}
 .hc-root .hc-veil::before{
+  /* Dark only: a calm behind the headline and search. On the light page the same
+     veil reads as a hollow disc, so there its tint is transparent. */
+  --hc-veil-tint:light-dark(transparent,var(--bg));
   background:radial-gradient(ellipse 62% 48% at 50% 44%,
-    color-mix(in srgb,var(--bg) 50%,transparent) 0%,
-    color-mix(in srgb,var(--bg) 42%,transparent) 30%,
-    color-mix(in srgb,var(--bg) 26%,transparent) 55%,
-    color-mix(in srgb,var(--bg) 10%,transparent) 78%,
+    color-mix(in srgb,var(--hc-veil-tint) 50%,transparent) 0%,
+    color-mix(in srgb,var(--hc-veil-tint) 42%,transparent) 30%,
+    color-mix(in srgb,var(--hc-veil-tint) 26%,transparent) 55%,
+    color-mix(in srgb,var(--hc-veil-tint) 10%,transparent) 78%,
     transparent 100%);
   opacity:calc(1 - var(--hc-field-progress,0));
 }
@@ -197,6 +200,13 @@ export default function HeroConstellation() {
     const sparkRgb = G.join(',')
     const lineRgb = themeRgb('--network-node').join(',')
     const labelColor = themeColor('--text-muted')
+    // Blue on a light page carries far more contrast than gold on navy, so the
+    // ETF light is thinner and fainter there for the same presence.
+    const bgRgb = themeRgb('--bg')
+    const darkTheme = bgRgb[0] * 0.2126 + bgRgb[1] * 0.7152 + bgRgb[2] * 0.0722 < 128
+    const LIGHT_STRENGTH = darkTheme ? 0.5 : 0.3
+    const LIGHT_WIDTH = darkTheme ? 0.9 : 0.5
+    const LIGHT_CALM = darkTheme ? 0.5 : 0.35
     const LIGHT_FLOOR = 0.08
     const LIGHT_STOPS = [0, 0.25, 0.5, 0.75, 1]
     const smooth = (a: number, b: number, t: number) => { t = Math.min(1, Math.max(0, (t - a) / (b - a))); return t * t * (3 - 2 * t) }
@@ -316,12 +326,12 @@ export default function HeroConstellation() {
           // headline and search, so the light still travels past the first
           // node without competing with the foreground. Scrolling hands the
           // calming over to the flat veil.
-          const mx = ((a.sx + b.sx) / 2 - W / 2) / (W * 0.32), my = ((a.sy + b.sy) / 2 - window.innerHeight * 0.44) / (window.innerHeight * 0.26)
-          const calm = 1 - 0.5 * Math.exp(-(mx * mx + my * my)) * (1 - Math.min(1, p * 2))
-          const strength = 0.5 * calm * edgeReveal * ld
+          const dx = ((a.sx + b.sx) / 2 - W / 2) / (W * 0.32), dy = ((a.sy + b.sy) / 2 - window.innerHeight * 0.44) / (window.innerHeight * 0.26)
+          const calm = 1 - LIGHT_CALM * Math.exp(-(dx * dx + dy * dy)) * (1 - Math.min(1, p * 2))
+          const strength = LIGHT_STRENGTH * calm * edgeReveal * ld
           const gradient = g.createLinearGradient(a.sx, a.sy, b.sx, b.sy)
           for (const s of LIGHT_STOPS) gradient.addColorStop(s, 'rgba(' + sparkRgb + ',' + (Math.max(0, (along(s) - LIGHT_FLOOR) / (1 - LIGHT_FLOOR)) * strength) + ')')
-          g.strokeStyle = gradient; g.lineWidth = 1 + 0.9 * peak + hv * 0.5
+          g.strokeStyle = gradient; g.lineWidth = 1 + LIGHT_WIDTH * peak + hv * 0.5
           g.beginPath(); g.moveTo(a.sx, a.sy); g.lineTo(b.sx, b.sy); g.stroke()
         }
       }
