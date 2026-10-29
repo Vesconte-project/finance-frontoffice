@@ -241,44 +241,50 @@ export default function HeroConstellation() {
       spanX = W * 0.78; spanY = H * 0.62; spanZ = R * 0.9
     }
     function build() {
-      nodes = []; const HUBS = TICKERS.length, EXTRA = Math.max(130, Math.floor(W / 8)), N = HUBS + EXTRA
+      nodes = []; const HUBS = TICKERS.length, EXTRA = Math.min(260, Math.max(120, Math.round(Math.sqrt(W * H) / 5.8))), N = HUBS + EXTRA
       // Nothing about the layout is regular: a few clusters at random places, with
       // the rest of the nodes scattered between them. The ETFs take a random cell of
       // a loose 3x2 grid over the visible part, so there is always one near each
       // part of the screen but never a pattern.
       const rand = (half: number) => (Math.random() * 2 - 1) * half
       const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) * 1.6
-      // One cluster in each cell of a 4x2 grid (2x4 on a tall screen), at a random place
-      // in its cell, so no part of the screen is left without one and none repeats.
-      const cols = W >= H ? 4 : 2, rows = W >= H ? 2 : 4
+      // One cluster in each cell of a grid whose shape follows the screen's, at a random
+      // place in its cell, so no part of the screen is left without one.
+      const cols = Math.max(1, Math.round(Math.sqrt(8 * W / H))), rows = Math.ceil(8 / cols)
       const clusters = Array.from({ length: cols * rows }, (_, i) => [
         (-1 + ((i % cols) + Math.random()) * (2 / cols)) * spanX * 0.9,
         (-1 + (((i / cols) | 0) + Math.random()) * (2 / rows)) * spanY * 0.9,
         rand(spanZ * 0.85),
       ])
-      const place = (clustered: boolean): [number, number, number] => {
-        if (!clustered) return [rand(spanX), rand(spanY), rand(spanZ)]
-        const c = clusters[(Math.random() * clusters.length) | 0]
+      // Every node belongs to a cell, dealt round the cells in turn, so each part of
+      // the screen gets the same share of nodes whatever the random draw; within its
+      // cell a node either gathers round the cell's cluster or lands anywhere in it.
+      const order = Array.from({ length: cols * rows }, (_, i) => i).sort(() => Math.random() - 0.5)
+      const place = (index: number, clustered: boolean): [number, number, number] => {
+        const cell = order[index % order.length]
+        if (!clustered) return [(-1 + ((cell % cols) + Math.random()) * (2 / cols)) * spanX, (-1 + (((cell / cols) | 0) + Math.random()) * (2 / rows)) * spanY, rand(spanZ)]
+        const c = clusters[cell]
         const clamp = (v: number, half: number) => Math.max(-half * 1.15, Math.min(half * 1.15, v))
         return [clamp(c[0] + gauss() * spanX * 0.22, spanX), clamp(c[1] + gauss() * spanY * 0.22, spanY), clamp(c[2] + gauss() * spanZ * 0.22, spanZ)]
       }
-      const cells = [0, 1, 2, 3, 4, 5].sort(() => Math.random() - 0.5)
+      const etfCols = Math.max(1, Math.round(Math.sqrt(ETF_TICKERS.size * W / H))), etfRows = Math.ceil(ETF_TICKERS.size / etfCols)
+      const cells = Array.from({ length: etfCols * etfRows }, (_, i) => i).sort(() => Math.random() - 0.5)
       for (let i = 0; i < N; i++) {
         let bx: number, by: number, bz: number, label: string | null = null, rad: number
         if (i < HUBS) {
           label = TICKERS[i]
           const etfIndex = [...ETF_TICKERS].indexOf(label)
           if (etfIndex >= 0) {
-            const cell = cells[etfIndex], col = cell % 3, row = (cell / 3) | 0
-            bx = (-0.6 + (col + Math.random()) * (1.2 / 3)) * W
-            by = (-0.55 + (row + Math.random()) * (1.1 / 2)) * H
+            const cell = cells[etfIndex], col = cell % etfCols, row = (cell / etfCols) | 0
+            bx = (-0.6 + (col + Math.random()) * (1.2 / etfCols)) * W
+            by = (-0.55 + (row + Math.random()) * (1.1 / etfRows)) * H
             bz = rand(spanZ * 0.5)
             rad = 6
           } else {
-            [bx, by, bz] = place(Math.random() < 0.5); rad = 3.0
+            [bx, by, bz] = place(i, Math.random() < 0.5); rad = 3.0
           }
         }
-        else { [bx, by, bz] = place(Math.random() < 0.55); rad = 1.1 + Math.random() * 1.3 }
+        else { [bx, by, bz] = place(i, Math.random() < 0.55); rad = 1.1 + Math.random() * 1.3 }
         const isEtf = label !== null && ETF_TICKERS.has(label)
         nodes.push({ bx, by, bz, r: rad, label, signal: isEtf, rgb: isEtf ? G : COLORS[(Math.random() * COLORS.length) | 0],
           A1: R * (0.02 + Math.random() * 0.05), A2: R * (0.02 + Math.random() * 0.05), A3: R * (0.02 + Math.random() * 0.05),
@@ -555,6 +561,33 @@ export default function HeroConstellation() {
     const applyCanvasFilter = () => {
       c.style.filter = 'none'
     }
+    // The camera for the search view is worked out from the nodes themselves, so it
+    // fits whatever the screen: project them as they would be seen from above, take
+    // the span they cover (leaving out the few strays at each end) and scale and
+    // shift that to fill SEARCH_FILL of the screen, centred. The search box and its
+    // suggestions sit over the middle of it, so what shows is the universe round them
+    // and at the corners. The result is eased, as the nodes sway and the universe turns.
+    const SEARCH_TILT = 0.6
+    const SEARCH_FILL = 0.88
+    const searchFit = { zoom: 0, mx: 0, my: 0, ready: false }
+    const fitXs: number[] = [], fitYs: number[] = []
+    function fitSearchView(ay: number) {
+      const cA = Math.cos(SEARCH_TILT), sA = Math.sin(SEARCH_TILT), cB = Math.cos(ay), sB = Math.sin(ay)
+      fitXs.length = 0; fitYs.length = 0
+      for (const n of nodes) {
+        const X0 = n.bx * cB - n.bz * sB, Z0 = n.bx * sB + n.bz * cB
+        const Y1 = n.by * cA - Z0 * sA, Z1 = n.by * sA + Z0 * cA
+        const k = cam / (cam - Z1)
+        fitXs.push(X0 * k); fitYs.push(Y1 * k)
+      }
+      fitXs.sort((a, b) => a - b); fitYs.sort((a, b) => a - b)
+      const lo = Math.floor(fitXs.length * 0.04), hi = Math.ceil(fitXs.length * 0.96) - 1
+      const zoom = Math.min(1.2, SEARCH_FILL * Math.min(W / Math.max(1, fitXs[hi] - fitXs[lo]), H / Math.max(1, fitYs[hi] - fitYs[lo])))
+      const mx = (fitXs[lo] + fitXs[hi]) / 2, my = (fitYs[lo] + fitYs[hi]) / 2
+      const ease = searchFit.ready && !reducedMotion ? 0.1 : 1
+      searchFit.zoom += (zoom - searchFit.zoom) * ease; searchFit.mx += (mx - searchFit.mx) * ease; searchFit.my += (my - searchFit.my) * ease
+      searchFit.ready = true
+    }
     function render() {
       rafId = 0
       if (document.hidden) return
@@ -573,19 +606,16 @@ export default function HeroConstellation() {
       searchMode += (searchModeTarget - searchMode) * 0.08
       const sig = smooth(0.15, 0.95, p)
       const breathe = reducedMotion ? 1 : 1 + 0.07 * Math.sin(tt * 0.10)
-      // Start a touch closer (base 1.2), keeping the scrolled-in end roughly the
-      // same; pull the camera back while searching ("scanning the universe").
-      // While searching, the camera rises over the universe and draws back far
-      // enough to take it all in (SEARCH_TILT looks down on it from above).
-      const SEARCH_TILT = 0.6
-      // Far enough back that the whole universe is in view as one body with room round
-      // it, rather than filling the screen: it is the same universe, seen from afar.
-      const searchZoom = Math.min(0.4 * W / spanX, 0.4 * H / (spanZ * Math.sin(SEARCH_TILT) + spanY * Math.cos(SEARCH_TILT)))
+      // Start a touch closer (base 1.2), keeping the scrolled-in end roughly the same.
+      // While searching the camera rises over the universe and draws back until the
+      // whole of it is in view, centred, as one body with room round it.
       const heroZoom = 1.2 + smooth(0, 1, p) * 0.95
-      const zoom = breathe * (heroZoom + (searchZoom - heroZoom) * searchMode)
       const ay = (reducedMotion ? 0 : tt * 0.016) + p * Math.PI * 1.4 + mx * 0.4
       const heroTilt = 0.16 + (reducedMotion ? 0 : Math.sin(tt * 0.028) * 0.05) + my * 0.26
+      if (searchMode > 0.001) fitSearchView(ay)
+      const zoom = breathe * (heroZoom + (searchFit.zoom - heroZoom) * searchMode)
       const ax = heroTilt + (SEARCH_TILT - heroTilt) * searchMode
+      const panX = -zoom * searchFit.mx * searchMode, panY = -zoom * searchFit.my * searchMode
       viewAx = ax; viewAy = ay; viewZoom = zoom
       const cA = Math.cos(ax), sA = Math.sin(ax), cB = Math.cos(ay), sB = Math.sin(ay)
       for (const n of nodes) {
@@ -593,7 +623,7 @@ export default function HeroConstellation() {
         const X0 = bx * cB - bz * sB, Z0 = bx * sB + bz * cB, Y0 = by
         const Y1 = Y0 * cA - Z0 * sA, Z1 = Y0 * sA + Z0 * cA
         const sc = cam / (cam - Z1) * zoom
-        const SX = cx + X0 * sc, SY = cy + Y1 * sc
+        const SX = cx + panX + X0 * sc, SY = cy + panY + Y1 * sc
         const dx = mpx - SX, dy = mpy - SY, dd = Math.sqrt(dx * dx + dy * dy), RAD = 120
         const h = (focus.i < 0 && dd < RAD) ? (1 - dd / RAD) : 0; n.hover += (h - n.hover) * 0.1
         n.sx = SX; n.sy = SY; n.sc = sc; n.da = 0.26 + 0.74 * ((Z1 + R) / (2 * R))
