@@ -104,7 +104,20 @@ function NeighborhoodMap({ panel, neighbours }: { panel: AtlasCompanyPanel; neig
 }
 
 export default async function HomeNeighborhood({ items }: { items: PickItem[] }) {
-  if (!(await getViewerUserId())) return <section className={styles.section}><p>Sign in to explore company relationships.</p><Link href="/sign-in">Sign in</Link></section>
+  if (!(await getViewerUserId())) {
+    return (
+      <section className={styles.section}>
+        <div className={styles.container}>
+          <header className={styles.header}>
+            <h2 className={styles.heading}>Behind one name</h2>
+            <p className={styles.lede}>
+              Sign in to explore company relationships. <Link href="/sign-in" className={styles.signIn}>Sign in</Link>
+            </p>
+          </header>
+        </div>
+      </section>
+    )
+  }
   const subject = await loadHomeNeighborhood(items)
   if (!subject) return null
   const { panel, item } = subject

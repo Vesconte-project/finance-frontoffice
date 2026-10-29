@@ -19,6 +19,9 @@ type HcNode = {
   // How much of the ETF light reaches this node, 1 at an ETF and fading with
   // the distance travelled along the network's own links.
   light: number
+  // How much of the node is left after the foreground has made room: 1 in the
+  // open, near 0 while a block of copy sits over it.
+  fg: number
 }
 
 const CSS = `
@@ -107,6 +110,14 @@ export default function HeroConstellation() {
 
     let W = 0, H = 0, DPR = 1, cx = 0, cy = 0, R = 0, cam = 0
     let nodes: HcNode[] = [], pairs: number[] = [], pairLengths: number[] = []
+    // Each link grows out of one of its two nodes: how far it has grown, 0..1, which
+    // node it grows from, and how quickly (a link's own pace, so they do not all
+    // move as one).
+    let edgeV = new Float32Array(0), edgeDir = new Uint8Array(0), edgeSpd = new Float32Array(0)
+    // A fixed draw per link: the ones that fall under FG_KEEP stay up behind the
+    // foreground, and how strongly they show.
+    let edgeKeep = new Float32Array(0), edgeDim = new Float32Array(0)
+    let occlusionPrimed = false
     let mx = 0, my = 0, tmx = 0, tmy = 0, mpx = -1e4, mpy = -1e4
     let rafId = 0
     let heroVisible = true
@@ -189,6 +200,10 @@ export default function HeroConstellation() {
     const sparkRgb = G.join(',')
     const lineRgb = themeRgb('--network-node').join(',')
     const labelColor = themeColor('--text-muted')
+    // The ETF light is thin and faint, so it travels past the first node without
+    // competing with the foreground in either theme.
+    const LIGHT_STRENGTH = 0.35
+    const LIGHT_WIDTH = 0.6
     const LIGHT_FLOOR = 0.08
     const LIGHT_STOPS = [0, 0.25, 0.5, 0.75, 1]
     const smooth = (a: number, b: number, t: number) => { t = Math.min(1, Math.max(0, (t - a) / (b - a))); return t * t * (3 - 2 * t) }
@@ -234,13 +249,19 @@ export default function HeroConstellation() {
           A1: R * (0.02 + Math.random() * 0.05), A2: R * (0.02 + Math.random() * 0.05), A3: R * (0.02 + Math.random() * 0.05),
           S1: 0.2 + Math.random() * 0.4, S2: 0.2 + Math.random() * 0.4, S3: 0.2 + Math.random() * 0.4,
           P1: Math.random() * 6.28, P2: Math.random() * 6.28, P3: Math.random() * 6.28,
-          ph: Math.random() * 6.28, sx: 0, sy: 0, sc: 1, da: 1, hover: 0, clar: 1, light: 0 })
+          ph: Math.random() * 6.28, sx: 0, sy: 0, sc: 1, da: 1, hover: 0, clar: 1, light: 0, fg: 1 })
       }
       pairs = []; const TH = R * 0.34
       for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
         const dx = nodes[i].bx - nodes[j].bx, dy = nodes[i].by - nodes[j].by, dz = nodes[i].bz - nodes[j].bz
         if (dx * dx + dy * dy + dz * dz < TH * TH && Math.random() < 0.5) { pairs.push(i, j); if (pairs.length > 1500) break }
       }
+      edgeV = new Float32Array(pairs.length / 2).fill(1)
+      edgeDir = Uint8Array.from({ length: pairs.length / 2 }, () => (Math.random() < 0.5 ? 1 : 0))
+      edgeSpd = Float32Array.from({ length: pairs.length / 2 }, () => 0.7 + Math.random() * 0.8)
+      edgeKeep = Float32Array.from({ length: pairs.length / 2 }, () => Math.random())
+      edgeDim = new Float32Array(pairs.length / 2).fill(1)
+      occlusionPrimed = false
       // Each ETF is a light source. The light travels outward along the links,
       // weakening with the distance it has covered, so it reaches three or four
       // links before it fades out. A node lit by several paths keeps the
@@ -287,6 +308,98 @@ export default function HeroConstellation() {
       return { x: W * 0.5, y: (top + bottom) / 2 }
     }
 
+    // The foreground makes room in the field. The headline, the search and its
+    // buttons and, further down, the copy of each section claim a padded box. A
+    // link that touches one is taken away: it draws back into one of its nodes
+    // and is gone. Once nothing is over it any more it grows out of that node to
+    // the other, so as the page scrolls the links are dismantled where something
+    // is about to be read and built again where it has left. Nodes under a box
+    // fade rather than go. Elsewhere the network stays full.
+    const OBSTACLES = '[data-field-obstacle], [data-dock-search] :is(.dock-search__title, .dock-search__subtitle, .dock-search__field, .dock-search__cta), [data-field-foreground]:not([data-dock-search]) :is(h1, h2, h3, h4, p, li, a, button, input, th, td, label, figcaption)'
+    // The share of links crossing the foreground that stay up behind it, so the
+    // field thins there rather than opening a hole, and how much of their
+    // strength they keep so the copy still reads over them.
+    const FG_KEEP = 0.6
+    const FG_DIM = 0.85
+    // How fast a link grows or draws back, in screen pixels a second.
+    const EDGE_SPEED = 650
+    type Box = { l: number; t: number; r: number; b: number }
+    let obstacles: { el: HTMLElement; dock: boolean; pad: number }[] = []
+    let obstaclesReadAt = -1e9
+    let boxes: Box[] = []
+    let occludedAt = 0
+    const readBoxes = (now: number) => {
+      if (now - obstaclesReadAt > 400) {
+        obstaclesReadAt = now
+        obstacles = Array.from(document.querySelectorAll<HTMLElement>(OBSTACLES)).map((el) => ({
+          el,
+          dock: Boolean(el.closest('[data-dock-search]')),
+          pad: el.matches('.dock-search__title') ? 16 : el.matches('h1, h2, h3, h4') ? 14 : 10,
+        }))
+      }
+      // Once the hero column is docked into the header it is no longer over the field.
+      const dock = document.querySelector<HTMLElement>('[data-dock-search]')
+      const dockLive = !!dock && getComputedStyle(dock).pointerEvents !== 'none'
+      boxes = []
+      for (const o of obstacles) {
+        if (o.dock && !dockLive) continue
+        const rect = o.el.getBoundingClientRect()
+        if (rect.width < 4 || rect.height < 4 || rect.bottom < -40 || rect.top > H + 40) continue
+        boxes.push({ l: rect.left - o.pad, t: rect.top - o.pad, r: rect.right + o.pad, b: rect.bottom + o.pad })
+      }
+    }
+    // Whether the segment a-b passes through the box (Liang-Barsky).
+    const segmentHits = (ax: number, ay: number, dx: number, dy: number, box: Box) => {
+      let t0 = 0, t1 = 1
+      const edges: [number, number][] = [[-dx, ax - box.l], [dx, box.r - ax], [-dy, ay - box.t], [dy, box.b - ay]]
+      for (const [pp, q] of edges) {
+        if (pp === 0) { if (q < 0) return false; continue }
+        const t = q / pp
+        if (pp < 0) { if (t > t1) return false; if (t > t0) t0 = t } else { if (t < t0) return false; if (t < t1) t1 = t }
+      }
+      return true
+    }
+    const updateOcclusion = (now: number) => {
+      const carving = focus.i < 0 && focus.t < 0.01
+      const dt = Math.min(64, now - occludedAt); occludedAt = now
+      // The first pass after the links are built, reduced motion and the focus
+      // view all settle at once; only a live field animates.
+      const animate = carving && !reducedMotion && occlusionPrimed
+      if (carving) readBoxes(now); else boxes = []
+      const dimEase = 1 - Math.exp(-dt / 150)
+      for (let k = 0; k < pairs.length; k += 2) {
+        const e = k >> 1
+        const a = nodes[pairs[k]], b = nodes[pairs[k + 1]]
+        const dx = b.sx - a.sx, dy = b.sy - a.sy
+        let target = 1, dimTarget = 1
+        if (boxes.length) {
+          const minX = Math.min(a.sx, b.sx), maxX = Math.max(a.sx, b.sx), minY = Math.min(a.sy, b.sy), maxY = Math.max(a.sy, b.sy)
+          for (const box of boxes) {
+            if (box.r < minX || box.l > maxX || box.b < minY || box.t > maxY) continue
+            if (segmentHits(a.sx, a.sy, dx, dy, box)) { if (edgeKeep[e] < FG_KEEP) dimTarget = FG_DIM; else target = 0; break }
+          }
+        }
+        if (!animate) { edgeV[e] = target; edgeDim[e] = dimTarget; continue }
+        edgeDim[e] += (dimTarget - edgeDim[e]) * dimEase
+        const step = (dt * 0.001 * EDGE_SPEED * edgeSpd[e]) / Math.max(40, Math.hypot(dx, dy))
+        edgeV[e] = target > edgeV[e] ? Math.min(target, edgeV[e] + step) : Math.max(target, edgeV[e] - step)
+      }
+      occlusionPrimed = true
+      const nodeEase = animate ? 1 - Math.exp(-dt / 150) : 1
+      for (const n of nodes) {
+        let covered = false
+        for (const box of boxes) if (n.sx >= box.l && n.sx <= box.r && n.sy >= box.t && n.sy <= box.b) { covered = true; break }
+        n.fg += ((covered ? 0.25 : 1) - n.fg) * nodeEase
+      }
+    }
+    // A link as far as it has grown from its own node: the whole link at 1, none of it at 0.
+    function edgePath(g: CanvasRenderingContext2D, a: HcNode, b: HcNode, v: number, from: number) {
+      if (v <= 0.002) return
+      const s = from ? a : b, t = from ? b : a
+      g.moveTo(s.sx, s.sy)
+      g.lineTo(v >= 0.999 ? t.sx : s.sx + (t.sx - s.sx) * v, v >= 0.999 ? t.sy : s.sy + (t.sy - s.sy) * v)
+    }
+
     function drawScene(g: CanvasRenderingContext2D, sig: number, mode: string) {
       const nodeReveal = smooth(0, 0.45, reveal)
       const edgeReveal = smooth(0.35, 1, reveal)
@@ -295,20 +408,20 @@ export default function HeroConstellation() {
         if (mode === 'conn' && !conn) continue; if (mode === 'bg' && conn) continue
         const a = nodes[ia], b = nodes[ib], da = Math.min(a.da, b.da), hv = Math.max(a.hover, b.hover)
         const clar = conn ? 1 : Math.min(a.clar, b.clar), ld = 1 - focus.t * (1 - (0.06 + 0.94 * clar))
-        const aA = conn ? (0.32 + 0.5 * focus.t) : ((0.03 + 0.11 * da + 0.05 * p + 0.25 * hv) * ld)
+        const aA = conn ? (0.32 + 0.5 * focus.t) : ((0.03 + 0.11 * da + 0.05 * p + 0.25 * hv) * ld * edgeDim[k >> 1])
         g.strokeStyle = 'rgba(' + (conn ? sparkRgb : lineRgb) + ',' + (aA * edgeReveal) + ')'; g.lineWidth = 1 + hv * 0.5 + (conn ? focus.t * 2 : 0)
-        g.beginPath(); g.moveTo(a.sx, a.sy); g.lineTo(b.sx, b.sy); g.stroke()
+        g.beginPath(); edgePath(g, a, b, edgeV[k >> 1], edgeDir[k >> 1]); g.stroke()
         // The ETF light along this link: strongest at the end nearer an ETF,
         // fading towards the other, and never a flat colour across the link.
         const peak = Math.max(a.light, b.light)
         if (!conn && peak > LIGHT_FLOOR) {
           const length = pairLengths[k / 2]
           const along = (s: number) => Math.max(a.light * Math.exp(-s * length / lightReach), b.light * Math.exp(-(1 - s) * length / lightReach))
-          const strength = 0.85 * edgeReveal * ld
+          const strength = LIGHT_STRENGTH * edgeReveal * ld * edgeDim[k >> 1]
           const gradient = g.createLinearGradient(a.sx, a.sy, b.sx, b.sy)
           for (const s of LIGHT_STOPS) gradient.addColorStop(s, 'rgba(' + sparkRgb + ',' + (Math.max(0, (along(s) - LIGHT_FLOOR) / (1 - LIGHT_FLOOR)) * strength) + ')')
-          g.strokeStyle = gradient; g.lineWidth = 1 + 0.9 * peak + hv * 0.5
-          g.beginPath(); g.moveTo(a.sx, a.sy); g.lineTo(b.sx, b.sy); g.stroke()
+          g.strokeStyle = gradient; g.lineWidth = 1 + LIGHT_WIDTH * peak + hv * 0.5
+          g.beginPath(); edgePath(g, a, b, edgeV[k >> 1], edgeDir[k >> 1]); g.stroke()
         }
       }
       if (mode !== 'conn') {
@@ -318,10 +431,10 @@ export default function HeroConstellation() {
           let col: string; if (n.signal) col = spark; else { col = 'rgb(' + n.rgb.join(',') + ')' }
           const r = Math.min(15, Math.max(0.5, ((n.signal ? (n.r + sig * 1.2) : n.r) + n.hover * 3) * n.sc))
           const dim = 1 - focus.t * (1 - (0.10 + 0.90 * n.clar))
-          g.globalAlpha = Math.min(1, (n.da + n.hover * 0.6) * dim * nodeReveal)
+          g.globalAlpha = Math.min(1, (n.da + n.hover * 0.6) * dim * nodeReveal) * n.fg
           g.beginPath(); g.arc(n.sx, n.sy, r, 0, 6.28); g.fillStyle = col; g.fill()
           const lab = n.label
-          if (lab && (n.da > 0.4 || n.hover > 0.25)) { g.globalAlpha = 1; g.font = n.signal ? '600 12px IBM Plex Mono, monospace' : '500 11px IBM Plex Mono, monospace'; g.fillStyle = n.signal ? spark : labelColor; g.fillText(lab, n.sx + r + 4, n.sy + 3) }
+          if (lab && n.fg > 0.5 && (n.da > 0.4 || n.hover > 0.25)) { g.globalAlpha = 1; g.font = n.signal ? '600 12px IBM Plex Mono, monospace' : '500 11px IBM Plex Mono, monospace'; g.fillStyle = n.signal ? spark : labelColor; g.fillText(lab, n.sx + r + 4, n.sy + 3) }
           g.globalAlpha = 1
         }
       }
@@ -373,6 +486,7 @@ export default function HeroConstellation() {
         n.sx = SX; n.sy = SY; n.sc = sc; n.da = 0.26 + 0.74 * ((Z1 + R) / (2 * R))
       }
       if (focus.i >= 0 && nodes[focus.i]) { const fn = nodes[focus.i]; for (const n of nodes) { const ddx = n.bx - fn.bx, ddy = n.by - fn.by, ddz = n.bz - fn.bz; n.clar = 1 - smooth(R * 0.12, R * 0.95, Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz)) } } else { for (const n of nodes) n.clar = 1 }
+      updateOcclusion(now)
       stageEl.style.opacity = String(Math.max(0, 1 - focus.t * 1.3))
       applyCanvasFilter()
       if (focus.t < 0.01 || focus.i < 0 || !nodes[focus.i]) {

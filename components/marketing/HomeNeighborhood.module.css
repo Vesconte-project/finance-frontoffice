@@ -246,3 +246,9 @@
 .component .weight {
   color: var(--field-secondary);
 }
+
+.signIn {
+  color: var(--content-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
