@@ -4,12 +4,12 @@ import { browserRead } from '@/lib/read-client'
 import AtlasHelp from './AtlasHelp'
 
 import Link from 'next/link'
-import { Layers, Maximize2, Minus, Network, Plus, Search, X } from 'lucide-react'
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import { ATLAS_PICK_TICKER } from '@/lib/atlas-ticker-pick'
+import { CircleHelp, Info, Layers, Maximize2, Minus, Plus, Tags, X } from 'lucide-react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import {
   ATLAS_MAX_LEVEL,
   atlasOverviewPath,
-  atlasSymbol,
   parseCompanyPanel,
   parseOverview,
   parseZonePanel,
@@ -27,9 +27,7 @@ import {
   atlasBounds,
   ballRadius,
   buildSheet,
-  correlationSentence,
   covers,
-  findOnMap,
   fitCamera,
   groundAt,
   levelForZoom,
@@ -46,7 +44,6 @@ import {
   zoomAt,
   type Bounds,
   type Camera,
-  type SearchResult,
   type Viewport,
 } from '@/lib/atlas-view'
 import {
@@ -69,13 +66,14 @@ import {
   playWeek,
   saveList,
   selectionSummary,
+  regionMovers,
   spanAgo,
   thenAndNow,
   timelineNote,
+  trackedWeek,
   todayFrame,
   weekLabel,
   type AtlasGroup,
-  type MovementSpan,
   type NotebookEntry,
   type NotebookView,
   type ProFeature,
@@ -95,7 +93,7 @@ import {
   type AtlasTheme,
 } from '@/lib/atlas-pro-model'
 import { cohesionDots, nameSourceLine, regionChanges } from '@/lib/atlas-panels'
-import { drawAtlas, edgeKey, parseColor, type FlowLine, type InfluenceLine, type Overlay, type Palette, type PathLine } from './atlas-canvas'
+import { drawAtlas, edgeKey, parseColor, type InfluenceLine, type Overlay, type Palette, type PathLine } from './atlas-canvas'
 import { SIGN_UP_HREF, formatDate } from './atlas-format'
 import AtlasBrowse, { type BrowseTab } from './AtlasBrowse'
 import { InfluenceCard, ThemeCard } from './AtlasCards'
@@ -103,9 +101,10 @@ import AtlasLayers from './AtlasLayers'
 import AtlasMapKey from './AtlasMapKey'
 import AtlasNotebook from './AtlasNotebook'
 import AtlasPanel, { type PanelAction, type PanelState } from './AtlasPanel'
+import AtlasMapInfo from './AtlasMapInfo'
 import AtlasThemeMenu from './AtlasThemeMenu'
 import AtlasTimeBar from './AtlasTimeBar'
-import AtlasToolRail, { type AtlasTool } from './AtlasToolRail'
+import AtlasToolRail, { toolIcon, type AtlasTool } from './AtlasToolRail'
 import AtlasUpsell from './AtlasUpsell'
 import { AtlasDock, AtlasTray, type DockKind, type DockSource, type TestState } from './AtlasWorkbench'
 import { fetchAtlasJson, useAtlasJson, type Remote } from './use-atlas-json'
@@ -116,7 +115,7 @@ type Selection = { kind: 'company'; symbol: string } | { kind: 'zone'; zoneId: s
 
 type Detail = { level: number; lens: AtlasLens; area: Bounds; nodes: AtlasNode[]; lines: AtlasLine[] }
 
-type Sheet = 'browse' | 'help' | 'layers' | 'notebook' | null
+type Sheet = 'help' | 'tools' | 'layers' | 'themes' | 'info' | 'notebook' | null
 
 type Dock = { kind: DockKind; a: string; b: string }
 
@@ -171,13 +170,9 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
   const [hoverZone, setHoverZone] = useState<string | null>(null)
   const [zoneTip, setZoneTip] = useState<{ zoneId: string; x: number; y: number } | null>(null)
   const [openSheet, setOpenSheet] = useState<Sheet>(null)
-  const [moreOpen, setMoreOpen] = useState(false)
   const [browseTab, setBrowseTab] = useState<BrowseTab>('regions')
   const [showNames, setShowNames] = useState(true)
   const [keyOpen, setKeyOpen] = useState(true)
-  const [landmarksOpen, setLandmarksOpen] = useState(false)
-  const [query, setQuery] = useState('')
-  const [activeResult, setActiveResult] = useState(0)
   const [upsell, setUpsell] = useState<ProFeature | null>(null)
   // Pro layers
   const [lens, setLens] = useState<AtlasLens>('residual')
@@ -185,7 +180,6 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
   const [showFidelity, setShowFidelity] = useState(false)
   const [showInfluence, setShowInfluence] = useState(false)
   // history
-  const [cmp, setCmp] = useState<MovementSpan>(0)
   const [week, setWeek] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [historyWanted, setHistoryWanted] = useState(false)
@@ -194,7 +188,6 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
   const [historyError, setHistoryError] = useState(false)
   const [movements, setMovements] = useState<Record<number, Remote<AtlasMovement>>>({})
   // themes
-  const [themeMenu, setThemeMenu] = useState(false)
   const [themesWanted, setThemesWanted] = useState(false)
   const [theme, setTheme] = useState<AtlasTheme | null>(null)
   // tools
@@ -208,7 +201,15 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
   const [groups, setGroups] = useState<AtlasGroup[]>(() => parseGroups(loadList(browserStorage(), GROUPS_KEY)))
   const [notes, setNotes] = useState<NotebookEntry[]>(() => parseNotes(loadList(browserStorage(), NOTEBOOK_KEY)))
   const [stored, setStored] = useState(true)
-  const searchId = useId()
+  // On a wide screen the tools stand down the left edge, which a details panel opening on the right never moves.
+  const [sideRail, setSideRail] = useState(false)
+  useEffect(() => {
+    const side = window.matchMedia('(min-width: 56rem)')
+    const update = () => setSideRail(side.matches)
+    update()
+    side.addEventListener('change', update)
+    return () => side.removeEventListener('change', update)
+  }, [])
 
   // ------------------------------------------------------------ what the map is built on
   const [lensRemote, retryLens] = useAtlasJson(pro && lens === 'total' ? atlasOverviewPath(initial.level, null, { lens: 'total' }) : null, parseOverview)
@@ -272,20 +273,18 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     }
   }, [historyOn, historyWanted, span, weeks])
 
-  // Movement against an earlier week: the control's span, the paths' span, and the panel's (6 months unless set).
+  // Movement between an earlier week and today. The time bar asks for the week it shows, one read at a
+  // time, so a drag or a play never queues a year of reads; Browse › Regions and the details panel
+  // read six months.
+  const weekIndex = Math.round(shownWeek)
   const movementSpans = useMemo(() => {
     if (!pro || !residual || !weeks.length) return []
     const wanted = new Set<number>()
-    if (cmp && cmp < weeks.length) wanted.add(cmp)
-    if (shownWeek > 0) wanted.add(span)
-    // Browse › Regions counts who moved in and out over six months
-    if (openSheet === 'browse' && 26 < weeks.length) wanted.add(26)
-    if (selection?.kind === 'company') {
-      const panelSpan = cmp || 26
-      if (panelSpan < weeks.length) wanted.add(panelSpan)
-    }
+    const reading = Object.values(movements).some((answer) => answer.status === 'loading')
+    if (weekIndex > 0 && weekIndex < weeks.length && (!reading || movements[weekIndex])) wanted.add(weekIndex)
+    if ((keyOpen || selection?.kind === 'company') && 26 < weeks.length) wanted.add(26)
     return [...wanted]
-  }, [cmp, openSheet, pro, residual, selection, shownWeek, span, weeks.length])
+  }, [keyOpen, movements, pro, residual, selection, weekIndex, weeks.length])
 
   // Each span is read once per visit; a failed read stays failed until the page is reloaded.
   const movementRequests = useRef(new Set<number>())
@@ -305,6 +304,14 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     const answer = movements[value]
     return answer?.status === 'ok' ? answer.data : null
   }
+
+  // The week whose movers the map marks: the week shown, or while its read lands the nearest week
+  // already read, a few weeks either side, so the marks follow a drag without flickering.
+  const markWeek = weekIndex > 0
+    ? trackedWeek(weekIndex, Object.keys(movements).map(Number).filter((k) => movements[k]?.status === 'ok' && k <= span && Math.abs(k - weekIndex) <= 4))
+    : null
+  const markMovement = markWeek ? movementFor(markWeek) : null
+  const markedExact = markWeek === weekIndex && markMovement !== null
 
   // ------------------------------------------------------------ themes and influence
   const [themesRemote] = useAtlasJson(signedIn && themesWanted ? `/api/atlas/themes?asOf=${encodeURIComponent(initial.asOf)}` : null, parseThemes)
@@ -335,12 +342,8 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     if (residual && themeDetail.status === 'ok') for (const node of themeDetail.data.members) if (!map.has(node.symbol)) map.set(node.symbol, node)
     return map
   }, [forced, loadedNodes, residual, themeDetail])
-  // Movers show at every level while their arrows or paths are on screen: the movement is about them.
-  const moverSymbols = useMemo(() => {
-    const value = shownWeek > 0 ? span : cmp
-    const answer = value ? movements[value] : undefined
-    return new Set(answer?.status === 'ok' ? answer.data.flows.flatMap((flow) => flow.symbols) : [])
-  }, [cmp, movements, shownWeek, span])
+  // Movers show at every level while the time bar marks them: the movement is about them.
+  const moverSymbols = useMemo(() => regionMovers(markMovement), [markMovement])
 
   // A theme's members and a selection show at every zoom level: the highlight is about them, wherever they are.
   const todayNodes = useMemo(() => [...loadedBySymbol.values()].filter((node) =>
@@ -348,20 +351,19 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
   [forced, level, loadedBySymbol, moverSymbols, multi, themeMembers])
 
   const focusedSymbol = selection?.kind === 'company' ? selection.symbol : null
-  // Movers not loaded yet are fetched where they now sit, once per movement, so every arrow has its companies.
+  // Movers not loaded yet are fetched around the regions they moved to, once per week read, so every mark has its company.
   const moversRequested = useRef(new Set<number>())
   useEffect(() => {
-    const value = shownWeek > 0 ? span : cmp
-    const answer = value ? movements[value] : undefined
-    if (!value || answer?.status !== 'ok' || moversRequested.current.has(value)) return
-    const missing = answer.data.flows.filter((flow) => flow.symbols.some((symbol) => !loadedBySymbol.has(symbol)))
-    if (!missing.length) return
-    moversRequested.current.add(value)
+    if (!markWeek || !markMovement || moversRequested.current.has(markWeek)) return
+    const missing = markMovement.moves.filter((move) => move.flow && !loadedBySymbol.has(move.symbol))
+    const places = missing.map((move) => zonesById.get(move.toZoneId)).filter((zone): zone is AtlasZone => zone !== undefined && zone.x !== null && zone.y !== null)
+    if (!places.length) return
+    moversRequested.current.add(markWeek)
     const pad = Math.max(bounds.x1 - bounds.x0, bounds.y1 - bounds.y0) * 0.12
-    const xs = missing.map((flow) => flow.to[0])
-    const ys = missing.map((flow) => flow.to[1])
+    const xs = places.map((zone) => zone.x as number)
+    const ys = places.map((zone) => zone.y as number)
     const area: [number, number, number, number] = [Math.min(...xs) - pad, Math.min(...ys) - pad, Math.max(...xs) + pad, Math.max(...ys) + pad]
-    const wanted = new Set(missing.flatMap((flow) => flow.symbols))
+    const wanted = new Set(missing.map((move) => move.symbol))
     void fetchAtlasJson(atlasOverviewPath(ATLAS_MAX_LEVEL, area), parseOverview).then((result) => {
       if (result.status !== 'ok') return
       setForced((current) => {
@@ -370,7 +372,7 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
         return next
       })
     })
-  }, [bounds, cmp, loadedBySymbol, movements, shownWeek, span])
+  }, [bounds, loadedBySymbol, markMovement, markWeek, zonesById])
 
   const past = useMemo(() => {
     if (shownWeek <= 0 || framesLoaded === 0) return null
@@ -417,7 +419,8 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
   // ------------------------------------------------------------ overlay: movement, paths, influence, accuracy
   const selectedSymbol = selection?.kind === 'company' ? selection.symbol : null
   const selectedZone = selection?.kind === 'zone' ? selection.zoneId : null
-  const panelSpan = cmp || 26
+  // the details panel compares with the week the time bar marks, else with six months ago
+  const panelSpan = markWeek ?? 26
   const panelMove = useMemo(() => {
     const movement = selectedSymbol && pro && residual ? movements[panelSpan] : undefined
     if (!selectedSymbol || movement?.status !== 'ok') return null
@@ -443,30 +446,20 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
       lasso: null,
     }
     if (past) {
-      const pathMovement = movementFor(span)
-      for (const symbol of pathMovement?.flows.flatMap((flow) => flow.symbols) ?? []) movers.add(symbol)
+      // the companies that change region between the week shown and today, each with the way it goes
+      for (const symbol of moverSymbols) movers.add(symbol)
       const paths: PathLine[] = []
       for (const symbol of movers) {
         if (symbol === selectedSymbol) continue
-        const points = pathOf(symbol, framesRef.current, span, shownWeek, positions.get(symbol) ?? null)
+        const points = pathOf(symbol, framesRef.current, shownWeek, positions.get(symbol) ?? null)
         if (points.length) paths.push({ points, selected: false })
       }
       if (selectedSymbol) {
-        const points = pathOf(selectedSymbol, framesRef.current, span, shownWeek, positions.get(selectedSymbol) ?? null)
+        const points = pathOf(selectedSymbol, framesRef.current, shownWeek, positions.get(selectedSymbol) ?? null)
         if (points.length) paths.push({ points, selected: true })
       }
       result.paths = paths
       return result
-    }
-    const movement = cmp ? movementFor(cmp) : null
-    if (movement && !selectedSymbol) {
-      const flows: FlowLine[] = []
-      for (const flow of movement.flows) {
-        if (selectedZone && flow.fromZoneId !== selectedZone && flow.toZoneId !== selectedZone) continue
-        flows.push({ from: flow.from, to: flow.to, count: flow.symbols.length, label: `${flow.symbols.length} · ${labelOf(flow.fromZoneId)} → ${labelOf(flow.toZoneId)}` })
-        for (const symbol of flow.symbols) movers.add(symbol)
-      }
-      result.flows = flows
     }
     if (panelMove?.move.flow && panelMove.move.from) result.ghost = { at: panelMove.move.from, label: spanAgo(panelSpan) }
     const influence = influenceRemote.status === 'ok' ? influenceRemote.data : null
@@ -489,15 +482,10 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     return result
     // movementFor reads `movements`
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cmp, influenceRemote, labelOf, loadedNodes, movements, multi, nodes, panel, panelMove, panelSpan, past, pro, residual, selectedSymbol, selectedZone, showFidelity, showInfluence, shownWeek, span, themeMembers, zonesById])
+  }, [influenceRemote, loadedNodes, moverSymbols, multi, nodes, panel, panelMove, panelSpan, past, pro, residual, selectedSymbol, selectedZone, showFidelity, showInfluence, shownWeek, span, themeMembers, zonesById])
 
   const landmarks = useMemo(() => mostConnected(atlas.nodes), [atlas.nodes])
   const maxReach = landmarks[0]?.reach ?? 1
-  const results = useMemo(() => findOnMap(query, loadedNodes, atlas.zones), [query, loadedNodes, atlas.zones])
-  const typedSymbol = atlasSymbol(query)
-  const offerOpen = signedIn && typedSymbol !== null && !results.some((result) => result.kind === 'company' && result.symbol === typedSymbol)
-  const options: Array<SearchResult | { kind: 'open'; symbol: string }> = offerOpen && typedSymbol ? [...results, { kind: 'open', symbol: typedSymbol }] : results
-  const listOpen = query.trim().length > 0
 
   // ------------------------------------------------------------ drawing
   const draw = useCallback(() => {
@@ -557,11 +545,12 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     const invite = frame.closest('[data-atlas-root]')?.querySelector<HTMLElement>('[data-atlas-invite]')
     const resize = () => {
       frame.style.setProperty('--atlas-invite-height', `${invite?.getBoundingClientRect().height ?? 0}px`)
-      frame.style.setProperty('--atlas-legend-height', `${frame.querySelector('[data-atlas-legend]')?.getBoundingClientRect().height ?? 32}px`)
+      // the browse panel's header: open, the panel lies over the time bar like a sheet
+      frame.style.setProperty('--atlas-legend-height', `${frame.querySelector('[data-atlas-legend] > button')?.getBoundingClientRect().height ?? 32}px`)
       const rect = frame.getBoundingClientRect()
-      // Start with the legend folded on short phones so the map and time strip fit.
-      // Once the reader opens it, subsequent resizes preserve that choice.
-      if (!fittedAtlas.current && rect.width < 640 && rect.height < 640) setKeyOpen(false)
+      // Below the side-by-side layout the browse panel would cover the map and the time bar,
+      // so it starts folded there. Once the reader opens it, subsequent resizes preserve that choice.
+      if (!fittedAtlas.current && rect.width <= 1024) setKeyOpen(false)
       const ratio = window.devicePixelRatio || 1
       viewportRef.current = { width: rect.width, height: rect.height }
       canvas.width = Math.round(rect.width * ratio)
@@ -685,8 +674,12 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     const camera = cameraRef.current
     const fit = fitRef.current
     if (!camera || !fit) return
-    setCamera({ ...camera, cx: x, cy: y, k: Math.max(camera.k, fit.k * minimumZoom) })
-  }, [setCamera])
+    const k = Math.max(camera.k, fit.k * minimumZoom)
+    // On a small screen the details rise as a sheet over the lower map: show the place in the part left
+    // open, about 30% down, instead of the middle the sheet covers.
+    const lift = sideRail ? 0 : (0.2 * (viewportRef.current?.height ?? 0)) / (k * Math.cos(camera.pitch))
+    setCamera({ ...camera, cx: x, cy: y - lift, k })
+  }, [setCamera, sideRail])
 
   // A company opened from search before its area loaded: once its panel names its region, go there, once.
   const travelledTo = useRef<string | null>(null)
@@ -818,7 +811,6 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
   const onPointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
     event.currentTarget.setPointerCapture(event.pointerId)
     setOpenSheet((current) => (current === 'notebook' ? current : null))
-    setThemeMenu(false)
     const point = pointFrom(event)
     pointersRef.current.set(event.pointerId, point)
     if (pointersRef.current.size === 1 && tool === 'select' && pro) {
@@ -951,6 +943,21 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     })
   }, [])
 
+  // Tools, Layers, ETF themes and This map are popovers (bottom sheets on a small screen): a press
+  // anywhere else puts them away (a dialog one of them opened keeps it).
+  const dockRef = useRef<HTMLDivElement>(null)
+  const cornerRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (openSheet !== 'tools' && openSheet !== 'layers' && openSheet !== 'themes' && openSheet !== 'info') return
+    const home = openSheet === 'info' ? cornerRef : dockRef
+    const outside = (event: globalThis.PointerEvent) => {
+      if (!(event.target instanceof Element) || home.current?.contains(event.target) || event.target.closest('[role="dialog"]')) return
+      setOpenSheet(null)
+    }
+    document.addEventListener('pointerdown', outside)
+    return () => document.removeEventListener('pointerdown', outside)
+  }, [openSheet])
+
   const railButton = (name: AtlasTool) => frameRef.current?.querySelector<HTMLButtonElement>(`[data-tool="${name}"]`) ?? null
 
   const closeDock = useCallback(() => {
@@ -964,16 +971,11 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     if (event.key === 'Escape') {
       // the innermost thing open closes first, and focus goes back to what opened it
       if (upsell) closeUpsell()
-      else if (themeMenu) setThemeMenu(false)
-      else if (landmarksOpen) {
-        setLandmarksOpen(false)
-        frameRef.current?.querySelector<HTMLButtonElement>('[aria-controls="atlas-landmarks"]')?.focus()
-      }
       else if (openSheet) closeSheet()
       else if (dock) closeDock()
       else if (keyOpen && event.target instanceof Element && event.target.closest('#atlas-key')) {
         setKeyOpen(false)
-        frameRef.current?.querySelector<HTMLButtonElement>('[aria-controls="atlas-legend"]')?.focus()
+        frameRef.current?.querySelector<HTMLButtonElement>('[aria-controls="atlas-browse"]')?.focus()
       }
       else if (selection) setSelection(null)
       else if (tool === 'select') setTool('explore')
@@ -1011,35 +1013,19 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     if (zone.x !== null && zone.y !== null) focusOn(zone.x, zone.y, 1)
   }
 
-  const choose = (option: (typeof options)[number]) => {
-    setQuery('')
-    setActiveResult(0)
-    if (option.kind === 'zone') {
-      const zone = zonesById.get(option.zoneId)
-      if (zone) selectZone(zone)
-      return
+  // The site search picks a company here instead of opening its page (lib/atlas-ticker-pick).
+  const pickRef = useRef(selectSymbol)
+  pickRef.current = selectSymbol
+  useEffect(() => {
+    const onPick = (event: Event) => {
+      if (event instanceof CustomEvent && typeof event.detail === 'string') pickRef.current(event.detail)
     }
-    selectSymbol(option.symbol)
-  }
-
-  const onSearchKey = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'ArrowDown' && options.length) {
-      setActiveResult((index) => (index + 1) % options.length)
-      event.preventDefault()
-    } else if (event.key === 'ArrowUp' && options.length) {
-      setActiveResult((index) => (index - 1 + options.length) % options.length)
-      event.preventDefault()
-    } else if (event.key === 'Enter' && options.length) {
-      choose(options[Math.min(activeResult, options.length - 1)])
-      event.preventDefault()
-    } else if (event.key === 'Escape' && query) {
-      setQuery('')
-      event.stopPropagation()
-    }
-  }
+    window.addEventListener(ATLAS_PICK_TICKER, onPick)
+    return () => window.removeEventListener(ATLAS_PICK_TICKER, onPick)
+  }, [])
 
   const toggleSheet = (sheetName: Exclude<Sheet, null>) => {
-    setThemeMenu(false)
+    if (sheetName === 'themes') setThemesWanted(true)
     setOpenSheet((current) => (current === sheetName ? null : sheetName))
   }
 
@@ -1051,7 +1037,6 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     setSelection(null)
     setDetail(null)
     setWeek(0)
-    setCmp(0)
     setShowInfluence(false)
     setMulti(new Set())
     setForced(new Map())
@@ -1113,7 +1098,8 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     const camera = cameraRef.current
     return {
       week: Math.round(shownWeek),
-      cmp,
+      // movement now follows the time bar; the field stays for views saved before
+      cmp: 0,
       theme: theme?.themeId ?? null,
       lens,
       node: selectedSymbol,
@@ -1143,7 +1129,6 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     const view = entry.view
     stopPlay()
     if (view.lens !== lens) changeLens(view.lens)
-    setCmp(view.cmp)
     const known = view.theme && themesRemote.status === 'ok' ? themesRemote.data.find((item) => item.themeId === view.theme) : undefined
     if (view.theme && !known) setThemesWanted(true)
     setTheme(known ?? (view.theme ? { themeId: view.theme, label: view.theme, memberCount: 0, cohesion: null, typicalCohesion: null, verdict: null, regions: [] } : null))
@@ -1152,8 +1137,10 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     setShowFidelity(view.layers.fid)
     setByValue(view.layers.cap)
     setSelection(view.node ? { kind: 'company', symbol: view.node } : view.zone ? { kind: 'zone', zoneId: view.zone } : null)
-    if (view.week > 0) setHistoryWanted(true)
-    setWeek(Math.min(view.week, span))
+    // a view saved with movement against six months or a year opens on that week of the time bar
+    const savedWeek = view.week || view.cmp
+    if (savedWeek > 0) setHistoryWanted(true)
+    setWeek(Math.min(savedWeek, span))
     const camera = cameraRef.current
     if (camera && view.cam && view.lens === lens) setCamera({ ...camera, ...view.cam })
     setDock(view.dock)
@@ -1161,6 +1148,8 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
   }
 
   const onTool = (name: AtlasTool, anchor: HTMLElement) => {
+    // picked from the Tools sheet on a small screen: the sheet makes way for what the tool opens
+    setOpenSheet((current) => (current === 'tools' ? null : current))
     if (name === 'explore') setTool('explore')
     else if (name === 'select') setTool((current) => (current === 'select' ? 'explore' : 'select'))
     else if (name === 'compare' || name === 'test') {
@@ -1171,7 +1160,7 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
       toggleSheet('notebook')
     } else if (name === 'groups') {
       setBrowseTab('groups')
-      setOpenSheet((current) => (current === 'browse' && browseTab === 'groups' ? null : 'browse'))
+      setKeyOpen((open) => !(open && browseTab === 'groups'))
     }
   }
 
@@ -1187,14 +1176,6 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     } else openDock(action, selectedSymbol ?? (selectedZone ? `zone:${selectedZone}` : undefined))
   }
 
-  const onMovement = (value: MovementSpan, anchor: HTMLElement) => {
-    if (!pro) {
-      if (value) gate(value === 52 ? 'movement1y' : 'timeline', anchor)
-      return
-    }
-    setCmp(value)
-  }
-
   // Lead tickers per region: the backend's leaders, else (signed out) its largest companies on the map.
   const leadersOf = useCallback((zone: AtlasZone) => {
     if (zone.leaders.length) return zone.leaders
@@ -1206,11 +1187,11 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     return answer?.status === 'ok' ? regionChanges(answer.data.moves) : null
   }, [movements, pro, residual])
 
-  const sentence = correlationSentence(atlas.marketCorrelation)
-  const activeId = options.length ? `${searchId}-option-${Math.min(activeResult, options.length - 1)}` : undefined
   const accuracy = useMemo(() => meanAccuracy(atlas.nodes), [atlas.nodes])
-  const selectedMove = shownWeek > 0 && selectedSymbol ? movementFor(span)?.moves.find((move) => move.symbol === selectedSymbol) ?? null : null
-  const note = shownWeek > 0 ? timelineNote(span, selectedSymbol ? { symbol: selectedSymbol, changed: selectedMove ? selectedMove.flow : null } : null) : null
+  const selectedMove = markedExact && selectedSymbol ? markMovement?.moves.find((move) => move.symbol === selectedSymbol) ?? null : null
+  const note = shownWeek > 0
+    ? timelineNote(weekLabel(weeks, shownWeek), markedExact ? moverSymbols.size : null, selectedSymbol ? { symbol: selectedSymbol, changed: selectedMove ? selectedMove.flow : null } : null)
+    : null
   const framesNeeded = span + 1
   const loadingWeeks = historyWanted && historyOn && framesLoaded < framesNeeded && !historyError
     ? `Loading earlier weeks · ${Math.max(0, framesLoaded - 1)} of ${span}`
@@ -1239,8 +1220,125 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
     tool === 'select' ? 'select' : 'explore',
     ...(dock ? [dock.kind] : []),
     ...(openSheet === 'notebook' ? ['notebook' as const] : []),
-    ...(openSheet === 'browse' && browseTab === 'groups' ? ['groups' as const] : []),
+    ...(keyOpen && browseTab === 'groups' ? ['groups' as const] : []),
   ])
+
+  // The map's dock: the tools, then the view (layers, ETF theme). What they open sits beside it,
+  // so the dock reads as one place to change the map. Down the left edge on a wide screen, a row on top otherwise.
+  const sheetHead = (id: string, title: string) => (
+    <div className={styles.sheetHead}>
+      <h2 id={id}>{title}</h2>
+      <button type="button" className={styles.sheetClose} onClick={closeSheet} aria-label={`Close ${title}`}><X size={16} aria-hidden="true" /></button>
+    </div>
+  )
+
+  const mapDock = (
+    <div ref={dockRef} className={styles.dock} data-side={sideRail ? 'true' : 'false'}>
+      <div className={styles.dockBar} data-atlas-controls={sideRail ? undefined : ''}>
+        {sideRail ? <AtlasToolRail pro={pro} active={railActive} onTool={onTool} onLocked={gate} /> : (
+          <button
+            type="button"
+            ref={(element) => { sheetButtons.current.set('tools', element) }}
+            className={styles.dockButton}
+            aria-expanded={openSheet === 'tools'}
+            aria-controls="atlas-tools"
+            aria-label="Tools"
+            onClick={() => toggleSheet('tools')}
+          >
+            {toolIcon(tool === 'select' ? 'select' : dock ? dock.kind : 'explore')}
+          </button>
+        )}
+        <div className={styles.dockView} role="group" aria-label="View">
+          <button
+            type="button"
+            ref={(element) => { sheetButtons.current.set('layers', element) }}
+            className={styles.dockButton}
+            data-tip="Layers"
+            aria-expanded={openSheet === 'layers'}
+            aria-controls="atlas-layers"
+            aria-label="Layers"
+            onClick={() => toggleSheet('layers')}
+          >
+            <Layers size={17} aria-hidden="true" />
+          </button>
+          {signedIn ? (
+            <button
+              type="button"
+              ref={(element) => { sheetButtons.current.set('themes', element) }}
+              className={styles.dockButton}
+              data-tip={`ETF theme · ${themeShown ? themeShown.label : 'All companies'}`}
+              data-active={themeShown ? '' : undefined}
+              aria-expanded={openSheet === 'themes'}
+              aria-controls="atlas-themes"
+              aria-label={`ETF theme: ${themeShown ? `${themeShown.label} · ${themeShown.memberCount}` : 'All companies'}`}
+              onClick={() => toggleSheet('themes')}
+            >
+              <Tags size={17} aria-hidden="true" />
+            </button>
+          ) : null}
+        </div>
+      </div>
+      {openSheet === 'tools' && !sideRail ? (
+        <section id="atlas-tools" className={styles.sheet} aria-labelledby="atlas-tools-title" data-lenis-prevent="">
+          {sheetHead('atlas-tools-title', 'Tools')}
+          <AtlasToolRail pro={pro} active={railActive} onTool={onTool} onLocked={(feature, anchor) => { setOpenSheet(null); gate(feature, anchor) }} list />
+        </section>
+      ) : null}
+
+      {openSheet === 'layers' ? (
+        <section id="atlas-layers" className={styles.sheet} aria-labelledby="atlas-layers-title" data-lenis-prevent="">
+          {sheetHead('atlas-layers-title', 'Layers')}
+          <AtlasLayers
+            pro={pro}
+            lens={lens}
+            byValue={byValue}
+            showFidelity={showFidelity}
+            showInfluence={showInfluence}
+            influence={influenceRemote}
+            onLens={changeLens}
+            onByValue={setByValue}
+            onFidelity={setShowFidelity}
+            onInfluence={setShowInfluence}
+            onLocked={gate}
+          />
+          {pro && lens === 'total' && lensRemote.status === 'loading' ? <p className={pro$.muted} role="status">Loading the total co-movement map…</p> : null}
+          {pro && lens === 'total' && (lensRemote.status === 'error' || lensRemote.status === 'denied') ? (
+            <p className={pro$.empty}>The total co-movement map could not load. <button type="button" className={pro$.chip} onClick={retryLens}>Retry</button></p>
+          ) : null}
+        </section>
+      ) : null}
+
+      {openSheet === 'themes' && signedIn ? (
+        <section id="atlas-themes" className={`${styles.sheet} ${styles.themesSheet}`} aria-labelledby="atlas-themes-title" data-lenis-prevent="">
+          {sheetHead('atlas-themes-title', 'ETF themes')}
+          <p className={pro$.layerNote}>Companies thematic ETFs hold together. Pick one to light up its companies; the map stays the same.</p>
+          <AtlasThemeMenu
+            themes={themesRemote}
+            theme={themeShown}
+            onPick={(next) => {
+              setTheme(next)
+              closeSheet()
+            }}
+          />
+        </section>
+      ) : null}
+
+      {openSheet === 'notebook' && pro ? (
+        <AtlasNotebook
+          notes={notes}
+          stored={stored}
+          onSave={saveView}
+          onOpen={openNote}
+          onDelete={(entry) => saveNotes(notes.filter((item) => item.id !== entry.id))}
+          onNote={(entry, text) => saveNotes(notes.map((item) => (item.id === entry.id ? { ...item, note: text } : item)))}
+          onClose={() => {
+            setOpenSheet(null)
+            railButton('notebook')?.focus()
+          }}
+        />
+      ) : null}
+    </div>
+  )
 
   return (
     <div className={styles.shell} data-atlas-root="">
@@ -1259,7 +1357,7 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
           data-lenis-prevent=""
           role="application"
           aria-roledescription="map"
-          aria-label={`Relationship atlas, week of ${formatDate(initial.asOf)}: ${atlas.zoneCount} regions. Arrow keys move, plus and minus zoom, 0 shows the whole map, Escape closes a panel. Use Browse atlas or search for a list.`}
+          aria-label={`Relationship atlas, week of ${formatDate(initial.asOf)}: ${atlas.zoneCount} regions. Arrow keys move, plus and minus zoom, 0 shows the whole map, Escape closes a panel. Use Browse atlas, at the bottom left, for a list, or the site search to find a company.`}
           onKeyDown={onKeyDown}
         >
           <canvas
@@ -1281,215 +1379,12 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
             aria-hidden="true"
           />
 
-          <div className={styles.chrome} data-more={moreOpen ? 'true' : 'false'}>
-            <div className={styles.chromeLeft} data-atlas-controls="">
-              <button
-                type="button"
-                ref={(element) => { sheetButtons.current.set('browse', element) }}
-                className={styles.pill}
-                aria-expanded={openSheet === 'browse'}
-                aria-controls="atlas-browse"
-                aria-label="Browse atlas"
-                onClick={() => toggleSheet('browse')}
-              >
-                <Network size={15} aria-hidden="true" /><span>Browse<span className={styles.wide}> atlas</span></span>
-              </button>
-              <button
-                type="button"
-                ref={(element) => { sheetButtons.current.set('help', element); helpButtonRef.current = element }}
-                className={styles.pill}
-                aria-expanded={openSheet === 'help'}
-                aria-controls="atlas-help"
-                aria-haspopup="dialog"
-                aria-label="How to read"
-                onClick={() => toggleSheet('help')}
-              >
-                <span className={styles.wide}>How to read</span><span className={styles.narrow} aria-hidden="true">?</span>
-              </button>
-              <button
-                type="button"
-                ref={(element) => { sheetButtons.current.set('layers', element) }}
-                className={styles.pill}
-                aria-expanded={openSheet === 'layers'}
-                aria-controls="atlas-layers"
-                aria-label="Layers"
-                onClick={() => toggleSheet('layers')}
-              >
-                <Layers size={15} aria-hidden="true" /><span className={styles.wide}>Layers</span>
-              </button>
-              {/* On a phone the theme, the search and movement fold behind this button, so the map keeps the screen. */}
-              <button
-                type="button"
-                className={`${styles.pill} ${styles.moreToggle}`}
-                aria-expanded={moreOpen}
-                aria-controls={`${searchId}-more`}
-                aria-label={signedIn ? 'Theme, find and movement' : 'Find and movement'}
-                onClick={() => setMoreOpen((open) => !open)}
-              >
-                {moreOpen ? <X size={15} aria-hidden="true" /> : <Search size={15} aria-hidden="true" />}<span>More</span>
-              </button>
-              <span id={`${searchId}-more`} className={`${styles.foldGroup} ${styles.foldable}`}>
-              {signedIn ? (
-                <AtlasThemeMenu
-                  open={themeMenu}
-                  onOpen={(open) => {
-                    if (open) {
-                      setThemesWanted(true)
-                      setOpenSheet(null)
-                    }
-                    setThemeMenu(open)
-                  }}
-                  themes={themesRemote}
-                  theme={themeShown}
-                  onPick={setTheme}
-                />
-              ) : null}
-              <div className={styles.search}>
-                <Search size={14} aria-hidden="true" />
-                <input
-                  type="search"
-                  role="combobox"
-                  aria-label="Find a company or region on the map"
-                  aria-expanded={listOpen}
-                  aria-controls={`${searchId}-results`}
-                  aria-autocomplete="list"
-                  aria-activedescendant={listOpen ? activeId : undefined}
-                  placeholder="Find on the map"
-                  autoComplete="off"
-                  value={query}
-                  onChange={(event) => {
-                    setQuery(event.target.value)
-                    setActiveResult(0)
-                  }}
-                  onKeyDown={onSearchKey}
-                />
-                {listOpen ? (
-                  <ul id={`${searchId}-results`} className={styles.results} role="listbox" aria-label="Matches on the map">
-                    {options.length ? options.map((option, index) => (
-                      <li
-                        key={`${option.kind}-${option.kind === 'zone' ? option.zoneId : option.symbol}`}
-                        id={`${searchId}-option-${index}`}
-                        role="option"
-                        aria-selected={index === Math.min(activeResult, options.length - 1)}
-                        onPointerDown={(event) => event.preventDefault()}
-                        onClick={() => choose(option)}
-                      >
-                        {option.kind === 'zone' ? (
-                          <><b>Region</b><span>{option.label}</span><small>{option.memberCount} companies</small></>
-                        ) : option.kind === 'company' ? (
-                          <><b>{option.symbol}</b><span>{option.name ?? ''}</span><small>{zonesById.get(option.zoneId)?.label ?? ''}</small></>
-                        ) : (
-                          <><b>{option.symbol}</b><span>Open its place on the map</span><small /></>
-                        )}
-                      </li>
-                    )) : (
-                      <li className={styles.none} role="option" aria-selected="false" aria-disabled="true">
-                        {signedIn ? 'Nothing on the map by that name' : 'Only the largest companies are on the map before you sign in'}
-                      </li>
-                    )}
-                  </ul>
-                ) : null}
-              </div>
-              </span>
-            </div>
-            <div className={`${styles.chromeRight} ${styles.foldable}`} role="group" aria-label="Movement over time" data-atlas-controls="">
-              <span className={styles.eyebrow}>Movement</span>
-              <div className={pro$.seg} role="group" aria-label={pro ? 'Compare with an earlier map' : 'Compare with an earlier map: Pro'}>
-                {([[0, 'Off', 'Movement off'], [26, '6 mo', 'Movement over the last 6 months'], [52, '1 yr', 'Movement over the last year']] as const).map(([value, text, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    aria-pressed={(pro ? cmp : 0) === value}
-                    aria-label={pro || !value ? label : `${label}: Pro`}
-                    data-locked={!pro && value ? '' : undefined}
-                    disabled={pro && value > 0 && (!residual || value >= weeks.length)}
-                    title={pro && value > 0 && residual && value >= weeks.length && weeksRemote.status === 'ok' ? `Needs ${value} earlier weeks` : undefined}
-                    onClick={(event) => onMovement(value, event.currentTarget)}
-                  >
-                    {text}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className={styles.toolsRow} data-atlas-controls="">
-              <AtlasToolRail pro={pro} active={railActive} onTool={onTool} onLocked={gate} />
-              <div className={styles.mapSummary} role="group" aria-label="Latest map snapshot">
-                <p className={styles.mapWeek}>Week of <time dateTime={initial.asOf}>{formatDate(initial.asOf)}</time></p>
-                <p className={styles.mapCoverage}>Latest map · {atlas.companyCount.toLocaleString('en-US')} companies · {atlas.zoneCount} regions{lens === 'total' && atlas.lens === 'total' ? ' · total co-movement' : ''}</p>
-                {sentence ? <p className={styles.mapCorrelation}>{sentence}</p> : null}
-              </div>
-            </div>
-            {/* The open sheet starts on its own line, under the controls however many lines they take. */}
-            {openSheet && openSheet !== 'help' ? <span className={styles.break} aria-hidden="true" /> : null}
-
-            {openSheet === 'browse' ? (
-              <section id="atlas-browse" className={styles.sheet} aria-labelledby="atlas-browse-title" data-lenis-prevent="">
-                <h2 id="atlas-browse-title">Browse the market</h2>
-                <AtlasBrowse
-                  tab={browseTab}
-                  onTab={setBrowseTab}
-                  zones={atlas.zones}
-                  bundles={atlas.bundles}
-                  leadersOf={leadersOf}
-                  dots={dots}
-                  changes={changes}
-                  hues={hues}
-                  dark={paletteRef.current?.dark ?? false}
-                  selectedZone={selectedZone}
-                  onZone={selectZone}
-                  onCompany={selectSymbol}
-                  onHoverZone={(zoneId) => setHoverZone((current) => (current === zoneId ? current : zoneId))}
-                  signedIn={signedIn}
-                  pro={pro}
-                  groups={groups}
-                  onGroup={(group) => setMulti(new Set(group.members))}
-                  onDeleteGroup={(group) => saveGroups(groups.filter((item) => item.id !== group.id))}
-                  accuracy={accuracy}
-                  weeks={weeksRemote}
-                  lens={lens}
-                  onLocked={gate}
-                />
-              </section>
-            ) : null}
-
-            {openSheet === 'layers' ? (
-              <section id="atlas-layers" className={styles.sheet} aria-labelledby="atlas-layers-title" data-lenis-prevent="">
-                <h2 id="atlas-layers-title">Layers</h2>
-                <AtlasLayers
-                  pro={pro}
-                  lens={lens}
-                  byValue={byValue}
-                  showFidelity={showFidelity}
-                  showInfluence={showInfluence}
-                  influence={influenceRemote}
-                  onLens={changeLens}
-                  onByValue={setByValue}
-                  onFidelity={setShowFidelity}
-                  onInfluence={setShowInfluence}
-                  onLocked={gate}
-                />
-                {pro && lens === 'total' && lensRemote.status === 'loading' ? <p className={pro$.muted} role="status">Loading the total co-movement map…</p> : null}
-                {pro && lens === 'total' && (lensRemote.status === 'error' || lensRemote.status === 'denied') ? (
-                  <p className={pro$.empty}>The total co-movement map could not load. <button type="button" className={pro$.chip} onClick={retryLens}>Retry</button></p>
-                ) : null}
-              </section>
-            ) : null}
-
-            {openSheet === 'notebook' && pro ? (
-              <AtlasNotebook
-                notes={notes}
-                stored={stored}
-                onSave={saveView}
-                onOpen={openNote}
-                onDelete={(entry) => saveNotes(notes.filter((item) => item.id !== entry.id))}
-                onNote={(entry, text) => saveNotes(notes.map((item) => (item.id === entry.id ? { ...item, note: text } : item)))}
-                onClose={() => {
-                  setOpenSheet(null)
-                  railButton('notebook')?.focus()
-                }}
-              />
-            ) : null}
-          </div>
+          {/* On a small screen the settings sheets are modal: the map dims behind them and a tap on it closes them. */}
+          {!sideRail && (openSheet === 'tools' || openSheet === 'layers' || openSheet === 'themes' || openSheet === 'info' || openSheet === 'notebook') ? (
+            <div className={styles.scrim} aria-hidden="true" onClick={() => setOpenSheet(null)} />
+          ) : null}
+          {/* Everything that changes or explains the map is in its dock: down the left edge, or a row on top. */}
+          {sideRail ? mapDock : <div className={styles.chrome}>{mapDock}</div>}
 
           {pro && showInfluence && influence && residual && shownWeek === 0 ? (
             <div className={pro$.cardSlot}><InfluenceCard influence={influence} /></div>
@@ -1519,9 +1414,8 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
           ) : null}
 
           <AtlasMapKey
-              signedIn={signedIn}
+              summary={`${atlas.zoneCount} regions`}
               extras={{
-                arrowsSince: cmp && shownWeek === 0 ? spanAgo(cmp) : null,
                 paths: shownWeek > 0,
                 fidelity: pro && showFidelity,
                 influence: pro && showInfluence && residual,
@@ -1529,7 +1423,31 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
               }}
               open={keyOpen}
               onOpen={setKeyOpen}
-          />
+          >
+            <AtlasBrowse
+              order={pro && byValue ? 'value' : 'size'}
+              hubs={landmarks}
+              tab={browseTab}
+              onTab={setBrowseTab}
+              zones={atlas.zones}
+              bundles={atlas.bundles}
+              leadersOf={leadersOf}
+              dots={dots}
+              changes={changes}
+              hues={hues}
+              dark={paletteRef.current?.dark ?? false}
+              selectedZone={selectedZone}
+              onZone={selectZone}
+              onCompany={selectSymbol}
+              onHoverZone={(zoneId) => setHoverZone((current) => (current === zoneId ? current : zoneId))}
+              signedIn={signedIn}
+              pro={pro}
+              groups={groups}
+              onGroup={(group) => setMulti(new Set(group.members))}
+              onDeleteGroup={(group) => saveGroups(groups.filter((item) => item.id !== group.id))}
+              onLocked={gate}
+            />
+          </AtlasMapKey>
 
           {pro && (dock || multi.size) ? (
             <div className={pro$.workbench}>
@@ -1563,29 +1481,60 @@ export default function AtlasExplorer({ initial }: { initial: AtlasOverview }) {
             </div>
           ) : null}
 
-          {signedIn && landmarks.length ? (
-            <div className={styles.landmarks} role="group" aria-label="Most connected companies">
-              <button type="button" className={styles.landmarksHead} aria-expanded={landmarksOpen} aria-controls="atlas-landmarks" onClick={() => setLandmarksOpen((open) => !open)}>
-                <span className={styles.eyebrow}>Most connected</span><span aria-hidden="true">{landmarksOpen ? '▾' : '▸'}</span>
-              </button>
-              {landmarksOpen ? <div id="atlas-landmarks" className={styles.landmarksList}>{landmarks.map((node) => (
-                <button key={node.symbol} type="button" className={styles.landmark} onClick={() => { setLandmarksOpen(false); selectCompany(node) }}>
-                  <i style={{ opacity: 0.3 + 0.7 * ((node.reach ?? 0) / (maxReach || 1)) }} aria-hidden="true" />
-                  <b>{node.symbol}</b>
-                  <small>{zonesById.get(node.zoneId)?.label ?? ''}</small>
-                </button>
-              ))}</div> : null}
-            </div>
-          ) : null}
-
-          <div className={styles.mapActions} data-atlas-bottom="">
+          {/* Zoom stacks up the right edge beside the map, so it does not raise the map's lower margin. */}
+          <div ref={cornerRef} className={styles.mapActions}>
             <div className={styles.zoom} role="group" aria-label="Zoom and reading">
-              <button type="button" onClick={() => zoomBy(1.4)} aria-label="Zoom in"><Plus size={16} aria-hidden="true" /></button>
-              <button type="button" onClick={() => zoomBy(1 / 1.4)} aria-label="Zoom out"><Minus size={16} aria-hidden="true" /></button>
-              <button type="button" onClick={fitAll} aria-label="Show the whole map"><Maximize2 size={14} aria-hidden="true" /></button>
-              <span className={styles.level} aria-label={`Detail level ${level}`}>L{level}</span>
+              <div className={styles.zoomStack}>
+                <button type="button" onClick={() => zoomBy(1.4)} aria-label="Zoom in"><Plus size={16} aria-hidden="true" /></button>
+                <button type="button" onClick={() => zoomBy(1 / 1.4)} aria-label="Zoom out"><Minus size={16} aria-hidden="true" /></button>
+                <button type="button" onClick={fitAll} aria-label="Show the whole map"><Maximize2 size={14} aria-hidden="true" /></button>
+              </div>
+              <button
+                type="button"
+                ref={(element) => { sheetButtons.current.set('info', element) }}
+                className={styles.info}
+                aria-expanded={openSheet === 'info'}
+                aria-controls="atlas-info"
+                aria-label="This map"
+                title="This map: its week, coverage and accuracy"
+                onClick={() => toggleSheet('info')}
+              >
+                <Info size={17} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                ref={(element) => { sheetButtons.current.set('help', element); helpButtonRef.current = element }}
+                className={styles.help}
+                aria-expanded={openSheet === 'help'}
+                aria-controls="atlas-help"
+                aria-haspopup="dialog"
+                aria-label="How to read"
+                title="How to read the map"
+                onClick={() => toggleSheet('help')}
+              >
+                <CircleHelp size={17} aria-hidden="true" />
+              </button>
               <button type="button" className={styles.text} aria-pressed={showNames} onClick={() => setShowNames((value) => !value)} aria-label="Names on the map" title="Names on the map">Aa</button>
+              <span className={styles.level} aria-label={`Detail level ${level}`} title="Detail level">L{level}</span>
             </div>
+            {openSheet === 'info' ? (
+              <section id="atlas-info" className={styles.sheet} aria-labelledby="atlas-info-title" data-lenis-prevent="">
+                {sheetHead('atlas-info-title', 'This map')}
+                <AtlasMapInfo
+                  asOf={initial.asOf}
+                  companies={atlas.companyCount}
+                  regions={atlas.zoneCount}
+                  total={lens === 'total' && atlas.lens === 'total'}
+                  correlation={atlas.marketCorrelation}
+                  accuracy={accuracy}
+                  signedIn={signedIn}
+                  pro={pro}
+                  weeks={weeksRemote}
+                  lens={lens}
+                  onLocked={gate}
+                />
+              </section>
+            ) : null}
 
           </div>
 

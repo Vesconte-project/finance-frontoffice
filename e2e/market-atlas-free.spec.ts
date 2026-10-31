@@ -21,6 +21,21 @@ function watchConsole(page: Page): string[] {
   return errors
 }
 
+/** The site search: on the atlas it selects the company on the map instead of opening its page. */
+async function findOnAtlas(page: Page, symbol: string) {
+  const search = page.getByRole('combobox', { name: 'Search tickers or companies' }).first()
+  await search.fill(symbol)
+  await expect(page.getByRole('option', { name: new RegExp(symbol, 'i') }).first()).toBeVisible({ timeout: 30_000 })
+  await search.press('Enter')
+}
+
+/** The browse panel starts open on a wide screen; open it only if a test has folded it. */
+async function openBrowse(page: Page) {
+  const browse = page.getByRole('button', { name: 'Browse atlas', exact: true })
+  if ((await browse.getAttribute('aria-expanded')) === 'false') await browse.click()
+  await expect(browse).toHaveAttribute('aria-expanded', 'true')
+}
+
 async function openAtlas(page: Page, width: number, height = 900) {
   await page.setViewportSize({ width, height })
   await page.goto('/markets/network')
@@ -46,19 +61,55 @@ for (const [width, height] of [[320, 568], [390, 844], [768, 1024], [1024, 768],
     await expect(page.getByText('You are seeing a sketch')).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Earlier weeks: Pro' })).toBeVisible()
     const time = page.getByRole('group', { name: 'Earlier weeks', exact: true })
-    const summary = page.getByRole('group', { name: 'Latest map snapshot', exact: true })
-    await expect(summary).toContainText('Week of')
-    await expect(summary).toContainText('18 companies · 3 regions')
-    await expect(summary).toContainText('Average correlation')
+    // the map's facts live behind "This map", by How to read and Aa, not over the map
+    const compact = width < 896
+    await page.getByRole('button', { name: 'This map', exact: true }).click()
+    const info = page.getByRole('region', { name: 'This map' })
+    await expect(info).toContainText('Week of')
+    await expect(info.getByText('18', { exact: true })).toBeVisible()
+    await expect(info).toContainText('Average correlation')
+    if (compact) {
+      // a bottom sheet over a dimmed map, the full width of a phone
+      const sheet = await info.boundingBox()
+      expect(sheet!.y + sheet!.height).toBeGreaterThanOrEqual(height - 1)
+      if (width < 640) expect(sheet!.width).toBeGreaterThanOrEqual(width - 1)
+    }
+    await info.getByRole('button', { name: 'Close This map' }).click()
+    await expect(info).toHaveCount(0)
+    // the time bar is one slim capsule: centred between the legend and the zoom, beside the zoom on a phone
     const timeBox = await time.boundingBox()
-    expect(timeBox!.x + timeBox!.width / 2).toBeCloseTo(width / 2, 0)
-    expect(timeBox!.width).toBeGreaterThanOrEqual(width > 1024 ? Math.min(928, width - 544) - 1 : Math.min(928, width - 32) - 1)
-    const ruler = await page.getByRole('button', { name: 'Earlier weeks: Pro' }).boundingBox()
-    expect(ruler!.height).toBeGreaterThanOrEqual(60)
-    expect(ruler!.x + ruler!.width / 2).toBeCloseTo(width / 2, 0)
-    if (width > 1024) expect(ruler!.width).toBeGreaterThan(650)
-    await expect(page.getByRole('navigation', { name: 'Tools' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Select companies: Pro' })).toBeVisible()
+    expect(timeBox!.height).toBeLessThanOrEqual(48)
+    if (width >= 640) expect(timeBox!.x + timeBox!.width / 2).toBeCloseTo(width / 2, 0)
+    expect(timeBox!.width).toBeGreaterThanOrEqual(width >= 640 ? Math.min(576, width - 2 * (width > 1024 ? 304 : 204)) - 1 : width - 120)
+    expect(timeBox!.width).toBeLessThanOrEqual(577)
+    // nothing on the bottom edge overlaps: the folded legend, the capsule and the zoom
+    const browseToggle = page.getByRole('button', { name: 'Browse atlas', exact: true })
+    if ((await browseToggle.getAttribute('aria-expanded')) === 'true') await browseToggle.click()
+    const zoomButtons = await page.getByRole('group', { name: 'Zoom and reading' }).getByRole('button').evaluateAll((buttons) => buttons.map((button) => {
+      const rect = button.getBoundingClientRect()
+      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+    }))
+    const legendToggle = await browseToggle.boundingBox()
+    const apart = (a: { x: number; y: number; width: number; height: number }, b: typeof a) => a.x + a.width <= b.x + 1 || b.x + b.width <= a.x + 1 || a.y + a.height <= b.y + 1 || b.y + b.height <= a.y + 1
+    // info, help, names and fit everywhere; plus and minus only where there is no pinch to zoom
+    expect(zoomButtons.length).toBe(compact ? 4 : 6)
+    for (const button of zoomButtons) {
+      expect(apart(timeBox!, button)).toBe(true)
+      expect(apart(legendToggle!, button)).toBe(true)
+    }
+    expect(apart(timeBox!, legendToggle!)).toBe(true)
+    await browseToggle.click()
+    if (compact) {
+      // on a small screen the tools are a named list in a sheet, behind one button
+      await browseToggle.click()
+      await page.getByRole('button', { name: 'Tools', exact: true }).click()
+      await expect(page.getByRole('region', { name: 'Tools' }).getByRole('button', { name: 'Select companies: Pro' })).toBeVisible()
+      await page.getByRole('button', { name: 'Close Tools' }).click()
+      await browseToggle.click()
+    } else {
+      await expect(page.getByRole('navigation', { name: 'Tools' })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Select companies: Pro' })).toBeVisible()
+    }
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
     expect(overflow).toBeLessThanOrEqual(0)
     const frame = await map.boundingBox()
@@ -81,44 +132,60 @@ for (const [width, height] of [[320, 568], [390, 844], [768, 1024], [1024, 768],
     expect(frame!.y).toBe(0)
     expect(frame!.height).toBe(height)
     await expect.poll(() => page.locator('.site-header__row').evaluate((row) => getComputedStyle(row, '::before').opacity)).toBe('0')
-    const tools = await page.getByRole('navigation', { name: 'Tools' }).boundingBox()
     const view = await page.getByRole('group', { name: 'Zoom and reading' }).boundingBox()
-    expect(tools!.y).toBeGreaterThanOrEqual(72)
-    expect(tools!.y + tools!.height).toBeLessThan(height / 2)
-    expect(tools!.width).toBeGreaterThan(tools!.height)
+    if (compact) {
+      // one row of controls above the map: tools, layers, ETF themes
+      const row = await page.getByRole('button', { name: 'Tools', exact: true }).boundingBox()
+      const layersButton = await page.getByRole('button', { name: 'Layers', exact: true }).boundingBox()
+      expect(row!.y).toBeGreaterThanOrEqual(72)
+      expect(layersButton!.y).toBeCloseTo(row!.y)
+      await expect(page.getByRole('button', { name: 'Zoom in', exact: true })).toBeHidden()
+    } else {
+      // the tools stand down the left edge, clear of the details panel
+      const tools = await page.getByRole('navigation', { name: 'Tools' }).boundingBox()
+      expect(tools!.y).toBeGreaterThanOrEqual(72)
+      expect(tools!.y + tools!.height).toBeLessThan(height / 2)
+      expect(tools!.x).toBeLessThanOrEqual(17)
+      expect(tools!.height).toBeGreaterThan(tools!.width)
+      // zoom stands up the right edge
+      const zoomIn = await page.getByRole('button', { name: 'Zoom in', exact: true }).boundingBox()
+      const zoomOut = await page.getByRole('button', { name: 'Zoom out', exact: true }).boundingBox()
+      expect(zoomIn!.x).toBeCloseTo(zoomOut!.x)
+      expect(zoomOut!.y).toBeGreaterThan(zoomIn!.y)
+    }
     expect(view!.x + view!.width).toBeGreaterThanOrEqual(width - 17)
     expect(view!.y + view!.height).toBeGreaterThanOrEqual(height - 17)
-    expect(view!.width).toBeGreaterThan(view!.height)
-    const zoomIn = await page.getByRole('button', { name: 'Zoom in', exact: true }).boundingBox()
-    const zoomOut = await page.getByRole('button', { name: 'Zoom out', exact: true }).boundingBox()
-    expect(zoomIn!.y).toBeCloseTo(zoomOut!.y)
-    expect(zoomOut!.x).toBeGreaterThan(zoomIn!.x)
+    // This map, How to read and Aa in one corner row
+    const infoButton = await page.getByRole('button', { name: 'This map', exact: true }).boundingBox()
+    const helpButton = await page.getByRole('button', { name: 'How to read', exact: true }).boundingBox()
+    const names = await page.getByRole('button', { name: 'Names on the map', exact: true }).boundingBox()
+    expect(helpButton!.y).toBeCloseTo(names!.y)
+    expect(infoButton!.y).toBeCloseTo(names!.y)
+    expect(helpButton!.x).toBeGreaterThan(infoButton!.x)
+    expect(names!.x).toBeGreaterThan(helpButton!.x)
     await expect(page.getByRole('button', { name: 'Key', exact: true })).toHaveCount(0)
     if (process.env.PLAYWRIGHT_CAPTURE) await page.screenshot({ path: `test-results/market-atlas-free-layout-${width}.png` })
-    const legend = page.getByRole('button', { name: 'Legend', exact: true })
-    if ((await legend.getAttribute('aria-expanded')) === 'false') await legend.click()
-    const anchor = await legend.boundingBox()
-    expect(anchor!.x).toBeLessThanOrEqual(16)
-    const legendGroup = await page.getByRole('group', { name: 'Map key', exact: true }).boundingBox()
-    expect(legendGroup!.y + legendGroup!.height).toBeGreaterThanOrEqual(height - 17)
-    expect(anchor!.y).toBeCloseTo(legendGroup!.y)
-    await expect(legend).toHaveAttribute('aria-expanded', 'true')
-    expect(await page.locator('#atlas-legend li > span').evaluateAll((rows) => rows.every((row) => {
-      const rect = row.getBoundingClientRect()
-      const line = parseFloat(getComputedStyle(row).lineHeight)
-      return rect.height <= line + 1
-    }))).toBe(true)
-    expect(await page.locator('#atlas-legend').evaluate((list) => list.scrollWidth <= list.clientWidth)).toBe(true)
+    // Browse atlas is the legend: the regions in their colours, anchored bottom left
+    const browse = page.getByRole('button', { name: 'Browse atlas', exact: true })
+    if ((await browse.getAttribute('aria-expanded')) === 'false') await browse.click()
+    const legendBox = await page.locator('#atlas-key').boundingBox()
+    // bottom left on a wide screen, a bottom sheet on a phone, inset and centred on a tablet
+    expect(legendBox!.x).toBeLessThanOrEqual(width >= 640 && compact ? (width - 640) / 2 + 1 : 16)
+    expect(legendBox!.y + legendBox!.height).toBeGreaterThanOrEqual(height - 17)
+    const list = page.getByRole('region', { name: 'Browse the market' })
+    await expect(list.getByRole('button', { name: /Fixture Alpha/ })).toBeVisible()
+    expect(await page.locator('#atlas-browse').evaluate((body) => body.scrollWidth <= body.clientWidth)).toBe(true)
     await expect(page.getByText('Select a company or region to explore its links.', { exact: true })).toHaveCount(0)
-    await legend.click()
-    await expect(page.locator('#atlas-legend')).toBeHidden()
-    const closed = await legend.boundingBox()
-    expect(closed!.y + closed!.height).toBeCloseTo(legendGroup!.y + legendGroup!.height)
+    await browse.click()
+    await expect(page.locator('#atlas-browse')).toBeHidden()
+    const closed = await browse.boundingBox()
+    expect(closed!.x).toBeLessThanOrEqual(17)
+    expect(closed!.y + closed!.height).toBeGreaterThanOrEqual(height - 17)
     if (process.env.PLAYWRIGHT_CAPTURE && [320, 1440].includes(width)) await page.screenshot({ path: `test-results/market-atlas-legend-closed-${width}.png` })
-    await legend.click()
-    await expect(page.locator('#atlas-legend')).toBeVisible()
-    const list = await page.locator('#atlas-legend').boundingBox()
-    expect(list!.y).toBeGreaterThanOrEqual(anchor!.y + anchor!.height)
+    await browse.click()
+    await expect(page.locator('#atlas-browse')).toBeVisible()
+    const body = await page.locator('#atlas-browse').boundingBox()
+    expect(body!.y).toBeGreaterThanOrEqual(legendBox!.y)
     if (width === 1440) {
       const today = page.locator('.site-header').getByRole('button', { name: 'Today', exact: true })
       await today.click()
@@ -130,22 +197,18 @@ for (const [width, height] of [[320, 568], [390, 844], [768, 1024], [1024, 768],
 }
 
 for (const width of [320, 1440]) {
-  test(`the connected-company list opens without shifting history and closes by keyboard at ${width}px`, async ({ page }) => {
+  test(`the most connected companies head the legend and open their details at ${width}px`, async ({ page }) => {
     await openAtlas(page, width)
-    const toggle = page.getByRole('button', { name: 'Most connected', exact: true })
-    const bar = page.getByRole('group', { name: 'Earlier weeks', exact: true })
-    const before = await bar.boundingBox()
-    await toggle.click()
-    const list = page.locator('#atlas-landmarks')
-    await expect(list).toBeVisible()
-    const bounds = await list.boundingBox()
-    expect(bounds!.x).toBeGreaterThanOrEqual(0)
-    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
-    expect(bounds!.y).toBeGreaterThanOrEqual(72)
-    expect((await bar.boundingBox())!.y).toBeCloseTo(before!.y)
-    await page.keyboard.press('Escape')
-    await expect(list).toHaveCount(0)
-    await expect(toggle).toBeFocused()
+    await openBrowse(page)
+    const hubs = page.getByRole('region', { name: 'Browse the market' }).getByRole('list', { name: 'Most connected companies' })
+    await expect(hubs.getByRole('button')).not.toHaveCount(0)
+    const box = await hubs.boundingBox()
+    expect(box!.x).toBeGreaterThanOrEqual(0)
+    expect(box!.x + box!.width).toBeLessThanOrEqual(width)
+    const first = hubs.getByRole('button').first()
+    const symbol = (await first.textContent())!
+    await first.click()
+    await expect(page.getByRole('complementary', { name: 'Details' }).getByText(symbol, { exact: true }).first()).toBeVisible({ timeout: 30_000 })
   })
 }
 
@@ -164,10 +227,6 @@ test('every locked feature opens its upsell, which closes and gives focus back',
   await page.keyboard.press('Escape')
   await expect(upsell).toHaveCount(0)
   await expect(timeline).toBeFocused()
-
-  await page.getByRole('button', { name: 'Movement over the last year: Pro' }).click()
-  await expect(page.getByRole('dialog', { name: 'Movement over a year' })).toBeVisible()
-  await page.getByRole('button', { name: 'Not now' }).click()
 
   await page.getByRole('button', { name: 'Compare: Pro' }).click()
   await expect(page.getByRole('dialog', { name: 'Compare' })).toBeVisible()
@@ -191,14 +250,14 @@ test('every locked feature opens its upsell, which closes and gives focus back',
   await page.keyboard.press('Escape')
   await expect(layers).toHaveCount(0)
 
-  // Browse › Market: accuracy is open, the cohesion chart is locked with no chart behind it
-  await page.getByRole('button', { name: 'Browse atlas' }).click()
-  await page.getByRole('tab', { name: 'Market' }).click()
-  await expect(page.getByText(/of 10/).first()).toBeVisible()
+  // This map: accuracy is open, the cohesion chart is locked with no chart behind it
+  await page.getByRole('button', { name: 'This map', exact: true }).click()
+  await expect(page.getByRole('region', { name: 'This map' }).getByText(/of 10/).first()).toBeVisible()
   await expect(page.getByRole('img', { name: /Average correlation over the last year/ })).toHaveCount(0)
   await page.getByRole('button', { name: /Average correlation across the market/ }).click()
   await expect(page.getByRole('dialog', { name: 'Market cohesion' })).toBeVisible()
   await page.keyboard.press('Escape')
+  await openBrowse(page)
   await page.getByRole('tab', { name: 'Groups' }).click()
   await expect(page.getByRole('button', { name: 'Groups are a Pro tool.' })).toBeVisible()
   if (process.env.PLAYWRIGHT_CAPTURE) await page.screenshot({ path: 'test-results/market-atlas-free-locked-1440.png' })
@@ -208,20 +267,26 @@ test('every locked feature opens its upsell, which closes and gives focus back',
 test('a free reader picks a theme and reads a company’s accuracy and themes, without trends', async ({ page }) => {
   const errors = watchConsole(page)
   await openAtlas(page, 1440)
-  const themeButton = page.getByRole('button', { name: /Theme/ })
+  const themeButton = page.getByRole('button', { name: /ETF theme/ })
   await themeButton.click()
-  const menu = page.getByRole('menu', { name: 'Theme' })
-  await expect(menu.getByRole('menuitemradio', { name: 'All companies' })).toBeFocused()
-  await menu.getByRole('menuitemradio', { name: /Fixture AI/ }).click()
-  await expect(themeButton).toContainText('Fixture AI · 4')
-  const card = page.getByRole('region', { name: 'Theme: Fixture AI' })
+  // a panel beside the dock with every theme, its size, and whether prices confirm it
+  const themes = page.getByRole('region', { name: 'ETF themes' })
+  const choices = themes.getByRole('radiogroup', { name: 'ETF theme' })
+  await expect(choices.getByRole('radio', { name: 'All companies' })).toBeFocused()
+  await expect(choices.getByRole('radio', { name: /Fixture AI/ })).toContainText('4')
+  await page.keyboard.press('ArrowDown')
+  await expect(choices.getByRole('radio', { name: /Fixture AI/ })).toBeFocused()
+  await choices.getByRole('radio', { name: /Fixture AI/ }).click()
+  await expect(themes).toHaveCount(0)
+  await expect(themeButton).toBeFocused()
+  await expect(themeButton).toHaveAttribute('aria-label', 'ETF theme: Fixture AI · 4')
+  const card = page.getByRole('region', { name: 'ETF theme: Fixture AI' })
   await expect(card.getByText('Moves together')).toBeVisible()
   await expect(card.getByText('0.31 vs 0.42 in a typical region')).toBeVisible()
   await expect(card.getByText(/Mostly in: Fixture Alpha 50%/)).toBeVisible()
 
-  const search = page.getByRole('combobox', { name: 'Find a company or region on the map' })
-  await search.fill('FXA1')
-  await search.press('Enter')
+  await findOnAtlas(page, 'FXA1')
+  await expect(page).toHaveURL(/\/markets\/network/)
   const panel = page.getByRole('complementary', { name: 'Details' })
   await expect(panel.getByText('Map accuracy here')).toBeVisible({ timeout: 30_000 })
   await expect(panel.getByText('9 of 10', { exact: true })).toBeVisible()
@@ -237,21 +302,18 @@ test('a free reader picks a theme and reads a company’s accuracy and themes, w
 test('Browse lists regions and links, and the panels read every region and company fact', async ({ page }) => {
   const errors = watchConsole(page)
   await openAtlas(page, 1440)
-  await page.getByRole('button', { name: 'Browse atlas' }).click()
+  await openBrowse(page)
   const sheet = page.getByRole('region', { name: 'Browse the market' })
   // dots, market value and four lead tickers per region; no six-month changes without Pro
   await expect(sheet.getByRole('img', { name: 'Moves together: 5 of 5' })).toBeVisible()
   await expect(sheet.getByText('$3.6T')).toBeVisible()
-  await expect(sheet.getByRole('option', { name: 'Changed most (6 mo)' })).toHaveCount(0)
-  await expect(sheet.getByText(/in 6 months/)).toHaveCount(0)
-  await sheet.getByRole('combobox', { name: 'Sort regions' }).selectOption('tight')
-  await expect(sheet.getByRole('button', { name: / companies/ }).first()).toContainText('Fixture Alpha')
-  await sheet.getByRole('combobox', { name: 'Sort regions' }).selectOption('value')
-  await expect(sheet.getByRole('button', { name: / companies/ }).last()).toContainText('Fixture Gamma')
-  await sheet.getByRole('searchbox', { name: 'Filter regions or tickers' }).fill('fxc')
-  await expect(sheet.getByRole('button', { name: /Fixture Gamma/ })).toBeVisible()
-  await expect(sheet.getByRole('button', { name: /Fixture Alpha/ })).toHaveCount(0)
-  await sheet.getByRole('searchbox', { name: 'Filter regions or tickers' }).fill('')
+  await expect(sheet.getByText(/−out/)).toHaveCount(0)
+  // one order, the one the map draws with: no sort or filter to choose
+  await expect(sheet.getByRole('combobox')).toHaveCount(0)
+  await expect(sheet.getByRole('searchbox')).toHaveCount(0)
+  const regions = sheet.getByRole('button', { name: / companies$/ })
+  await expect(regions).toHaveCount(3)
+  await expect(regions.first()).toContainText('Fixture Alpha')
 
   await sheet.getByRole('tab', { name: 'Links' }).click()
   await expect(sheet.getByText('The strongest links between regions: how many strong ties join them and how strong they are on average. Select one to see its bundle.')).toBeVisible()
@@ -287,9 +349,11 @@ test('Browse lists regions and links, and the panels read every region and compa
   expect(errors).toEqual([])
 })
 
+/** The site search: on the atlas it selects the company on the map instead of opening its page. */
 async function pageSearch(page: Page, symbol: string) {
-  const search = page.getByRole('combobox', { name: 'Find a company or region on the map' })
+  const search = page.getByRole('combobox', { name: 'Search tickers or companies' }).first()
   await search.fill(symbol)
+  await expect(page.getByRole('option', { name: new RegExp(symbol, 'i') }).first()).toBeVisible({ timeout: 30_000 })
   await search.press('Enter')
 }
 
@@ -316,6 +380,8 @@ for (const width of [320, 1440]) {
     const help = page.getByRole('dialog', { name: 'How to read the atlas', exact: true })
     await expect(help).toBeVisible()
     await expect(help.getByRole('heading', { name: 'Look at distance' })).toBeVisible()
+    // on a desktop screen the whole guide fits without scrolling
+    if (width === 1440) expect(await help.evaluate((element) => element.scrollHeight <= element.clientHeight + 1)).toBe(true)
     expect(await help.evaluate((element: HTMLDialogElement) => element.matches(':modal'))).toBe(true)
     if (process.env.PLAYWRIGHT_CAPTURE) await page.screenshot({ path: `test-results/market-atlas-help-${width}.png` })
     await page.keyboard.press('Tab')
@@ -326,8 +392,9 @@ for (const width of [320, 1440]) {
     await expect(help).not.toBeVisible()
     await expect(trigger).toBeFocused()
     await trigger.click()
-    await help.getByText('Understand the other symbols', { exact: true }).click()
-    await expect(help.getByText('Region outlines', { exact: true })).toBeVisible()
+    // the legend's symbols live in the guide, with what each extra layer draws
+    await expect(help.getByText('Wells', { exact: true })).toBeVisible()
+    await expect(help.getByText('ETF themes', { exact: true })).toBeVisible()
     await help.getByRole('button', { name: 'Got it, explore the map' }).click()
     await expect(help).not.toBeVisible()
     await expect(trigger).toBeFocused()

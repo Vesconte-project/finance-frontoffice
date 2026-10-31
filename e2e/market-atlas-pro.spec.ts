@@ -32,8 +32,10 @@ async function openAtlas(page: Page, width: number) {
 }
 
 async function pick(page: Page, symbol: string) {
-  const search = page.getByRole('combobox', { name: 'Find a company or region on the map' })
+  // the site search selects the company on the map instead of opening its page
+  const search = page.getByRole('combobox', { name: 'Search tickers or companies' }).first()
   await search.fill(symbol)
+  await expect(page.getByRole('option', { name: new RegExp(symbol, 'i') }).first()).toBeVisible({ timeout: 30_000 })
   await search.press('Enter')
   return page.getByRole('complementary', { name: 'Details' })
 }
@@ -44,12 +46,18 @@ for (const width of [375, 1440]) {
     await openAtlas(page, width)
     const range = page.getByRole('slider', { name: 'Weeks before today' })
     await expect(range).toBeEnabled({ timeout: 30_000 })
+    const capsule = await page.getByRole('group', { name: 'Earlier weeks', exact: true }).boundingBox()
+    expect(capsule!.height).toBeLessThanOrEqual(48)
+    if (width === 1440) {
+      expect(capsule!.x + capsule!.width / 2).toBeCloseTo(width / 2, 0)
+      expect(capsule!.width).toBeGreaterThanOrEqual(575)
+    }
     const ruler = await range.boundingBox()
-    expect(ruler!.height).toBeGreaterThanOrEqual(60)
-    expect(ruler!.x + ruler!.width / 2).toBeCloseTo(width / 2, 0)
-    if (width === 1440) expect(ruler!.width).toBeGreaterThan(650)
+    expect(ruler!.width).toBeGreaterThan(width === 1440 ? 380 : 150)
+    if (width < 896) await page.getByRole('button', { name: 'Tools', exact: true }).click()
     await expect(page.getByRole('button', { name: 'Select companies', exact: true })).toBeVisible()
     await expect(page.locator('[data-locked]')).toHaveCount(0)
+    await expect(page.getByText('Pro', { exact: true })).toHaveCount(0)
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
     expect(overflow).toBeLessThanOrEqual(0)
     if (process.env.PLAYWRIGHT_CAPTURE) await page.screenshot({ path: `test-results/market-atlas-pro-timeline-${width}.png` })
@@ -63,15 +71,19 @@ test('the time bar loads earlier weeks, shows paths, and plays', async ({ page }
   const range = page.getByRole('slider', { name: 'Weeks before today' })
   await expect(range).toBeEnabled({ timeout: 30_000 })
   const bar = page.getByRole('group', { name: 'Earlier weeks', exact: true })
-  const snapshot = page.getByRole('group', { name: 'Latest map snapshot', exact: true })
-  const latestSummary = await snapshot.textContent()
+  // Going back, the bar marks only the companies that changed region since the week it shows:
+  // FXA2 and FXA3 left Fixture Beta 15 weeks ago, so ten weeks back nothing has changed yet.
+  await range.fill('-10')
+  await expect(bar.getByText(`Since ${weeksAgo(10)}: no company changed region`)).toBeVisible({ timeout: 30_000 })
   await range.fill('-30')
-  await expect(bar.getByText('Paths: the companies that changed region over the past year · select any company to see its own')).toBeVisible({ timeout: 30_000 })
+  await expect(bar.getByText(`Since ${weeksAgo(30)}: 2 companies changed region · select one to see its path`)).toBeVisible({ timeout: 30_000 })
   await expect(bar.locator('output')).toHaveText(weeksAgo(30))
-  await expect(snapshot).toHaveText(latestSummary!)
+  await expect(page.getByRole('list', { name: 'Layers on the map' })).toContainText('Path · changed region since, ringed today')
   const panel = await pick(page, 'FXA2')
   await expect(panel.getByRole('heading', { name: /Fixture Alpha Holding 2/ })).toBeVisible({ timeout: 30_000 })
-  await expect(bar.getByText('Path of FXA2 since a year ago · it changed region')).toBeVisible()
+  await expect(bar.getByText(`Path of FXA2 since ${weeksAgo(30)} · it changed region`)).toBeVisible()
+  // the details compare with the week the bar shows
+  await expect(panel.getByRole('region', { name: 'Then and now' }).getByText('vs 30 weeks ago')).toBeVisible({ timeout: 30_000 })
   // Escape closes the panel; the week stays
   await page.getByRole('application', { name: /Relationship atlas/ }).focus()
   await page.keyboard.press('Escape')
@@ -87,18 +99,13 @@ test('the time bar loads earlier weeks, shows paths, and plays', async ({ page }
   expect(errors).toEqual([])
 })
 
-test('movement draws arrows and a mover reads "Then and now" with tie trends', async ({ page }) => {
+test('a mover reads "Then and now" with tie trends, against six months ago or the week the bar shows', async ({ page }) => {
   const errors = watchConsole(page)
   await openAtlas(page, 1440)
-  const six = page.getByRole('button', { name: 'Movement over the last 6 months' })
-  await expect(six).toBeEnabled({ timeout: 30_000 })
-  const movement = page.waitForResponse((response) => response.url().includes('/api/atlas/movement') && response.status() === 200)
-  await six.click()
-  await movement
-  await expect(six).toHaveAttribute('aria-pressed', 'true')
-  const legend = page.getByRole('button', { name: 'Legend', exact: true })
-  if ((await legend.getAttribute('aria-expanded')) === 'false') await legend.click()
-  await expect(page.getByRole('group', { name: 'Map key' })).toContainText('Movement · changed regions')
+  // movement has no control of its own: it follows the time bar
+  await expect(page.getByRole('button', { name: /^Movement/ })).toHaveCount(0)
+  const range = page.getByRole('slider', { name: 'Weeks before today' })
+  await expect(range).toBeEnabled({ timeout: 30_000 })
 
   const panel = await pick(page, 'FXA2')
   const then = panel.getByRole('region', { name: 'Then and now' })
@@ -111,7 +118,7 @@ test('movement draws arrows and a mover reads "Then and now" with tie trends', a
   await expect(panel.getByText('↓ weaker')).toBeVisible()
   await expect(panel.getByText(/dashed red lines|Map accuracy here/).first()).toBeVisible()
 
-  await page.getByRole('button', { name: 'Movement over the last year' }).click()
+  await range.fill('-52')
   await expect(then.getByText('vs a year ago')).toBeVisible({ timeout: 30_000 })
   expect(errors).toEqual([])
 })
@@ -125,7 +132,11 @@ test('the Pro layers switch the lens, size regions by value, ring accuracy and d
 
   await layers.getByRole('button', { name: 'Market value' }).click()
   await expect(layers.getByRole('button', { name: 'Market value' })).toHaveAttribute('aria-pressed', 'true')
-  await layers.getByLabel(/Ring on each company/).check()
+  // the legend follows the map: sized by value, listed by value
+  const byValue = page.getByRole('region', { name: 'Browse the market' }).getByRole('button', { name: /market value$/ })
+  await expect(byValue.first()).toContainText('Fixture Alpha')
+  await expect(byValue.last()).toContainText('Fixture Gamma')
+  await layers.getByLabel('Fidelity ring').check()
   await layers.getByLabel('Influence arrows').check()
   await expect(layers.getByText('↓ pushes down')).toBeVisible({ timeout: 30_000 })
   await expect(layers.getByText('152 report days · new this year')).toBeVisible()
@@ -134,28 +145,31 @@ test('the Pro layers switch the lens, size regions by value, ring accuracy and d
   await expect(card.getByText('Same-day evidence from prices; strong, not proof.')).toBeVisible()
   await expect(layers.getByLabel('Map key')).toHaveCount(0)
   await expect(layers.getByLabel('Names on the map')).toHaveCount(0)
-  const key = page.getByRole('group', { name: 'Map key' })
+  const key = page.getByRole('list', { name: 'Layers on the map' })
   await expect(key).toContainText('green near links, red far')
   await expect(key).toContainText('Influence · green ↑, red ↓')
   if (process.env.PLAYWRIGHT_CAPTURE) await page.screenshot({ path: 'test-results/market-atlas-pro-layers-1440.png' })
 
   await layers.getByRole('button', { name: 'Total co-movement' }).click()
-  await expect(page.getByText(/· total co-movement/)).toBeVisible({ timeout: 30_000 })
+  await expect(layers.getByText('Every price move, the whole market included.')).toBeVisible()
+  // the total map has loaded once the slider (beyond-the-market only) is gone
   // no history and no influence on the total map
   await expect(page.getByRole('slider', { name: 'Weeks before today' })).toHaveCount(0)
   await expect(layers.getByText('Shown with the "Beyond the market" view.')).toBeVisible()
   await layers.getByRole('button', { name: 'Beyond the market' }).click()
-  await expect(page.getByText(/· total co-movement/)).toHaveCount(0)
+  await expect(layers.getByText('Without the move the whole market shares, so the rest stands out.')).toBeVisible()
   await expect(page.getByRole('slider', { name: 'Weeks before today' })).toBeVisible()
 
+  // Layers is a popover beside the dock: a press elsewhere puts it away
+  await page.mouse.click(900, 500)
+  await expect(layers).toHaveCount(0)
   // Browse › Regions: six-month changes for Pro
-  await page.getByRole('button', { name: 'Browse atlas' }).click()
+  await expect(page.getByRole('button', { name: 'Browse atlas' })).toHaveAttribute('aria-expanded', 'true')
   const sheet = page.getByRole('region', { name: 'Browse the market' })
   await expect(sheet.getByText('+2 / −0')).toBeVisible({ timeout: 30_000 })
   await expect(sheet.getByText('+0 / −2')).toBeVisible()
-  await sheet.getByRole('combobox', { name: 'Sort regions' }).selectOption('change')
   // Browse › Market: the cohesion chart
-  await page.getByRole('tab', { name: 'Market' }).click()
+  await page.getByRole('button', { name: 'This map', exact: true }).click()
   await expect(page.getByRole('img', { name: /Average correlation over the last year, from 0\.\d\d to 0\.\d\d; today 0\.09/ })).toBeVisible({ timeout: 30_000 })
   expect(errors).toEqual([])
 })
@@ -163,15 +177,15 @@ test('the Pro layers switch the lens, size regions by value, ring accuracy and d
 test('a theme highlights its companies and its card says whether prices confirm it', async ({ page }) => {
   const errors = watchConsole(page)
   await openAtlas(page, 1440)
-  await page.getByRole('button', { name: /Theme/ }).click()
-  await page.getByRole('menuitemradio', { name: /Fixture Robotics/ }).click()
-  const card = page.getByRole('region', { name: 'Theme: Fixture Robotics' })
+  await page.getByRole('button', { name: /ETF theme/ }).click()
+  await page.getByRole('radio', { name: /Fixture Robotics/ }).click()
+  const card = page.getByRole('region', { name: 'ETF theme: Fixture Robotics' })
   await expect(card.getByText("Doesn't move together")).toBeVisible({ timeout: 30_000 })
   await expect(card.getByText('A label the prices do not confirm: its companies move with their own regions.')).toBeVisible()
-  await page.getByRole('button', { name: /Theme/ }).click()
+  await page.getByRole('button', { name: /ETF theme/ }).click()
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('menu', { name: 'Theme' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: /Theme/ })).toBeFocused()
+  await expect(page.getByRole('region', { name: 'ETF themes' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /ETF theme/ })).toBeFocused()
   expect(errors).toEqual([])
 })
 

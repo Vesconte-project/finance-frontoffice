@@ -27,25 +27,11 @@
   border-color: var(--accent);
 }
 
-.narrow {
-  display: none;
-}
-
-/* The theme, the search and movement: in the row on a wide screen, behind "More" on a phone. */
-.foldGroup {
-  display: contents;
-}
-
-.moreToggle {
-  display: none;
-}
-
 .pill:focus-visible,
 .frame:focus-visible,
 .zoom button:focus-visible,
 .close:focus-visible,
 .sheet button:focus-visible,
-.landmarks button:focus-visible,
 .keyToggle:focus-visible,
 .lockNote:focus-visible,
 .toggle input:focus-visible {
@@ -128,7 +114,7 @@ a.lockNote:hover {
   cursor: grabbing;
 }
 
-/* Controls float over the map, like the prototype's chrome. */
+/* Above the map: the map's own caption, centred under the search (and on a phone the dock's row). */
 .chrome {
   position: absolute;
   z-index: 20;
@@ -154,161 +140,6 @@ a.lockNote:hover {
   pointer-events: auto;
 }
 
-.toolsRow {
-  display: flex;
-  flex-wrap: wrap;
-  flex-basis: 100%;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem 1rem;
-}
-
-.mapSummary {
-  display: grid;
-  grid-template-columns: auto auto;
-  align-items: baseline;
-  justify-content: end;
-  gap: 0.2rem 0.75rem;
-  min-width: 0;
-  max-width: 34rem;
-  text-align: right;
-}
-
-.mapSummary p {
-  width: fit-content;
-  max-width: 100%;
-  margin: 0;
-  background: var(--bg);
-  font-size: 0.68rem;
-  line-height: 1.4;
-}
-
-.mapWeek {
-  color: var(--text-muted);
-}
-
-.mapWeek time {
-  color: var(--text);
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-}
-
-.mapCoverage,
-.mapCorrelation {
-  color: var(--text-muted);
-}
-
-.mapSummary .mapCorrelation {
-  grid-column: 1 / -1;
-  justify-self: end;
-}
-
-.chromeLeft,
-.chromeRight {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.chromeRight {
-  min-height: 2.5rem;
-  padding: 0;
-}
-
-.search {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  min-height: 2.5rem;
-  padding: 0 0.75rem;
-  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text-muted);
-}
-
-.search:focus-within {
-  border-color: var(--accent);
-}
-
-.search input {
-  width: 11.5rem;
-  min-height: 2.4rem;
-  border: 0;
-  outline: none;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: 0.88rem;
-}
-
-.results {
-  position: absolute;
-  z-index: 40;
-  top: calc(100% + 0.35rem);
-  left: 0;
-  width: min(24rem, calc(100vw - 2rem));
-  margin: 0;
-  padding: 0.3rem;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  list-style: none;
-  box-shadow: 0 10px 30px rgba(11, 18, 32, 0.16);
-}
-
-.results li {
-  display: grid;
-  grid-template-columns: 5rem minmax(0, 1fr) auto;
-  align-items: baseline;
-  gap: 0.6rem;
-  padding: 0.45rem 0.6rem;
-  border-radius: 4px;
-  color: var(--text);
-  font-size: 0.84rem;
-  cursor: pointer;
-}
-
-.results li[aria-selected='true'],
-.results li:hover {
-  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
-}
-
-.results b {
-  font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-.results span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.results small {
-  color: var(--text-muted);
-  font-size: 0.72rem;
-}
-
-.results li.none {
-  display: block;
-  color: var(--text-muted);
-  cursor: default;
-}
-
-.results li.none:hover {
-  background: transparent;
-}
-
-/* Browse, How to read and Layers open over the map, on their own line under the controls. */
-.break {
-  flex-basis: 100%;
-  height: 0;
-}
-
 .sheet {
   width: min(23rem, 100%);
   max-height: min(34rem, 58svh);
@@ -320,6 +151,13 @@ a.lockNote:hover {
   background: var(--surface);
   color: var(--text);
   box-shadow: 0 10px 30px rgba(11, 18, 32, 0.12);
+}
+
+/* the ETF themes list scrolls inside its panel, under a fixed heading and search */
+.sheet.themesSheet {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .sheet h2 {
@@ -418,82 +256,6 @@ a.lockNote:hover {
   display: flex;
 }
 
-.landmarks {
-  position: absolute;
-  z-index: 18;
-  top: var(--atlas-controls-bottom, calc(72px + 8rem));
-  left: 1rem;
-}
-
-.landmarksList {
-  position: absolute;
-  top: calc(100% + 0.4rem);
-  left: 0;
-  display: grid;
-  width: min(18rem, calc(100vw - 2rem));
-  max-height: 40svh;
-  overflow-y: auto;
-  box-sizing: border-box;
-  padding: 0.5rem;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
-}
-
-.landmarks button {
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  cursor: pointer;
-  text-align: left;
-}
-
-.landmarksHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.8rem;
-  min-height: 2rem;
-  padding: 0 0.5rem;
-  color: var(--text-muted);
-}
-
-.landmark {
-  display: grid;
-  grid-template-columns: 0.45rem 4.4rem minmax(0, 1fr);
-  align-items: center;
-  gap: 0.6rem;
-  min-height: 1.85rem;
-  padding: 0.2rem 0.5rem;
-  font-size: 0.8rem;
-}
-
-.landmark:hover {
-  background: var(--surface);
-}
-
-.landmark i {
-  width: 0.4rem;
-  height: 0.4rem;
-  border-radius: 50%;
-  background: var(--text);
-}
-
-.landmark b {
-  font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 0.78rem;
-  font-weight: 500;
-}
-
-.landmark small {
-  overflow: hidden;
-  color: var(--text-muted);
-  font-size: 0.72rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 .tip {
   position: absolute;
@@ -537,9 +299,22 @@ button.loading {
 }
 
 .zoom {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  grid-template-areas:
+    '. . . stack'
+    'info help names level';
+  align-items: end;
+  gap: 0.375rem;
+}
+
+.zoomStack {
+  display: grid;
+  grid-area: stack;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
 }
 
 .zoom button,
@@ -547,6 +322,281 @@ button.loading {
   display: grid;
   width: 2.5rem;
   height: 2.5rem;
+  box-sizing: border-box;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.zoomStack button {
+  border: 0;
+  border-radius: 0;
+}
+
+.zoomStack button + button {
+  border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+.zoom button:hover {
+  border-color: var(--text-muted);
+  color: var(--accent);
+}
+
+.zoomStack button:hover {
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+
+.zoom button.info {
+  grid-area: info;
+  color: var(--text-muted);
+}
+
+.zoom button.info[aria-expanded='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.zoom button.help {
+  grid-area: help;
+  color: var(--text-muted);
+}
+
+.zoom button.help[aria-expanded='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.zoom button.text {
+  grid-area: names;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.level {
+  grid-area: level;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--line) 80%, transparent);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.68rem;
+  cursor: default;
+}
+
+.zoom button.text[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--accent);
+}
+
+.zoom button.text[aria-label='Names on the map'][aria-pressed='false'] {
+  text-decoration: line-through;
+}
+
+/*
+ * Browse atlas is the map's legend: the regions in their colours, written straight onto the map
+ * bottom left. No box; a soft fade from the corner keeps the text readable over the grid.
+ */
+.key {
+  position: absolute;
+  z-index: 24;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(18rem, 100%);
+  max-height: calc(100% - var(--atlas-controls-bottom, 12rem) - 0.5rem);
+  box-sizing: border-box;
+  padding: 2.5rem 1rem 1rem;
+  background: radial-gradient(130% 100% at 0% 100%, var(--bg) 62%, color-mix(in srgb, var(--bg) 0%, transparent) 100%);
+  color: var(--text);
+  pointer-events: none;
+}
+
+.key > * {
+  pointer-events: auto;
+}
+
+.key[data-open='false'] {
+  width: auto;
+  padding-top: 1rem;
+  background: none;
+}
+
+.keyToggle {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Open, the fold is a bare chevron on the tab line. */
+.key[data-open='true'] .keyToggle {
+  position: absolute;
+  top: 2.5rem;
+  right: 0.5rem;
+  min-height: 2rem;
+  padding: 0 0.4rem;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.keyToggle:hover {
+  color: var(--accent);
+}
+
+.keyTitle {
+  font-weight: 600;
+}
+
+.keySummary {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.keyBody {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: color-mix(in srgb, var(--text-muted) 35%, transparent) transparent;
+  scrollbar-width: thin;
+}
+
+.keyBody[hidden] {
+  display: none;
+}
+
+.keyExtras {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0.6rem 0 0;
+  padding: 0.6rem 0 0;
+  border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  list-style: none;
+}
+
+.keyExtras li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.keyExtras b {
+  color: var(--text);
+  font-weight: 500;
+}
+
+/*
+ * The dock: everything that changes the map in one place — the tools, then the view (layers,
+ * ETF theme). What a button opens appears beside it. Down the left edge on a wide screen, just under
+ * the map's caption and clear of the details panel; a centred row above the map otherwise.
+ */
+.dock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  flex-basis: 100%;
+}
+
+.dock[data-side='true'] {
+  position: absolute;
+  z-index: 26;
+  top: calc(72px + 2.5rem);
+  left: 1rem;
+  flex-direction: row;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+.shell:has(.invite) .dock[data-side='true'] {
+  top: calc(96px + var(--atlas-invite-height, 0px) + 1rem);
+}
+
+.dock[data-side='true'] > * {
+  pointer-events: auto;
+}
+
+.dockBar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.dock[data-side='true'] .dockBar {
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+
+.dockView {
+  display: flex;
+  gap: 0.25rem;
+}
+
+/* On the side the two groups read as joined columns, the view a step apart from the tools. */
+.dock[data-side='true'] .dockBar nav,
+.dock[data-side='true'] .dockView {
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.dock[data-side='true'] .dockBar nav button,
+.dock[data-side='true'] .dockView .dockButton {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.dock[data-side='true'] .dockBar nav button + button,
+.dock[data-side='true'] .dockView > * + * {
+  border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+.dock[data-side='true'] .dockBar nav button:first-child,
+.dock[data-side='true'] .dockView > :first-child,
+.dock[data-side='true'] .dockView > :first-child .dockButton {
+  border-top-left-radius: 7px;
+  border-top-right-radius: 7px;
+}
+
+.dock[data-side='true'] .dockBar nav button:last-child,
+.dock[data-side='true'] .dockView > :last-child,
+.dock[data-side='true'] .dockView > :last-child .dockButton {
+  border-bottom-left-radius: 7px;
+  border-bottom-right-radius: 7px;
+}
+
+.dock[data-side='true'] .dockBar nav button:hover,
+.dock[data-side='true'] .dockView .dockButton:hover {
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+
+.dockButton {
+  position: relative;
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
   place-items: center;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -555,101 +605,132 @@ button.loading {
   cursor: pointer;
 }
 
-.zoom button:hover {
+.dockButton:hover {
   border-color: var(--text-muted);
 }
 
-.level {
-  width: 2.5rem;
-  height: 1.5rem;
-  border: 0;
-  background: transparent;
-  color: var(--text-muted);
-  font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 0.68rem;
-  cursor: default;
-}
-
-.zoom button.text {
-  color: var(--text-muted);
-  font-size: 0.72rem;
-  font-weight: 600;
-}
-
-.zoom button.text[aria-pressed='true'] {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+.dockButton[aria-expanded='true'],
+.dockButton[data-active] {
   color: var(--accent);
 }
 
-.zoom button.text[aria-label='Names on the map'][aria-pressed='false'] {
-  text-decoration: line-through;
-}
-
-.key {
+.dockButton[data-active]::after {
   position: absolute;
-  z-index: 24;
-  left: 1rem;
-  bottom: 1rem;
-  width: max-content;
-  max-width: calc(100% - 2rem);
-  color: var(--text-muted);
+  top: 5px;
+  right: 5px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  content: '';
+}
+
+.dockButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Each button names itself on hover or focus: beside the side dock, under the row. */
+.dock [data-tip]:not([aria-expanded='true']):hover::before,
+.dock [data-tip]:not([aria-expanded='true']):focus-visible::before {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 0.4rem);
+  left: 50%;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: 0 6px 18px rgba(11, 18, 32, 0.18);
+  color: var(--text);
+  content: attr(data-tip);
   font-size: 0.72rem;
-}
-
-.key ul {
-  display: grid;
-  gap: 0.2rem;
-  max-height: min(45svh, 26rem);
-  overflow-y: auto;
-  margin: 0.35rem 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.key ul[hidden] {
-  display: none;
-}
-
-.key li {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  min-height: 1.4rem;
-  line-height: 1.4;
+  font-weight: 500;
+  pointer-events: none;
+  transform: translateX(-50%);
   white-space: nowrap;
 }
 
-.key li svg {
-  flex: none;
-  width: 24px;
-  height: 18px;
+.dock[data-side='true'] [data-tip]:not([aria-expanded='true']):hover::before,
+.dock[data-side='true'] [data-tip]:not([aria-expanded='true']):focus-visible::before {
+  top: 50%;
+  left: calc(100% + 0.6rem);
+  transform: translateY(-50%);
 }
 
-.key li > span {
-  background: var(--bg);
+/* What the dock opens stays clear of the time bar and the legend below it. */
+/* On the side, what the dock opens is a drawer the height of the map, so it covers the legend whole. */
+.dock[data-side='true'] {
+  bottom: 1rem;
 }
 
-.key li b {
-  color: var(--text);
-  font-weight: 500;
+.dock[data-side='true'] .dockBar {
+  align-self: flex-start;
 }
 
-.keyToggle {
-  display: inline-flex;
+.dock[data-side='true'] .sheet {
+  align-self: stretch;
+  width: 22rem;
+  max-height: none;
+}
+
+/* This map opens over the corner it belongs to. */
+.mapActions .sheet {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.6rem);
+  width: min(22rem, calc(100vw - 2rem));
+  max-height: calc(100svh - 72px - 8rem);
+}
+
+.sheetHead {
+  display: flex;
   align-items: center;
-  gap: 0.65rem;
-  min-height: 2rem;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: -0.25rem -0.35rem 0.4rem 0;
+}
+
+.sheetHead h2 {
+  margin: 0;
+}
+
+.sheetClose {
+  display: grid;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
   padding: 0;
+  place-items: center;
   border: 0;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
-  font-size: 0.75rem;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
   cursor: pointer;
 }
 
-.keyToggle:hover {
-  color: var(--accent);
+.sheetClose:hover {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  color: var(--text);
+}
+
+.sheetClose:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.scrim {
+  position: fixed;
+  z-index: 75;
+  inset: 0;
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+}
+
+@keyframes sheet-rise {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
 }
 
 .panel {
@@ -759,46 +840,119 @@ button.loading {
   margin-left: 0;
 }
 
-@media (max-width: 52rem) {
-  .chromeRight .eyebrow {
+/*
+ * Small screens: the map keeps the whole screen. One row of controls on top (tools, layers, themes),
+ * one on the bottom (legend, then info, help, names), pinch to zoom; everything else is a bottom sheet.
+ */
+@media (max-width: 56rem) {
+  .dockButton {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .dockBar {
+    gap: 0.4rem;
+  }
+
+  /* pinch zooms; the fit button stays */
+  .zoomStack button:not(:last-child) {
+    display: none;
+  }
+
+  .keyWide {
+    display: none;
+  }
+
+  .sheet,
+  .mapActions .sheet,
+  .panel,
+  .key[data-open='true'] {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    box-sizing: border-box;
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 16px 16px 0 0;
+    background: var(--surface);
+    box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.35);
+    animation: sheet-rise 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* a grip says the panel is a sheet over the map */
+  .sheet::before,
+  .panel::before,
+  .key[data-open='true']::before {
+    position: absolute;
+    top: 0.5rem;
+    left: 50%;
+    width: 2.25rem;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line);
+    content: '';
+    transform: translateX(-50%);
+  }
+
+  /* the container of an open sheet rises over the scrim and the other controls, with its sheet */
+  .chrome:has(.sheet),
+  .mapActions:has(.sheet) {
+    z-index: 80;
+  }
+
+  .sheet,
+  .mapActions .sheet {
+    z-index: 70;
+    max-height: min(82svh, 44rem);
+    padding: 1.5rem 1.1rem calc(1.1rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* the details: over the lower part of the map, which stays where it is */
+  .panel {
+    z-index: 60;
+    max-height: 64svh;
+    padding: 1.6rem 1.1rem calc(1.2rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .close {
+    top: 0.9rem;
+  }
+
+  .key[data-open='true'] {
+    z-index: 55;
+    max-height: 62svh;
+    padding: 1.4rem 0.9rem calc(0.9rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .key[data-open='true'] .keyToggle {
+    top: 1.3rem;
+  }
+
+  /* one sheet at a time: the details take the legend's place, and give it back on close */
+  .stage:has(.panel) .key[data-open='true'] {
     display: none;
   }
 }
 
-@media (max-width: 56rem) {
-  .wide {
-    display: none;
+/* a tablet: the sheets are inset, centred, rather than edge to edge */
+@media (min-width: 40rem) and (max-width: 56rem) {
+  .sheet,
+  .mapActions .sheet,
+  .panel,
+  .key[data-open='true'] {
+    width: min(40rem, 100%);
+    margin-inline: auto;
   }
+}
 
-  .narrow {
-    display: inline;
+@media (prefers-reduced-motion: reduce) {
+  .sheet,
+  .panel,
+  .key {
+    animation: none !important;
   }
-
-  .pill {
-    min-height: 2.75rem;
-    padding: 0 0.8rem;
-  }
-
-  .moreToggle {
-    display: inline-flex;
-  }
-
-  .chrome[data-more='false'] .foldable {
-    display: none;
-  }
-
-  .search input {
-    min-height: 2.65rem;
-  }
-
-  .search {
-    flex: 1 1 100%;
-  }
-
-  .search input {
-    width: 100%;
-  }
-
 }
 
 @media (max-width: 40rem) {
@@ -806,54 +960,51 @@ button.loading {
     max-width: calc(100% - 1.2rem);
   }
 
-  .chromeLeft {
-    justify-content: center;
-    gap: 0.4rem;
-  }
-
   .mapActions {
     right: 0.6rem;
     bottom: 0.6rem;
   }
 
-  .toolsRow {
-    justify-content: center;
-  }
-
-  .mapSummary {
-    flex-basis: 100%;
-    grid-template-columns: minmax(0, 1fr);
-    justify-items: center;
-    max-width: 100%;
-    text-align: center;
-  }
-
-  .mapSummary .mapCorrelation {
-    justify-self: center;
-  }
-
-  .zoom {
-    gap: 0.125rem;
-  }
-
-  .zoom .level {
+  .zoom .level,
+  .keySummary {
     display: none;
   }
 
-  .landmarks {
-    left: 0.6rem;
+  /* a phone: no detail level, so the fit button stands over Aa; touch-sized squares */
+  .zoom {
+    grid-template-columns: repeat(3, auto);
+    grid-template-areas:
+      '. . stack'
+      'info help names';
+    gap: 0.3rem;
   }
 
   .zoom button {
-    width: 1.875rem;
+    width: 2.75rem;
     height: 2.75rem;
   }
 
-  .key {
-    bottom: 0.6rem;
-    left: 0.6rem;
-    max-width: calc(100% - 7rem);
-    font-size: 0.68rem;
+  .keyToggle {
+    min-height: 2.75rem;
   }
 
+  .key[data-open='false'] {
+    width: auto;
+    padding: 0.6rem;
+    background: none;
+  }
+}
+
+@media (min-width: 56rem) {
+  /* clear of the dock above it */
+  .key {
+    max-height: calc(100% - 72px - 27rem);
+  }
+}
+
+/* Below 64rem the folded legend is only its name, so the time capsule beside it keeps its room. */
+@media (max-width: 64rem) {
+  .keySummary {
+    display: none;
+  }
 }

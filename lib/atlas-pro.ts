@@ -42,12 +42,6 @@ export function spanAgo(span: number): string {
   return `${span} weeks ago`
 }
 
-function spanLength(span: number): string {
-  if (span === 26) return 'six months'
-  if (span === 52) return 'a year'
-  return `${span} weeks`
-}
-
 // ------------------------------------------------------------------ alignment
 
 /** A 2D similarity (rotation, optional reflection, scale) about two centres. */
@@ -200,14 +194,16 @@ export function frameAt(frames: ReadonlyArray<WeekFrame | undefined>, week: numb
 }
 
 /** A company's path from `span` weeks ago to the week shown, ending at where it is drawn now. */
-export function pathOf(symbol: string, frames: ReadonlyArray<WeekFrame | undefined>, span: number, week: number, now: AtlasPoint | null): AtlasPoint[] {
-  const points: AtlasPoint[] = []
-  const last = Math.ceil(Math.max(0, week))
-  for (let k = Math.min(span, frames.length - 1); k >= last; k -= 1) {
+/**
+ * Where a company goes from the week shown to today: its place that week (`at`), then each later
+ * week's, ending where it sits now. Empty when fewer than two points are known.
+ */
+export function pathOf(symbol: string, frames: ReadonlyArray<WeekFrame | undefined>, week: number, at: AtlasPoint | null): AtlasPoint[] {
+  const points: AtlasPoint[] = at ? [at] : []
+  for (let k = Math.min(Math.ceil(Math.max(0, week)) - 1, frames.length - 1); k >= 0; k -= 1) {
     const point = frames[k]?.positions.get(symbol)
     if (point) points.push(point)
   }
-  if (now) points.push(now)
   return points.length >= 2 ? points : []
 }
 
@@ -217,12 +213,39 @@ export function weekLabel(weeks: readonly string[], week: number): string {
   return k <= 0 ? 'Today' : weeks[Math.min(k, weeks.length - 1)] ?? 'Today'
 }
 
-/** The note under the time bar on an earlier week. */
-export function timelineNote(span: number, selected: { symbol: string; changed: boolean | null } | null): string {
-  const length = spanLength(span)
-  if (!selected) return `Paths: the companies that changed region over the past ${span === 52 ? 'year' : length} · select any company to see its own`
-  const tail = selected.changed === null ? '' : selected.changed ? ' · it changed region' : ' · it kept its region'
-  return `Path of ${selected.symbol} since ${length} ago${tail}`
+/**
+ * The note above the time bar on an earlier week. `movers` is how many companies changed region
+ * between that week and today, or null while it is being read.
+ */
+export function timelineNote(since: string, movers: number | null, selected: { symbol: string; changed: boolean | null } | null): string {
+  if (selected) {
+    const tail = selected.changed === null ? '' : selected.changed ? ' · it changed region' : ' · it kept its region'
+    return `Path of ${selected.symbol} since ${since}${tail}`
+  }
+  if (movers === null) return `Since ${since}: finding the companies that changed region…`
+  if (movers === 0) return `Since ${since}: no company changed region`
+  return `Since ${since}: ${movers} ${movers === 1 ? 'company' : 'companies'} changed region · select one to see its path`
+}
+
+/**
+ * The companies that really changed region between two weeks: the backend's own test
+ * (a new main region, its weight there up, and most of its strongest ties replaced).
+ */
+export function regionMovers(movement: { moves: ReadonlyArray<{ symbol: string; flow: boolean }> } | null): Set<string> {
+  return new Set(movement ? movement.moves.filter((move) => move.flow).map((move) => move.symbol) : [])
+}
+
+/**
+ * The time bar tracks movers for the week it shows, one read at a time: until that week's read
+ * lands, the nearest week already read stands in, so the marks follow a drag without flicker.
+ */
+export function trackedWeek(week: number, read: Iterable<number>): number | null {
+  let best: number | null = null
+  for (const candidate of read) {
+    if (candidate <= 0) continue
+    if (best === null || Math.abs(candidate - week) < Math.abs(best - week) || (Math.abs(candidate - week) === Math.abs(best - week) && candidate < best)) best = candidate
+  }
+  return best
 }
 
 /** Where the week is after `elapsed` ms of play: 52 weeks in 9 s, whole weeks with reduced motion. */

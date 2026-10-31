@@ -4,8 +4,8 @@ import type { ReactNode } from 'react'
 import type { AtlasLens } from '@/lib/atlas-model'
 import type { ProFeature } from '@/lib/atlas-pro'
 import type { AtlasInfluence } from '@/lib/atlas-pro-model'
+import { SymbolGlyph, type AtlasSymbol } from './atlas-symbols'
 import type { Remote } from './use-atlas-json'
-import base from './AtlasExplorer.module.css'
 import styles from './AtlasPro.module.css'
 
 type Props = {
@@ -22,78 +22,116 @@ type Props = {
   onLocked: (feature: ProFeature, anchor: HTMLElement) => void
 }
 
-function Layer({ feature, title, pro, onLocked, children }: { feature: ProFeature; title: string; pro: boolean; onLocked: Props['onLocked']; children: ReactNode }) {
+/** A locked row answers any press with the upsell, and its controls do nothing. */
+function Row({ feature, pro, onLocked, children }: { feature: ProFeature; pro: boolean; onLocked: Props['onLocked']; children: ReactNode }) {
   return (
     <div
-      className={pro ? styles.layer : `${styles.layer} ${styles.locked}`}
-      // a locked layer answers any press with the upsell, and its controls do nothing
+      className={pro ? styles.layerRow : `${styles.layerRow} ${styles.locked}`}
       onClickCapture={pro ? undefined : (event) => {
         event.preventDefault()
         event.stopPropagation()
         onLocked(feature, event.target instanceof HTMLElement ? event.target : event.currentTarget)
       }}
     >
-      <h3 className={base.eyebrow}>{title} {pro ? null : <span className={styles.proTag}>Pro</span>}</h3>
       {children}
     </div>
   )
 }
 
-function Segmented({ label, options, value, onChange, locked }: { label: string; options: Array<[string, string]>; value: string; onChange: (value: string) => void; locked: boolean }) {
+function ProTag({ pro }: { pro: boolean }) {
+  return pro ? null : <span className={styles.proTag}>Pro</span>
+}
+
+/** A map setting: its name and meaning, and a choice between two ways of drawing. */
+function Mode({ title, hint, options, value, onChange, pro }: { title: string; hint: string; options: Array<[string, string]>; value: string; onChange: (value: string) => void; pro: boolean }) {
   return (
-    <div className={styles.seg} role="group" aria-label={locked ? `${label}: Pro` : label}>
-      {options.map(([key, text]) => (
-        <button key={key} type="button" aria-pressed={value === key} onClick={() => onChange(key)}>{text}</button>
-      ))}
-    </div>
+    <>
+      <div className={styles.layerText}>
+        <b>{title} <ProTag pro={pro} /></b>
+        <small>{hint}</small>
+      </div>
+      <div className={styles.seg} role="group" aria-label={pro ? title : `${title}: Pro`}>
+        {options.map(([key, text]) => (
+          <button key={key} type="button" aria-pressed={value === key} onClick={() => onChange(key)}>{text}</button>
+        ))}
+      </div>
+    </>
   )
 }
 
-/** The influence list in the Layers sheet; a locked feature carries no data. */
+/** An overlay: its symbol, name and meaning, and a switch. */
+function Overlay({ symbol, title, hint, checked, disabled, onChange, pro }: { symbol: AtlasSymbol; title: string; hint: string; checked: boolean; disabled?: boolean; onChange: (value: boolean) => void; pro: boolean }) {
+  return (
+    <label className={styles.overlay}>
+      <span className={styles.overlayGlyph}><SymbolGlyph symbol={symbol} width={28} height={19} /></span>
+      <span className={styles.layerText}>
+        <b>{title} <ProTag pro={pro} /></b>
+        <small>{hint}</small>
+      </span>
+      <input type="checkbox" role="switch" className={styles.switch} aria-label={title} checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} />
+    </label>
+  )
+}
+
+/** What the influence test found, under its switch; a locked feature carries no data. */
 function InfluenceList({ influence, lens }: { influence: Remote<AtlasInfluence>; lens: AtlasLens }) {
-  if (lens !== 'residual') return <p className={styles.empty}>Shown with the &quot;Beyond the market&quot; view.</p>
-  if (influence.status === 'loading') return <p className={styles.muted} role="status">Loading…</p>
-  if (influence.status !== 'ok') return influence.status === 'idle' ? null : <p className={styles.empty}>The influence test could not load.</p>
+  if (lens !== 'residual') return <p className={styles.layerNote}>Shown with the &quot;Beyond the market&quot; view.</p>
+  if (influence.status === 'loading') return <p className={styles.layerNote} role="status">Loading…</p>
+  if (influence.status !== 'ok') return influence.status === 'idle' ? null : <p className={styles.layerNote}>The influence test could not load.</p>
   const data = influence.data
-  if (!data.tested) return <p className={styles.empty}>{data.reason === 'no_report_dates' ? 'Needs report dates for these companies.' : 'Needs two years of history.'}</p>
-  if (!data.arrows.length) return <p className={styles.empty}>No influence between groups passes the test in the current data. It is checked every week; arrows appear here when one does.</p>
+  if (!data.tested) return <p className={styles.layerNote}>{data.reason === 'no_report_dates' ? 'Needs report dates for these companies.' : 'Needs two years of history.'}</p>
+  if (!data.arrows.length) return <p className={styles.layerNote}>No influence between groups passes the test this week.</p>
   return (
-    <div className={styles.influenceList}>
+    <ul className={styles.influenceList}>
       {data.arrows.map((arrow) => (
-        <p key={`${arrow.from.basket}>${arrow.to.basket}`}>
-          <b>{arrow.from.label}</b> → <b>{arrow.to.label}</b>{' '}
-          <span className={arrow.sign < 0 ? styles.down : styles.up}>{arrow.sign < 0 ? '↓ pushes down' : '↑ pushes up'}</span><br />
+        <li key={`${arrow.from.basket}>${arrow.to.basket}`}>
+          <span><b>{arrow.from.label}</b> → <b>{arrow.to.label}</b></span>
+          <span className={arrow.sign < 0 ? styles.down : styles.up}>{arrow.sign < 0 ? '↓ pushes down' : '↑ pushes up'}</span>
           <small>{arrow.reportDays} report days{arrow.isNew ? ' · new this year' : ''}</small>
-        </p>
+        </li>
       ))}
-    </div>
+    </ul>
   )
 }
 
-/** The Layers sheet (v27 §5/§8): what the map is built on and drawn with; the Pro layers are locked for others. */
+/**
+ * The Layers panel (v27 §5/§8): how the map is built, then what is drawn over it.
+ * The Pro layers are shown locked for others.
+ */
 export default function AtlasLayers(props: Props) {
   const { pro, onLocked } = props
   return (
     <>
-      <Layer feature="lens" title="What moves together" pro={pro} onLocked={onLocked}>
-        <Segmented label="What moves together" locked={!pro} value={pro ? props.lens : 'residual'} onChange={(value) => props.onLens(value as AtlasLens)}
-          options={[['residual', 'Beyond the market'], ['total', 'Total co-movement']]} />
-      </Layer>
-      <Layer feature="regionsize" title="Region size" pro={pro} onLocked={onLocked}>
-        <Segmented label="Region size" locked={!pro} value={pro && props.byValue ? 'value' : 'companies'} onChange={(value) => props.onByValue(value === 'value')}
-          options={[['companies', 'Companies'], ['value', 'Market value']]} />
-      </Layer>
-      <Layer feature="accuracy" title="Map accuracy" pro={pro} onLocked={onLocked}>
-        <label className={base.toggle}>
-          <input type="checkbox" checked={pro && props.showFidelity} onChange={(event) => props.onFidelity(event.target.checked)} /> Ring on each company: green placed among its ties, red stretched
-        </label>
-      </Layer>
-      <Layer feature="influence" title="Influence between groups" pro={pro} onLocked={onLocked}>
-        <label className={base.toggle}>
-          <input type="checkbox" checked={pro && props.showInfluence} disabled={pro && props.lens !== 'residual'} onChange={(event) => props.onInfluence(event.target.checked)} /> Influence arrows
-        </label>
+      <h3 className={styles.layerGroup}>Map</h3>
+      <Row feature="lens" pro={pro} onLocked={onLocked}>
+        <Mode
+          title="What moves together"
+          hint={pro && props.lens === 'total' ? 'Every price move, the whole market included.' : 'Without the move the whole market shares, so the rest stands out.'}
+          options={[['residual', 'Beyond the market'], ['total', 'Total co-movement']]}
+          value={pro ? props.lens : 'residual'}
+          onChange={(value) => props.onLens(value as AtlasLens)}
+          pro={pro}
+        />
+      </Row>
+      <Row feature="regionsize" pro={pro} onLocked={onLocked}>
+        <Mode
+          title="Region size"
+          hint="Draw each region by how many companies it holds, or by their market value."
+          options={[['companies', 'Companies'], ['value', 'Market value']]}
+          value={pro && props.byValue ? 'value' : 'companies'}
+          onChange={(value) => props.onByValue(value === 'value')}
+          pro={pro}
+        />
+      </Row>
+
+      <h3 className={styles.layerGroup}>Overlays</h3>
+      <Row feature="accuracy" pro={pro} onLocked={onLocked}>
+        <Overlay symbol="ring" title="Fidelity ring" hint="Green when a company sits among its ties, red when the map stretched them." checked={pro && props.showFidelity} onChange={props.onFidelity} pro={pro} />
+      </Row>
+      <Row feature="influence" pro={pro} onLocked={onLocked}>
+        <Overlay symbol="influence" title="Influence arrows" hint="One group moves on the day another reports results, two years running." checked={pro && props.showInfluence} disabled={pro && props.lens !== 'residual'} onChange={props.onInfluence} pro={pro} />
         {pro ? <InfluenceList influence={props.influence} lens={props.lens} /> : null}
-      </Layer>
+      </Row>
     </>
   )
 }
