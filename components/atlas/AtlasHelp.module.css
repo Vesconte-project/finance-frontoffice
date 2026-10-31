@@ -1,91 +1,237 @@
+/* Wide and short: the whole guide fits one desktop screen, in three columns, without scrolling. */
 .dialog.dialog {
-  width: min(48rem, calc(100% - 2rem));
+  width: min(78rem, calc(100% - 3rem));
+  max-height: calc(100dvh - 3rem);
+  scrollbar-color: color-mix(in srgb, var(--text-muted) 40%, transparent) transparent;
+  scrollbar-width: thin;
 }
 
 .help {
-  padding: clamp(1.25rem, 4vw, 2.5rem);
+  padding: clamp(1.25rem, 3vw, 2.25rem) clamp(1.25rem, 3vw, 2.5rem) clamp(1.25rem, 2.5vw, 1.75rem);
+}
+
+.kicker {
+  margin: 0 0 0.4rem;
+  color: var(--accent);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .help h2 {
-  margin: 0 2rem 0.5rem 0;
+  margin: 0 2rem 0.35rem 0;
   font-family: 'Source Serif 4', Georgia, serif;
-  font-size: clamp(1.6rem, 3vw, 2rem);
-  line-height: 1.2;
+  font-size: clamp(1.5rem, 2.6vw, 1.9rem);
+  font-weight: 500;
+  line-height: 1.15;
 }
 
 .intro {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   line-height: 1.5;
 }
 
-.overview {
+.body {
   display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 2.25rem;
+  margin-top: 1.5rem;
+}
+
+.help[data-signed-in='false'] .body {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 2rem;
-  align-items: center;
-  margin: 1.75rem 0 1.25rem;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.column + .column {
+  padding-left: 1.125rem;
+  border-left: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+  margin-left: -1.125rem;
+}
+
+.group {
+  min-width: 0;
 }
 
 .illustration {
   margin: 0;
+  padding: 0.75rem 0.5rem 0.5rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg) 55%, var(--surface));
 }
 
 .illustration svg {
   display: block;
   width: 100%;
-  font-family: inherit;
+  max-width: 15rem;
+  max-height: 11rem;
+  margin-inline: auto;
 }
 
 .illustration figcaption {
-  margin-top: 0.5rem;
   color: var(--text-muted);
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   text-align: center;
 }
 
-.reading {
+.steps {
   display: grid;
-  gap: 1.25rem;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
 }
 
-.reading h3 {
-  margin: 0 0 0.25rem;
-  font-size: 0.88rem;
+.steps li {
+  position: relative;
+  padding-left: 2rem;
+  counter-increment: step;
+}
+
+.steps li::before {
+  position: absolute;
+  top: -0.05rem;
+  left: 0;
+  display: grid;
+  width: 1.35rem;
+  height: 1.35rem;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  border-radius: 50%;
+  color: var(--accent);
+  content: counter(step);
+  font-size: 0.66rem;
   font-weight: 600;
 }
 
-.reading p,
+.steps h3 {
+  margin: 0 0 0.1rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.steps p,
 .context,
 .note,
-.more dd {
+.asides,
+.symbol dd {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.8rem;
-  line-height: 1.55;
+  font-size: 0.76rem;
+  line-height: 1.45;
 }
 
 .context {
-  max-width: 65ch;
+  padding-left: 0.7rem;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.sectionTitle {
+  margin: 0 0 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.symbols {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+}
+
+.symbol {
+  display: grid;
+  grid-template-columns: 2.6rem minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 0.75rem;
+  align-items: start;
+  padding: 0.4rem 0;
+}
+
+.glyph {
+  display: grid;
+  grid-row: 1 / 3;
+  width: 2.6rem;
+  height: 2.1rem;
+  place-items: center;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--bg) 70%, var(--surface));
+}
+
+.symbol dt {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.pro {
+  padding: 0 0.3rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  border-radius: 4px;
+  color: var(--accent);
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.asides {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding: 0.75rem 0 0;
+  border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+  list-style: none;
+}
+
+.asides b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  margin-top: 1.5rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
 }
 
 .gestures {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem 1.25rem;
-  margin: 1.5rem 0;
-  padding: 1rem 0;
-  border-block: 1px solid var(--line);
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
   list-style: none;
 }
 
 .gestures li {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg) 70%, var(--surface));
   color: var(--text-muted);
-  font-size: 0.75rem;
+  font-size: 0.74rem;
 }
 
 .gestures b {
@@ -93,70 +239,70 @@
   font-weight: 500;
 }
 
-.more summary {
-  padding-block: 0.5rem;
-  color: var(--text);
-  font-size: 0.82rem;
-  cursor: pointer;
-}
-
-.more dl {
-  display: grid;
-  gap: 0.9rem;
-  margin: 1rem 0;
-}
-
-.more dt {
-  margin-bottom: 0.15rem;
-  color: var(--text);
-  font-size: 0.78rem;
-  font-weight: 600;
-}
-
 .note {
-  margin-top: 1rem;
+  flex: 1 1 16rem;
 }
 
 .done {
-  min-height: 2.75rem;
-  margin-top: 1.5rem;
-  padding: 0 1rem;
+  min-height: 2.6rem;
+  margin-left: auto;
+  padding: 0 1.1rem;
   border: 1px solid var(--text);
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--text);
   color: var(--bg);
   font: inherit;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 500;
   cursor: pointer;
 }
 
 .done:hover {
-  opacity: 0.85;
+  opacity: 0.88;
 }
 
-.done:focus-visible,
-.more summary:focus-visible {
+.done:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 
-@media (max-width: 36rem) {
-  .overview {
+/* Narrower screens: the map's symbols side by side under the overview; phones stack and scroll. */
+@media (max-width: 64rem) {
+  .body,
+  .help[data-signed-in='false'] .body {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .body > .column:first-child {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .body > .column:first-child .context {
+    grid-column: 1 / -1;
+  }
+
+  .column + .column {
+    padding-left: 0;
+    border-left: 0;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 40rem) {
+  .body,
+  .help[data-signed-in='false'] .body,
+  .body > .column:first-child {
     grid-template-columns: minmax(0, 1fr);
-    gap: 1rem;
-    margin-top: 1rem;
   }
 
-  .illustration {
-    width: min(10rem, 100%);
-    margin-inline: auto;
+  .illustration svg {
+    max-width: 12rem;
   }
 
-  .reading {
-    gap: 0.9rem;
-  }
-
-  .gestures {
-    flex-direction: column;
+  .done {
+    width: 100%;
   }
 }

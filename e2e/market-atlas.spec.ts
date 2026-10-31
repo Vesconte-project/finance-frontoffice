@@ -23,15 +23,8 @@ for (const width of [375, 1440]) {
     await expect(map).toBeVisible({ timeout: 30_000 })
     await expect(page.getByText('You are seeing a sketch')).toBeVisible()
     await expect(page.getByRole('link', { name: 'Create a free account' }).first()).toHaveAttribute('href', /^\/sign-up\?redirect_url=/)
-    // Movement and the time bar are Pro: locked, and a press says what unlocks them. On a phone movement folds behind "More".
-    if (width < 640) {
-      const more = page.getByRole('button', { name: 'Find and movement' })
-      await expect(more).toHaveAttribute('aria-expanded', 'false')
-      await expect(page.getByRole('combobox', { name: 'Find a company or region on the map' })).toBeHidden()
-      await more.click()
-      await expect(more).toHaveAttribute('aria-expanded', 'true')
-    }
-    await page.getByRole('button', { name: 'Movement over the last 6 months: Pro' }).click()
+    // The time bar, and the movement it tracks, are Pro: locked, and a press says what unlocks them.
+    await page.getByRole('button', { name: 'Earlier weeks: Pro' }).click()
     const upsell = page.getByRole('dialog', { name: 'A year of history' })
     await expect(upsell).toBeVisible()
     await expect(upsell.getByText('Pro tools need an account.')).toBeVisible()
@@ -58,8 +51,12 @@ test('the list path opens a region and a company by keyboard, with the signed-ou
   const errors = watchConsole(page)
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/markets/network')
+  // Browse atlas is the legend, open from the start on a wide screen; the keyboard folds and unfolds it
   const browse = page.getByRole('button', { name: 'Browse atlas' })
+  await expect(browse).toHaveAttribute('aria-expanded', 'true')
   await browse.focus()
+  await page.keyboard.press('Enter')
+  await expect(browse).toHaveAttribute('aria-expanded', 'false')
   await page.keyboard.press('Enter')
   await expect(browse).toHaveAttribute('aria-expanded', 'true')
   const list = page.getByRole('region', { name: 'Browse the market' })
@@ -77,8 +74,8 @@ test('the list path opens a region and a company by keyboard, with the signed-ou
   // Signed out the links show only how many ties, never their strength.
   await list.getByRole('tab', { name: 'Links' }).click()
   await expect(list.getByRole('button', { name: /Fixture Alpha and Fixture Beta: 9 ties$/ })).toBeVisible()
-  await page.getByRole('application', { name: /Relationship atlas/ }).focus()
-  // Escape closes the list first, then the details.
+  // Escape inside the list folds it, then on the map closes the details.
+  await list.getByRole('tab', { name: 'Links' }).focus()
   await page.keyboard.press('Escape')
   await expect(list).toHaveCount(0)
   await expect(browse).toBeFocused()
@@ -100,6 +97,8 @@ test('the map controls read, filter and find, and keep to what a signed-out read
   const help = page.getByRole('button', { name: 'How to read' })
   await help.click()
   await expect(page.getByRole('dialog', { name: 'How to read the atlas' })).toBeVisible()
+  // Signed out the guide explains only what is drawn: no wells, lines or bundles.
+  await expect(page.getByRole('dialog', { name: 'How to read the atlas' }).getByText('Wells', { exact: true })).toHaveCount(0)
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog', { name: 'How to read the atlas' })).not.toBeVisible()
   await expect(help).toBeFocused()
@@ -108,35 +107,37 @@ test('the map controls read, filter and find, and keep to what a signed-out read
   const layers = page.getByRole('region', { name: 'Layers' })
   await expect(layers.getByLabel('Map key')).toHaveCount(0)
   await expect(layers.getByLabel('Names on the map')).toHaveCount(0)
-  await expect(page.getByRole('group', { name: 'Map key' })).toBeVisible()
-  // Signed out the key explains only what is drawn: no wells, lines or bundles.
-  await expect(page.getByRole('group', { name: 'Map key' }).getByText(/^Well/)).toHaveCount(0)
   await page.getByRole('button', { name: 'Names on the map', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Names on the map' })).toHaveAttribute('aria-pressed', 'false')
+  // Layers is a popover: a press elsewhere put it away; Escape closes it and gives focus back
+  await expect(layers).toHaveCount(0)
+  await page.getByRole('button', { name: 'Layers' }).click()
+  await expect(layers).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(layers).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Layers' })).toBeFocused()
-  await page.getByRole('button', { name: 'Legend', exact: true }).click()
-  await expect(page.locator('#atlas-legend')).toBeHidden()
+  await page.getByRole('button', { name: 'Browse atlas', exact: true }).click()
+  await expect(page.locator('#atlas-browse')).toBeHidden()
 
-  // Search finds a region and a company on the map and opens its panel.
-  const search = page.getByRole('combobox', { name: 'Find a company or region on the map' })
+  // The site search works as on every page, but here a pick selects the company on the map instead of opening it.
+  const search = page.getByRole('combobox', { name: 'Search tickers or companies' }).first()
   await search.fill('fxb1')
-  await expect(page.getByRole('option', { name: /FXB1/ })).toBeVisible()
-  await search.press('Enter')
+  await page.getByRole('option', { name: /FXB1/ }).first().click()
   const panel = page.getByRole('complementary', { name: 'Details' })
   await expect(panel.getByRole('heading', { name: /Fixture Beta Holding 1/ })).toBeVisible({ timeout: 30_000 })
-  await search.fill('gamma')
-  await page.getByRole('option', { name: /^Region Fixture Gamma/ }).click()
+  await expect(page).toHaveURL(/\/markets\/network$/)
+  // Regions are found in the legend.
+  await page.getByRole('button', { name: 'Browse atlas', exact: true }).click()
+  await page.getByRole('region', { name: 'Browse the market' }).getByRole('button', { name: /Fixture Gamma/ }).click()
   await expect(panel.getByRole('heading', { name: 'Fixture Gamma' })).toBeVisible({ timeout: 30_000 })
-  // A company not on the signed-out map is not offered, and nothing is invented for it.
-  await search.fill('FXA6')
-  await expect(page.getByRole('option', { name: /Only the largest companies/ })).toBeVisible()
 
   // Signed out there is no reach, so no "Most connected" list, and no correlation sentence.
-  await expect(page.getByRole('group', { name: 'Most connected companies' })).toHaveCount(0)
-  await expect(map.getByText(/Average correlation/)).toHaveCount(0)
-  await expect(page.getByText(/Week of/)).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Most connected companies' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'This map', exact: true }).click()
+  const info = page.getByRole('region', { name: 'This map' })
+  await expect(info.getByText(/Week of/)).toBeVisible()
+  await expect(info.getByText(/Average correlation \d/)).toHaveCount(0)
+  await expect(info.getByText('Shown with a free account.').first()).toBeVisible()
   if (process.env.PLAYWRIGHT_CAPTURE) await page.screenshot({ path: 'test-results/market-atlas-controls-1440.png' })
   expect(errors).toEqual([])
 })

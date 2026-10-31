@@ -1,20 +1,21 @@
 'use client'
 
-import { useId, useRef, useState, type KeyboardEvent } from 'react'
-import type { AtlasBundle, AtlasLens, AtlasZone } from '@/lib/atlas-model'
-import { browseRegions, linkText, topLinks, type RegionChange, type RegionSort } from '@/lib/atlas-panels'
-import { cohesionChart, type AtlasGroup, type ProFeature } from '@/lib/atlas-pro'
-import type { AtlasWeeks } from '@/lib/atlas-pro-model'
+import { useId, useRef, type KeyboardEvent } from 'react'
+import type { AtlasBundle, AtlasNode, AtlasZone } from '@/lib/atlas-model'
+import { browseRegions, linkText, topLinks, type RegionChange } from '@/lib/atlas-panels'
+import type { AtlasGroup, ProFeature } from '@/lib/atlas-pro'
 import { zoneColor } from './atlas-canvas'
 import { formatCap } from './atlas-format'
-import type { Remote } from './use-atlas-json'
-import base from './AtlasExplorer.module.css'
 import styles from './AtlasPro.module.css'
 
-export type BrowseTab = 'regions' | 'links' | 'groups' | 'market'
-const TABS: Array<[BrowseTab, string]> = [['regions', 'Regions'], ['links', 'Links'], ['groups', 'Groups'], ['market', 'Market']]
+export type BrowseTab = 'regions' | 'links' | 'groups'
+const TABS: Array<[BrowseTab, string]> = [['regions', 'Regions'], ['links', 'Links'], ['groups', 'Groups']]
 
 type Props = {
+  /** The order the map sizes regions by: companies, or market value when Pro sizes them by value. */
+  order: 'size' | 'value'
+  /** The companies most others move with, beyond the market: the deepest wells. Empty signed out. */
+  hubs: AtlasNode[]
   tab: BrowseTab
   onTab: (tab: BrowseTab) => void
   zones: AtlasZone[]
@@ -34,32 +35,10 @@ type Props = {
   groups: AtlasGroup[]
   onGroup: (group: AtlasGroup) => void
   onDeleteGroup: (group: AtlasGroup) => void
-  accuracy: string | null
-  weeks: Remote<AtlasWeeks>
-  lens: AtlasLens
   onLocked: (feature: ProFeature, anchor: HTMLElement) => void
 }
 
-/** The cohesion sparkline (pro-spec §5d), or why it is empty. */
-function Cohesion({ weeks, lens }: { weeks: Remote<AtlasWeeks>; lens: AtlasLens }) {
-  if (lens !== 'residual') return <p className={styles.empty}>Shown with the &quot;Beyond the market&quot; view.</p>
-  if (weeks.status === 'loading' || weeks.status === 'idle') return <p className={styles.muted} role="status">Loading…</p>
-  const chart = weeks.status === 'ok' ? cohesionChart(weeks.data.cohesion.map((point) => point.value)) : null
-  if (!chart) return <p className={styles.empty}>Needs a year of weekly maps.</p>
-  return (
-    <svg className={styles.spark} viewBox="0 0 300 76" role="img" aria-label={chart.label}>
-      <line x1="4" x2="296" y1={chart.yLo} y2={chart.yLo} stroke="var(--line)" />
-      <line x1="4" x2="296" y1={chart.yHi} y2={chart.yHi} stroke="var(--line)" />
-      <text x="4" y={chart.yHi - 3} fontSize="9" fill="var(--text-muted)">{chart.hi.toFixed(2)}</text>
-      <text x="4" y={chart.yLo + 10} fontSize="9" fill="var(--text-muted)">{chart.lo.toFixed(2)}</text>
-      <polyline points={chart.points} fill="none" stroke="var(--accent)" strokeWidth="1.6" strokeLinejoin="round" />
-      <circle cx={chart.lastX} cy={chart.lastY} r="3" fill="var(--accent)" />
-      <text x={chart.lastX - 6} y={chart.lastY > 38 ? Math.min(74, chart.lastY + 12) : chart.lastY - 7} fontSize="9" textAnchor="end" fill="var(--text)">today {chart.last.toFixed(2)}</text>
-    </svg>
-  )
-}
-
-/** Browse the market: regions, the reader's saved groups, and the market as a whole. */
+/** Browse the market: its regions (the legend), the links between them, and the reader's saved groups. */
 export default function AtlasBrowse(props: Props) {
   const id = useId()
   const tabs = useRef(new Map<BrowseTab, HTMLButtonElement | null>())
@@ -116,20 +95,6 @@ export default function AtlasBrowse(props: Props) {
             </button>
           )
         ) : null}
-        {props.tab === 'market' ? (
-          <>
-            <h3 className={base.eyebrow}>Map accuracy</h3>
-            {props.accuracy ? (
-              <p className={styles.metric}><b>{props.accuracy}</b> of each company&apos;s 10 strongest relationships are, on average, among its 10 nearest neighbours on the map.</p>
-            ) : <p className={styles.muted}>{props.signedIn ? 'Not measured for this week.' : 'Shown with a free account.'}</p>}
-            <h3 className={base.eyebrow}>Market cohesion, last year {props.pro ? null : <span className={styles.proTag}>Pro</span>}</h3>
-            {props.pro ? <Cohesion weeks={props.weeks} lens={props.lens} /> : (
-              <button type="button" className={`${styles.empty} ${styles.lockedNote}`} onClick={(event) => props.onLocked('cohesion', event.currentTarget)}>
-                Average correlation across the market, week by week, over the last year.
-              </button>
-            )}
-          </>
-        ) : null}
       </div>
     </>
   )
@@ -143,53 +108,42 @@ function Dots({ value }: { value: number }) {
   )
 }
 
-/** Browse › Regions (v27): filter, sort, cohesion dots, market value, six-month changes for Pro, four lead tickers. */
+/**
+ * Browse › Regions: the map's legend. One order, the one the map draws with: regions are listed as
+ * large as they are drawn (by companies, or by market value when Pro sizes them by value), so the
+ * first row is the largest patch on screen.
+ */
 function Regions(props: Props) {
-  const [term, setTerm] = useState('')
-  const [sort, setSort] = useState<RegionSort>('size')
-  const signedIn = props.signedIn
-  const rows = browseRegions(props.zones, props.leadersOf, { term, sort: props.changes || sort !== 'change' ? sort : 'size', dots: props.dots, changes: props.changes })
+  const rows = browseRegions(props.zones, props.leadersOf, { sort: props.order, dots: props.dots, changes: props.changes })
+  if (!rows.length) return <p className={styles.muted}>No regions this week.</p>
   return (
     <>
-      <div className={styles.browseTools}>
-        <input type="search" placeholder="Filter regions or tickers" aria-label="Filter regions or tickers" value={term} onChange={(event) => setTerm(event.target.value)} />
-        {signedIn ? (
-          <label className={styles.sort}>
-            <span>Sort</span>
-            <select aria-label="Sort regions" value={sort} onChange={(event) => setSort(event.target.value as RegionSort)}>
-              <option value="size">Most companies</option>
-              <option value="value">Market value</option>
-              <option value="tight">Moves most together</option>
-              {props.changes ? <option value="change">Changed most (6 mo)</option> : null}
-            </select>
-          </label>
-        ) : null}
-      </div>
-      {signedIn && props.dots.size ? (
-        <p className={styles.browseKey}>
-          <Dots value={3} /> how tightly its companies move together · market value{props.changes ? <> · <span className={styles.up}>+in</span> / <span className={styles.down}>−out</span> in 6 months</> : null}
-        </p>
+      {props.hubs.length ? (
+        <div className={styles.hubs}>
+          <h3 title="The companies the most others move with, beyond the market: the deepest wells on the map">Most connected</h3>
+          <ul aria-label="Most connected companies">
+            {props.hubs.map((node) => (
+              <li key={node.symbol}><button type="button" onClick={() => props.onCompany(node.symbol)} title={node.name ?? undefined}>{node.symbol}</button></li>
+            ))}
+          </ul>
+        </div>
       ) : null}
-      {rows.length ? (
-        <ul className={styles.regionList} onPointerLeave={() => props.onHoverZone(null)}>
-          {rows.map(({ zone, leaders, dots, change }) => {
-            const cap = formatCap(zone.totalMarketCap)
-            return (
-              <li key={zone.zoneId} onPointerEnter={() => props.onHoverZone(zone.zoneId)}>
-                <button type="button" className={styles.regionRow} aria-pressed={props.selectedZone === zone.zoneId} onClick={() => props.onZone(zone)} onFocus={() => props.onHoverZone(zone.zoneId)} onBlur={() => props.onHoverZone(null)}>
-                  <i style={{ background: zoneColor(props.hues.get(zone.zoneId) ?? 200, props.dark) }} aria-hidden="true" />
-                  <span className={styles.regionName}>{zone.label.replace(/_/g, ' ')}</span>
-                  <span className={styles.regionCount}>{zone.memberCount}<span className={styles.visuallyHidden}> companies</span></span>
-                  {dots !== null || cap || (change && (change.joined || change.left)) ? (
-                    <small className={styles.regionMeta}>
-                      {dots !== null ? <Dots value={dots} /> : null}
-                      {cap ? <span>{cap}</span> : null}
-                      {change && (change.joined || change.left) ? (
-                        <span className={change.joined >= change.left ? styles.up : styles.down} title="Companies that moved in or out in the last six months">+{change.joined} / −{change.left}</span>
-                      ) : null}
-                    </small>
-                  ) : null}
-                </button>
+      <ul className={styles.regionList} onPointerLeave={() => props.onHoverZone(null)}>
+        {rows.map(({ zone, leaders, dots, change }) => {
+          const cap = formatCap(zone.totalMarketCap)
+          return (
+            <li key={zone.zoneId} onPointerEnter={() => props.onHoverZone(zone.zoneId)}>
+              <button type="button" className={styles.regionRow} aria-pressed={props.selectedZone === zone.zoneId} onClick={() => props.onZone(zone)} onFocus={() => props.onHoverZone(zone.zoneId)} onBlur={() => props.onHoverZone(null)}>
+                <i style={{ background: zoneColor(props.hues.get(zone.zoneId) ?? 200, props.dark) }} aria-hidden="true" />
+                <span className={styles.regionName}>{zone.label.replace(/_/g, ' ')}</span>
+                <span className={styles.regionCount}>{props.order === 'value' && cap ? cap : zone.memberCount}<span className={styles.visuallyHidden}>{props.order === 'value' && cap ? ' market value' : ' companies'}</span></span>
+              </button>
+              <div className={styles.regionMeta}>
+                {dots !== null ? <Dots value={dots} /> : null}
+                {props.order !== 'value' && cap ? <span>{cap}</span> : null}
+                {change && (change.joined || change.left) ? (
+                  <span className={change.joined >= change.left ? styles.up : styles.down} title="Companies that moved in or out in the last six months">+{change.joined} / −{change.left}</span>
+                ) : null}
                 {leaders.length ? (
                   <ul className={styles.regionLeaders} aria-label={`Lead companies in ${zone.label}`}>
                     {leaders.map((symbol) => (
@@ -197,11 +151,16 @@ function Regions(props: Props) {
                     ))}
                   </ul>
                 ) : null}
-              </li>
-            )
-          })}
-        </ul>
-      ) : <p className={styles.muted}>No region matches.</p>}
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+      {props.signedIn && props.dots.size ? (
+        <p className={styles.browseKey}>
+          <Dots value={3} /> moves together{props.changes ? <> · <span className={styles.up}>+in</span> / <span className={styles.down}>−out</span>, 6 mo</> : null}
+        </p>
+      ) : null}
     </>
   )
 }

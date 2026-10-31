@@ -127,7 +127,6 @@
 .upsell button:focus-visible,
 .dock select:focus-visible,
 .dockClose:focus-visible,
-.menu button:focus-visible,
 .tabs button:focus-visible,
 .peer:focus-visible,
 .lockedNote:focus-visible,
@@ -169,103 +168,362 @@
   opacity: 0.45;
 }
 
-/* Layers */
-.layer {
+/* The tools as a named list, in the Tools sheet on a small screen. */
+.toolList {
   display: grid;
-  gap: 0.4rem;
-  padding: 0.55rem 0 0.6rem;
-  border-top: 1px solid color-mix(in srgb, var(--line) 50%, transparent);
+  gap: 0.15rem;
 }
 
-.layer:first-of-type {
-  border-top: 0;
-  padding-top: 0;
-}
-
-.locked {
-  cursor: pointer;
-  opacity: 0.55;
-}
-
-.influenceList {
-  display: grid;
-  gap: 0.45rem;
-  font-size: 0.78rem;
-  line-height: 1.4;
-}
-
-.influenceList p {
-  margin: 0;
-}
-
-.influenceList small {
-  color: var(--text-muted);
-}
-
-/* Theme menu */
-.themeControl {
+.toolList button {
   position: relative;
-}
-
-.themeLabel {
-  overflow: hidden;
-  max-width: 12rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.menu {
-  position: absolute;
-  z-index: 45;
-  top: calc(100% + 0.35rem);
-  left: 0;
-  width: min(17rem, calc(100vw - 2rem));
-  max-height: min(24rem, 60svh);
-  overflow: auto;
-  margin: 0;
-  padding: 0.3rem;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  list-style: none;
-  box-shadow: 0 10px 30px rgba(11, 18, 32, 0.16);
-}
-
-.menu button {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  width: 100%;
-  min-height: 2.2rem;
-  padding: 0 0.6rem;
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.25rem;
+  padding: 0.35rem 0.5rem;
   border: 0;
-  border-radius: 4px;
+  border-radius: 10px;
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 0.84rem;
   text-align: left;
   cursor: pointer;
 }
 
-.menu button small {
-  color: var(--text-muted);
-  font-size: 0.72rem;
+.toolList button:hover,
+.toolList button[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
 }
 
-.menu button:hover,
-.menu button[aria-checked='true'] {
-  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
-}
-
-.menu button[aria-checked='true'] {
+.toolList button[aria-pressed='true'] .toolGlyph {
   color: var(--accent);
 }
 
-.menuNote {
-  padding: 0.45rem 0.6rem;
+.toolList button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.toolGlyph {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg) 70%, var(--surface));
+}
+
+.toolText {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.toolText b {
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.toolText small {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: 0.74rem;
+}
+
+/* Layers, ETF themes and This map: panels beside the dock, set out like settings. */
+.layerGroup.layerGroup {
+  margin: 1rem 0 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.layerGroup.layerGroup:first-of-type {
+  margin-top: 0.2rem;
+}
+
+.layerRow {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.7rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--line) 50%, transparent);
+}
+
+.layerGroup + .layerRow {
+  border-top: 0;
+  padding-top: 0.3rem;
+}
+
+.layerText {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.layerText b {
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.layerText small,
+.layerNote {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.layerRow .seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.locked {
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.overlay {
+  display: grid;
+  grid-template-columns: 2.4rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.overlayGlyph {
+  display: grid;
+  width: 2.4rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--bg) 70%, var(--surface));
+}
+
+/* A switch, drawn on the checkbox itself so it keeps its keyboard and screen reader behaviour. */
+.switch {
+  position: relative;
+  appearance: none;
+  flex: none;
+  width: 2.2rem;
+  height: 1.25rem;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--line);
+  cursor: pointer;
+  transition: background-color 160ms ease;
+}
+
+.switch::after {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(1.25rem - 4px);
+  height: calc(1.25rem - 4px);
+  border-radius: 50%;
+  background: var(--text);
+  content: '';
+  transition: transform 160ms ease;
+}
+
+.switch:checked {
+  background: var(--accent);
+}
+
+.switch:checked::after {
+  background: var(--bg);
+  transform: translateX(0.95rem);
+}
+
+.switch:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.influenceList {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0 0 0 3.15rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.influenceList li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.4rem;
+}
+
+.influenceList small {
+  flex-basis: 100%;
+  color: var(--text-muted);
+}
+
+/* ETF themes: a search over a long, scrolling list. */
+.themeSearch {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0.4rem;
+  padding: 0 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-muted);
+}
+
+.themeSearch:focus-within {
+  border-color: var(--accent);
+}
+
+.themeSearch input {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.25rem;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.themeSearch input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.themeSearch input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.themeList {
+  display: grid;
+  align-content: start;
+  gap: 1px;
+  min-height: 0;
+  margin-top: 0.4rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: color-mix(in srgb, var(--text-muted) 35%, transparent) transparent;
+  scrollbar-width: thin;
+}
+
+.themeList button {
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.2rem;
+  padding: 0 0.55rem 0 0.4rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.themeList button:hover {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.themeList button[aria-checked='true'] {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+}
+
+.themeList button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.themeList small {
+  min-width: 1.6rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.themeCheck {
+  display: grid;
+  place-items: center;
+}
+
+.themeName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.themeVerdict {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.themeVerdict[data-verdict='together'] {
+  background: var(--up);
+}
+
+.themeVerdict[data-verdict='apart'] {
+  background: var(--down);
+}
+
+.themeKey {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.6rem 0 0;
+  padding-top: 0.55rem;
+  border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+}
+
+.themeKey i + i,
+.themeKey i:nth-of-type(2) {
+  margin-left: 0.5rem;
+}
+
+/* This map: the week's facts as three figures, then the measures. */
+.facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin: 0.2rem 0 0.5rem;
+}
+
+.facts div {
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg) 70%, var(--surface));
+}
+
+.facts dt {
+  color: var(--text-muted);
+  font-size: 0.66rem;
+}
+
+.facts dd {
+  margin: 0.15rem 0 0;
+  font-size: 0.86rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Theme and influence cards, top right of the map */
@@ -315,29 +573,35 @@
 }
 
 /* Browse tabs */
+/* Browse's tabs read as the legend's heading: small capitals, the current one bright. */
 .tabs {
   display: flex;
-  gap: 0.2rem;
-  margin: -0.2rem 0 0.7rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+  gap: 0.9rem;
+  margin: 0 2rem 0.5rem 0;
 }
 
 .tabs button {
-  min-height: 2.2rem;
-  padding: 0 0.6rem;
+  min-height: 2rem;
+  padding: 0;
   border: 0;
-  border-bottom: 2px solid transparent;
+  border-bottom: 1px solid transparent;
   background: transparent;
   color: var(--text-muted);
   font: inherit;
-  font-size: 0.84rem;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
+}
+
+.tabs button:hover {
+  color: var(--text);
 }
 
 .tabs button[aria-selected='true'] {
   border-bottom-color: var(--accent);
   color: var(--text);
-  font-weight: 600;
 }
 
 .metric {
@@ -697,64 +961,92 @@
   color: var(--down);
 }
 
-/* Time is the primary lower control: a wide ruler centred on the map. */
+/*
+ * Time is one slim capsule along the bottom edge, between the legend (left) and the
+ * zoom (right): play, the year as a track with a tick per month, and the week shown.
+ */
 .timeline {
   position: absolute;
   z-index: 12;
-  bottom: 1.5rem;
+  bottom: 1rem;
   left: 50%;
-  width: min(58rem, calc(100% - 34rem));
+  width: min(36rem, calc(100% - 2 * var(--atlas-time-reserve, 19rem)));
   box-sizing: border-box;
   transform: translateX(-50%);
 }
 
 .timeControls {
-  display: grid;
-  grid-template-columns: 3rem minmax(0, 1fr) 3rem;
-  grid-template-rows: auto 4rem;
+  display: flex;
   align-items: center;
-  gap: 0.25rem 1rem;
-  min-width: 0;
+  gap: 0.75rem;
+  height: 2.5rem;
+  box-sizing: border-box;
+  padding: 0 0.85rem 0 0.3rem;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(11, 18, 32, 0.16);
 }
 
 .play {
   display: grid;
   flex: none;
-  grid-column: 1;
-  grid-row: 2;
-  width: 3rem;
-  height: 3rem;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
   place-items: center;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 50%;
-  background: var(--surface);
-  color: var(--text);
+  background: var(--text);
+  color: var(--bg);
   cursor: pointer;
 }
 
+.play svg {
+  fill: currentColor;
+}
+
 .play:hover {
-  border-color: var(--text-muted);
+  opacity: 0.88;
 }
 
 .play:disabled {
   cursor: default;
-  opacity: 0.45;
+  opacity: 0.35;
 }
 
 .track {
   position: relative;
-  grid-column: 2;
-  grid-row: 2;
   display: flex;
+  flex: 1;
   align-items: center;
   min-width: 0;
-  min-height: 4rem;
+  height: 100%;
+}
+
+.timeTicks {
+  position: absolute;
+  top: 50%;
+  right: 0.45rem;
+  left: 0.45rem;
+  display: flex;
+  justify-content: space-between;
+  height: 0;
+  pointer-events: none;
+}
+
+.timeTicks i {
+  width: 1px;
+  height: 0.4rem;
+  margin-top: 0.35rem;
+  background: color-mix(in srgb, var(--text-muted) 45%, transparent);
 }
 
 .track input {
+  position: relative;
   appearance: none;
   width: 100%;
-  height: 4rem;
+  height: 100%;
   margin: 0;
   border: 0;
   background: transparent;
@@ -762,36 +1054,36 @@
 }
 
 .track input::-webkit-slider-runnable-track {
-  height: 4px;
+  height: 3px;
   border-radius: 2px;
-  background: linear-gradient(to right, var(--text-muted) var(--atlas-time-progress, 100%), var(--line) var(--atlas-time-progress, 100%));
+  background: linear-gradient(to right, var(--accent) var(--atlas-time-progress, 100%), var(--line) var(--atlas-time-progress, 100%));
 }
 
 .track input::-moz-range-track {
-  height: 4px;
+  height: 3px;
   border-radius: 2px;
-  background: linear-gradient(to right, var(--text-muted) var(--atlas-time-progress, 100%), var(--line) var(--atlas-time-progress, 100%));
+  background: linear-gradient(to right, var(--accent) var(--atlas-time-progress, 100%), var(--line) var(--atlas-time-progress, 100%));
 }
 
 .track input::-webkit-slider-thumb {
   appearance: none;
-  margin-top: -8px;
+  margin-top: -6px;
   box-sizing: border-box;
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--bg);
+  width: 15px;
+  height: 15px;
+  border: 3px solid var(--surface);
   border-radius: 50%;
-  background: var(--text);
-  box-shadow: 0 0 0 1px var(--text-muted);
+  background: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .track input::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--bg);
+  box-sizing: border-box;
+  width: 15px;
+  height: 15px;
+  border: 3px solid var(--surface);
   border-radius: 50%;
-  background: var(--text);
-  box-shadow: 0 0 0 1px var(--text-muted);
+  background: var(--accent);
 }
 
 .track input:disabled {
@@ -799,68 +1091,48 @@
   opacity: 0.45;
 }
 
-.timeEnds {
-  position: absolute;
-  top: calc(50% + 0.9rem);
-  right: 0;
-  left: 0;
-  display: flex;
-  justify-content: space-between;
-  color: var(--text-muted);
-  font-size: 0.68rem;
-  pointer-events: none;
-}
-
 .weekLabel {
-  grid-column: 2;
-  grid-row: 1;
-  justify-self: center;
-  padding: 0.1rem 0.6rem;
-  background: var(--bg);
+  flex: none;
+  min-width: 4.5rem;
   color: var(--text);
-  font-size: 0.9rem;
+  font-size: 0.78rem;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
-  text-align: center;
+  text-align: right;
+  white-space: nowrap;
 }
 
+/* What the shown week means sits just above the capsule. */
 .timelineNote {
-  grid-column: 1 / -1;
+  position: absolute;
+  bottom: calc(100% + 0.4rem);
+  left: 50%;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0.15rem 0.6rem;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
   color: var(--text-muted);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   line-height: 1.4;
-  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+/* Locked: the year is drawn faintly, and the track itself says why. */
 .trackLock {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 4rem;
+  height: 100%;
   padding: 0;
   border: 0;
-  background: transparent;
+  background: linear-gradient(var(--line), var(--line)) center / 100% 3px no-repeat;
   color: var(--text-muted);
   cursor: pointer;
-}
-
-.timeTicks {
-  position: absolute;
-  right: 0;
-  left: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 3px;
-  background: var(--line);
-}
-
-.timeTicks i {
-  width: 1px;
-  height: 8px;
-  background: var(--line);
 }
 
 .historyBadge {
@@ -868,12 +1140,15 @@
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.15rem 0.5rem;
-  background: var(--bg);
-  font-size: 0.75rem;
+  padding: 0.1rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.68rem;
 }
 
 .trackLock:hover .historyBadge {
+  border-color: var(--accent);
   color: var(--text);
 }
 
@@ -946,24 +1221,26 @@
   color: var(--accent);
 }
 
+/* The legend starts folded here, so the capsule only needs to clear its button and the zoom. */
 @media (max-width: 64rem) {
   .timeline {
-    width: min(58rem, calc(100% - 2rem));
-    bottom: calc(var(--atlas-legend-height, 2rem) + 1.5rem);
+    --atlas-time-reserve: 12.75rem;
   }
 }
 
 @media (max-width: 40rem) {
+  /* a phone: above the legend button, beside the zoom column */
   .timeline {
-    bottom: calc(var(--atlas-legend-height, 2rem) + 1.5rem);
-    left: 50%;
-    width: calc(100% - 1.2rem);
-    transform: translateX(-50%);
+    right: calc(0.6rem + 2.75rem + 0.5rem);
+    bottom: calc(0.6rem + 2.75rem + 0.5rem);
+    left: 0.6rem;
+    width: auto;
+    transform: none;
   }
 
   .timeControls {
-    grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem;
-    column-gap: 0.6rem;
+    height: 2.75rem;
+    gap: 0.5rem;
   }
 
   .rail button {
@@ -973,13 +1250,7 @@
 
   .weekLabel {
     min-width: 0;
-  }
-
-  /* one line on a phone, so the bar stays clear of the rail */
-  .timelineNote {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-size: 0.72rem;
   }
 
   .dock {
@@ -999,17 +1270,14 @@
   }
 
   .play {
-    width: 2.75rem;
-    height: 2.75rem;
+    width: 2.1rem;
+    height: 2.1rem;
   }
 
   .workbench {
     width: calc(100% - 2rem);
   }
 
-  .themeLabel {
-    max-width: 7rem;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1185,54 +1453,64 @@ button.share:hover .shareHead span {
   background: var(--text);
 }
 
-.browseTools {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.browseTools input {
-  flex: 1;
-  min-width: 0;
-  min-height: 2.1rem;
-  box-sizing: border-box;
-  padding: 0 0.6rem;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
-  font-size: 0.8rem;
-}
-
-.sort {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  color: var(--text-muted);
-  font-size: 0.72rem;
-}
-
-.sort select {
-  max-width: 9.5rem;
-  min-height: 2.1rem;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
-  font-size: 0.76rem;
-}
-
 .browseKey {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.3rem;
-  margin: 0 0 0.4rem 0.2rem;
+  margin: 0.5rem 0 0;
   color: var(--text-muted);
-  font-size: 0.7rem;
+  font-size: 0.66rem;
+}
+
+/* Most connected: one line of tickers over the regions, the companies behind the deepest wells. */
+.hubs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.55rem;
+  margin: 0 0 0.5rem;
+  padding: 0 0.4rem 0.5rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+}
+
+.hubs h3 {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: help;
+}
+
+.hubs ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hubs button {
+  min-height: 1.6rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+.hubs button:hover {
+  color: var(--accent);
+}
+
+.hubs button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .regionList,
@@ -1245,18 +1523,27 @@ button.share:hover .shareHead span {
 
 .regionList {
   display: grid;
-  gap: 0.1rem;
+  gap: 0.15rem;
+}
+
+.regionList > li {
+  padding: 0.3rem 0.4rem 0.35rem;
+  border-radius: 6px;
+}
+
+.regionList > li:hover,
+.regionList > li:has(.regionRow[aria-pressed='true']) {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
 }
 
 .regionRow {
   display: grid;
-  grid-template-columns: 0.7rem minmax(0, 1fr) auto;
+  grid-template-columns: 0.6rem minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.15rem 0.6rem;
+  gap: 0.55rem;
   width: 100%;
-  padding: 0.5rem 0.6rem 0.2rem;
+  padding: 0;
   border: 0;
-  border-radius: 6px;
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -1264,57 +1551,58 @@ button.share:hover .shareHead span {
   cursor: pointer;
 }
 
-.regionList li:hover .regionRow,
-.regionRow[aria-pressed='true'],
 .linkRow:hover {
-  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  background: color-mix(in srgb, var(--text) 6%, transparent);
 }
 
 .regionRow i,
 .linkName i {
-  width: 0.7rem;
-  height: 0.7rem;
-  border-radius: 3px;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 2px;
 }
 
 .regionName {
-  font-size: 0.8rem;
+  overflow: hidden;
+  font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.06em;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .regionCount {
   color: var(--text-muted);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
 }
 
 .regionMeta {
   display: flex;
   flex-wrap: wrap;
-  grid-column: 2 / -1;
   align-items: center;
-  gap: 0.25rem 0.7rem;
+  gap: 0.1rem 0.6rem;
+  margin-top: 0.1rem;
+  padding-left: 1.15rem;
   color: var(--text-muted);
-  font-size: 0.74rem;
+  font-size: 0.68rem;
 }
 
 .regionLeaders {
   display: flex;
   flex-wrap: wrap;
-  gap: 0 0.55rem;
-  padding: 0 0.6rem 0.35rem 1.9rem;
+  gap: 0 0.45rem;
 }
 
 .regionLeaders button {
-  min-height: 1.8rem;
+  min-height: 1.5rem;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--text-muted);
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   cursor: pointer;
 }
 
@@ -1379,8 +1667,6 @@ button.share:hover .shareHead span {
 .regionRow:focus-visible,
 .regionLeaders button:focus-visible,
 .linkRow:focus-visible,
-.browseTools input:focus-visible,
-.sort select:focus-visible,
 button.share:focus-visible,
 .grid button:focus-visible {
   outline: 2px solid var(--accent);

@@ -34,6 +34,8 @@ type TickerSearchComboboxProps = {
      `placeholder` so a screen reader is never read a moving target. */
   typingHints?: readonly string[]
   routeForTicker: (symbol: string) => string
+  /* Replaces opening the ticker's page, for a page that shows the ticker itself (the atlas). */
+  onPickTicker?: (symbol: string) => void
   submitLabel?: string | null
   variant: 'header' | 'panel'
 }
@@ -192,6 +194,7 @@ export default function TickerSearchCombobox({
   placeholder,
   typingHints,
   routeForTicker,
+  onPickTicker,
   submitLabel = null,
   variant,
 }: TickerSearchComboboxProps) {
@@ -573,6 +576,10 @@ export default function TickerSearchCombobox({
     setSearch(symbol)
     setIsOpen(false)
     setHighlightedIndex(-1)
+    if (onPickTicker) {
+      onPickTicker(symbol)
+      return
+    }
     // From the homepage, the flight into the ticker page starts now, while
     // the page loads (lib/universe-flight).
     flyToTicker(symbol)

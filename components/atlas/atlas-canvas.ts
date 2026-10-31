@@ -262,7 +262,7 @@ function drawInfluence(context: CanvasRenderingContext2D, scene: Scene, overlay:
   return pills
 }
 
-/** Paths on an earlier week: where movers and the selected company were, from the start of the span to the date shown. */
+/** Paths on an earlier week: where movers and the selected company go from the week shown to today, ringed where they arrive. */
 function drawPaths(context: CanvasRenderingContext2D, scene: Scene, overlay: Overlay, project: Project, ground: Ground) {
   const { accent } = scene.palette
   const someone = scene.selectedSymbol !== null
@@ -277,10 +277,12 @@ function drawPaths(context: CanvasRenderingContext2D, scene: Scene, overlay: Ove
     context.strokeStyle = rgba(accent, path.selected ? 0.95 : someone ? 0.14 : 0.55)
     context.lineWidth = width
     context.stroke()
+    const [ex, ey] = points[points.length - 1]
     context.beginPath()
-    context.arc(points[0][0], points[0][1], width + 1.2, 0, Math.PI * 2)
-    context.fillStyle = rgba(accent, path.selected ? 0.95 : someone ? 0.14 : 0.55)
-    context.fill()
+    context.arc(ex, ey, width + 2.2, 0, Math.PI * 2)
+    context.strokeStyle = rgba(accent, path.selected ? 0.95 : someone ? 0.14 : 0.7)
+    context.lineWidth = 1.5
+    context.stroke()
   }
 }
 

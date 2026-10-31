@@ -31,6 +31,8 @@ import {
   testRows,
   thenAndNow,
   timelineNote,
+  regionMovers,
+  trackedWeek,
   todayFrame,
   weekLabel,
   type StorageLike,
@@ -257,8 +259,11 @@ test('an earlier week aligns onto today, outlines and all, and play moves betwee
   close(mid[0], (b0[0] + b1[0]) / 2)
   // a missing frame borrows its nearest neighbour
   assert.equal(frameAt([frame0, undefined, frame1], 1.2)?.asOf, frame0.asOf)
-  assert.deepEqual(pathOf('A', frames, 1, 0, [0, 0]).length, 3)
-  assert.deepEqual(pathOf('Q', frames, 1, 0, null), [])
+  // from the week shown to today: its place that week, then today's
+  const ahead = pathOf('A', frames, 1, [9, 9])
+  assert.deepEqual(ahead, [[9, 9], frame0.positions.get('A')])
+  assert.equal(pathOf('A', frames, 0, [9, 9]).length, 0)
+  assert.deepEqual(pathOf('Q', frames, 1, null), [])
 })
 
 test('the time bar reads dates, plays a year in nine seconds and steps whole weeks with reduced motion', () => {
@@ -267,9 +272,21 @@ test('the time bar reads dates, plays a year in nine seconds and steps whole wee
   close(playWeek(52, 4500, false), 26)
   assert.equal(playWeek(52, 4400, true), 27)
   assert.equal(playWeek(10, 99999, false), 0)
-  assert.equal(timelineNote(52, null), 'Paths: the companies that changed region over the past year · select any company to see its own')
-  assert.equal(timelineNote(52, { symbol: 'AAA', changed: true }), 'Path of AAA since a year ago · it changed region')
-  assert.equal(timelineNote(26, { symbol: 'AAA', changed: false }), 'Path of AAA since six months ago · it kept its region')
+  assert.equal(timelineNote('2026-08-14', null, null), 'Since 2026-08-14: finding the companies that changed region…')
+  assert.equal(timelineNote('2026-08-14', 0, null), 'Since 2026-08-14: no company changed region')
+  assert.equal(timelineNote('2026-08-14', 1, null), 'Since 2026-08-14: 1 company changed region · select one to see its path')
+  assert.equal(timelineNote('2026-08-14', 3, null), 'Since 2026-08-14: 3 companies changed region · select one to see its path')
+  assert.equal(timelineNote('2025-10-17', 3, { symbol: 'AAA', changed: true }), 'Path of AAA since 2025-10-17 · it changed region')
+  assert.equal(timelineNote('2026-04-17', null, { symbol: 'AAA', changed: false }), 'Path of AAA since 2026-04-17 · it kept its region')
+  // only real region changes count, by the backend's own test
+  assert.deepEqual([...regionMovers({ moves: [{ symbol: 'A', flow: true }, { symbol: 'B', flow: false }, { symbol: 'C', flow: true }] })], ['A', 'C'])
+  assert.equal(regionMovers(null).size, 0)
+  // the week shown, else the nearest week already read; today (0) never stands in
+  assert.equal(trackedWeek(8, [0, 3, 8, 26]), 8)
+  assert.equal(trackedWeek(10, [0, 8, 13]), 8)
+  assert.equal(trackedWeek(11, [8, 14]), 8)
+  assert.equal(trackedWeek(5, [0]), null)
+  assert.equal(trackedWeek(5, []), null)
 })
 
 test('arrows bow to opposite sides, widen with their weight and skip what is too short', () => {
