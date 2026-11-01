@@ -152,7 +152,18 @@ export function tickerSummaryFixture(ticker) {
       fiscalPeriod: null,
       asOf,
     },
-    earningsHistory: [],
+    earningsHistory: ticker === 'QAS' ? [
+      { ticker, earningsDate: '2026-07-30', fiscalPeriod: '2026Q3', epsActual: 2, epsEstimate: 1.8,
+        epsSurprisePct: null, revenueActual: null, revenueEstimate: null, revenueSurprisePct: null },
+      { ticker, earningsDate: '2026-04-30', fiscalPeriod: '2026Q2', epsActual: 1.5, epsEstimate: 1.4,
+        epsSurprisePct: null, revenueActual: null, revenueEstimate: null, revenueSurprisePct: null },
+    ] : [],
+    ...(ticker === 'QAS' ? { profile: {
+      ticker, about: 'A synthetic company description for browser QA.',
+      aboutSource: 'yahoo_finance', aboutFetchedAt: '2026-10-30T23:55:00Z',
+      returns: {}, price: {}, snapshot: [], holdings: [], sectorWeights: [],
+      profile: [], portfolio: [], distributions: [], risk: [],
+    } } : {}),
     componentMissingInputs: [],
     ...listingsFixture(ticker),
   }

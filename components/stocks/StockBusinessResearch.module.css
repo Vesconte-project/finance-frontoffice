@@ -12,3 +12,10 @@
   color: var(--text-body);
   overflow-wrap: anywhere;
 }
+
+.descriptionSource {
+  margin: 0.5rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}

@@ -49,6 +49,8 @@ export interface TickerSectorWeight {
 
 export interface TickerFundamentals {
   about: string | null
+  aboutSource?: string | null
+  aboutFetchedAt?: string | null
   marketCap: string | null
   snapshot: TickerFinancialRow[]
   holdings: TickerHolding[]
@@ -440,6 +442,8 @@ function normalizeBackendProfilePayload(
   const risk = parseBackendFinancialRows(record.risk, currency)
 
   const fundamentals: TickerFundamentals = {
+    aboutSource: getString(record.aboutSource),
+    aboutFetchedAt: getString(record.aboutFetchedAt),
     about:
       getString(record.about) ??
       getString(record.description) ??

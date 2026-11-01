@@ -41,6 +41,27 @@ function Facts({ rows }: { rows: TickerFinancialRow[] }) {
  * makes and sells, and what it depends on, wait on segment, cost and
  * concentration data (ENG-160, ENG-163) and are being built.
  */
+function BusinessDescription({ data }: { data: StockResearchData }) {
+  const source = data.fundamentals.aboutSource
+  const fetchedAt = data.fundamentals.aboutFetchedAt
+  const timestamp = fetchedAt ? Date.parse(fetchedAt) : NaN
+  const date = Number.isFinite(timestamp)
+    ? new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(timestamp)
+    : null
+  const sourceLabel = source === 'yahoo_finance' ? 'Yahoo Finance'
+    : source === 'feature_store.entity_attributes_static' ? 'Vesconte company profile' : source
+  return (
+    <div>
+      <p className={business.description} data-business-description="">{data.description}</p>
+      {sourceLabel ? (
+        <p className={business.descriptionSource} data-description-source="">
+          Source: {sourceLabel}{date ? ` · retrieved ${date}` : ''}
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
 function CompanyBusiness({ data }: { data: StockResearchData }) {
   const facts = [...data.profileFacts, ...data.identifiers]
   return (
@@ -49,9 +70,9 @@ function CompanyBusiness({ data }: { data: StockResearchData }) {
         id="how-it-works"
         label="How the business works"
         lead={data.description ? (
-          <p className={business.description} data-business-description="">{data.description}</p>
+          <BusinessDescription data={data} />
         ) : (
-          <BeingBuilt size="inline">What {data.name} does, in its own words, is being added.</BeingBuilt>
+          <BeingBuilt size="inline">A description of {data.name} is being added.</BeingBuilt>
         )}
         aside={facts.length > 0 ? (
           <ChapterCard title="Company facts">
@@ -86,7 +107,7 @@ function FundBusiness({ data }: { data: StockResearchData }) {
         id="what-it-holds"
         label="What the fund holds"
         lead={data.description ? (
-          <p className={business.description} data-business-description="">{data.description}</p>
+          <BusinessDescription data={data} />
         ) : (
           <BeingBuilt size="inline">What the fund invests in, and why, is being added.</BeingBuilt>
         )}
