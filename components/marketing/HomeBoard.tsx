@@ -67,7 +67,7 @@ function ReadingColumn({ reading, result }: { reading: PickReadingKey; result: V
           {result.items.slice(0, 5).map((item, index) => {
             const rank = index + 1
             return (
-              <Link
+              <Link prefetch={false}
                 key={item.symbol}
                 href={`/stocks/${encodeURIComponent(item.symbol)}`}
                 className={styles.row}

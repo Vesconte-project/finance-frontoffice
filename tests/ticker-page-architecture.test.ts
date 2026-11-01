@@ -281,8 +281,8 @@ test('the Overview follows the accepted ticker Spec (PRD-78): order, Being built
   assert.match(overviewStyles, /\.fundamentalValue strong \{[^}]*font-display/)
   assert.doesNotMatch(overview, /Financial statements →|Valuation history →|Ownership & capital →/)
   // Events are fetched without blocking the page and drawn only in the expanded chart.
-  assert.match(page, /chartEventsPromise/)
-  assert.doesNotMatch(page, /await chartEventsPromise/)
+  assert.doesNotMatch(page, /chartEventsPromise|getTickerEvents|getTickerDisclosures/)
+  assert.match(dialog, /\/chart-events/)
   assert.match(dialog, /data-events-toggle/)
   assert.match(dialog, /useState\(false\)[\s\S]*setShowEvents|const \[showEvents, setShowEvents\] = useState\(false\)/)
   // Values are never derived here: net cash only when the summary supplies it.
@@ -438,7 +438,7 @@ test('conformance with the accepted ticker Spec (PRD-78): the items the review f
   assert.match(dialog, /nextSessionChange/)
   assert.match(dialog, /data-event-next-day/)
   assert.match(dialog, /Insider trades are being added/)
-  assert.match(page, /row\.domain === 'guidance'/)
+  assert.match(readRepoFile('lib/chart-events.ts'), /row\.domain === 'guidance'/)
   // Screens: 1400px maximum, 20px phone margins (14px below 340px).
   for (const css of [layout, chrome]) {
     assert.match(css, /max-width: 1400px/)

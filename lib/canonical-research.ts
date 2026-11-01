@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { fetchBackendJson } from '@/lib/backend'
+import { fetchBackendJson } from './backend'
 
 export type CanonicalAvailability = {
   available: boolean

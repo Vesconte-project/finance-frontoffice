@@ -8,6 +8,8 @@ import {
   stockResearchKeyFromPath,
   stockResearchPrimaryItems,
 } from '@/components/stocks/stock-nav-config'
+import { useDisplayCurrencyParam } from '@/hooks/useDisplayCurrency'
+import { withDisplayCurrency } from '@/lib/display-currency'
 import styles from './StockResearchNav.module.css'
 
 type ActiveRail = {
@@ -21,6 +23,8 @@ export default function StockResearchNav({ ticker }: { ticker: string }) {
   const scrollerRef = useRef<HTMLDivElement>(null)
   const [activeRail, setActiveRail] = useState<ActiveRail>({ left: 0, width: 0, ready: false })
   const activeKey = stockResearchKeyFromPath(pathname)
+  // The display currency travels with the reader from tab to tab.
+  const displayCurrency = useDisplayCurrencyParam()
 
   useEffect(() => {
     const syncActiveRail = () => {
@@ -53,7 +57,7 @@ export default function StockResearchNav({ ticker }: { ticker: string }) {
               <div key={item.key} className={styles.item} data-active={selected}>
                 <Link
                   prefetch={false}
-                  href={stockResearchHref(ticker, item)}
+                  href={withDisplayCurrency(stockResearchHref(ticker, item), displayCurrency)}
                   aria-current={selected ? 'page' : undefined}
                   className={styles.link}
                 >

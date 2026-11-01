@@ -1,5 +1,7 @@
 'use client'
 
+import { browserRead } from '@/lib/read-client'
+
 import { CircleAlert, History, Loader2, Radar, Search } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useRouter } from 'next/navigation'
@@ -32,6 +34,8 @@ type TickerSearchComboboxProps = {
      `placeholder` so a screen reader is never read a moving target. */
   typingHints?: readonly string[]
   routeForTicker: (symbol: string) => string
+  /* Replaces opening the ticker's page, for a page that shows the ticker itself (the atlas). */
+  onPickTicker?: (symbol: string) => void
   submitLabel?: string | null
   variant: 'header' | 'panel'
 }
@@ -80,8 +84,10 @@ function writeSessionTickerIndex(value: CachedTickerIndex): void {
 async function fetchTickerIndex(
   existing: CachedTickerIndex | null
 ): Promise<CachedTickerIndex | null> {
-  const response = await fetch('/api/tickers/index', {
+  const response = await browserRead('/api/tickers/index', {
     cache: 'no-store',
+    // Include the response body and any retry delays in the loading deadline.
+    signal: AbortSignal.timeout(6000),
     headers: existing?.etag ? { 'If-None-Match': existing.etag } : undefined,
   })
 
@@ -188,6 +194,7 @@ export default function TickerSearchCombobox({
   placeholder,
   typingHints,
   routeForTicker,
+  onPickTicker,
   submitLabel = null,
   variant,
 }: TickerSearchComboboxProps) {
@@ -569,6 +576,10 @@ export default function TickerSearchCombobox({
     setSearch(symbol)
     setIsOpen(false)
     setHighlightedIndex(-1)
+    if (onPickTicker) {
+      onPickTicker(symbol)
+      return
+    }
     // From the homepage, the flight into the ticker page starts now, while
     // the page loads (lib/universe-flight).
     flyToTicker(symbol)

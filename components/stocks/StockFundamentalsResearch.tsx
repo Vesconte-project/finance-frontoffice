@@ -128,7 +128,7 @@ function DividendsChapter({
       aside={(
         <>
           <BeingBuilt label="Each $100 of profit">How each $100 of profit went to buybacks, dividends and what the company kept is being added.</BeingBuilt>
-          <Link className={styles.chapterLink} href={`/stocks/${ticker}/ownership`}>Ownership & Capital →</Link>
+          <Link prefetch={false} className={styles.chapterLink} href={`/stocks/${ticker}/ownership`}>Ownership & Capital →</Link>
         </>
       )}
     >

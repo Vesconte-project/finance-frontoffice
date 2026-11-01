@@ -23,7 +23,11 @@ const PREFIX_SYMBOL: Record<string, string> = {
   CNY: 'CN¥',
   INR: '₹',
   JPY: '¥',
+  KRW: '₩',
 }
+
+/** Currencies quoted without minor units. */
+const WHOLE_UNIT_CURRENCIES = new Set(['JPY', 'KRW'])
 
 const KR_SUFFIX_CURRENCIES = new Set(['DKK', 'SEK', 'NOK'])
 
@@ -55,7 +59,7 @@ export function formatMoney(value: number | null | undefined, currency: string |
   const code = normalized.currency
 
   if (KR_SUFFIX_CURRENCIES.has(code)) return `${normalized.value.toFixed(2)} kr`
-  if (code === 'JPY') return `¥${Math.round(normalized.value).toLocaleString('en-US')}`
+  if (WHOLE_UNIT_CURRENCIES.has(code)) return `${PREFIX_SYMBOL[code]}${Math.round(normalized.value).toLocaleString('en-US')}`
 
   const symbol = PREFIX_SYMBOL[code]
   return symbol ? `${symbol}${normalized.value.toFixed(2)}` : `${normalized.value.toFixed(2)} ${code}`

@@ -6,12 +6,14 @@ import { backendErrorDetails, logBackendRequestEvent } from './backend-request-l
 export class BackendDataError extends Error {
   readonly context: string
   readonly status: number | null
+  readonly retryAfter: string | null
 
-  constructor(context: string, message: string, status: number | null = null) {
+  constructor(context: string, message: string, status: number | null = null, retryAfter: string | null = null) {
     super(message)
     this.name = 'BackendDataError'
     this.context = context
     this.status = status
+    this.retryAfter = retryAfter
   }
 }
 
@@ -76,26 +78,6 @@ export function backendHeaders(
   }
 }
 
-async function withTimeout<T>(
-  operation: PromiseLike<T>,
-  timeoutMs: number,
-  context: string
-): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined
-  const timeoutPromise = new Promise<T>((_, reject) => {
-    timer = setTimeout(
-      () => reject(new BackendDataError(context, `${context} timed out after ${timeoutMs}ms`)),
-      timeoutMs
-    )
-  })
-
-  try {
-    return await Promise.race([Promise.resolve(operation), timeoutPromise])
-  } finally {
-    if (timer) clearTimeout(timer)
-  }
-}
-
 export async function fetchBackendJson<T>(
   path: string,
   {
@@ -118,7 +100,7 @@ export async function fetchBackendJson<T>(
   const response = await fetchBackendResponse(path, { context, timeoutMs, init })
 
   if (!response.ok) {
-    throw new BackendDataError(context, `${context} failed with status ${response.status}`, response.status)
+    throw new BackendDataError(context, `${context} failed with status ${response.status}`, response.status, response.headers.get('retry-after'))
   }
 
   try {
@@ -132,7 +114,7 @@ export async function fetchBackendJson<T>(
     throw new BackendDataError(
       context,
       error instanceof Error ? error.message : 'Invalid backend JSON response',
-      response.status
+      error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name) ? 503 : response.status
     )
   }
 }
@@ -180,20 +162,20 @@ export async function fetchBackendResponse(
       throw new BackendDataError(context, 'Backend session is unavailable', 503)
     }
   }
+  // Native fetch cancellation also covers a response body that stalls after headers.
+  const deadline = AbortSignal.timeout(timeoutMs)
+  const signal = init?.signal ? AbortSignal.any([init.signal, deadline]) : deadline
   const startedAt = Date.now()
   let response: Response
   try {
-    response = await withTimeout(
-      fetch(`${base}${path}`, {
-        ...init,
-        cache: 'no-store',
-        next: undefined,
-        headers: outgoing,
-        redirect: 'error',
-      }),
-      timeoutMs,
-      context
-    )
+    response = await fetch(`${base}${path}`, {
+      ...init,
+      cache: 'no-store',
+      next: undefined,
+      headers: outgoing,
+      redirect: 'error',
+      signal,
+    })
   } catch (error) {
     const details = backendErrorDetails(error)
     logBackendRequestEvent({
@@ -204,6 +186,8 @@ export async function fetchBackendResponse(
       status: null,
       timeout: details.timeout,
     })
+    if (deadline.aborted) throw new BackendDataError(context, `${context} timed out after ${timeoutMs}ms`, 503)
+    if (init?.signal?.aborted) throw init.signal.reason
     if (error instanceof BackendDataError) throw error
     throw new BackendDataError(
       context,

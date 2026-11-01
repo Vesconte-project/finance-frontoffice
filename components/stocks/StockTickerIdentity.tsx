@@ -19,6 +19,14 @@ function deltaClass(value: number): string {
   return styles.deltaNeutral
 }
 
+export type ConvertedPrice = {
+  /** "$54.11". */
+  text: string
+  /** The rate's date, for the tooltip and screen readers ("Sep 29, 2026"); null when unknown. */
+  rateDate: string | null
+  currency: string
+}
+
 type StockTickerIdentityProps = {
   ticker: string
   displayName: string
@@ -33,6 +41,14 @@ type StockTickerIdentityProps = {
   metadata?: AssetMetadataParts
   /** Export and watchlist controls. */
   actions?: ReactNode
+  /**
+   * The latest price in the display currency the URL asks for, as the backend
+   * converted it; shown beside the reported price ("₩75,000 ≈ $54.11"), never
+   * in its place.
+   */
+  converted?: ConvertedPrice | null
+  /** The listings-and-currency control, shown in place of the currency label. */
+  currencyControl?: ReactNode
 }
 
 /**
@@ -52,6 +68,8 @@ export default function StockTickerIdentity({
   loading = false,
   metadata,
   actions,
+  converted = null,
+  currencyControl = null,
 }: StockTickerIdentityProps) {
   const name = nameAsHeading
     ? <h1 className={styles.name} title={displayName} data-ticker-name="">{displayName}</h1>
@@ -85,6 +103,18 @@ export default function StockTickerIdentity({
                       <strong className={styles.price} data-ticker-price="">{formatMoney(price, currency)}</strong>
                     ) : null}
                   </span>
+                  {isFiniteNumber(price) && converted ? (
+                    <span
+                      className={styles.converted}
+                      data-ticker-price-converted={converted.currency}
+                      title={`Converted to ${converted.currency}${converted.rateDate ? ` at the exchange rate of ${converted.rateDate}` : ''}. Not a price traded in ${converted.currency}.`}
+                    >
+                      <span aria-hidden="true">≈ {converted.text}</span>
+                      <span className="sr-only">
+                        {`, about ${converted.text} converted to ${converted.currency}${converted.rateDate ? ` at the exchange rate of ${converted.rateDate}` : ''}`}
+                      </span>
+                    </span>
+                  ) : null}
                   {isFiniteNumber(price) && isFiniteNumber(dailyMoveAmount) && isFiniteNumber(dailyMovePercent) ? (
                     <span className={cn(styles.delta, deltaClass(dailyMoveAmount))}>
                       {formatSignedMoney(dailyMoveAmount, currency)} ({formatCompactPercent(dailyMovePercent)})
@@ -102,7 +132,9 @@ export default function StockTickerIdentity({
                     >
                       <span className={styles.metaKind}>{metadata.kind}</span>
                       {metadata.exchange ? <span className={styles.metaExchange}>{metadata.exchange}</span> : null}
-                      {metadata.currency ? <span className={styles.metaCurrency}>{metadata.currency}</span> : null}
+                      {currencyControl
+                        ? <span className={styles.metaCurrency}>{currencyControl}</span>
+                        : metadata.currency ? <span className={styles.metaCurrency}>{metadata.currency}</span> : null}
                     </span>
                   ) : null}
                   {actions ? <div className={styles.actions} data-ticker-actions="">{actions}</div> : null}

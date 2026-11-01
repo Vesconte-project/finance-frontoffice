@@ -43,7 +43,7 @@ export default function CompanyAtlasPlace({ panel }: { panel: AtlasCompanyPanel 
           <ol className={styles.neighbours} aria-label={`Companies that move most with ${panel.symbol}`}>
             {panel.neighbours.map((neighbour) => (
               <li key={neighbour.symbol}>
-                <Link href={`/stocks/${encodeURIComponent(neighbour.symbol)}`}>
+                <Link prefetch={false} href={`/stocks/${encodeURIComponent(neighbour.symbol)}`}>
                   <b>{neighbour.symbol}</b>
                   {neighbour.name ? <span>{neighbour.name}</span> : null}
                 </Link>

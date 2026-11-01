@@ -16,21 +16,24 @@ type UpstreamFailureDetails = {
 function passthroughHeaders(upstream: Response): Headers {
   const headers = new Headers()
   const etag = upstream.headers.get('etag')
-  const cacheControl = upstream.headers.get('cache-control')
   const contentType = upstream.headers.get('content-type')
 
   if (etag) headers.set('etag', etag)
-  if (cacheControl) headers.set('cache-control', cacheControl)
   if (contentType) headers.set('content-type', contentType)
+  // Admission and client budgets must run before every network read, including
+  // revalidation. The browser still reuses its in-memory catalogue while typing.
+  headers.set('cache-control', 'private, no-store')
 
   return headers
 }
 
-function jsonResponse(payload: unknown, status: number): Response {
+function jsonResponse(payload: unknown, status: number, retryAfter: string | null = null): Response {
   return new Response(JSON.stringify(payload), {
     status,
     headers: {
       'content-type': 'application/json',
+      'cache-control': 'private, no-store',
+      ...(retryAfter ? { 'retry-after': retryAfter } : {}),
     },
   })
 }
@@ -49,7 +52,31 @@ function logProxyFailure(message: string, details: Record<string, unknown>): voi
   console.error('[api/tickers/index] ' + message, details)
 }
 
-export async function proxyTickerIndex(request: Request): Promise<Response> {
+export async function proxyTickerIndex(request: Request, timeoutMs = 5000): Promise<Response> {
+  const controller = new AbortController()
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    // Bound the entire operation, including Clerk preparation and body reading.
+    // Aborting also prevents a delayed identity lookup from starting a fetch.
+    return await Promise.race([
+      proxyTickerIndexRequest(request, controller.signal, timeoutMs),
+      new Promise<Response>((resolve) => {
+        timer = setTimeout(() => {
+          controller.abort()
+          resolve(jsonResponse({ error: 'backend_timeout' }, 503, '30'))
+        }, timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
+function refusalStatus(status: number): number {
+  return [401, 403, 429, 503].includes(status) ? status : 502
+}
+
+async function proxyTickerIndexRequest(request: Request, signal: AbortSignal, timeoutMs: number): Promise<Response> {
   let config = {
     hasBackendBaseUrl: false,
     hasCfAccessClientId: false,
@@ -66,8 +93,9 @@ export async function proxyTickerIndex(request: Request): Promise<Response> {
     const ifNoneMatch = request.headers.get('if-none-match')
     const upstream = await fetchBackendResponse('/v1/tickers/index', {
       context: TICKER_INDEX_CONTEXT,
-      timeoutMs: 10000,
+      timeoutMs,
       init: {
+        signal,
         headers: ifNoneMatch ? { 'If-None-Match': ifNoneMatch } : undefined,
       },
     }).catch((error) => {
@@ -82,7 +110,8 @@ export async function proxyTickerIndex(request: Request): Promise<Response> {
         hasCfAccessClientSecret: config.hasCfAccessClientSecret,
         status: upstream.status,
       })
-      return jsonResponse({ error: 'backend_unavailable', status: upstream.status }, 502)
+      return jsonResponse({ error: 'backend_unavailable', status: upstream.status },
+        refusalStatus(upstream.status!), upstream.retryAfter)
     }
 
     if (upstream.status === 304) {
@@ -109,7 +138,8 @@ export async function proxyTickerIndex(request: Request): Promise<Response> {
           cfAccessDomain: details.cfAccessDomain,
           cfMitigated: details.cfMitigated,
         },
-        502
+        details.cfAccessDomain || details.cfMitigated ? 502 : refusalStatus(upstream.status),
+        upstream.headers.get('retry-after')
       )
     }
 

@@ -104,7 +104,20 @@ function NeighborhoodMap({ panel, neighbours }: { panel: AtlasCompanyPanel; neig
 }
 
 export default async function HomeNeighborhood({ items }: { items: PickItem[] }) {
-  if (!(await getViewerUserId())) return <section className={styles.section}><p>Sign in to explore company relationships.</p><Link href="/sign-in">Sign in</Link></section>
+  if (!(await getViewerUserId())) {
+    return (
+      <section className={styles.section}>
+        <div className={styles.container}>
+          <header className={styles.header}>
+            <h2 className={styles.heading}>Behind one name</h2>
+            <p className={styles.lede}>
+              Sign in to explore company relationships. <Link href="/sign-in" className={styles.signIn}>Sign in</Link>
+            </p>
+          </header>
+        </div>
+      </section>
+    )
+  }
   const subject = await loadHomeNeighborhood(items)
   if (!subject) return null
   const { panel, item } = subject
@@ -140,11 +153,11 @@ export default async function HomeNeighborhood({ items }: { items: PickItem[] })
             <div className={styles.focusIdentity}>
               <h3 className={styles.focusName}>
                 {focusHasDistinctName ? panel.name : (
-                  <Link href={`/stocks/${encodeURIComponent(panel.symbol)}`} className={styles.focusSymbol}>{panel.symbol}</Link>
+                  <Link prefetch={false} href={`/stocks/${encodeURIComponent(panel.symbol)}`} className={styles.focusSymbol}>{panel.symbol}</Link>
                 )}
               </h3>
               {focusHasDistinctName ? (
-                <Link href={`/stocks/${encodeURIComponent(panel.symbol)}`} className={`${styles.focusSymbol} numeric-tabular`}>
+                <Link prefetch={false} href={`/stocks/${encodeURIComponent(panel.symbol)}`} className={`${styles.focusSymbol} numeric-tabular`}>
                   {panel.symbol}
                 </Link>
               ) : null}
@@ -172,7 +185,7 @@ export default async function HomeNeighborhood({ items }: { items: PickItem[] })
               {connections.map((node) => {
                 const hasDistinctName = node.name && node.name !== node.symbol
                 return (
-                  <Link
+                  <Link prefetch={false}
                     key={node.symbol}
                     href={`/stocks/${encodeURIComponent(node.symbol)}`}
                     className={styles.connection}

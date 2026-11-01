@@ -11,9 +11,11 @@ import {
   type BackendRequestLogContext,
 } from '@/lib/backend-request-log'
 import { BackendDataError } from '@/lib/backend'
-import { getTickerDisclosures, getTickerEvents, getTickerFinancialStatements } from '@/lib/canonical-research'
+import { getTickerFinancialStatements } from '@/lib/canonical-research'
 import { annualSeries, summaryAmount, summaryDate, summaryPercent, type ReportedPoint } from '@/lib/statement-reading'
 import { currencyForTicker, formatCompactMoney } from '@/lib/currency'
+import { isoCurrency } from '@/lib/display-currency'
+import { resolveDisplayCurrency } from '@/lib/display-currency-server'
 import {
   getOhlcData,
   getStockQuote,
@@ -34,7 +36,6 @@ import {
 } from '@/lib/ticker-data'
 import { scorecardFromTickerSummary } from '@/lib/ticker-page-scorecard'
 import { canonicalTickerStats, parseCompactCurrencyNumber } from '@/lib/ticker-page-stats'
-import { buildEventMarkers, type EventMarker } from '@/lib/event-markers'
 import { resolveStockAsset } from '@/lib/stock-asset-kind'
 
 export const dynamic = 'force-dynamic'
@@ -204,6 +205,7 @@ export default async function TickerPage({
     from?: string | string[]
     screenerSignal?: string | string[]
     modelName?: string | string[]
+    currency?: string | string[]
   }>
 }) {
   const resolvedParams = await params
@@ -217,7 +219,6 @@ export default async function TickerPage({
   }
   logStockPageEvent('info', 'render start', requestLogContext)
 
-  const currency = currencyForTicker(ticker)
   const sourceContext = singleSearchParam(resolvedSearchParams.from)
   const screenerSignal = sanitizeScreenerSignal(singleSearchParam(resolvedSearchParams.screenerSignal))
   const modelName = sanitizeModelName(singleSearchParam(resolvedSearchParams.modelName))
@@ -249,6 +250,13 @@ export default async function TickerPage({
     )
   }
 
+  // The listing's currency, as the header shows it. The whole page stays in it.
+  const currency = tickerSummary.asset?.currency ?? tickerSummary.fundamentalsSummary?.currency ?? currencyForTicker(ticker)
+  // `?currency=`: only offers the chart in that currency (converted by the
+  // backend, on request); a code the backend does not list, or the listing's
+  // own currency, is no display currency.
+  const requestedCurrency = await resolveDisplayCurrency(resolvedSearchParams.currency).catch(() => null)
+  const displayCurrency = requestedCurrency && requestedCurrency !== isoCurrency(currency) ? requestedCurrency : null
   const scorecard = scorecardFromTickerSummary(tickerSummary)
   // Reported annual revenue for the Fundamentals card: the same series the
   // Fundamentals tab draws (Spec PRD-78, "Os mesmos números em todas as tabs").
@@ -257,26 +265,6 @@ export default async function TickerPage({
     loadOptionalStockDataset<ReportedPoint[] | null>(requestLogContext, `/tickers/${ticker}/financial-statements`, null, async () => {
       const income = await getTickerFinancialStatements(ticker, { statementType: 'income_statement', periodType: 'annual', limit: 500 })
       return income.available ? annualSeries(income.rows, 'revenue') : null
-    })
-  )
-  // Company events for the expanded chart's Events layer. Not awaited: the page
-  // renders without them and the chart reads them when it opens. `null` means
-  // they could not be loaded; an empty list means none are recorded.
-  const chartEventsPromise = runWithBackendRequestLogContext(requestLogContext, () =>
-    loadOptionalStockDataset<EventMarker[] | null>(requestLogContext, `/tickers/${ticker}/events`, null, async () => {
-      const today = new Date().toISOString().slice(0, 10)
-      const start = new Date(Date.now() - 3650 * 86_400_000).toISOString().slice(0, 10)
-      const [payload, disclosures] = await Promise.all([
-        getTickerEvents(ticker, { startDate: start, endDate: today, latestOnly: true, limit: 200 }),
-        // Guidance lives in the disclosures stream; the layer still shows the
-        // company's events when it cannot be read.
-        getTickerDisclosures(ticker, { latestOnly: true, limit: 100 }).catch(() => null),
-      ])
-      if (!payload.available || !Array.isArray(payload.rows)) return []
-      const guidance = disclosures?.available && Array.isArray(disclosures.rows)
-        ? disclosures.rows.filter((row) => row.domain === 'guidance' && (row.occursAt ?? '') >= start)
-        : []
-      return buildEventMarkers([...payload.rows, ...guidance], today)
     })
   )
   const [ohlcResult, fundamentals] = await runWithBackendRequestLogContext(
@@ -301,7 +289,7 @@ export default async function TickerPage({
     ohlcCacheKey: ohlcResult.cacheKey,
     scorecardReadiness: scorecard.readiness,
   })
-  const historicalData = ohlcData.map((point) => ({ date: point.date, close: point.close }))
+  const historicalData = ohlcData.map((point) => ({ date: point.date, close: point.close, price_basis: point.price_basis }))
   const historicalChartState =
     ohlcResult.status === 'loaded'
       ? 'loaded'
@@ -322,15 +310,12 @@ export default async function TickerPage({
   }
   const relationshipsGate = atlasCompany.status === 'denied' && atlasCompany.reason === 'sign_in_required' ? 'signedOut' : null
   const relatedAssetsPromise = runWithBackendRequestLogContext(requestLogContext, () => {
-      const neighbours = atlasCompany.status === 'ok' ? atlasCompany.data.neighbours.slice(0, 6) : []
+      const neighbours = atlasCompany.status === 'ok' ? atlasCompany.data.neighbours.slice(0, 6).sort((a, b) => Math.abs(b.correlation ?? 0) - Math.abs(a.correlation ?? 0)).slice(0, 5) : []
       return Promise.all(neighbours.map((item) => getStockQuote(item.symbol).catch(() => null).then((quote) => ({
         symbol: item.symbol,
         name: item.name ?? quote?.name ?? null,
-        price: quote?.price ?? null,
         changePercent: quote?.changePercent ?? null,
-        relation: 'Moves with it',
         strength: item.correlation,
-        confidence: null,
       }))))
     })
     .catch((error) => {
@@ -395,6 +380,9 @@ export default async function TickerPage({
       ) : null}
 
       <StockOverviewClient
+        // A new display currency starts the chart's converted view afresh.
+        key={displayCurrency ?? 'listing'}
+        displayCurrency={displayCurrency}
         ticker={ticker}
         currency={currency}
         isFund={isEtf}
@@ -411,7 +399,6 @@ export default async function TickerPage({
         } : null}
         relatedAssets={relatedAssetsPromise}
         relationshipsGate={relationshipsGate}
-        chartEvents={chartEventsPromise}
         scorecard={scorecard}
         revenue={revenuePromise}
         operatingMargin={overviewFigure(summaryPercent(latestFundamentals, /operating\s+margin/i), summaryDate(latestFundamentals, /operating\s+margin/i))}

@@ -7,7 +7,7 @@ import { normalizeEarningsHistory } from '@/lib/event-research'
 import { formatCompactMoney } from '@/lib/currency'
 import BeingBuilt from '@/components/stocks/research/BeingBuilt'
 import ResearchChapter, { LeadStat } from '@/components/stocks/research/ResearchChapter'
-import type { StockResearchData } from '@/lib/stock-research'
+import type { StockResearchIdentity } from '@/lib/stock-research'
 import styles from './StockEventsResearch.module.css'
 
 function formatDate(value: string | null): string {
@@ -85,7 +85,7 @@ function Cell({ value }: { value: string }) {
   return value ? <>{value}</> : <span className={styles.notReported}>Not reported</span>
 }
 
-function EarningsHistory({ data }: { data: StockResearchData }) {
+function EarningsHistory({ data }: { data: StockResearchIdentity }) {
   const { rows } = normalizeEarningsHistory(data.summary.earningsHistory)
   if (rows.length === 0) {
     return <BeingBuilt size="chart">Each quarter’s reported earnings and revenue against what was expected are being added.</BeingBuilt>
@@ -138,7 +138,7 @@ export default function StockEventsResearch({
   category,
   selectedDay,
 }: {
-  data: StockResearchData
+  data: StockResearchIdentity
   events: EventCalendarPayload | null
   disclosures: DisclosurePayload | null
   calendar: CalendarResult
@@ -170,7 +170,7 @@ export default function StockEventsResearch({
 
   return (
     // No page header: the tab above already says Events.
-    <ResearchViewShell data={data} title={isFund ? 'Fund Events' : 'Earnings & Events'} showHeader={false}>
+    <ResearchViewShell title={isFund ? 'Fund Events' : 'Earnings & Events'} showHeader={false}>
       <div className={styles.page} data-events-research="">
         <ResearchChapter
           id="next-event"

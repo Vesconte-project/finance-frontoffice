@@ -14,6 +14,7 @@ import {
   type ChartView,
 } from '@/lib/expanded-chart'
 import { stackMarkerLevels, type EventMarkerCategory } from '@/lib/event-markers'
+import { readyAdjustedOverlays, type TechnicalChartPayload } from '@/lib/price-basis'
 import type { OhlcPoint } from '@/lib/ohlc-data'
 import styles from './ExpandedChart.module.css'
 
@@ -56,6 +57,8 @@ type Gesture =
 type ExpandedPriceCanvasProps = {
   /** Receives the canvas element, so the dialog can focus it on open. */
   focusRef?: RefObject<HTMLCanvasElement | null>
+  overlayPayload?: TechnicalChartPayload | null
+  selectedIndicators?: readonly string[]
   bars: readonly OhlcPoint[]
   currency: string
   kind: ChartKind
@@ -133,6 +136,8 @@ const DATE_FORMAT = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'num
 export default function ExpandedPriceCanvas({
   focusRef,
   bars,
+  overlayPayload = null,
+  selectedIndicators = [],
   currency,
   kind,
   showVolume,
@@ -167,9 +172,9 @@ export default function ExpandedPriceCanvas({
   const markersRef = useRef<Array<{ id: string; x: number; y: number }>>([])
 
   // Latest props for the imperative draw and input handlers.
-  const propsRef = useRef({ bars, currency, kind, showVolume, drawTool, drawings, pending, measure, onPick, onMeasure, onInspect, onViewChange, onReset, events, showEvents, selectedEvent, onSelectEvent })
+  const propsRef = useRef({ bars, overlayPayload, selectedIndicators, currency, kind, showVolume, drawTool, drawings, pending, measure, onPick, onMeasure, onInspect, onViewChange, onReset, events, showEvents, selectedEvent, onSelectEvent })
   useLayoutEffect(() => {
-    propsRef.current = { bars, currency, kind, showVolume, drawTool, drawings, pending, measure, onPick, onMeasure, onInspect, onViewChange, onReset, events, showEvents, selectedEvent, onSelectEvent }
+    propsRef.current = { bars, overlayPayload, selectedIndicators, currency, kind, showVolume, drawTool, drawings, pending, measure, onPick, onMeasure, onInspect, onViewChange, onReset, events, showEvents, selectedEvent, onSelectEvent }
   })
 
   const draw = useCallback(() => {
@@ -194,8 +199,22 @@ export default function ExpandedPriceCanvas({
 
     const palette = paletteRef.current ?? (paletteRef.current = readPalette(canvas))
     const view = viewRef.current
+    const overlays = readyAdjustedOverlays(propsRef.current.overlayPayload, data)
+      .filter(series => propsRef.current.selectedIndicators.includes(series.key))
     const extent = visibleExtent(data, view.from, view.to, chartKind)
     if (!extent) return
+    const visibleDates = new Set(data.slice(Math.max(0, Math.floor(view.from)), Math.ceil(view.to) + 1).map(bar => bar.date))
+    for (const series of overlays.filter(series => series.unit === 'price')) {
+      for (const point of series.points) {
+        if (!visibleDates.has(point.date)) continue
+        for (const value of [point.value, point.upper, point.lower]) {
+          if (typeof value === 'number' && Number.isFinite(value)) {
+            extent.min = Math.min(extent.min, value)
+            extent.max = Math.max(extent.max, value)
+          }
+        }
+      }
+    }
 
     ctx.font = palette.font
     ctx.textBaseline = 'middle'
@@ -209,6 +228,7 @@ export default function ExpandedPriceCanvas({
     const plotWidth = width - axisWidth
     const mainBottom = height - AXIS_HEIGHT
     const volumeHeight = volumeOn ? Math.round(mainBottom * 0.18) : 0
+    const oscillatorHeight = overlays.some(series => series.unit === 'index_0_100') ? Math.round(mainBottom * 0.22) : 0
     const geometry: Geometry = {
       width,
       height,
@@ -216,7 +236,7 @@ export default function ExpandedPriceCanvas({
       axisWidth,
       axisHeight: AXIS_HEIGHT,
       priceTop: 10,
-      priceBottom: mainBottom - volumeHeight - (volumeHeight ? 8 : 6),
+      priceBottom: mainBottom - volumeHeight - oscillatorHeight - (volumeHeight || oscillatorHeight ? 8 : 6),
       volumeTop: mainBottom - volumeHeight,
       volumeBottom: mainBottom,
       mainBottom,
@@ -278,6 +298,34 @@ export default function ExpandedPriceCanvas({
         ctx.fill(groups[side])
       }
       ctx.globalAlpha = 1
+    }
+
+    // API overlays only: readiness and adjusted basis are checked at the draw boundary.
+    const indices = new Map(data.map((bar, index) => [bar.date, index]))
+    for (const [overlayIndex, series] of overlays.entries()) {
+      const oscillator = series.unit === 'index_0_100'
+      const top = geometry.priceBottom + 12
+      const bottom = geometry.volumeTop - 8
+      if (oscillator) {
+        ctx.fillStyle = palette.muted
+        ctx.fillText('RSI · 0–100', 6, top + 8)
+      }
+      for (const field of ['value', ...(series.key === 'bb_20_2' ? ['upper', 'lower'] : [])] as const) {
+        ctx.beginPath()
+        let connected = false
+        for (const point of series.points) {
+          const index = indices.get(point.date)
+          const value = point[field as 'value' | 'upper' | 'lower']
+          if (index === undefined || index < geometry.first || index > geometry.last || typeof value !== 'number' || !Number.isFinite(value)) { connected = false; continue }
+          const y = oscillator ? bottom - Math.min(100, Math.max(0, value)) / 100 * (bottom - top) : yOf(value)
+          if (connected) ctx.lineTo(xOf(index), y)
+          else ctx.moveTo(xOf(index), y)
+          connected = true
+        }
+        ctx.strokeStyle = [palette.up, palette.muted, palette.down][overlayIndex % 3]
+        ctx.lineWidth = 1.3
+        ctx.stroke()
+      }
     }
 
     // Measurement band between two days, behind the price.
@@ -581,7 +629,7 @@ export default function ExpandedPriceCanvas({
 
   useEffect(() => {
     schedule()
-  }, [bars, currency, kind, showVolume, drawings, pending, measure, events, showEvents, selectedEvent, schedule])
+  }, [bars, overlayPayload, selectedIndicators, currency, kind, showVolume, drawings, pending, measure, events, showEvents, selectedEvent, schedule])
 
   useEffect(() => {
     if (!drawTool) return

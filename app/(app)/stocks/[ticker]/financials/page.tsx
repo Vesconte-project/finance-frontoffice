@@ -2,7 +2,7 @@ import StockFinancialsResearch from '@/components/stocks/StockFinancialsResearch
 import ResearchUnavailable from '@/components/stocks/ResearchUnavailable'
 import { getTickerFinancialStatements } from '@/lib/canonical-research'
 import { incomeSeries, reportedYears } from '@/lib/statement-reading'
-import { getStockResearchData } from '@/lib/stock-research'
+import { getStockResearchIdentity } from '@/lib/stock-research'
 
 export default async function FinancialsPage({ params }: { params: Promise<{ ticker: string }> }) {
   const { ticker: rawTicker } = await params
@@ -12,7 +12,7 @@ export default async function FinancialsPage({ params }: { params: Promise<{ tic
   // history by plan were removed by the founder on 2026-10-04; an old
   // `?period=` or `?statement=` link simply lands here.
   const [data, income] = await Promise.all([
-    getStockResearchData(ticker).catch(() => null),
+    getStockResearchIdentity(ticker).catch(() => null),
     getTickerFinancialStatements(ticker, { statementType: 'income_statement', periodType: 'annual', limit: 500 }).catch(() => null),
   ])
   if (!data) return <ResearchUnavailable ticker={ticker} />

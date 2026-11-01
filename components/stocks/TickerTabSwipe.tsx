@@ -8,6 +8,8 @@ import {
   stockResearchKeyFromPath,
   stockResearchPrimaryItems,
 } from '@/components/stocks/stock-nav-config'
+import { useDisplayCurrencyParam } from '@/hooks/useDisplayCurrency'
+import { withDisplayCurrency } from '@/lib/display-currency'
 import styles from './TickerTabSwipe.module.css'
 
 // A swipe must travel this far, mostly sideways, before it changes the tab.
@@ -40,6 +42,7 @@ export default function TickerTabSwipe() {
 
   const ticker = decodeURIComponent(pathname.split('/').filter(Boolean)[1] ?? '').toUpperCase()
   const activeKey = stockResearchKeyFromPath(pathname)
+  const displayCurrency = useDisplayCurrencyParam()
   const index = stockResearchPrimaryItems.findIndex((item) => item.key === activeKey)
   const previous = index > 0 ? stockResearchPrimaryItems[index - 1] : null
   const next = index >= 0 && index < stockResearchPrimaryItems.length - 1 ? stockResearchPrimaryItems[index + 1] : null
@@ -50,8 +53,8 @@ export default function TickerTabSwipe() {
     const hint = hintRef.current
     if (!content || !hint) return
 
-    const previousHref = previous ? stockResearchHref(ticker, previous) : null
-    const nextHref = next ? stockResearchHref(ticker, next) : null
+    const previousHref = previous ? withDisplayCurrency(stockResearchHref(ticker, previous), displayCurrency) : null
+    const nextHref = next ? withDisplayCurrency(stockResearchHref(ticker, next), displayCurrency) : null
     // Fetch the destination when a swipe commits, rather than on every page mount.
 
     const html = document.documentElement
@@ -148,7 +151,7 @@ export default function TickerTabSwipe() {
       // A new tab arrives in place: clear what the swipe left on the content.
       reset(false)
     }
-  }, [ticker, previous, next, reducedMotion, router])
+  }, [ticker, previous, next, reducedMotion, router, displayCurrency])
 
   return <div ref={hintRef} className={styles.hint} aria-hidden="true" data-ticker-tab-swipe-hint="" />
 }

@@ -8,10 +8,10 @@ import styles from './AtlasPro.module.css'
 export function ThemeCard({ theme, labelOf }: { theme: AtlasTheme; labelOf: (zoneId: string, fallback: string | null) => string }) {
   const verdict = theme.verdict ? THEME_VERDICTS[theme.verdict] : null
   return (
-    <div className={styles.card} role="region" aria-label={`Theme: ${theme.label}`}>
-      <p className={styles.eyebrow}>Theme</p>
+    <div className={styles.card} role="region" aria-label={`ETF theme: ${theme.label}`}>
+      <p className={styles.eyebrow}>ETF theme</p>
       <b className={styles.cardTitle}>{theme.label}</b>
-      <small>{theme.memberCount} companies that thematic funds hold together. Regions on the map come from prices, so a theme can spread across several.</small>
+      <small>{theme.memberCount} companies that thematic ETFs hold together. Regions on the map come from prices, so a theme can spread across several.</small>
       {verdict ? (
         <>
           <p className={styles.verdict}>

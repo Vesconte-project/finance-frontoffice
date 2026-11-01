@@ -1,11 +1,14 @@
 'use client'
 
+import { browserRead } from '@/lib/read-client'
+
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { Suspense, use, useMemo, useRef, useState } from 'react'
 import { ChartCandlestick, ChartLine, Maximize2 } from 'lucide-react'
 import SegmentedControl from '@/components/ui/SegmentedControl'
 import TemporalLineChart, { type TemporalLinePoint } from '@/components/charts/TemporalLineChart'
+import { ADJUSTED_PRICE_LABEL, ADJUSTED_CHART_VERSION, normalizeAdjustedHistory } from '@/lib/price-basis'
 import type { OhlcPoint, PricePoint } from '@/lib/finance'
 import type { Scorecard } from '@/lib/scorecard-types'
 import {
@@ -15,11 +18,18 @@ import {
   type TechnicalGaugeData,
   type TechnicalTimeframe,
 } from '@/lib/technicalSignals'
-import type { EventMarker } from '@/lib/event-markers'
 import type { ScorecardAxis } from '@/lib/scorecard-types'
 import BeingBuilt, { BeingBuiltBadge } from '@/components/stocks/research/BeingBuilt'
 import MiniBars from '@/components/stocks/research/MiniBars'
 import { formatCompactMoney } from '@/lib/currency'
+import {
+  currencyDecomposition,
+  DISPLAY_CURRENCY_PARAM,
+  isoCurrency,
+  parseConvertedCloses,
+  type ConvertedClose,
+  type CurrencyDecomposition,
+} from '@/lib/display-currency'
 import { shortYear, type ReportedPoint } from '@/lib/statement-reading'
 import ResearchChapter, { ChapterCard } from '@/components/stocks/research/ResearchChapter'
 import { hasUsableMaterializedScorecard } from '@/lib/ticker-page-scorecard'
@@ -27,7 +37,6 @@ import { cn } from '@/lib/utils'
 import styles from './StockOverviewClient.module.css'
 import expandedChartStyles from './ExpandedChart.module.css'
 import ScorecardDisc from './ScorecardDisc'
-import type { ExpandedChartDialogProps } from './ExpandedChartDialog'
 
 // The expanded chart's code loads only when a reader opens it.
 const ExpandedChartDialog = dynamic(() => import('./ExpandedChartDialog'), { ssr: false })
@@ -44,11 +53,8 @@ type OverviewStat = {
 type OverviewRelatedAsset = {
   symbol: string
   name: string | null
-  price: number | null
   changePercent: number | null
-  relation: string
   strength: number | null
-  confidence: number | null
 }
 
 /** A latest reported figure and the date it refers to. */
@@ -84,14 +90,18 @@ type StockOverviewClientProps = {
   ohlcData: OhlcPoint[]
   /** Formatted market cap, or null when the summary has none. */
   marketCap: string | null
+  /**
+   * The display currency the URL asks for (`?currency=`, listed by the
+   * backend), or null. It only offers the price chart in that currency, on
+   * request; everything else on the page stays in `currency`.
+   */
+  displayCurrency?: string | null
   holdings: OverviewHolding[]
   sectorWeights: OverviewSectorWeight[]
   nextEarnings: OverviewEarnings | null
   relatedAssets: Promise<OverviewRelatedAsset[]>
   /** `signedOut` when the atlas keeps a company's ties for signed-in readers. */
   relationshipsGate?: 'signedOut' | null
-  /** Company events for the expanded chart; resolves to null when unavailable. */
-  chartEvents: Promise<EventMarker[] | null>
   scorecard: Scorecard
   /** Reported annual revenue, oldest first, the same series the Fundamentals tab draws; null when unavailable. */
   revenue: Promise<ReportedPoint[] | null>
@@ -251,7 +261,7 @@ function RelatedAssetsContent({
       id="relationships"
       label="Relationships"
       band
-      actions={<Link href={`/stocks/${ticker}/relationships`} className={styles.inlineArrow}>View all →</Link>}
+      actions={<Link prefetch={false} href={`/stocks/${ticker}/relationships`} className={styles.inlineArrow}>View all →</Link>}
     >
       {rankedAssets.length > 0 ? (
         <ul className={styles.relatedAssets} aria-label={`Companies related to ${ticker}`}>
@@ -261,7 +271,7 @@ function RelatedAssetsContent({
             const moves = movesCopy(strength)
             return (
               <li key={asset.symbol}>
-                <Link href={`/stocks/${asset.symbol}`} className={styles.relatedRow} data-related-row="">
+                <Link prefetch={false} href={`/stocks/${asset.symbol}`} className={styles.relatedRow} data-related-row="">
                   <span className={styles.relatedIdentity}>
                     <span className={styles.chipTicker}>{asset.symbol}</span>
                     {asset.name ? <span className={styles.relatedName}>{asset.name}</span> : null}
@@ -287,7 +297,7 @@ function RelatedAssetsContent({
         </ul>
       ) : gate === 'signedOut' ? (
         <p className={styles.chartStatus}>
-          <Link href={`/sign-up?redirect_url=/stocks/${ticker}`}>Create a free account</Link> to see the companies that move most closely with {ticker}.
+          <Link prefetch={false} href={`/sign-up?redirect_url=/stocks/${ticker}`}>Create a free account</Link> to see the companies that move most closely with {ticker}.
         </p>
       ) : (
         <BeingBuilt size="inline">The companies that move most closely with {ticker} are being added.</BeingBuilt>
@@ -460,13 +470,108 @@ function RevenueCard({ revenuePromise, currency }: { revenuePromise: Promise<Rep
   )
 }
 
-/** The expanded chart, with the company events once they have arrived. */
-function ExpandedChartWithEvents({
-  eventsPromise,
-  ...props
-}: Omit<ExpandedChartDialogProps, 'events'> & { eventsPromise: Promise<EventMarker[] | null> }) {
-  const events = use(eventsPromise)
-  return <ExpandedChartDialog {...props} events={events} />
+const rangeDay = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+
+function formatRangeDay(value: string): string {
+  return rangeDay.format(new Date(`${value.slice(0, 10)}T00:00:00Z`))
+}
+
+function formatReturn(value: number): string {
+  return formatCompactPercent(value * 100)
+}
+
+function returnTone(value: number): 'up' | 'down' | undefined {
+  return value > 0 ? 'up' : value < 0 ? 'down' : undefined
+}
+
+/**
+ * The price chart's "Show in {currency}" toggle and, when on, how the visible
+ * range's return splits: the company in its listing currency, the currency's
+ * effect, and the return in the display currency, all from the backend's
+ * reported and converted closes of the same days. Days without a conversion are
+ * left out and counted; nothing is filled in.
+ */
+function ChartCurrencyView({
+  ticker,
+  listingCurrency,
+  displayCurrency,
+  pressed,
+  state,
+  onToggle,
+  decomposition,
+}: {
+  ticker: string
+  listingCurrency: string
+  displayCurrency: string
+  pressed: boolean
+  state: 'idle' | 'loading' | 'loaded' | 'error'
+  onToggle: () => void
+  decomposition: { result: CurrencyDecomposition | null; excludedDays: number } | null
+}) {
+  const result = decomposition?.result ?? null
+  const excluded = decomposition?.excludedDays ?? 0
+  const excludedText = excluded > 0
+    ? `${excluded} ${excluded === 1 ? 'day' : 'days'} without a ${displayCurrency} rate ${excluded === 1 ? 'is' : 'are'} left out.`
+    : `Every day in this range has a ${displayCurrency} rate.`
+  return (
+    <div className={styles.currencyView} data-chart-currency={displayCurrency}>
+      <div className={styles.currencyViewBar}>
+        <button
+          type="button"
+          className={styles.currencyToggle}
+          aria-pressed={pressed}
+          aria-busy={state === 'loading' || undefined}
+          data-chart-currency-toggle=""
+          onClick={onToggle}
+        >
+          Show in {displayCurrency}
+        </button>
+        <p className={styles.currencyViewNote}>
+          {pressed && state !== 'error'
+            ? `Converted at each day’s exchange rate. Not a listing traded in ${displayCurrency}.`
+            : `The chart is in ${listingCurrency}, the listing’s currency.`}
+        </p>
+      </div>
+      <p className="sr-only" role="status">
+        {state === 'loading' && pressed ? `Loading the price in ${displayCurrency}.` : ''}
+        {state === 'loaded' && pressed ? `Chart shown in ${displayCurrency}.` : ''}
+      </p>
+      {state === 'error' ? (
+        <p className={styles.chartStatus} role="status" data-chart-currency-error="">
+          The price in {displayCurrency} could not be loaded. The chart stays in {listingCurrency}.
+        </p>
+      ) : null}
+      {decomposition ? (
+        <section className={styles.decomposition} aria-label={`${ticker} return in ${displayCurrency} over this range`} data-currency-decomposition="">
+          {result ? (
+            <>
+              <dl className={styles.decompositionFigures}>
+                <div>
+                  <dt>{ticker} in {listingCurrency}</dt>
+                  <dd data-tone={returnTone(result.localReturn)} data-decomposition="local">{formatReturn(result.localReturn)}</dd>
+                </div>
+                <div>
+                  <dt>Currency effect, {listingCurrency} to {displayCurrency}</dt>
+                  <dd data-tone={returnTone(result.currencyEffect)} data-decomposition="currency">{formatReturn(result.currencyEffect)}</dd>
+                </div>
+                <div>
+                  <dt>Return in {displayCurrency}</dt>
+                  <dd data-tone={returnTone(result.convertedReturn)} data-decomposition="converted">{formatReturn(result.convertedReturn)}</dd>
+                </div>
+              </dl>
+              <p className={styles.decompositionNote} data-decomposition-range="">
+                {formatRangeDay(result.from)} to {formatRangeDay(result.to)}. {excludedText}
+              </p>
+            </>
+          ) : (
+            <p className={styles.decompositionNote} data-decomposition-range="">
+              Fewer than two days in this range have a {displayCurrency} rate, so the return is not split. {excludedText}
+            </p>
+          )}
+        </section>
+      ) : null}
+    </div>
+  )
 }
 
 export default function StockOverviewClient({
@@ -482,11 +587,11 @@ export default function StockOverviewClient({
   nextEarnings,
   relatedAssets: relatedAssetsPromise,
   relationshipsGate = null,
-  chartEvents,
   scorecard,
   revenue: revenuePromise,
   operatingMargin,
   netCash,
+  displayCurrency = null,
 }: StockOverviewClientProps) {
   const [heroTimeframe, setHeroTimeframe] = useState<ChartTimeframe>('1Y')
   const [fullHistoricalData, setFullHistoricalData] = useState<PricePoint[] | null>(null)
@@ -511,9 +616,44 @@ export default function StockOverviewClient({
     () => filterChartData(chartHistory, heroTimeframe),
     [chartHistory, heroTimeframe],
   )
-  const showCandles = chartKind === 'candles' && canExpandChart
+  // The chart in the display currency: only when the reader asks for it.
+  const [convertedRequested, setConvertedRequested] = useState(false)
+  const [convertedSeries, setConvertedSeries] = useState<ConvertedClose[] | null>(null)
+  const [convertedState, setConvertedState] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle')
+  const showConverted = Boolean(displayCurrency) && convertedRequested && convertedSeries !== null
+  // Every day of the visible range, with or without a conversion; days without one are left out of the line.
+  const convertedRange = useMemo(
+    () => (showConverted && convertedSeries ? filterChartData(convertedSeries, heroTimeframe) : []),
+    [showConverted, convertedSeries, heroTimeframe],
+  )
+  const decomposition = useMemo(() => currencyDecomposition(convertedRange), [convertedRange])
+  const toggleConverted = () => {
+    if (!displayCurrency) return
+    if (convertedRequested) {
+      setConvertedRequested(false)
+      return
+    }
+    setConvertedRequested(true)
+    if (convertedSeries || convertedState === 'loading') return
+    setConvertedState('loading')
+    void browserRead(`/api/stocks/${encodeURIComponent(ticker)}/history?${DISPLAY_CURRENCY_PARAM}=${encodeURIComponent(displayCurrency)}&price_basis=${ADJUSTED_CHART_VERSION}`, { cache: 'no-store' })
+      .then(async (response) => {
+        const points = parseConvertedCloses(await response.json().catch(() => null))
+        if (!response.ok || points.length < 2) throw new Error('Converted history unavailable.')
+        setConvertedSeries(points)
+        setConvertedState('loaded')
+      })
+      .catch(() => {
+        setConvertedState('error')
+        setConvertedRequested(false)
+      })
+  }
+
+  const showCandles = chartKind === 'candles' && canExpandChart && !showConverted
   const heroPoints = useMemo<TemporalLinePoint[]>(
-    () => showCandles
+    () => showConverted
+      ? convertedRange.flatMap((point) => (point.converted === null ? [] : [{ date: point.date, value: point.converted }]))
+      : showCandles
       ? filterChartData(ohlcData, heroTimeframe).map((bar) => ({
         date: bar.date,
         value: bar.close,
@@ -522,7 +662,7 @@ export default function StockOverviewClient({
         low: bar.low,
       }))
       : filteredChartData.map((point) => ({ date: point.date, value: point.close })),
-    [showCandles, ohlcData, heroTimeframe, filteredChartData],
+    [showConverted, convertedRange, showCandles, ohlcData, heroTimeframe, filteredChartData],
   )
   // Candles exist only for the loaded OHLC window; say so when "ALL" reaches further back.
   const candlesFrom = showCandles && heroTimeframe === 'ALL' && ohlcData[0] && chartHistory[0] && chartHistory[0].date < ohlcData[0].date
@@ -564,18 +704,12 @@ export default function StockOverviewClient({
     setHeroTimeframe(timeframe)
     setFullHistoryState('loading')
 
-    void fetch(`/api/stocks/${encodeURIComponent(ticker)}/history`)
+    void browserRead(`/api/stocks/${encodeURIComponent(ticker)}/history?price_basis=${ADJUSTED_CHART_VERSION}`, { cache: 'no-store' })
       .then(async (response) => {
         const payload: unknown = await response.json().catch(() => null)
         if (!response.ok || !Array.isArray(payload)) throw new Error('Full history request failed.')
 
-        const points = payload.filter((point): point is PricePoint => {
-          if (!point || typeof point !== 'object') return false
-          const candidate = point as Partial<PricePoint>
-          return typeof candidate.date === 'string'
-            && typeof candidate.close === 'number'
-            && Number.isFinite(candidate.close)
-        })
+        const points = normalizeAdjustedHistory(payload)
         if (points.length < 2) throw new Error('Full history is empty.')
 
         setFullHistoricalData(points)
@@ -652,7 +786,7 @@ export default function StockOverviewClient({
               </div>
             ))}
           </dl>
-          <Link href={`/stocks/${ticker}/signals`} className={styles.inlineArrow}>Indicator details →</Link>
+          <Link prefetch={false} href={`/stocks/${ticker}/signals`} className={styles.inlineArrow}>Indicator details →</Link>
         </ChapterCard>
       )}
     >
@@ -695,7 +829,7 @@ export default function StockOverviewClient({
     <ResearchChapter
       id="fundamentals"
       label="Fundamentals"
-      actions={<Link href={`/stocks/${ticker}/fundamentals`} className={styles.inlineArrow}>Full fundamentals →</Link>}
+      actions={<Link prefetch={false} href={`/stocks/${ticker}/fundamentals`} className={styles.inlineArrow}>Full fundamentals →</Link>}
     >
       <div className={styles.fundamentalCards} data-fundamental-cards="">
         {isFund ? fundCards.map((card) => (
@@ -751,14 +885,15 @@ export default function StockOverviewClient({
         <div className={styles.heroBody}>
           <div className={styles.heroChartColumn}>
             <h2 className="sr-only">Quick Read</h2>
+            <p className={styles.chartStatus}>{ADJUSTED_PRICE_LABEL}</p>
             <div className={styles.heroChartWrap} aria-busy={fullHistoryState === 'loading'}>
               <HeroPriceChart
                 points={heroPoints}
                 mode={showCandles ? 'candles' : 'line'}
                 onMeasureActiveChange={setHeroMeasuring}
                 reservedCorner={canExpandChart ? HERO_TOOLS_CORNER : undefined}
-                state={fullHistoryState === 'error' ? 'error' : historicalChartState}
-                currency={currency}
+                state={showConverted ? 'loaded' : fullHistoryState === 'error' ? 'error' : historicalChartState}
+                currency={showConverted && displayCurrency ? displayCurrency : currency}
               />
               {canExpandChart ? (
                 <div className={expandedChartStyles.heroTools} hidden={heroMeasuring}>
@@ -776,6 +911,7 @@ export default function StockOverviewClient({
                   <button
                     type="button"
                     className={expandedChartStyles.heroToolButton}
+                    hidden={showConverted}
                     aria-pressed={showCandles}
                     aria-label={showCandles ? 'Show line' : 'Show candles'}
                     data-chart-kind-toggle=""
@@ -792,8 +928,7 @@ export default function StockOverviewClient({
               ) : null}
               {chartExpanded ? (
                 <Suspense fallback={null}>
-                  <ExpandedChartWithEvents
-                    eventsPromise={chartEvents}
+                  <ExpandedChartDialog
                     open
                     onClose={() => setChartExpanded(false)}
                     ticker={ticker}
@@ -829,6 +964,17 @@ export default function StockOverviewClient({
                 />
               </div>
             </div>
+            {displayCurrency ? (
+              <ChartCurrencyView
+                ticker={ticker}
+                listingCurrency={isoCurrency(currency) ?? currency}
+                displayCurrency={displayCurrency}
+                pressed={convertedRequested}
+                state={convertedState}
+                onToggle={toggleConverted}
+                decomposition={showConverted ? decomposition : null}
+              />
+            ) : null}
           </div>
 
           <aside className={styles.snapshotEditorial} aria-label="Research score and verdicts" data-overview-grade="">

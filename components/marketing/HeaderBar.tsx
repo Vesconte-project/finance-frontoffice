@@ -17,6 +17,7 @@ import { HEADER_MENUS, accountMenu, type HeaderMenuData } from '@/components/hea
 import { useHeaderDisclosure } from '@/components/header-menu/useHeaderDisclosure'
 import { cn } from '@/lib/utils'
 import { BRAND_NAME } from '@/components/marketing/site-config'
+import { ATLAS_PICK_TICKER } from '@/lib/atlas-ticker-pick'
 
 const PANEL_ID = 'site-header-menu'
 const SEARCH_ID = 'site-header-search'
@@ -48,6 +49,13 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
     const active = document.activeElement
     if (active instanceof HTMLElement && searchFieldRef.current?.contains(active)) active.blur()
   }, [searchOpen])
+
+  // A pick on the atlas stays on the page, so no navigation closes the compact search: close it here.
+  useEffect(() => {
+    const onPick = () => close()
+    window.addEventListener(ATLAS_PICK_TICKER, onPick)
+    return () => window.removeEventListener(ATLAS_PICK_TICKER, onPick)
+  }, [close])
 
   function toggleSearch(trigger: HTMLButtonElement, viaKeyboard: boolean) {
     if (!searchOpen) openSearchFromTrigger(barRef.current, searchFieldRef.current, trigger)

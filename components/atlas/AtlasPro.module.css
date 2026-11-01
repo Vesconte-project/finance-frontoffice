@@ -127,7 +127,6 @@
 .upsell button:focus-visible,
 .dock select:focus-visible,
 .dockClose:focus-visible,
-.menu button:focus-visible,
 .tabs button:focus-visible,
 .peer:focus-visible,
 .lockedNote:focus-visible,
@@ -169,103 +168,362 @@
   opacity: 0.45;
 }
 
-/* Layers */
-.layer {
+/* The tools as a named list, in the Tools sheet on a small screen. */
+.toolList {
   display: grid;
-  gap: 0.4rem;
-  padding: 0.55rem 0 0.6rem;
-  border-top: 1px solid color-mix(in srgb, var(--line) 50%, transparent);
+  gap: 0.15rem;
 }
 
-.layer:first-of-type {
-  border-top: 0;
-  padding-top: 0;
-}
-
-.locked {
-  cursor: pointer;
-  opacity: 0.55;
-}
-
-.influenceList {
-  display: grid;
-  gap: 0.45rem;
-  font-size: 0.78rem;
-  line-height: 1.4;
-}
-
-.influenceList p {
-  margin: 0;
-}
-
-.influenceList small {
-  color: var(--text-muted);
-}
-
-/* Theme menu */
-.themeControl {
+.toolList button {
   position: relative;
-}
-
-.themeLabel {
-  overflow: hidden;
-  max-width: 12rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.menu {
-  position: absolute;
-  z-index: 45;
-  top: calc(100% + 0.35rem);
-  left: 0;
-  width: min(17rem, calc(100vw - 2rem));
-  max-height: min(24rem, 60svh);
-  overflow: auto;
-  margin: 0;
-  padding: 0.3rem;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  list-style: none;
-  box-shadow: 0 10px 30px rgba(11, 18, 32, 0.16);
-}
-
-.menu button {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  width: 100%;
-  min-height: 2.2rem;
-  padding: 0 0.6rem;
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.25rem;
+  padding: 0.35rem 0.5rem;
   border: 0;
-  border-radius: 4px;
+  border-radius: 10px;
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 0.84rem;
   text-align: left;
   cursor: pointer;
 }
 
-.menu button small {
-  color: var(--text-muted);
-  font-size: 0.72rem;
+.toolList button:hover,
+.toolList button[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
 }
 
-.menu button:hover,
-.menu button[aria-checked='true'] {
-  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
-}
-
-.menu button[aria-checked='true'] {
+.toolList button[aria-pressed='true'] .toolGlyph {
   color: var(--accent);
 }
 
-.menuNote {
-  padding: 0.45rem 0.6rem;
+.toolList button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.toolGlyph {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg) 70%, var(--surface));
+}
+
+.toolText {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.toolText b {
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.toolText small {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: 0.74rem;
+}
+
+/* Layers, ETF themes and This map: panels beside the dock, set out like settings. */
+.layerGroup.layerGroup {
+  margin: 1rem 0 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.layerGroup.layerGroup:first-of-type {
+  margin-top: 0.2rem;
+}
+
+.layerRow {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.7rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--line) 50%, transparent);
+}
+
+.layerGroup + .layerRow {
+  border-top: 0;
+  padding-top: 0.3rem;
+}
+
+.layerText {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.layerText b {
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.layerText small,
+.layerNote {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.layerRow .seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.locked {
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.overlay {
+  display: grid;
+  grid-template-columns: 2.4rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.overlayGlyph {
+  display: grid;
+  width: 2.4rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--bg) 70%, var(--surface));
+}
+
+/* A switch, drawn on the checkbox itself so it keeps its keyboard and screen reader behaviour. */
+.switch {
+  position: relative;
+  appearance: none;
+  flex: none;
+  width: 2.2rem;
+  height: 1.25rem;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--line);
+  cursor: pointer;
+  transition: background-color 160ms ease;
+}
+
+.switch::after {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(1.25rem - 4px);
+  height: calc(1.25rem - 4px);
+  border-radius: 50%;
+  background: var(--text);
+  content: '';
+  transition: transform 160ms ease;
+}
+
+.switch:checked {
+  background: var(--accent);
+}
+
+.switch:checked::after {
+  background: var(--bg);
+  transform: translateX(0.95rem);
+}
+
+.switch:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.influenceList {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0 0 0 3.15rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.influenceList li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.4rem;
+}
+
+.influenceList small {
+  flex-basis: 100%;
+  color: var(--text-muted);
+}
+
+/* ETF themes: a search over a long, scrolling list. */
+.themeSearch {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0.4rem;
+  padding: 0 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-muted);
+}
+
+.themeSearch:focus-within {
+  border-color: var(--accent);
+}
+
+.themeSearch input {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.25rem;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.themeSearch input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.themeSearch input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.themeList {
+  display: grid;
+  align-content: start;
+  gap: 1px;
+  min-height: 0;
+  margin-top: 0.4rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: color-mix(in srgb, var(--text-muted) 35%, transparent) transparent;
+  scrollbar-width: thin;
+}
+
+.themeList button {
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.2rem;
+  padding: 0 0.55rem 0 0.4rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.themeList button:hover {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.themeList button[aria-checked='true'] {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+}
+
+.themeList button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.themeList small {
+  min-width: 1.6rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.themeCheck {
+  display: grid;
+  place-items: center;
+}
+
+.themeName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.themeVerdict {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.themeVerdict[data-verdict='together'] {
+  background: var(--up);
+}
+
+.themeVerdict[data-verdict='apart'] {
+  background: var(--down);
+}
+
+.themeKey {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.6rem 0 0;
+  padding-top: 0.55rem;
+  border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+}
+
+.themeKey i + i,
+.themeKey i:nth-of-type(2) {
+  margin-left: 0.5rem;
+}
+
+/* This map: the week's facts as three figures, then the measures. */
+.facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin: 0.2rem 0 0.5rem;
+}
+
+.facts div {
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg) 70%, var(--surface));
+}
+
+.facts dt {
+  color: var(--text-muted);
+  font-size: 0.66rem;
+}
+
+.facts dd {
+  margin: 0.15rem 0 0;
+  font-size: 0.86rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Theme and influence cards, top right of the map */
@@ -315,29 +573,35 @@
 }
 
 /* Browse tabs */
+/* Browse's tabs read as the legend's heading: small capitals, the current one bright. */
 .tabs {
   display: flex;
-  gap: 0.2rem;
-  margin: -0.2rem 0 0.7rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+  gap: 0.9rem;
+  margin: 0 2rem 0.5rem 0;
 }
 
 .tabs button {
-  min-height: 2.2rem;
-  padding: 0 0.6rem;
+  min-height: 2rem;
+  padding: 0;
   border: 0;
-  border-bottom: 2px solid transparent;
+  border-bottom: 1px solid transparent;
   background: transparent;
   color: var(--text-muted);
   font: inherit;
-  font-size: 0.84rem;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
+}
+
+.tabs button:hover {
+  color: var(--text);
 }
 
 .tabs button[aria-selected='true'] {
   border-bottom-color: var(--accent);
   color: var(--text);
-  font-weight: 600;
 }
 
 .metric {
@@ -487,19 +751,10 @@
   font-weight: 600;
 }
 
-/* Tool rail: the left edge, vertically centred; above the time bar on phones */
+/* Editing tools belong to the horizontal toolbar above the map. */
 .rail {
-  position: absolute;
-  /* under the controls and their sheets, over the map */
-  z-index: 15;
-  top: 50%;
-  left: 0.8rem;
-  display: grid;
-  overflow: hidden;
-  transform: translateY(-50%);
-  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
-  border-radius: 8px;
-  background: var(--surface);
+  display: flex;
+  gap: 0.25rem;
 }
 
 .rail button {
@@ -508,14 +763,15 @@
   width: 2.5rem;
   height: 2.5rem;
   place-items: center;
-  border: 0;
-  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
   color: var(--text);
   cursor: pointer;
 }
 
-.rail button + button {
-  border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+.rail button:hover {
+  border-color: var(--text-muted);
 }
 
 .rail button[aria-pressed='true'] {
@@ -531,14 +787,16 @@
 .workbench {
   position: absolute;
   z-index: 18;
-  bottom: 6.6rem;
+  bottom: 8rem;
   left: 50%;
+  width: min(34rem, calc(100% - 8rem));
+  transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  width: min(38rem, calc(100% - 9rem));
-  transform: translateX(-50%);
-  pointer-events: none;
+  margin-bottom: 0.5rem;
+  max-height: 38svh;
+  overflow-y: auto;
 }
 
 .workbench > * {
@@ -703,47 +961,58 @@
   color: var(--down);
 }
 
-/* Time bar: centred above the week's line */
+/*
+ * Time is one slim capsule along the bottom edge, between the legend (left) and the
+ * zoom (right): play, the year as a track with a tick per month, and the week shown.
+ */
 .timeline {
   position: absolute;
-  z-index: 9;
-  bottom: 3.1rem;
+  z-index: 12;
+  bottom: 1rem;
   left: 50%;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.15rem 0.6rem;
+  width: min(36rem, calc(100% - 2 * var(--atlas-time-reserve, 19rem)));
   box-sizing: border-box;
-  width: min(30rem, calc(100% - 2rem));
-  padding: 0.35rem 0.7rem;
   transform: translateX(-50%);
+}
+
+.timeControls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: 2.5rem;
+  box-sizing: border-box;
+  padding: 0 0.85rem 0 0.3rem;
   border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
   border-radius: 999px;
   background: var(--surface);
-  box-shadow: 0 6px 18px rgba(11, 18, 32, 0.1);
-  font-size: 0.78rem;
-}
-
-.timeline:has(.timelineNote) {
-  border-radius: 1.1rem;
+  box-shadow: 0 8px 24px rgba(11, 18, 32, 0.16);
 }
 
 .play {
   display: grid;
   flex: none;
-  width: 2rem;
-  height: 2rem;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border: 0;
   border-radius: 50%;
-  background: transparent;
-  color: var(--text);
+  background: var(--text);
+  color: var(--bg);
   cursor: pointer;
+}
+
+.play svg {
+  fill: currentColor;
+}
+
+.play:hover {
+  opacity: 0.88;
 }
 
 .play:disabled {
   cursor: default;
-  opacity: 0.45;
+  opacity: 0.35;
 }
 
 .track {
@@ -752,54 +1021,137 @@
   flex: 1;
   align-items: center;
   min-width: 0;
+  height: 100%;
+}
+
+.timeTicks {
+  position: absolute;
+  top: 50%;
+  right: 0.45rem;
+  left: 0.45rem;
+  display: flex;
+  justify-content: space-between;
+  height: 0;
+  pointer-events: none;
+}
+
+.timeTicks i {
+  width: 1px;
+  height: 0.4rem;
+  margin-top: 0.35rem;
+  background: color-mix(in srgb, var(--text-muted) 45%, transparent);
 }
 
 .track input {
+  position: relative;
+  appearance: none;
   width: 100%;
-  min-height: 1.8rem;
-  accent-color: var(--accent);
+  height: 100%;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.track input::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--accent) var(--atlas-time-progress, 100%), var(--line) var(--atlas-time-progress, 100%));
+}
+
+.track input::-moz-range-track {
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--accent) var(--atlas-time-progress, 100%), var(--line) var(--atlas-time-progress, 100%));
+}
+
+.track input::-webkit-slider-thumb {
+  appearance: none;
+  margin-top: -6px;
+  box-sizing: border-box;
+  width: 15px;
+  height: 15px;
+  border: 3px solid var(--surface);
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.track input::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 15px;
+  height: 15px;
+  border: 3px solid var(--surface);
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.track input:disabled {
+  cursor: default;
+  opacity: 0.45;
 }
 
 .weekLabel {
   flex: none;
-  min-width: 5.5rem;
-  color: var(--text-muted);
+  min-width: 4.5rem;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   text-align: right;
+  white-space: nowrap;
 }
 
+/* What the shown week means sits just above the capsule. */
 .timelineNote {
-  flex-basis: 100%;
-  padding-bottom: 0.15rem;
+  position: absolute;
+  bottom: calc(100% + 0.4rem);
+  left: 50%;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0.15rem 0.6rem;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
   color: var(--text-muted);
   font-size: 0.7rem;
-  line-height: 1.3;
-  text-align: center;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.timelineLocked .play {
-  opacity: 0.45;
-}
-
+/* Locked: the year is drawn faintly, and the track itself says why. */
 .trackLock {
-  display: grid;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  height: 1.6rem;
-  place-items: center;
+  height: 100%;
+  padding: 0;
   border: 0;
-  border-radius: 999px;
-  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--line) 70%, transparent) 0 4px, var(--surface) 4px 8px);
+  background: linear-gradient(var(--line), var(--line)) center / 100% 3px no-repeat;
   color: var(--text-muted);
   cursor: pointer;
 }
 
-.trackLock svg {
-  padding: 1px;
-  border-radius: 3px;
+.historyBadge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.1rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 999px;
   background: var(--surface);
+  font-size: 0.68rem;
 }
 
-/* Upsell: non-modal, near the top of the map */
+.trackLock:hover .historyBadge {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
 .upsell {
   position: absolute;
   z-index: 40;
@@ -869,14 +1221,26 @@
   color: var(--accent);
 }
 
+/* The legend starts folded here, so the capsule only needs to clear its button and the zoom. */
+@media (max-width: 64rem) {
+  .timeline {
+    --atlas-time-reserve: 12.75rem;
+  }
+}
+
 @media (max-width: 40rem) {
-  /* a row along the bottom, above the time bar, so the map keeps its height */
-  .rail {
-    top: auto;
-    bottom: 8.3rem;
+  /* a phone: above the legend button, beside the zoom column */
+  .timeline {
+    right: calc(0.6rem + 2.75rem + 0.5rem);
+    bottom: calc(0.6rem + 2.75rem + 0.5rem);
     left: 0.6rem;
-    grid-auto-flow: column;
+    width: auto;
     transform: none;
+  }
+
+  .timeControls {
+    height: 2.75rem;
+    gap: 0.5rem;
   }
 
   .rail button {
@@ -884,37 +1248,9 @@
     height: 2.75rem;
   }
 
-  .rail button + button {
-    border-top: 0;
-    border-left: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
-  }
-
-  .timeline {
-    right: 4rem;
-    bottom: 3.5rem;
-    left: 0.6rem;
-    width: auto;
-    transform: none;
-  }
-
   .weekLabel {
-    min-width: 4.6rem;
-  }
-
-  /* one line on a phone, so the bar stays clear of the rail */
-  .timelineNote {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .workbench {
-    /* clear of the zoom stack at the right edge */
-    right: 3.8rem;
-    bottom: 11.5rem;
-    left: 0.6rem;
-    width: auto;
-    transform: none;
+    min-width: 0;
+    font-size: 0.72rem;
   }
 
   .dock {
@@ -934,13 +1270,14 @@
   }
 
   .play {
-    width: 2.75rem;
-    height: 2.75rem;
+    width: 2.1rem;
+    height: 2.1rem;
   }
 
-  .themeLabel {
-    max-width: 7rem;
+  .workbench {
+    width: calc(100% - 2rem);
   }
+
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1116,54 +1453,64 @@ button.share:hover .shareHead span {
   background: var(--text);
 }
 
-.browseTools {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.browseTools input {
-  flex: 1;
-  min-width: 0;
-  min-height: 2.1rem;
-  box-sizing: border-box;
-  padding: 0 0.6rem;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
-  font-size: 0.8rem;
-}
-
-.sort {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  color: var(--text-muted);
-  font-size: 0.72rem;
-}
-
-.sort select {
-  max-width: 9.5rem;
-  min-height: 2.1rem;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
-  font-size: 0.76rem;
-}
-
 .browseKey {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.3rem;
-  margin: 0 0 0.4rem 0.2rem;
+  margin: 0.5rem 0 0;
   color: var(--text-muted);
-  font-size: 0.7rem;
+  font-size: 0.66rem;
+}
+
+/* Most connected: one line of tickers over the regions, the companies behind the deepest wells. */
+.hubs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.55rem;
+  margin: 0 0 0.5rem;
+  padding: 0 0.4rem 0.5rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+}
+
+.hubs h3 {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: help;
+}
+
+.hubs ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hubs button {
+  min-height: 1.6rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+.hubs button:hover {
+  color: var(--accent);
+}
+
+.hubs button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .regionList,
@@ -1176,18 +1523,27 @@ button.share:hover .shareHead span {
 
 .regionList {
   display: grid;
-  gap: 0.1rem;
+  gap: 0.15rem;
+}
+
+.regionList > li {
+  padding: 0.3rem 0.4rem 0.35rem;
+  border-radius: 6px;
+}
+
+.regionList > li:hover,
+.regionList > li:has(.regionRow[aria-pressed='true']) {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
 }
 
 .regionRow {
   display: grid;
-  grid-template-columns: 0.7rem minmax(0, 1fr) auto;
+  grid-template-columns: 0.6rem minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.15rem 0.6rem;
+  gap: 0.55rem;
   width: 100%;
-  padding: 0.5rem 0.6rem 0.2rem;
+  padding: 0;
   border: 0;
-  border-radius: 6px;
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -1195,57 +1551,58 @@ button.share:hover .shareHead span {
   cursor: pointer;
 }
 
-.regionList li:hover .regionRow,
-.regionRow[aria-pressed='true'],
 .linkRow:hover {
-  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  background: color-mix(in srgb, var(--text) 6%, transparent);
 }
 
 .regionRow i,
 .linkName i {
-  width: 0.7rem;
-  height: 0.7rem;
-  border-radius: 3px;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 2px;
 }
 
 .regionName {
-  font-size: 0.8rem;
+  overflow: hidden;
+  font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.06em;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .regionCount {
   color: var(--text-muted);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
 }
 
 .regionMeta {
   display: flex;
   flex-wrap: wrap;
-  grid-column: 2 / -1;
   align-items: center;
-  gap: 0.25rem 0.7rem;
+  gap: 0.1rem 0.6rem;
+  margin-top: 0.1rem;
+  padding-left: 1.15rem;
   color: var(--text-muted);
-  font-size: 0.74rem;
+  font-size: 0.68rem;
 }
 
 .regionLeaders {
   display: flex;
   flex-wrap: wrap;
-  gap: 0 0.55rem;
-  padding: 0 0.6rem 0.35rem 1.9rem;
+  gap: 0 0.45rem;
 }
 
 .regionLeaders button {
-  min-height: 1.8rem;
+  min-height: 1.5rem;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--text-muted);
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   cursor: pointer;
 }
 
@@ -1310,8 +1667,6 @@ button.share:hover .shareHead span {
 .regionRow:focus-visible,
 .regionLeaders button:focus-visible,
 .linkRow:focus-visible,
-.browseTools input:focus-visible,
-.sort select:focus-visible,
 button.share:focus-visible,
 .grid button:focus-visible {
   outline: 2px solid var(--accent);

@@ -54,7 +54,7 @@ export default function PickCard({
     <li className={styles.row} style={{ '--i': index } as CSSProperties} data-pick-card="">
       <span className={styles.rank}>{String(rank).padStart(2, '0')}</span>
 
-      <Link href={`/stocks/${encodeURIComponent(item.symbol)}`} className={styles.identity}>
+      <Link prefetch={false} href={`/stocks/${encodeURIComponent(item.symbol)}`} className={styles.identity}>
         <span className={styles.ticker}>{item.symbol}</span>
         {item.name ? <span className={styles.name} title={item.name}>{item.name}</span> : null}
         {capital ? (

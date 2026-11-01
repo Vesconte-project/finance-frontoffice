@@ -8,7 +8,7 @@ import BeingBuilt from '@/components/stocks/research/BeingBuilt'
 import ResearchChapter from '@/components/stocks/research/ResearchChapter'
 import CompanyAtlasPlace from '@/components/atlas/CompanyAtlasPlace'
 import { getAtlasCompany } from '@/lib/atlas'
-import { getStockResearchData } from '@/lib/stock-research'
+import { getStockResearchIdentity } from '@/lib/stock-research'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,7 +24,7 @@ export default async function RelationshipsPage({ params }: { params: Promise<{ 
   const { ticker: rawTicker } = await params
   const ticker = rawTicker.toUpperCase()
   const [researchResult, atlas] = await Promise.all([
-    getStockResearchData(ticker).catch(() => null),
+    getStockResearchIdentity(ticker).catch(() => null),
     getAtlasCompany(ticker),
   ])
 
@@ -34,14 +34,14 @@ export default async function RelationshipsPage({ params }: { params: Promise<{ 
   }
 
   return (
-    <ResearchViewShell data={researchResult} title="Relationships" showHeader={false}>
+    <ResearchViewShell title="Relationships" showHeader={false}>
       <div data-relationship-page="">
         {atlas.status === 'ok' ? (
           <CompanyAtlasPlace panel={atlas.data} />
         ) : atlas.status === 'denied' && atlas.reason === 'sign_in_required' ? (
           <ResearchChapter id="related-companies" label="Related companies">
             <p>
-              <Link href={`/sign-up?redirect_url=/stocks/${ticker}/relationships`}>Create a free account</Link> to see where {ticker} sits on the market atlas and the companies it moves with.
+              <Link prefetch={false} href={`/sign-up?redirect_url=/stocks/${ticker}/relationships`}>Create a free account</Link> to see where {ticker} sits on the market atlas and the companies it moves with.
             </p>
             <p><Link href="/markets/network">Open the market atlas</Link></p>
           </ResearchChapter>

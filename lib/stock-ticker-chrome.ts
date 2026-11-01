@@ -2,6 +2,7 @@ import 'server-only'
 
 import { getViewerUserId } from '@/lib/auth'
 import { currencyForTicker } from '@/lib/currency'
+import { parseTrackedListings, type TrackedListings } from '@/lib/display-currency'
 import { resolveStockAsset, type StockAssetBadge } from '@/lib/stock-asset-kind'
 import { getTickerPageSummary } from '@/lib/ticker-data'
 import { tickerIdentityColor } from '@/lib/ticker-identity-color'
@@ -17,6 +18,8 @@ export type StockTickerChromeData = {
   dailyMoveAmount: number | null
   dailyMovePercent: number | null
   identityColor: string
+  /** The listings of the same company we track; null when the backend sends none. */
+  listings: TrackedListings | null
   watchlist: {
     signedIn: boolean
     initialInWatchlist: boolean
@@ -56,6 +59,7 @@ export async function getStockTickerChromeData(tickerRaw: string): Promise<Stock
     dailyMoveAmount: quote?.change ?? null,
     dailyMovePercent: quote?.changePercent ?? null,
     identityColor: tickerIdentityColor(ticker),
+    listings: parseTrackedListings(summary?.listings),
     watchlist: {
       signedIn: Boolean(viewerUserId),
       initialInWatchlist: initialInWatchlist === true,

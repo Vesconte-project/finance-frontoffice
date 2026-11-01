@@ -135,6 +135,15 @@
   letter-spacing: normal;
 }
 
+.converted {
+  font-family: var(--font-mono), monospace;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .delta {
   font-family: var(--font-mono), monospace;
   font-size: 13px;

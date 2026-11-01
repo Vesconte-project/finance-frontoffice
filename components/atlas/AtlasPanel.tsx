@@ -57,7 +57,7 @@ function CompanyLinks({ items }: { items: Array<{ symbol: string; name: string |
     <ul className={base.refs}>
       {items.map((item) => (
         <li key={item.symbol}>
-          <Link href={`/stocks/${encodeURIComponent(item.symbol)}`}><b>{item.symbol}</b>{item.name ? ` ${item.name}` : ''}</Link>
+          <Link prefetch={false} href={`/stocks/${encodeURIComponent(item.symbol)}`}><b>{item.symbol}</b>{item.name ? ` ${item.name}` : ''}</Link>
         </li>
       ))}
     </ul>
@@ -218,7 +218,7 @@ export default function AtlasPanel({ panel, zonesById, onRetry, pro, then, farTi
             <ul className={base.refs}>
               {zone.members.map((member) => (
                 <li key={member.symbol}>
-                  <Link href={`/stocks/${encodeURIComponent(member.symbol)}`}><b>{member.symbol}</b>{member.name ? ` ${member.name}` : ''}</Link>
+                  <Link prefetch={false} href={`/stocks/${encodeURIComponent(member.symbol)}`}><b>{member.symbol}</b>{member.name ? ` ${member.name}` : ''}</Link>
                   {member.share !== null ? <span className={base.share}>{Math.round(member.share * 100)}% here</span> : null}
                 </li>
               ))}
@@ -244,7 +244,7 @@ export default function AtlasPanel({ panel, zonesById, onRetry, pro, then, farTi
         <h3 className={base.panelHeading}>Largest companies in this region</h3>
         <CompanyLinks items={company.zoneLeaders} />
         <Link className={base.cta} href={SIGN_UP_HREF}>See what {company.symbol} moves with</Link>
-        <Link className={base.more} href={`/stocks/${encodeURIComponent(company.symbol)}`}>Open {company.symbol}</Link>
+        <Link prefetch={false} className={base.more} href={`/stocks/${encodeURIComponent(company.symbol)}`}>Open {company.symbol}</Link>
       </div>
     )
   }
@@ -300,7 +300,7 @@ export default function AtlasPanel({ panel, zonesById, onRetry, pro, then, farTi
           <ul className={base.refs}>
             {company.neighbours.slice(0, 10).map((neighbour) => (
               <li key={neighbour.symbol}>
-                <Link href={`/stocks/${encodeURIComponent(neighbour.symbol)}`}><b>{neighbour.symbol}</b>{neighbour.name ? ` ${neighbour.name}` : ''}</Link>
+                <Link prefetch={false} href={`/stocks/${encodeURIComponent(neighbour.symbol)}`}><b>{neighbour.symbol}</b>{neighbour.name ? ` ${neighbour.name}` : ''}</Link>
                 <span className={base.share}>
                   {strength(neighbour.correlation)}
                   <small className={styles.tieNumbers}> {neighbour.correlation.toFixed(2)}{totals && neighbour.total !== null ? ` · ${neighbour.total.toFixed(2)}` : ''}</small>
@@ -312,7 +312,7 @@ export default function AtlasPanel({ panel, zonesById, onRetry, pro, then, farTi
           </ul>
         </>
       ) : null}
-      <Link className={base.more} href={`/stocks/${encodeURIComponent(company.symbol)}`}>Open {company.symbol}</Link>
+      <Link prefetch={false} className={base.more} href={`/stocks/${encodeURIComponent(company.symbol)}`}>Open {company.symbol}</Link>
     </div>
   )
 }

@@ -33,7 +33,7 @@ function weekdayBars(days: number): OhlcPoint[] {
     const weekday = new Date(time).getUTCDay()
     if (weekday === 0 || weekday === 6) continue
     const close = 100 + (bars.length % 10)
-    bars.push({ date: new Date(time).toISOString().slice(0, 10), open: close - 1, high: close + 2, low: close - 3, close, volume: 1000 })
+    bars.push({ price_basis: 'adjusted' as const, date: new Date(time).toISOString().slice(0, 10), open: close - 1, high: close + 2, low: close - 3, close, volume: 1000 })
   }
   return bars
 }
@@ -99,8 +99,8 @@ test('axis steps are 1, 2 or 5 times a power of ten', () => {
 
 test('visible extent uses backend high and low, and falls back to the close', () => {
   const bars: OhlcPoint[] = [
-    { date: '2026-09-28', open: 10, high: 12, low: 9, close: 11, volume: null },
-    { date: '2026-09-29', open: null, high: null, low: null, close: 20, volume: null },
+    { price_basis: 'adjusted' as const, date: '2026-09-28', open: 10, high: 12, low: 9, close: 11, volume: null },
+    { price_basis: 'adjusted' as const, date: '2026-09-29', open: null, high: null, low: null, close: 20, volume: null },
   ]
   const candles = visibleExtent(bars, 0, 1, 'candles')!
   assert.ok(candles.min < 9 && candles.min > 8)
