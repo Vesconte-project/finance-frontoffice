@@ -9,7 +9,8 @@ test('description provenance and reported earnings render from published summary
     await expect(page.locator('[data-business-description]').locator('..').getByText('Being built', { exact: true })).toHaveCount(0)
     await page.screenshot({ path: testInfo.outputPath(`description-${width}.png`), fullPage: true })
     await page.goto('/stocks/QAS/events')
-    await expect(page.locator('#next-event')).toContainText('Nov 3, 2026')
+    const nextDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(Date.now() + 2 * 86_400_000)
+    await expect(page.locator('#next-event')).toContainText(nextDate)
     await expect(page.locator('#reported-against-estimate tbody tr')).toHaveCount(2)
     await expect(page.locator('#reported-against-estimate tbody')).toContainText('2026Q3')
     await expect(page.locator('#reported-against-estimate tbody')).toContainText('Not reported')
@@ -17,4 +18,16 @@ test('description provenance and reported earnings render from published summary
     expect(overflow).toBeLessThanOrEqual(1)
     await page.screenshot({ path: testInfo.outputPath(`earnings-${width}.png`), fullPage: true })
   }
+})
+
+
+test('past earnings dates keep the existing Being built state and unknown source identifiers stay hidden', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 })
+  await page.goto('/stocks/QAM/events')
+  await expect(page.locator('#next-event').getByText('Being built', { exact: true })).toBeVisible()
+  await expect(page.locator('#next-event')).not.toContainText('2000')
+  await page.goto('/stocks/QAM/business')
+  await expect(page.locator('[data-business-description]')).toBeVisible()
+  await expect(page.locator('[data-description-source]')).toHaveCount(0)
+  await expect(page.getByText('data_ops', { exact: true })).toHaveCount(0)
 })

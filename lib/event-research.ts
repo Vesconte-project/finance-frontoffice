@@ -64,14 +64,20 @@ export function selectNextResearchEvent<T extends { row: { domain: string; occur
   isFund: boolean,
   earningsDate: string | null,
   upcoming: readonly T[],
+  today = new Date().toISOString().slice(0, 10),
 ): { entry: T | null; date: string | null } {
   if (isFund) {
     const entry = upcoming[0] ?? null
     return { entry, date: entry?.row.occursAt ?? null }
   }
-  const entry = earningsDate ? upcoming.find((candidate) => (
+  const selectedDate = earningsDate
+    && /^\d{4}-\d{2}-\d{2}/.test(earningsDate)
+    && Number.isFinite(Date.parse(earningsDate))
+    && earningsDate.slice(0, 10) >= today
+    ? earningsDate : null
+  const entry = selectedDate ? upcoming.find((candidate) => (
     candidate.row.domain === 'earningsEvents'
-    && candidate.row.occursAt?.slice(0, 10) === earningsDate.slice(0, 10)
+    && candidate.row.occursAt?.slice(0, 10) === selectedDate.slice(0, 10)
   )) ?? null : null
-  return { entry, date: earningsDate }
+  return { entry, date: selectedDate }
 }

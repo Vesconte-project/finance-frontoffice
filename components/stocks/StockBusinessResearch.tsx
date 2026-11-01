@@ -3,6 +3,7 @@ import BeingBuilt from '@/components/stocks/research/BeingBuilt'
 import ResearchChapter, { ChapterCard } from '@/components/stocks/research/ResearchChapter'
 import type { TickerFinancialRow } from '@/lib/finance'
 import type { StockResearchData } from '@/lib/stock-research'
+import { descriptionSourceLabel } from '@/lib/research-provenance'
 import styles from './ResearchViews.module.css'
 import business from './StockBusinessResearch.module.css'
 
@@ -48,8 +49,7 @@ function BusinessDescription({ data }: { data: StockResearchData }) {
   const date = Number.isFinite(timestamp)
     ? new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(timestamp)
     : null
-  const sourceLabel = source === 'yahoo_finance' ? 'Yahoo Finance'
-    : source === 'feature_store.entity_attributes_static' ? 'Vesconte company profile' : source
+  const sourceLabel = descriptionSourceLabel(source)
   return (
     <div>
       <p className={business.description} data-business-description="">{data.description}</p>
