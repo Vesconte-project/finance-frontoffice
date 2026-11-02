@@ -296,10 +296,29 @@ const LINE_LABELS = {
   net_income: 'Net Income',
 }
 
+/** Annual capital facts are invented independently from the income fixture. */
+function capitalStatementRows(ticker,statementType) {
+  if (!['QAS','QAM'].includes(ticker)) return []
+  const currency=ticker==='QAM'?'EUR':'USD'
+  const periods=ticker==='QAS'?[2022,2023,2024,2025]:[2025]
+  return [...periods].reverse().flatMap(year=>{
+    const make=(id,value,derived=false)=>({symbol:ticker,statementType,lineItemId:id,displayLabel:id,value,currency,
+      periodType:'annual',fiscalYear:year,fiscalQuarter:null,periodEnd:`${year}-09-30`,knownAt:`${year}-11-01`,
+      source:derived?'derived_reported_statements':'fixture',sourceUpdatedAt:null,ingestedAt:null,
+      methodologyVersion:derived?'capital_financials.v1':'fixture',dataQualityFlags:{synthetic:true}})
+    if (statementType==='balance_sheet') return [make('cash_and_equivalents',50e9),make('total_debt',80e9),
+      make('net_cash',-30e9,true),...(ticker==='QAS'?[make('shares_outstanding',12e9+(year-2022)*1e9)]:[make('shares_issued',30e9)])]
+    if (statementType==='cash_flow') return [make('dividends_paid',-12e9),make('dividends_paid_amount',12e9,true),
+      ...(ticker==='QAS'?[make('share_repurchases',-20e9),make('share_repurchases_amount',20e9,true)]
+        :[make('share_repurchases',-20e9),make('share_repurchases_amount',20e9,true),make('net_common_stock_issuance',-12e9)])]
+    return []
+  })
+}
+
 export function tickerFinancialStatementsFixture(ticker, statementType) {
   const years = STATEMENT_FIXTURES[ticker] ?? []
   const rows = statementType && statementType !== 'income_statement'
-    ? []
+    ? capitalStatementRows(ticker,statementType)
     : [...years].reverse().flatMap((entry) => Object.keys(LINE_LABELS).flatMap((lineItemId) => (
       entry[lineItemId] === null || entry[lineItemId] === undefined ? [] : [{
         symbol: ticker,
