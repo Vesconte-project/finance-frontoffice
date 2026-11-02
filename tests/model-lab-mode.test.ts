@@ -1,23 +1,22 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { modelLabMode } from '../lib/model-lab/mode'
+import { ModelLabError } from '../lib/model-lab/contract'
+import { modelLabMode, notOpenYet } from '../lib/model-lab/mode'
 
-test('the Model Lab is off unless a mode is explicitly enabled', () => {
-  assert.equal(modelLabMode({}), 'off')
-  assert.equal(modelLabMode({ MODEL_LAB_ENABLED: 'false', MODEL_LAB_FIXTURES: '1' }), 'off')
+test('the Model Lab reads the platform API unless fixtures are enabled', () => {
+  assert.equal(modelLabMode({}), 'backend')
+  assert.equal(modelLabMode({ MODEL_LAB_FIXTURES: '1' }), 'backend')
+  assert.equal(modelLabMode({ VERCEL_ENV: 'production' }), 'backend')
 })
 
-test('the backend mode needs MODEL_LAB_ENABLED=true', () => {
-  assert.equal(modelLabMode({ MODEL_LAB_ENABLED: 'true' }), 'backend')
-  assert.equal(modelLabMode({ MODEL_LAB_ENABLED: 'true', VERCEL_ENV: 'production' }), 'backend')
-})
-
-test('fixtures open outside Production and win over the backend mode', () => {
+test('fixtures open outside Production only', () => {
   assert.equal(modelLabMode({ MODEL_LAB_FIXTURES: 'true' }), 'fixtures')
-  assert.equal(modelLabMode({ MODEL_LAB_FIXTURES: 'true', MODEL_LAB_ENABLED: 'true', VERCEL_ENV: 'preview' }), 'fixtures')
+  assert.equal(modelLabMode({ MODEL_LAB_FIXTURES: 'true', VERCEL_ENV: 'preview' }), 'fixtures')
+  assert.equal(modelLabMode({ MODEL_LAB_FIXTURES: 'true', VERCEL_ENV: 'production' }), 'backend')
 })
 
-test('fixtures never open on Vercel Production', () => {
-  assert.equal(modelLabMode({ MODEL_LAB_FIXTURES: 'true', VERCEL_ENV: 'production' }), 'off')
-  assert.equal(modelLabMode({ MODEL_LAB_FIXTURES: 'true', MODEL_LAB_ENABLED: 'true', VERCEL_ENV: 'production' }), 'backend')
+test('a platform without the Model Lab routes means it is not open yet', () => {
+  assert.equal(notOpenYet(new ModelLabError('not-found')).code, 'unavailable')
+  for (const code of ['unauthenticated', 'forbidden', 'upstream', 'unavailable'] as const)
+    assert.equal(notOpenYet(new ModelLabError(code)).code, code)
 })

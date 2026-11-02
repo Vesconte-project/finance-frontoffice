@@ -7,8 +7,7 @@ Status: **not served by the backend yet.** This is the contract the frontoffice 
 | Variable | Effect |
 |---|---|
 | `MODEL_LAB_FIXTURES=true` | Synthetic in-memory data. Never active when `VERCEL_ENV=production`. The browser QA server sets it. |
-| `MODEL_LAB_ENABLED=true` | Platform API under `/v1/model-lab` (needs the platform API to be on). |
-| neither | `/models` shows "The Model Lab is not open yet". |
+| not set | Platform API under `/v1/model-lab`. While the platform API is off, or answers 404 to `GET /model-lab/viewer` because the routes are not served yet, `/models` shows "The Model Lab is not open yet". |
 
 ## Boundary
 

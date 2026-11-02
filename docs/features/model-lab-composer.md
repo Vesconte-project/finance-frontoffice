@@ -1,6 +1,6 @@
 # Model Lab
 
-Status: built against a target contract the backend does not serve yet (`docs/api/model-lab.md`). It runs on synthetic fixtures for Preview and browser QA (`MODEL_LAB_FIXTURES=true`), and on the platform API when `MODEL_LAB_ENABLED=true`.
+Status: built against a target contract the backend does not serve yet (`docs/api/model-lab.md`). It runs on synthetic fixtures for Preview and browser QA (`MODEL_LAB_FIXTURES=true`), and otherwise on the platform API; until the backend serves it, `/models` shows "The Model Lab is not open yet".
 
 One Model Lab for a self-directed investor, replacing the three older labs. Depth is Guided, Advanced or Lab in the same product; admins use the same product (role `admin`, permission `research.internal.run`) and also see the Lab depth and the Admin page. Platform control lives in the backoffice. Founder direction is in `docs/product/decision-register.md`.
 
