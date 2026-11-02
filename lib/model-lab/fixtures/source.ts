@@ -16,6 +16,7 @@ import {
   type PipelineView,
   type Plan,
   type QueueRow,
+  type ThesisTrends,
   type Quote,
   type Role,
   type Run,
@@ -35,7 +36,7 @@ import { describeThesis } from '../thesis-sentence'
 import { libraryModels, memberFor, memberKeyOfRun, initialPanels, panelAlerts, panelEvidence, panelToday } from './panels'
 import { CREDIT_UNIT, quoteDraft } from './quote'
 import { buildResults, resultsId, seedFor } from './sets'
-import { dataHealth, initialAccessRequests, initialCandidates, initialQueue, lineageOf, pipelineOf } from './team'
+import { dataHealth, initialAccessRequests, initialCandidates, initialQueue, lineageOf, pipelineOf, thesisTrends } from './team'
 import { DEFAULT_WATCH, THESIS_SPECS, evidenceOf, specId, summaryOf, testId, type ThesisSpec } from './theses'
 import { fixtureId, hash, rng } from './random'
 import { daysAgoIso } from './world'
@@ -290,7 +291,8 @@ export class FixtureSource implements ModelLabSource {
     this.world.runs.set(id, record)
     this.world.idempotency.set(key, { body, runId: id })
     this.world.credits = round1(this.world.credits - quote.total)
-    this.world.queue.unshift({ id: `job-${8842 + this.world.counter}`, who: 'you', thesis: describeThesis(draft.sentence).slice(0, 34) + '…', variants: quote.variants, stage: STAGES[0][0], state: 'running', worker: 'worker-1', minutes: 0 })
+    const job = { id: `job-${8842 + this.world.counter}`, variants: quote.variants, stage: STAGES[0][0], state: 'running', worker: 'worker-1', minutes: 0 } as const
+    this.world.queue.unshift(this.state.role === 'team' ? { ...job, owner: 'team', who: 'you', thesis: describeThesis(draft.sentence).slice(0, 34) + '…' } : { ...job, owner: 'customer' })
     return this.getRun(id)
   }
 
@@ -520,6 +522,11 @@ export class FixtureSource implements ModelLabSource {
   async teamDataHealth(): Promise<DataHealth> {
     this.requireTeam()
     return dataHealth()
+  }
+
+  async teamTrends(): Promise<ThesisTrends> {
+    this.requireTeam()
+    return thesisTrends()
   }
 }
 

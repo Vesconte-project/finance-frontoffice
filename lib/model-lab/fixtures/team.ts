@@ -1,4 +1,6 @@
-import type { AccessRequest, Candidate, DataHealth, Lineage, PipelineKind, PipelineView, QueueRow } from '../contract'
+import type { AccessRequest, Candidate, DataHealth, Lineage, PipelineKind, PipelineView, QueueRow, ThesisTrends, TrendDimension, TrendGroup } from '../contract'
+import { MODEL_OPTIONS } from '../params'
+import { CONDITION_OPTIONS, DOES_OPTIONS, UNIVERSE_OPTIONS, WHO_OPTIONS } from '../thesis-sentence'
 import { memberFor } from './panels'
 import { SNAPSHOT } from './world'
 import { hash, hex } from './random'
@@ -6,10 +8,10 @@ import type { ThesisSpec } from './theses'
 
 export function initialQueue(): QueueRow[] {
   return [
-    { id: 'job-8841', who: 'ana.ribeiro', thesis: 'Quiet stocks hold up', variants: 2, stage: 'Checking it holds up', state: 'running', worker: 'worker-2', minutes: 4 },
-    { id: 'job-8840', who: 'team: model-review', thesis: 'gbm-v7 vs production', variants: 2, stage: 'Simulating with costs', state: 'running', worker: 'worker-1', minutes: 11 },
-    { id: 'job-8839', who: 'miguel.sa', thesis: 'Winners keep winning', variants: 27, stage: 'Complete', state: 'completed', worker: 'worker-1', minutes: 38 },
-    { id: 'job-8838', who: 'jo.martins', thesis: 'Earnings drift', variants: 2, stage: 'Failed at signal build', state: 'failed', worker: 'worker-2', minutes: 6 },
+    { id: 'job-8841', owner: 'customer', variants: 2, stage: 'Checking it holds up', state: 'running', worker: 'worker-2', minutes: 4 },
+    { id: 'job-8840', owner: 'team', who: 'model-review', thesis: 'gbm-v7 vs production', variants: 2, stage: 'Simulating with costs', state: 'running', worker: 'worker-1', minutes: 11 },
+    { id: 'job-8839', owner: 'customer', variants: 27, stage: 'Complete', state: 'completed', worker: 'worker-1', minutes: 38 },
+    { id: 'job-8838', owner: 'customer', variants: 2, stage: 'Failed at signal build', state: 'failed', worker: 'worker-2', minutes: 6 },
   ]
 }
 
@@ -27,6 +29,46 @@ export function initialCandidates(): Candidate[] {
 
 export function initialAccessRequests(): AccessRequest[] {
   return [{ id: 'req-1', experimentId: 'exp-4417', reason: 'Owner reported a failed run and asked for help', expires: 'expires in 2 days', status: 'Logged · owner notified' }]
+}
+
+/** Below this many accounts a group is folded into "other", so no small group points at a person. */
+export const TREND_MIN_ACCOUNTS = 10
+
+type RawGroup = readonly [key: string, label: string, accounts: number, theses: number]
+
+export function foldTrends(dimension: TrendDimension, raw: readonly RawGroup[], minAccounts = TREND_MIN_ACCOUNTS): ThesisTrends['dimensions'][number] {
+  const groups: TrendGroup[] = []
+  const other = { accounts: 0, theses: 0 }
+  for (const [key, label, accounts, theses] of raw) {
+    if (accounts >= minAccounts) groups.push({ key, label, accounts, theses })
+    else {
+      other.accounts += accounts
+      other.theses += theses
+    }
+  }
+  groups.sort((a, b) => b.theses - a.theses)
+  return { dimension, groups, other }
+}
+
+const text = (options: readonly { key: string; text: string }[], key: string) => options.find((o) => o.key === key)?.text ?? key
+const model = (key: string) => MODEL_OPTIONS.find(([k]) => k === key)?.[1] ?? key
+
+/** Synthetic counts for the last 30 days. Accounts are distinct per group, so groups do not sum to the total. */
+export function thesisTrends(): ThesisTrends {
+  return {
+    periodDays: 30,
+    accounts: 184,
+    theses: 412,
+    minAccounts: TREND_MIN_ACCOUNTS,
+    dimensions: [
+      foldTrends('who', [['momentum', text(WHO_OPTIONS, 'momentum'), 71, 138], ['value', text(WHO_OPTIONS, 'value'), 48, 87], ['quality', text(WHO_OPTIONS, 'quality'), 39, 64], ['lowvol', text(WHO_OPTIONS, 'lowvol'), 30, 52], ['growth', text(WHO_OPTIONS, 'growth'), 22, 41], ['earnings', text(WHO_OPTIONS, 'earnings'), 14, 23], ['liquid', text(WHO_OPTIONS, 'liquid'), 4, 7]]),
+      foldTrends('does', [['outperform', text(DOES_OPTIONS, 'outperform'), 120, 251], ['rise', text(DOES_OPTIONS, 'rise'), 52, 88], ['fall-less', text(DOES_OPTIONS, 'fall-less'), 27, 46], ['barrier', text(DOES_OPTIONS, 'barrier'), 15, 27]]),
+      foldTrends('universe', [['us', text(UNIVERSE_OPTIONS, 'us'), 88, 176], ['picks', text(UNIVERSE_OPTIONS, 'picks'), 61, 109], ['watchlist', text(UNIVERSE_OPTIONS, 'watchlist'), 33, 54], ['covered', text(UNIVERSE_OPTIONS, 'covered'), 21, 38], ['eu', text(UNIVERSE_OPTIONS, 'eu'), 17, 29], ['apac', text(UNIVERSE_OPTIONS, 'apac'), 3, 6]]),
+      foldTrends('condition', [['any', text(CONDITION_OPTIONS, 'any'), 131, 270], ['falling', text(CONDITION_OPTIONS, 'falling'), 36, 61], ['pullback', text(CONDITION_OPTIONS, 'pullback'), 19, 33], ['volatile', text(CONDITION_OPTIONS, 'volatile'), 15, 26], ['rising', text(CONDITION_OPTIONS, 'rising'), 8, 13], ['calm', text(CONDITION_OPTIONS, 'calm'), 6, 9]]),
+      foldTrends('horizon', [['1-5', 'Up to 5 days', 40, 72], ['6-20', '6 to 20 days', 97, 205], ['21-60', '21 to 60 days', 49, 96], ['61-120', '61 to 120 days', 23, 39]]),
+      foldTrends('model', MODEL_OPTIONS.map(([k], i) => [k, model(k), [58, 31, 7, 5, 64, 73][i], [97, 50, 11, 8, 112, 134][i]] as const)),
+    ],
+  }
 }
 
 export function dataHealth(): DataHealth {

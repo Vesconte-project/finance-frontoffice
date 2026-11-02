@@ -35,7 +35,7 @@ Status: **not served by the backend yet.** This is the contract the frontoffice 
 | `GET/POST /model-lab/panels` · `GET/PATCH /model-lab/panels/{id}` | Panels; PATCH changes rule, hold, alerts and delivery | owner |
 | `GET /model-lab/panels/{id}/today` · `/evidence` · `/alerts` | Today's flags, evidence, alert replays | owner |
 | `GET /model-lab/alerts` · `POST /model-lab/alerts/read` | Inbox; mark ids or `all` | owner |
-| `GET /model-lab/admin/queue`, `/pipeline/{thesis,reuse,panel}`, `/candidates`, `/access-requests`, `/data-health` · `POST /model-lab/admin/access-requests` | Team console | permission `research.internal.run` |
+| `GET /model-lab/admin/queue`, `/trends`, `/pipeline/{thesis,reuse,panel}`, `/candidates`, `/access-requests`, `/data-health` · `POST /model-lab/admin/access-requests` | Team console | permission `research.internal.run` |
 
 ## Errors
 
@@ -44,6 +44,9 @@ Status: **not served by the backend yet.** This is the contract the frontoffice 
 ## Rules the backend must keep
 
 - A customer's experiments are private to the account. Team access to an unsubmitted experiment is an exception per experiment: reason, expiry, audit record, owner notified.
+- The team queue names no customer and no customer thesis: a customer's row is `{ owner: "customer" }` with the job's id, variants, stage, state, worker and minutes. Only the team's own jobs carry `who` and `thesis`.
+- `/admin/trends` returns counts only (`accounts` and `theses` per group of sentence choice, horizon band and model, over `period_days`). No account, thesis text, settings or result appears. A group with fewer than `min_accounts` distinct accounts (10 today) is folded into `other`.
+- A run is a research job. The backend compiles a draft into its existing research job (`/v1/research/jobs` compiler, `claim-next` worker, the `internal_research` queue for team runs) and does not add a second way to run models (ENG-208).
 - The platform returns numbers and thresholds ("3 of 5 checks hold"), never a verdict label about a thesis, and never a forecast.
 - The quota `unit` is named by the API (`{ one, many }`); the UI renders whatever it names (unit still undecided, Linear PRD-80).
 - A failed run refunds its cost and says so (`failure.refunded`).

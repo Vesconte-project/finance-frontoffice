@@ -16,7 +16,7 @@ One Model Lab for a self-directed investor, replacing the three older labs. Dept
 | `/models/compare` | Two to four theses side by side |
 | `/models/panels`, `/new`, `/[id]` | Combine tested models: Today, Models and rule, Evidence, Alerts, How it was calculated (Lab) |
 | `/models/alerts` | Inbox with filters, day groups, mark as read |
-| `/models/team` | Queue, pipeline, candidates, access requests, data health (permission) |
+| `/models/team` | Queue (customers anonymous), trends (counts only), pipeline, candidates, access requests, data health (permission) |
 
 ## Where it lives
 

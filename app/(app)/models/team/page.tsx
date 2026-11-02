@@ -5,12 +5,21 @@ import Problem from '@/components/model-lab/Problem'
 import { CheckMark, PageTitle, Section, Tag } from '@/components/model-lab/ui'
 import Tabs, { type TabItem } from '@/components/ui/Tabs'
 import { labContext, load } from '@/lib/model-lab/context'
-import { ModelLabError, type PipelineKind } from '@/lib/model-lab/contract'
+import { ModelLabError, type PipelineKind, type TrendDimension } from '@/lib/model-lab/contract'
 
 export const dynamic = 'force-dynamic'
 
-type TabKey = 'queue' | 'pipeline' | 'candidates' | 'access' | 'data'
+type TabKey = 'queue' | 'trends' | 'pipeline' | 'candidates' | 'access' | 'data'
 const KINDS: readonly (readonly [PipelineKind, string])[] = [['thesis', 'A thesis'], ['reuse', 'New rules, same model'], ['panel', 'A panel']]
+
+const TREND_TITLES: Readonly<Record<TrendDimension, string>> = {
+  who: 'Which stocks',
+  does: 'What they should do',
+  universe: 'Where',
+  condition: 'When',
+  horizon: 'Over how long',
+  model: 'Model',
+}
 
 const th = 'py-2 pr-3 font-medium'
 
@@ -21,6 +30,7 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
 
   const tabs: (TabItem & { key: TabKey })[] = [
     { key: 'queue', label: 'Queue', href: '/models/team' },
+    { key: 'trends', label: 'Trends', href: '/models/team?tab=trends' },
     { key: 'pipeline', label: 'Pipeline', href: '/models/team?tab=pipeline' },
     { key: 'candidates', label: 'Candidates', href: '/models/team?tab=candidates' },
     { key: 'access', label: 'Access requests', href: '/models/team?tab=access' },
@@ -38,11 +48,40 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
           <thead><tr className="border-b border-[var(--line)] text-caption uppercase tracking-wide text-content-muted"><th scope="col" className={th}>Job</th><th scope="col" className={th}>Who</th><th scope="col" className={th}>Thesis</th><th scope="col" className={`${th} text-right`}>Variants</th><th scope="col" className={th}>Stage</th><th scope="col" className={th}>State</th><th scope="col" className={`${th} text-right`}>Minutes</th></tr></thead>
           <tbody>{rows.data.map((r) => (
             <tr key={r.id} className="border-b border-[var(--line)] last:border-0">
-              <th scope="row" className="py-2 pr-3 font-mono text-xs">{r.id}</th><td className="py-2 pr-3 text-body-sm">{r.who}</td><td className="py-2 pr-3 text-body-sm">{r.thesis}</td>
+              <th scope="row" className="py-2 pr-3 font-mono text-xs">{r.id}</th><td className="py-2 pr-3 text-body-sm">{r.owner === 'team' ? r.who : 'A customer'}</td><td className="py-2 pr-3 text-body-sm">{r.owner === 'team' ? r.thesis : <span className="text-content-muted">Private</span>}</td>
               <td className="py-2 pr-3 text-right text-body-sm tabular-nums">{r.variants}</td><td className="py-2 pr-3 text-body-sm">{r.stage}</td><td className="py-2 pr-3 text-body-sm">{r.state}</td><td className="py-2 text-right text-body-sm tabular-nums">{r.minutes}</td>
             </tr>))}</tbody>
         </table></div>
       </Section>
+    )
+  } else if (active === 'trends') {
+    const trends = await load(() => source.teamTrends())
+    body = !trends.ok ? <Problem error={trends.error} /> : (
+      <div className="space-y-4">
+        <p className="text-body-sm text-content-secondary">
+          {trends.data.theses} theses from {trends.data.accounts} accounts in the last {trends.data.periodDays} days. Counts only: no account, thesis or result is shown, and any group with fewer than {trends.data.minAccounts} accounts is counted under Other.
+        </p>
+        <div className="grid gap-4 md:grid-cols-2">
+          {trends.data.dimensions.map((d) => {
+            const rows = [...d.groups.map((g) => ({ key: g.key, label: g.label, accounts: g.accounts, theses: g.theses })), ...(d.other.theses > 0 ? [{ key: 'other', label: 'Other', ...d.other }] : [])]
+            return (
+              <Section key={d.dimension} title={TREND_TITLES[d.dimension]}>
+                <table className="w-full border-collapse text-left">
+                  <caption className="sr-only">{TREND_TITLES[d.dimension]}: theses and accounts</caption>
+                  <thead><tr className="border-b border-[var(--line)] text-caption uppercase tracking-wide text-content-muted"><th scope="col" className={th}>Group</th><th scope="col" className={`${th} text-right`}>Theses</th><th scope="col" className={`${th} text-right`}>Share</th><th scope="col" className={`${th} text-right`}>Accounts</th></tr></thead>
+                  <tbody>{rows.map((r) => (
+                    <tr key={r.key} className="border-b border-[var(--line)] last:border-0">
+                      <th scope="row" className="py-2 pr-3 text-body-sm font-medium">{r.label}</th>
+                      <td className="py-2 pr-3 text-right text-body-sm tabular-nums">{r.theses}</td>
+                      <td className="py-2 pr-3 text-right text-body-sm tabular-nums">{trends.data.theses ? Math.round((r.theses / trends.data.theses) * 100) : 0}%</td>
+                      <td className="py-2 text-right text-body-sm tabular-nums">{r.accounts}</td>
+                    </tr>))}</tbody>
+                </table>
+              </Section>
+            )
+          })}
+        </div>
+      </div>
     )
   } else if (active === 'pipeline') {
     const kind = KINDS.find(([k]) => k === query.kind)?.[0] ?? 'thesis'

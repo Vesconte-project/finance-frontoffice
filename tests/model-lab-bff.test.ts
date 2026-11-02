@@ -69,6 +69,7 @@ test('errors carry a code and a fixed message, never the detail', async () => {
 
 test('team routes answer 403 to everyone else', async () => {
   assert.equal((await call({ method: 'GET', parts: ['admin', 'queue'] })).status, 403)
+  assert.equal((await call({ method: 'GET', parts: ['admin', 'trends'] })).status, 403)
 })
 
 test('a draft is checked field by field', () => {

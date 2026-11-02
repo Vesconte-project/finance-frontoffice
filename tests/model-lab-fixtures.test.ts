@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test, { beforeEach } from 'node:test'
 import { ModelLabError, type Draft } from '../lib/model-lab/contract'
 import { DEFAULT_FIXTURE_STATE, FixtureSource, parseFixtureState, resetFixtureWorld, serializeFixtureState } from '../lib/model-lab/fixtures/source'
+import { foldTrends } from '../lib/model-lab/fixtures/team'
 import { defaultValues } from '../lib/model-lab/params'
 import { DEFAULT_SENTENCE } from '../lib/model-lab/thesis-sentence'
 
@@ -238,7 +239,7 @@ test('alerts can be marked read one at a time or all at once', async () => {
 
 test('the team console is closed to everyone else', async () => {
   const investor = make()
-  for (const call of [() => investor.teamQueue(), () => investor.teamCandidates(), () => investor.teamAccessRequests(), () => investor.teamDataHealth(), () => investor.teamPipeline('panel')])
+  for (const call of [() => investor.teamQueue(), () => investor.teamCandidates(), () => investor.teamAccessRequests(), () => investor.teamDataHealth(), () => investor.teamTrends(), () => investor.teamPipeline('panel')])
     assert.equal(await code(call()), 'forbidden')
   assert.equal(await code(investor.requestAccess('exp-5001', 'why', '24h')), 'forbidden')
 })
@@ -251,6 +252,29 @@ test('access to an unsubmitted experiment needs a real id and a reason, and is l
   assert.equal(request.expires, 'expires in 7 days')
   assert.equal((await team.teamAccessRequests())[0].id, request.id)
   assert.ok((await team.teamCandidates()).some((c) => c.source === 'customer-copy'))
+})
+
+test('the team queue never names a customer or their thesis', async () => {
+  await make().submitRun(draft(), 'customer-run-1')
+  const queue = await make({ role: 'team' }).teamQueue()
+  const customers = queue.filter((r) => r.owner === 'customer')
+  assert.ok(customers.length > 1)
+  for (const row of customers) assert.deepEqual(Object.keys(row).sort(), ['id', 'minutes', 'owner', 'stage', 'state', 'variants', 'worker'])
+  assert.ok(queue.some((r) => r.owner === 'team' && r.who && r.thesis))
+})
+
+test('trends are counts only, and small groups are folded into other', async () => {
+  const trends = await make({ role: 'team' }).teamTrends()
+  assert.ok(trends.dimensions.length > 0)
+  for (const d of trends.dimensions) {
+    for (const g of d.groups) {
+      assert.deepEqual(Object.keys(g).sort(), ['accounts', 'key', 'label', 'theses'])
+      assert.ok(g.accounts >= trends.minAccounts)
+    }
+  }
+  const folded = foldTrends('who', [['a', 'A', 12, 20], ['b', 'B', 9, 15], ['c', 'C', 1, 1]], 10)
+  assert.deepEqual(folded.groups.map((g) => g.key), ['a'])
+  assert.deepEqual(folded.other, { accounts: 10, theses: 16 })
 })
 
 test('team members see a budget, everyone else sees credits', async () => {

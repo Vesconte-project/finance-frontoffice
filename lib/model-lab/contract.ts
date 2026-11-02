@@ -371,16 +371,20 @@ export type AlertItem = Readonly<{
 
 /* ---------- team ---------- */
 
-export type QueueRow = Readonly<{
-  id: string
-  who: string
-  thesis: string
-  variants: number
-  stage: string
-  state: 'running' | 'completed' | 'failed'
-  worker: string
-  minutes: number
-}>
+/**
+ * A customer's job carries no account and no thesis: the team sees the load on the
+ * workers, never whose work it is or what it tests. Only the team's own jobs are named.
+ */
+export type QueueRow = Readonly<
+  {
+    id: string
+    variants: number
+    stage: string
+    state: 'running' | 'completed' | 'failed'
+    worker: string
+    minutes: number
+  } & ({ owner: 'customer' } | { owner: 'team'; who: string; thesis: string })
+>
 export type CandidateCheck = Readonly<{ label: string; state: CheckState }>
 export type Candidate = Readonly<{
   id: string
@@ -396,6 +400,20 @@ export type PipelineKind = 'thesis' | 'reuse' | 'panel'
 export type PipelineView = Readonly<{ kind: PipelineKind; title: string; steps: readonly PipelineStep[]; note: string | null }>
 export type DataFamily = Readonly<{ family: string; features: number; coverage: number; latest: string; state: 'ok' | 'warn' | 'bad' }>
 export type DataHealth = Readonly<{ snapshot: Readonly<{ id: string; hash: string }>; families: readonly DataFamily[] }>
+
+/**
+ * What kinds of theses people test, counted only. No row names an account, a thesis
+ * or a result. A group with fewer than `minAccounts` accounts is folded into `other`.
+ */
+export type TrendDimension = 'who' | 'does' | 'universe' | 'condition' | 'horizon' | 'model'
+export type TrendGroup = Readonly<{ key: string; label: string; accounts: number; theses: number }>
+export type ThesisTrends = Readonly<{
+  periodDays: number
+  accounts: number
+  theses: number
+  minAccounts: number
+  dimensions: readonly Readonly<{ dimension: TrendDimension; groups: readonly TrendGroup[]; other: Readonly<{ accounts: number; theses: number }> }>[]
+}>
 
 export type DepthAccess = Readonly<{ advanced: boolean; lab: boolean }>
 

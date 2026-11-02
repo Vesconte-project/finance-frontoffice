@@ -18,6 +18,7 @@ import {
   type PipelineKind,
   type PipelineView,
   type QueueRow,
+  type ThesisTrends,
   type Quote,
   type Run,
   type TestResults,
@@ -115,6 +116,7 @@ export class BackendSource implements ModelLabSource {
   requestAccess = (experimentId: string, reason: string, expires: '24h' | '7d') =>
     this.send<AccessRequest>('POST', '/model-lab/admin/access-requests', { experimentId, reason, expires })
   teamDataHealth = () => this.read<DataHealth>('/model-lab/admin/data-health')
+  teamTrends = () => this.read<ThesisTrends>('/model-lab/admin/trends')
 }
 
 export function toModelLabError(error: unknown): ModelLabError {

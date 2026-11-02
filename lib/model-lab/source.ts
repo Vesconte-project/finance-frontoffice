@@ -14,6 +14,7 @@ import type {
   PipelineKind,
   PipelineView,
   QueueRow,
+  ThesisTrends,
   Quote,
   Run,
   TestResults,
@@ -76,4 +77,5 @@ export interface ModelLabSource {
   teamAccessRequests(): Promise<readonly AccessRequest[]>
   requestAccess(experimentId: string, reason: string, expires: '24h' | '7d'): Promise<AccessRequest>
   teamDataHealth(): Promise<DataHealth>
+  teamTrends(): Promise<ThesisTrends>
 }

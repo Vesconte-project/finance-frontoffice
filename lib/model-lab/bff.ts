@@ -43,6 +43,7 @@ async function get(source: ModelLabSource, p: readonly string[]): Promise<unknow
     if (b === 'candidates') return { candidates: await source.teamCandidates() }
     if (b === 'access-requests') return { requests: await source.teamAccessRequests() }
     if (b === 'data-health') return source.teamDataHealth()
+    if (b === 'trends') return source.teamTrends()
   }
   if (a === 'admin' && b === 'pipeline' && p.length === 3) return source.teamPipeline(pipelineKind(c))
   throw new ModelLabError('not-found')

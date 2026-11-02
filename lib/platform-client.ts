@@ -17,7 +17,7 @@ export class PlatformError extends Error {
 }
 
 const uuid = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
-const reads = new RegExp(`^/(?:me|accounts/${uuid}/access|research/jobs(?:/${uuid}(?:/(?:results|events|artifacts))?)?|artifacts/${uuid}/(?:download|content)|rankings|watchlist|ai-research/runs(?:/${uuid})?|model-lab/(?:viewer|library|alerts|theses(?:/${uuid}(?:/evidence)?)?|tests/${uuid}/results|runs/${uuid}|panels(?:/${uuid}(?:/(?:today|evidence|alerts))?)?|admin/(?:queue|candidates|access-requests|data-health|pipeline/(?:thesis|reuse|panel))))$`)
+const reads = new RegExp(`^/(?:me|accounts/${uuid}/access|research/jobs(?:/${uuid}(?:/(?:results|events|artifacts))?)?|artifacts/${uuid}/(?:download|content)|rankings|watchlist|ai-research/runs(?:/${uuid})?|model-lab/(?:viewer|library|alerts|theses(?:/${uuid}(?:/evidence)?)?|tests/${uuid}/results|runs/${uuid}|panels(?:/${uuid}(?:/(?:today|evidence|alerts))?)?|admin/(?:queue|candidates|access-requests|data-health|trends|pipeline/(?:thesis|reuse|panel))))$`)
 const writes = new RegExp(`^/(?:billing/(?:checkout|portal)|research/jobs(?:/${uuid}/cancel)?|watchlist|ai-research/(?:runs|feedback)|analytics/events|model-lab/(?:quotes|runs|panels|alerts/read|admin/access-requests|runs/${uuid}/cancel|theses/${uuid}/(?:notes|submit)))$`)
 const patches = new RegExp(`^/(?:ai-research/runs/${uuid}|model-lab/(?:panels/${uuid}|theses/${uuid}/watch))$`)
 
