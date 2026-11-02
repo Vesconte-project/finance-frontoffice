@@ -1,9 +1,9 @@
 import 'server-only'
 import { cache } from 'react'
 import { cookies } from 'next/headers'
-import { ModelLabError, type Viewer } from './contract'
+import type { ModelLabError, Viewer } from './contract'
 import type { FixtureState } from './fixtures/source'
-import type { ModelLabMode } from './mode'
+import { notOpenYet, type ModelLabMode } from './mode'
 import type { Depth } from './params'
 import { openModelLab } from './server'
 import type { ModelLabSource } from './source'
@@ -32,7 +32,7 @@ export const labContext = cache(async (): Promise<LabContext> => {
   try {
     viewer = await opened.source.viewer()
   } catch (error) {
-    throw toModelLabError(error)
+    throw notOpenYet(toModelLabError(error))
   }
   const depth = resolveDepth((await cookies()).get(DEPTH_COOKIE)?.value, viewer)
   return { mode: opened.mode, source: opened.source, viewer, depth, fixtureState: opened.fixtureState }
