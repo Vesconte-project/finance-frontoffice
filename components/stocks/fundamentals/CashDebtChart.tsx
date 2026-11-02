@@ -29,6 +29,7 @@ export default function CashDebtChart({points}:{points:CashDebtPoint[]}) {
   return <div>
     <p className={styles.legend}><span>Cash above zero</span><span>Debt below zero</span><strong>Net cash line</strong></p>
     <ChartFrame ariaLabel="Annual cash, debt and net cash" className={styles.frame}>
+      <figcaption className="sr-only">{points.map(point=>`${point.year}: cash ${formatCompactMoney(point.cash,point.currency)}, debt ${formatCompactMoney(point.debt,point.currency)}, net cash ${formatCompactMoney(point.netCash,point.currency)}`).join('; ')}</figcaption>
       <Plot points={points} box={{width:600,height:260}} variant="wide" />
       <Plot points={points} box={{width:320,height:230}} variant="compact" />
     </ChartFrame>

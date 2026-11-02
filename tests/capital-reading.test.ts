@@ -92,8 +92,8 @@ test('the price by year or quarter: each period’s last close and the close it 
 })
 
 
-function statement(id:string,value:number|null,periodEnd='2025-09-30',extra:Partial<StatementRowLike>={}) {
-  return {lineItemId:id,displayLabel:id,value,currency:'EUR',periodType:'annual',fiscalYear:Number(periodEnd.slice(0,4)),periodEnd,
+function statement(id:string,value:number|null,periodEnd='2025-09-30',extra:Partial<StatementRowLike & {knownAt:string;dataQualityFlags:unknown}>={}) {
+  return {lineItemId:id,displayLabel:id,value,currency:'EUR',knownAt:'2025-11-01',dataQualityFlags:{inputValues:{cash_and_equivalents:50,total_debt:80},inputKnownAt:{cash_and_equivalents:'2025-11-01',total_debt:'2025-11-01'}},periodType:'annual',fiscalYear:Number(periodEnd.slice(0,4)),periodEnd,
     source:['net_cash','dividends_paid_amount','share_repurchases_amount'].includes(id)?'derived_reported_statements':'yahoo_finance',...extra}
 }
 
@@ -128,4 +128,12 @@ test('capital money histories stay in the latest currency while share counts do 
   assert.deepEqual(capitalHistory([],cash).buybacks.map(row=>row.currency),['EUR'])
   assert.deepEqual(capitalHistory([], [statement('dividends_paid_amount',20,undefined,{currency:null})]).dividends,[])
   assert.equal(capitalHistory([statement('shares_outstanding',100,undefined,{currency:null})],[]).shares[0].value,100)
+})
+
+
+test('a partially published balance cannot combine new raw values with an old net cash fact',()=>{
+  const rows=[statement('cash_and_equivalents',50),statement('total_debt',80),statement('net_cash',-30)]
+  assert.equal(capitalHistory(rows,[]).cashDebt.length,1)
+  assert.deepEqual(capitalHistory([statement('cash_and_equivalents',70),...rows.slice(1)],[]).cashDebt,[])
+  assert.deepEqual(capitalHistory([{...rows[0],knownAt:'2026-01-01'},...rows.slice(1)],[]).cashDebt,[])
 })

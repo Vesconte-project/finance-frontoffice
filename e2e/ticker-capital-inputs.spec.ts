@@ -20,7 +20,7 @@ test('cash debt and total dividend amounts render with negative net cash and nat
   await page.goto('/stocks/QAM/fundamentals')
   await expect(page.locator('#dividends')).toContainText('€12B')
   await expect(page.getByRole('figure',{name:'Annual cash, debt and net cash',exact:true})).toBeVisible()
-  await expect(page.locator('#cash-and-debt')).toContainText('€30B')
+  await expect(page.getByRole('figure',{name:'Annual cash, debt and net cash',exact:true})).toContainText('€-30B')
   await overflow(page)
   expect(errors).toEqual([])
 })

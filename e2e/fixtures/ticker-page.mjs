@@ -305,7 +305,7 @@ function capitalStatementRows(ticker,statementType) {
     const make=(id,value,derived=false)=>({symbol:ticker,statementType,lineItemId:id,displayLabel:id,value,currency,
       periodType:'annual',fiscalYear:year,fiscalQuarter:null,periodEnd:`${year}-09-30`,knownAt:`${year}-11-01`,
       source:derived?'derived_reported_statements':'fixture',sourceUpdatedAt:null,ingestedAt:null,
-      methodologyVersion:derived?'capital_financials.v1':'fixture',dataQualityFlags:{synthetic:true}})
+      methodologyVersion:derived?'capital_financials.v1':'fixture',dataQualityFlags:{synthetic:true,...(id==='net_cash'?{inputValues:{cash_and_equivalents:50e9,total_debt:80e9},inputKnownAt:{cash_and_equivalents:`${year}-11-01`,total_debt:`${year}-11-01`}}:{})}})
     if (statementType==='balance_sheet') return [make('cash_and_equivalents',50e9),make('total_debt',80e9),
       make('net_cash',-30e9,true),...(ticker==='QAS'?[make('shares_outstanding',12e9+(year-2022)*1e9)]:[make('shares_issued',30e9)])]
     if (statementType==='cash_flow') return [make('dividends_paid',-12e9),make('dividends_paid_amount',12e9,true),
@@ -415,8 +415,8 @@ export function tickerLatestFundamentalsFixture(ticker) {
     valueDisplay: null,
     unit: null,
     currency: ticker === 'QAM' && metric === 'net_cash' ? 'EUR' : fixtureCurrency(ticker),
-    periodEnd: '2025-09-30',
-    asOf: '2025-11-01',
+    periodEnd: metric === 'net_cash' ? '2026-06-30' : '2025-09-30',
+    asOf: metric === 'net_cash' ? '2026-09-30' : '2025-11-01',
   }))
 }
 
