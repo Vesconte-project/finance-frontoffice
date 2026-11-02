@@ -19,7 +19,7 @@ import {
   type FlowValues,
   type WideNode,
 } from '@/lib/sales-flow'
-import { shortYear, valueInYear, type IncomeSeries, type MeasureKey } from '@/lib/statement-reading'
+import { formatFraction, largestAnnualChanges, shortYear, valueInPeriod, valueInYear, type IncomeSeries, type MeasureKey } from '@/lib/statement-reading'
 import styles from './Financials.module.css'
 
 const SERIES_OF: Partial<Record<FlowNodeId, MeasureKey>> = {
@@ -27,6 +27,9 @@ const SERIES_OF: Partial<Record<FlowNodeId, MeasureKey>> = {
   grossProfit: 'grossProfit',
   operatingIncome: 'operatingIncome',
   netIncome: 'netIncome',
+  costOfSales: 'costOfSales',
+  operatingCosts: 'operatingCosts',
+  taxes: 'incomeTax',
 }
 
 const REPORTED_SENTENCE: Partial<Record<FlowNodeId, string>> = {
@@ -34,6 +37,9 @@ const REPORTED_SENTENCE: Partial<Record<FlowNodeId, string>> = {
   grossProfit: 'What was left of sales after the direct cost of what was sold.',
   operatingIncome: 'What the business earned from its operations, after running costs.',
   netIncome: 'What was left after every cost, interest and tax.',
+  costOfSales: 'The reported direct cost of the goods and services sold.',
+  operatingCosts: 'The total operating expenses reported for the year.',
+  taxes: 'The income tax expense reported for the year.',
 }
 
 const PENDING_SENTENCE: Partial<Record<FlowNodeId, string>> = {
@@ -77,21 +83,20 @@ function NodeText({
         {NODE_LABEL[id]}
         {chevron ? <span aria-hidden="true" className={styles.chevron}>›</span> : null}
       </span>
-      {reported && unit === AMOUNT && value !== null ? (
-        <span className={styles.nodeValue} data-tone={value < 0 ? 'down' : undefined}>{formatChartMoney(value, currency)}</span>
-      ) : reported && unit === AMOUNT ? (
-        <span className={styles.nodeMissing}>Not reported for this year</span>
-      ) : (
-        <BeingBuiltBadge />
-      )}
+      {reported && value !== null ? (
+        <span className={styles.nodeValue} data-tone={value < 0 ? 'down' : undefined}>
+          {unit === SHARE ? formatFraction(value) : formatChartMoney(value, currency)}
+        </span>
+      ) : <BeingBuiltBadge />}
+
     </>
   )
 }
 
 function accessibleName(id: FlowNodeId, value: number | null, unit: Unit, currency: string): string {
   if (!isReportedNode(id)) return `${NODE_LABEL[id]}, being built`
-  if (unit === SHARE) return `${NODE_LABEL[id]}, share of sales being built`
-  return value === null ? `${NODE_LABEL[id]}, not reported for this year` : `${NODE_LABEL[id]}, ${formatCompactMoney(value, currency)}`
+  if (value === null) return `${NODE_LABEL[id]}, being built`
+  return `${NODE_LABEL[id]}, ${unit === SHARE ? formatFraction(value) : formatCompactMoney(value, currency)}`
 }
 
 function WideFlow({
@@ -213,7 +218,7 @@ function NarrowFlow({
           <path
             key={group.id}
             className={styles.connector}
-            data-pending={isReportedNode(group.id) ? undefined : 'true'}
+            data-pending={isReportedNode(group.id) && nodeValue(group.id, values) !== null ? undefined : 'true'}
             data-open={group.id === openId ? 'true' : undefined}
             d={connectorPath(0, 1, index, NARROW_GROUPS.length)}
           />
@@ -228,7 +233,7 @@ function NarrowFlow({
               type="button"
               className={styles.narrowNode}
               data-flow-node={group.id}
-              data-pending={isReportedNode(group.id) ? undefined : 'true'}
+              data-pending={isReportedNode(group.id) && nodeValue(group.id, values) !== null ? undefined : 'true'}
               data-open={group.id === openId ? 'true' : undefined}
               aria-pressed={selected === group.id}
               aria-expanded={group.id === openId}
@@ -287,8 +292,12 @@ function NodeCard({
   if (!key) {
     return <BeingBuilt label={NODE_LABEL[id]}>{PENDING_SENTENCE[id]}</BeingBuilt>
   }
-  const points = series[key]
-  const point = valueInYear(points, year)
+  const points = series[key] ?? []
+  const anchor = valueInYear(series.revenue, year)
+  const candidate = anchor ? valueInPeriod(points, anchor.periodEnd) : valueInYear(points, year)
+  const point = candidate && candidate.currency && (!anchor || candidate.currency === anchor.currency) ? candidate : null
+  const share = point ? valueInPeriod(series[`${key}Share` as MeasureKey], point.periodEnd) : null
+  const growth = point ? valueInPeriod(series[`${key}Growth` as MeasureKey], point.periodEnd) : null
   const history = [...years].sort((left, right) => left - right).flatMap((candidate) => {
     const found = valueInYear(points, candidate)
     return found ? [{ year: candidate, point: found }] : []
@@ -302,12 +311,13 @@ function NodeCard({
             <span>{REPORTED_SENTENCE[id]}</span>
           </p>
         ) : (
-          <p className={styles.cardFigure}>
-            <span>Not reported for FY{year}. {REPORTED_SENTENCE[id]}</span>
-          </p>
+          <BeingBuilt size="inline">{NODE_LABEL[id]} for FY{year} is being added.</BeingBuilt>
         )}
       </div>
-      <p className={styles.cardNote}><BeingBuiltBadge /> The change on the year before and the share of sales are being added.</p>
+      <p className={styles.cardNote}>
+        {growth ? <span>{formatFraction(growth.value)} against the year before. </span> : <BeingBuiltBadge />}
+        {share ? <span>{formatFraction(share.value)} of sales.</span> : <BeingBuiltBadge />}
+      </p>
       {history.length > 0 ? (
         <ReportedBars
           ariaLabel={`${NODE_LABEL[id]} by fiscal year, FY${year} highlighted`}
@@ -341,7 +351,7 @@ export default function SalesFlowChapter({
   series: IncomeSeries
   currency: string
 }) {
-  const [year, setYear] = useState<number>(years[0] ?? 0)
+  const [chosenYear, setYear] = useState<number>(years[0] ?? 0)
   const [unit, setUnit] = useState<Unit>(AMOUNT)
   const [selected, setSelected] = useState<FlowNodeId>('netIncome')
 
@@ -359,14 +369,24 @@ export default function SalesFlowChapter({
     )
   }
 
-  const values: FlowValues = {
-    revenue: valueInYear(series.revenue, year)?.value ?? null,
-    grossProfit: valueInYear(series.grossProfit, year)?.value ?? null,
-    operatingIncome: valueInYear(series.operatingIncome, year)?.value ?? null,
-    netIncome: valueInYear(series.netIncome, year)?.value ?? null,
+  const year = years.includes(chosenYear) ? chosenYear : years[0]
+  const anchor = valueInYear(series.revenue, year)
+  const flowCurrency = anchor?.currency ?? currency
+  const selectedValue = (key: MeasureKey): number | null => {
+    if (!anchor) return null
+    const point = valueInPeriod(series[unit === SHARE ? `${key}Share` as MeasureKey : key], anchor.periodEnd)
+    if (!point || (unit === AMOUNT && (!point.currency || point.currency !== anchor.currency))) return null
+    return point.value
   }
+  const values: FlowValues = {
+    revenue: selectedValue('revenue'), grossProfit: selectedValue('grossProfit'),
+    operatingIncome: selectedValue('operatingIncome'), netIncome: selectedValue('netIncome'),
+    costOfSales: selectedValue('costOfSales'), operatingCosts: selectedValue('operatingCosts'), incomeTax: selectedValue('incomeTax'),
+  }
+  const changes = anchor ? largestAnnualChanges(series, anchor.periodEnd) : []
+  const netMargin = anchor ? valueInPeriod(series.netIncomeShare, anchor.periodEnd) : null
   const yearOptions = [...years].sort((left, right) => left - right).map(String)
-  const perUnit = formatChartMoney(1, currency)
+  const perUnit = formatChartMoney(1, flowCurrency)
 
   return (
     <ResearchChapter
@@ -391,29 +411,34 @@ export default function SalesFlowChapter({
         </>
       )}
       lead={(
-        <BeingBuilt size="inline">Net profit for each {perUnit} of sales in FY{year}, and its change on the year before, is being added.</BeingBuilt>
+        netMargin ? <p>{formatFraction(netMargin.value)} of sales kept as net profit in FY{year}.</p>
+          : <BeingBuilt size="inline">Net profit for each {perUnit} of sales in FY{year} is being added.</BeingBuilt>
       )}
       aside={(
         <>
-          <NodeCard id={selected} year={year} years={years} series={series} currency={currency} />
-          <BeingBuilt label="Biggest changes">The four largest changes against the year before, with costs that rose shown in red, are being added.</BeingBuilt>
+          <NodeCard id={selected} year={year} years={years} series={series} currency={flowCurrency} />
+          {changes.length === 4 ? <ChapterCard title="Biggest changes" meta="Year-on-year">
+            <dl className={styles.changesList}>
+              {changes.map((change) => <div key={change.measure}>
+                <dt>{change.label}</dt>
+                <dd data-tone={change.value === 0 ? undefined : (change.cost ? change.value > 0 : change.value < 0) ? 'down' : 'up'}>{formatFraction(change.value)}</dd>
+              </div>)}
+            </dl>
+          </ChapterCard> : <BeingBuilt label="Biggest changes">The four largest changes against the year before are being added.</BeingBuilt>}
         </>
       )}
     >
       <div className={styles.salesBar} data-sales-by-business="">
         <span className={styles.salesBarFill} aria-hidden="true" />
         <span className={styles.salesBarLabel}>
-          <strong>Sales{values.revenue !== null && unit === AMOUNT ? ` ${formatChartMoney(values.revenue, currency)}` : ''}</strong>
+          <strong>Sales{values.revenue !== null && unit === AMOUNT ? ` ${formatChartMoney(values.revenue, flowCurrency)}` : ''}</strong>
           <span>by business</span>
           <BeingBuiltBadge />
         </span>
       </div>
-      {unit === SHARE ? (
-        <p className={styles.flowNote}><BeingBuiltBadge /> Each part as a share of sales is being added.</p>
-      ) : null}
       <div className={styles.flow} data-sales-flow="" role="group" aria-label={`Where each dollar of sales went in FY${year}`}>
-        <WideFlow values={values} unit={unit} currency={currency} selected={selected} onSelect={setSelected} />
-        <NarrowFlow values={values} unit={unit} currency={currency} selected={selected} onSelect={setSelected} />
+        <WideFlow values={values} unit={unit} currency={flowCurrency} selected={selected} onSelect={setSelected} />
+        <NarrowFlow values={values} unit={unit} currency={flowCurrency} selected={selected} onSelect={setSelected} />
       </div>
     </ResearchChapter>
   )

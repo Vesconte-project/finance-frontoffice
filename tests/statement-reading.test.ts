@@ -10,6 +10,8 @@ import {
   summaryAmount,
   summaryPercent,
   valueInYear,
+  valueInPeriod,
+  largestAnnualChanges,
   type StatementRowLike,
 } from '../lib/statement-reading'
 
@@ -123,4 +125,48 @@ test('crowded charts write the ends and the picked bar, and thin out their names
   assert.ok(names.has(9), 'the latest name is always shown')
   assert.ok(names.size <= 5)
   assert.equal(sparseAxis(4, 5).size, 4)
+})
+
+
+test('new reported and derived canonical ids are selected without economic arithmetic', () => {
+  const series = incomeSeries([
+    row('cost_of_revenue',2025,60), row('operating_expenses',2025,20), row('income_tax_expense',2025,4),
+    row('revenue_growth_yoy',2025,.2), row('net_income_share_of_revenue',2025,.1),
+    row('operating_expenses_growth_yoy',2025,.05),
+  ])
+  assert.equal(valueInYear(series.costOfSales,2025)?.value,60)
+  assert.equal(valueInYear(series.operatingCosts,2025)?.value,20)
+  assert.equal(valueInYear(series.incomeTax,2025)?.value,4)
+  assert.equal(valueInYear(series.revenueGrowth,2025)?.value,.2)
+  assert.equal(valueInYear(series.netIncomeShare,2025)?.value,.1)
+  assert.equal(valueInYear(series.operatingCostsGrowth,2025)?.value,.05)
+  assert.equal(valueInPeriod(series.costOfSales,'2025-12-31'),null)
+})
+
+test('an explicitly null latest annual revision cannot revive an older value', () => {
+  assert.deepEqual(annualSeries([row('revenue_growth_yoy',2025,null),row('revenue_growth_yoy',2025,.2)], 'revenueGrowth'),[])
+})
+
+test('explicit fraction units handle unusually high and very small margins', () => {
+  assert.equal(summaryPercent([{metric:'operating_margin',metricLabel:'Operating Margin',valueNumber:2,unit:'fraction'}],/operating/i),200)
+  assert.equal(summaryPercent([{metric:'operating_margin',metricLabel:'Operating Margin',valueNumber:.008,unit:'fraction'}],/operating/i),.8)
+})
+
+
+test('biggest changes only ranks the backend values from the exact selected period', () => {
+  const series = incomeSeries([
+    row('revenue_growth_yoy',2025,.1), row('net_income_growth_yoy',2025,-.4),
+    row('operating_expenses_growth_yoy',2025,.5), row('gross_profit_growth_yoy',2025,.2),
+    row('income_tax_expense_growth_yoy',2024,2),
+  ])
+  const changes=largestAnnualChanges(series,'2025-09-30')
+  assert.deepEqual(changes.map((point)=>point.value),[.5,-.4,.2,.1])
+  assert.equal(changes[0].cost,true)
+})
+
+
+test('a raw monetary history cannot silently mix reporting currencies', () => {
+  const points=annualSeries([row('revenue',2024,100,{currency:'USD'}),row('revenue',2025,120,{currency:'EUR'})],'revenue')
+  assert.deepEqual(points.map((point)=>point.currency),['EUR'])
+  assert.deepEqual(annualSeries([row('revenue',2025,120,{currency:null})],'revenue'),[])
 })

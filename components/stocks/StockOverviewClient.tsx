@@ -59,6 +59,7 @@ type OverviewRelatedAsset = {
 
 /** A latest reported figure and the date it refers to. */
 type OverviewFigure = {
+  currency?: string | null
   value: number
   asOf: string | null
 }
@@ -862,7 +863,7 @@ export default function StockOverviewClient({
             />
             <FundamentalCard
               label="Net cash"
-              figure={netCash ? formatCompactMoney(netCash.value, currency) : null}
+              figure={netCash ? formatCompactMoney(netCash.value, netCash.currency ?? currency) : null}
               tone={netCash && netCash.value < 0 ? 'down' : undefined}
               context={`cash minus debt${netCash?.asOf ? ` · as of ${formatDay(netCash.asOf)}` : ''}`}
               pending={netCash ? 'Ten years of cash and debt is being added.' : 'Net cash and ten years of cash and debt are being added.'}

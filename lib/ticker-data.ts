@@ -79,6 +79,7 @@ export type TickerFundamentalsSummary = {
 }
 
 export type LatestFundamentalsRow = {
+  currency?: string | null
   ticker: string
   metric: string
   metricLabel: string

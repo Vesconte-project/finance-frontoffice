@@ -257,7 +257,14 @@ const STATEMENT_FIXTURES = {
   QAS: Array.from({ length: 10 }, (_, index) => {
     const year = 2016 + index
     const revenue = 180e9 * 1.09 ** index
-    return { year, revenue, gross_profit: revenue * 0.44, operating_income: revenue * 0.3, net_income: revenue * 0.24 }
+    return { year, revenue, gross_profit: revenue * 0.44, operating_income: revenue * 0.3, net_income: revenue * 0.24,
+      cost_of_revenue: revenue * 0.56, operating_expenses: revenue * 0.14, income_tax_expense: revenue * 0.06,
+      revenue_share_of_revenue: 1, gross_profit_share_of_revenue: .44, operating_income_share_of_revenue: .3,
+      net_income_share_of_revenue: .24, cost_of_revenue_share_of_revenue: .56,
+      operating_expenses_share_of_revenue: .14, income_tax_expense_share_of_revenue: .06,
+      ...(index > 0 ? { revenue_growth_yoy:.09, gross_profit_growth_yoy:.09, operating_income_growth_yoy:.09,
+        net_income_growth_yoy:.09, cost_of_revenue_growth_yoy:.09, operating_expenses_growth_yoy:.09, income_tax_expense_growth_yoy:.09 } : {}),
+    }
   }),
   QAM: [
     { year: 2022, revenue: 42e9, gross_profit: 21e9, operating_income: 6.1e9, net_income: 4.4e9 },
@@ -275,6 +282,14 @@ const STATEMENT_FIXTURES = {
 }
 
 const LINE_LABELS = {
+  cost_of_revenue: 'Cost Of Revenue', operating_expenses: 'Operating Expenses', income_tax_expense: 'Income Tax Expense',
+  revenue_share_of_revenue: 'Revenue Share Of Revenue', gross_profit_share_of_revenue: 'Gross Profit Share Of Revenue',
+  operating_income_share_of_revenue: 'Operating Income Share Of Revenue', net_income_share_of_revenue: 'Net Income Share Of Revenue',
+  cost_of_revenue_share_of_revenue: 'Cost Of Revenue Share Of Revenue', operating_expenses_share_of_revenue: 'Operating Expenses Share Of Revenue',
+  income_tax_expense_share_of_revenue: 'Income Tax Expense Share Of Revenue', revenue_growth_yoy: 'Revenue Growth YoY',
+  gross_profit_growth_yoy: 'Gross Profit Growth YoY', operating_income_growth_yoy: 'Operating Income Growth YoY',
+  net_income_growth_yoy: 'Net Income Growth YoY', cost_of_revenue_growth_yoy: 'Cost Of Revenue Growth YoY',
+  operating_expenses_growth_yoy: 'Operating Expenses Growth YoY', income_tax_expense_growth_yoy: 'Income Tax Expense Growth YoY',
   revenue: 'Total Revenue',
   gross_profit: 'Gross Profit',
   operating_income: 'Operating Income',
@@ -286,13 +301,13 @@ export function tickerFinancialStatementsFixture(ticker, statementType) {
   const rows = statementType && statementType !== 'income_statement'
     ? []
     : [...years].reverse().flatMap((entry) => Object.keys(LINE_LABELS).flatMap((lineItemId) => (
-      entry[lineItemId] === null ? [] : [{
+      entry[lineItemId] === null || entry[lineItemId] === undefined ? [] : [{
         symbol: ticker,
         statementType: 'income_statement',
         lineItemId,
         displayLabel: LINE_LABELS[lineItemId],
         value: entry[lineItemId],
-        currency: fixtureCurrency(ticker),
+        currency: /share_of_revenue|growth_yoy/.test(lineItemId) ? null : fixtureCurrency(ticker),
         periodType: 'annual',
         fiscalYear: entry.year,
         fiscalQuarter: null,
@@ -380,6 +395,7 @@ export function tickerLatestFundamentalsFixture(ticker) {
     valueNumber,
     valueDisplay: null,
     unit: null,
+    currency: ticker === 'QAM' && metric === 'net_cash' ? 'EUR' : fixtureCurrency(ticker),
     periodEnd: '2025-09-30',
     asOf: '2025-11-01',
   }))
@@ -392,11 +408,15 @@ export function tickerLatestFundamentalsFixture(ticker) {
  */
 export function tickerMarketMetricsFixture(ticker, metric) {
   const plans = {
-    QAS: { trailing_pe: { weeks: 156, base: 24, swing: 6 }, price_to_sales: { weeks: 10, base: 6.4, swing: 0.6 } },
+    QAS: { trailing_pe: { weeks: 156, base: 24, swing: 6 }, price_to_sales: { weeks: 10, base: 6.4, swing: 0.6 }, price_to_free_cash_flow: { weeks:1,base:30,swing:0 }, enterprise_value_to_ebitda: { weeks:1,base:20,swing:0 } },
     QAM: { trailing_pe: { weeks: 10, base: 31, swing: 4 } },
   }
   const plan = plans[ticker]?.[metric]
   const rows = []
+  if (ticker === 'QAM' && metric === 'price_to_free_cash_flow') {
+    rows.push({symbol:ticker,metric,value:null,currency:null,observationDate:'2026-09-30',knownAt:'2026-09-30'},
+      {symbol:ticker,metric,value:20,currency:null,observationDate:'2026-09-29',knownAt:'2026-09-29'})
+  }
   if (plan) {
     for (let week = 0; week < plan.weeks; week += 1) {
       const date = new Date(LAST_DATE - week * 7 * DAY_MS).toISOString().slice(0, 10)

@@ -27,7 +27,8 @@ export type ReportedPoint = {
   currency: string | null
 }
 
-export type MeasureKey = 'revenue' | 'grossProfit' | 'operatingIncome' | 'netIncome'
+type CoreMeasureKey = 'revenue' | 'grossProfit' | 'operatingIncome' | 'netIncome'
+export type MeasureKey = CoreMeasureKey | 'costOfSales' | 'operatingCosts' | 'incomeTax' | 'researchAndDevelopment' | 'sga' | 'interestExpense' | 'nonOperatingInterestExpense' | 'revenueGrowth' | 'netIncomeGrowth' | 'revenueShare' | 'grossProfitShare' | 'operatingIncomeShare' | 'netIncomeShare' | 'costOfSalesShare' | 'operatingCostsShare' | 'incomeTaxShare' | 'grossProfitGrowth' | 'operatingIncomeGrowth' | 'costOfSalesGrowth' | 'operatingCostsGrowth' | 'incomeTaxGrowth'
 
 type MeasureMatcher = {
   /** Exact `lineItemId` spellings, tried first (the vocabulary is undocumented, ENG-87). */
@@ -38,6 +39,27 @@ type MeasureMatcher = {
 }
 
 const MEASURES: Record<MeasureKey, MeasureMatcher> = {
+  grossProfitGrowth: { prefer: /^gross_profit_growth_yoy$/, accept: /^gross_profit_growth_yoy$/, reject: /(?!) / },
+  operatingIncomeGrowth: { prefer: /^operating_income_growth_yoy$/, accept: /^operating_income_growth_yoy$/, reject: /(?!) / },
+  costOfSalesGrowth: { prefer: /^cost_of_revenue_growth_yoy$/, accept: /^cost_of_revenue_growth_yoy$/, reject: /(?!) / },
+  operatingCostsGrowth: { prefer: /^operating_expenses_growth_yoy$/, accept: /^operating_expenses_growth_yoy$/, reject: /(?!) / },
+  incomeTaxGrowth: { prefer: /^income_tax_expense_growth_yoy$/, accept: /^income_tax_expense_growth_yoy$/, reject: /(?!) / },
+  costOfSales: { prefer: /^cost_of_revenue$/, accept: /^cost_of_revenue$/, reject: /(?!) / },
+  operatingCosts: { prefer: /^operating_expenses$/, accept: /^operating_expenses$/, reject: /(?!) / },
+  incomeTax: { prefer: /^income_tax_expense$/, accept: /^income_tax_expense$/, reject: /(?!) / },
+  researchAndDevelopment: { prefer: /^research_and_development$/, accept: /^research_and_development$/, reject: /(?!) / },
+  sga: { prefer: /^selling_general_and_administrative$/, accept: /^selling_general_and_administrative$/, reject: /(?!) / },
+  interestExpense: { prefer: /^interest_expense$/, accept: /^interest_expense$/, reject: /(?!) / },
+  nonOperatingInterestExpense: { prefer: /^non_operating_interest_expense$/, accept: /^non_operating_interest_expense$/, reject: /(?!) / },
+  revenueGrowth: { prefer: /^revenue_growth_yoy$/, accept: /^revenue_growth_yoy$/, reject: /(?!) / },
+  netIncomeGrowth: { prefer: /^net_income_growth_yoy$/, accept: /^net_income_growth_yoy$/, reject: /(?!) / },
+  revenueShare: { prefer: /^revenue_share_of_revenue$/, accept: /^revenue_share_of_revenue$/, reject: /(?!) / },
+  grossProfitShare: { prefer: /^gross_profit_share_of_revenue$/, accept: /^gross_profit_share_of_revenue$/, reject: /(?!) / },
+  operatingIncomeShare: { prefer: /^operating_income_share_of_revenue$/, accept: /^operating_income_share_of_revenue$/, reject: /(?!) / },
+  netIncomeShare: { prefer: /^net_income_share_of_revenue$/, accept: /^net_income_share_of_revenue$/, reject: /(?!) / },
+  costOfSalesShare: { prefer: /^cost_of_revenue_share_of_revenue$/, accept: /^cost_of_revenue_share_of_revenue$/, reject: /(?!) / },
+  operatingCostsShare: { prefer: /^operating_expenses_share_of_revenue$/, accept: /^operating_expenses_share_of_revenue$/, reject: /(?!) / },
+  incomeTaxShare: { prefer: /^income_tax_expense_share_of_revenue$/, accept: /^income_tax_expense_share_of_revenue$/, reject: /(?!) / },
   revenue: {
     prefer: /^(total_revenue|revenue|revenues|net_sales|total_net_sales|net_revenue|operating_revenue)$/,
     accept: /revenue|net sales/i,
@@ -92,14 +114,20 @@ export function annualSeries(rows: readonly StatementRowLike[], measure: Measure
   const [, chosen] = candidates.sort((left, right) => right[1].length - left[1].length || left[0].length - right[0].length)[0]
 
   const byPeriod = new Map<string, ReportedPoint>()
+  const seen = new Set<string>()
   for (const row of chosen) {
-    if (row.value === null || !Number.isFinite(row.value) || byPeriod.has(row.periodEnd)) continue
+    if (seen.has(row.periodEnd)) continue
+    seen.add(row.periodEnd)
+    if (row.value === null || !Number.isFinite(row.value)) continue
     byPeriod.set(row.periodEnd, { periodEnd: row.periodEnd, year: yearOf(row), value: row.value, currency: row.currency })
   }
-  return [...byPeriod.values()].sort((left, right) => left.periodEnd.localeCompare(right.periodEnd))
+  const ordered = [...byPeriod.values()].sort((left, right) => left.periodEnd.localeCompare(right.periodEnd))
+  if (measure.endsWith('Share') || measure.endsWith('Growth')) return ordered
+  const currency = ordered.at(-1)?.currency
+  return currency ? ordered.filter((point) => point.currency === currency) : []
 }
 
-export type IncomeSeries = Record<MeasureKey, ReportedPoint[]>
+export type IncomeSeries = Record<CoreMeasureKey, ReportedPoint[]> & Partial<Record<Exclude<MeasureKey, CoreMeasureKey>, ReportedPoint[]>>
 
 export function incomeSeries(rows: readonly StatementRowLike[]): IncomeSeries {
   return {
@@ -107,18 +135,41 @@ export function incomeSeries(rows: readonly StatementRowLike[]): IncomeSeries {
     grossProfit: annualSeries(rows, 'grossProfit'),
     operatingIncome: annualSeries(rows, 'operatingIncome'),
     netIncome: annualSeries(rows, 'netIncome'),
+    grossProfitGrowth: annualSeries(rows, 'grossProfitGrowth'),
+    operatingIncomeGrowth: annualSeries(rows, 'operatingIncomeGrowth'),
+    costOfSalesGrowth: annualSeries(rows, 'costOfSalesGrowth'),
+    operatingCostsGrowth: annualSeries(rows, 'operatingCostsGrowth'),
+    incomeTaxGrowth: annualSeries(rows, 'incomeTaxGrowth'),
+
+    costOfSales: annualSeries(rows, 'costOfSales'),
+    operatingCosts: annualSeries(rows, 'operatingCosts'),
+    incomeTax: annualSeries(rows, 'incomeTax'),
+    researchAndDevelopment: annualSeries(rows, 'researchAndDevelopment'),
+    sga: annualSeries(rows, 'sga'),
+    interestExpense: annualSeries(rows, 'interestExpense'),
+    nonOperatingInterestExpense: annualSeries(rows, 'nonOperatingInterestExpense'),
+    revenueGrowth: annualSeries(rows, 'revenueGrowth'),
+    netIncomeGrowth: annualSeries(rows, 'netIncomeGrowth'),
+    revenueShare: annualSeries(rows, 'revenueShare'),
+    grossProfitShare: annualSeries(rows, 'grossProfitShare'),
+    operatingIncomeShare: annualSeries(rows, 'operatingIncomeShare'),
+    netIncomeShare: annualSeries(rows, 'netIncomeShare'),
+    costOfSalesShare: annualSeries(rows, 'costOfSalesShare'),
+    operatingCostsShare: annualSeries(rows, 'operatingCostsShare'),
+    incomeTaxShare: annualSeries(rows, 'incomeTaxShare'),
+
   }
 }
 
 /** The fiscal years any income measure reports, newest first, at most `limit`. */
 export function reportedYears(series: IncomeSeries, limit = 5): number[] {
   const years = new Set<number>()
-  for (const points of Object.values(series)) for (const point of points) years.add(point.year)
+  for (const points of Object.values(series)) for (const point of points ?? []) years.add(point.year)
   return [...years].sort((left, right) => right - left).slice(0, limit)
 }
 
-export function valueInYear(points: readonly ReportedPoint[], year: number): ReportedPoint | null {
-  return points.find((point) => point.year === year) ?? null
+export function valueInYear(points: readonly ReportedPoint[] | undefined, year: number): ReportedPoint | null {
+  return points?.find((point) => point.year === year) ?? null
 }
 
 /** Compact year for narrow charts: 2025 → '25. */
@@ -183,13 +234,13 @@ export function dividendHistory(
  * is kept so both pages print the same number.
  */
 export function summaryPercent(
-  rows: ReadonlyArray<{ metric: string; metricLabel: string; valueNumber: number | null }>,
+  rows: ReadonlyArray<{ metric: string; metricLabel: string; valueNumber: number | null; unit?: string | null }>,
   pattern: RegExp,
 ): number | null {
   const row = rows.find((candidate) => pattern.test(candidate.metricLabel || candidate.metric.replace(/_/g, ' ')))
   const value = row?.valueNumber
   if (value === null || value === undefined || !Number.isFinite(value)) return null
-  return Math.abs(value) <= 1.5 ? value * 100 : value
+  return row?.unit === 'fraction' ? value * 100 : Math.abs(value) <= 1.5 ? value * 100 : value
 }
 
 export function summaryAmount(
@@ -213,4 +264,37 @@ export function summaryDate(
   const row = rows.find((candidate) => pattern.test(candidate.metricLabel || candidate.metric.replace(/_/g, ' ')))
   const date = row?.periodEnd ?? row?.asOf ?? null
   return date && /^\d{4}-\d{2}-\d{2}/.test(date) ? date.slice(0, 10) : null
+}
+
+/** Exact same-period alignment; a year label alone must not join different accounts. */
+export function valueInPeriod(points: readonly ReportedPoint[] | undefined, periodEnd: string): ReportedPoint | null {
+  return points?.find((point) => point.periodEnd === periodEnd) ?? null
+}
+
+export function formatFraction(value: number): string {
+  return new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 1 }).format(value)
+}
+
+export type AnnualChange = { measure: MeasureKey; label: string; value: number; cost: boolean }
+
+/** Rank the backend's supplied changes; never calculate a change in the browser. */
+export function largestAnnualChanges(series: IncomeSeries, periodEnd: string): AnnualChange[] {
+  const candidates: Array<[MeasureKey, string, boolean]> = [
+    ['revenueGrowth', 'Sales', false], ['grossProfitGrowth', 'Gross profit', false],
+    ['operatingIncomeGrowth', 'Operating income', false], ['netIncomeGrowth', 'Net income', false],
+    ['costOfSalesGrowth', 'Cost of sales', true], ['operatingCostsGrowth', 'Operating costs', true],
+    ['incomeTaxGrowth', 'Income tax', true],
+  ]
+  return candidates.flatMap(([measure, label, cost]) => {
+    const point = valueInPeriod(series[measure], periodEnd)
+    return point ? [{ measure, label, value: point.value, cost }] : []
+  }).sort((left, right) => Math.abs(right.value) - Math.abs(left.value) || left.label.localeCompare(right.label)).slice(0, 4)
+}
+
+
+export function summaryCurrency(
+  rows: ReadonlyArray<{ metric: string; metricLabel: string; currency?: string | null }>,
+  pattern: RegExp,
+): string | null {
+  return rows.find((row) => pattern.test(row.metricLabel || row.metric.replace(/_/g, ' ')))?.currency ?? null
 }

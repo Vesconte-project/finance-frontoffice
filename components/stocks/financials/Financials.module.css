@@ -345,3 +345,10 @@
   line-height: 1.45;
   color: var(--text-body);
 }
+
+.changesList { display: grid; gap: 0.65rem; margin: 0; }
+.changesList > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem; }
+.changesList dt { overflow-wrap: anywhere; }
+.changesList dd { margin: 0; font-variant-numeric: tabular-nums; }
+.changesList dd[data-tone='down'] { color: var(--down); }
+.changesList dd[data-tone='up'] { color: var(--up); }

@@ -12,7 +12,7 @@ import {
 } from '@/lib/backend-request-log'
 import { BackendDataError } from '@/lib/backend'
 import { getTickerFinancialStatements } from '@/lib/canonical-research'
-import { annualSeries, summaryAmount, summaryDate, summaryPercent, type ReportedPoint } from '@/lib/statement-reading'
+import { annualSeries, summaryAmount, summaryCurrency, summaryDate, summaryPercent, type ReportedPoint } from '@/lib/statement-reading'
 import { currencyForTicker, formatCompactMoney } from '@/lib/currency'
 import { isoCurrency } from '@/lib/display-currency'
 import { resolveDisplayCurrency } from '@/lib/display-currency-server'
@@ -72,8 +72,8 @@ function stockEntrySourceFromContext(
 }
 
 
-function overviewFigure(value: number | null, asOf: string | null): { value: number; asOf: string | null } | null {
-  return value === null ? null : { value, asOf }
+function overviewFigure(value: number | null, asOf: string | null, currency?: string | null): { value: number; asOf: string | null; currency?: string | null } | null {
+  return value === null ? null : { value, asOf, currency }
 }
 
 function detectNavigationMode(requestHeaders: Headers): string {
@@ -402,7 +402,7 @@ export default async function TickerPage({
         scorecard={scorecard}
         revenue={revenuePromise}
         operatingMargin={overviewFigure(summaryPercent(latestFundamentals, /operating\s+margin/i), summaryDate(latestFundamentals, /operating\s+margin/i))}
-        netCash={overviewFigure(summaryAmount(latestFundamentals, /^net\s+cash\b/i), summaryDate(latestFundamentals, /^net\s+cash\b/i))}
+        netCash={overviewFigure(summaryAmount(latestFundamentals, /^net\s+cash\b/i), summaryDate(latestFundamentals, /^net\s+cash\b/i), summaryCurrency(latestFundamentals, /^net\s+cash\b/i))}
       />
     </div>
   )

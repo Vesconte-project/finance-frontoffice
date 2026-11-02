@@ -79,3 +79,15 @@ test('the narrow flow is sales, its four parts and what the open part is made of
   assert.equal(narrowGroupOf('grossProfit'), null)
   assert.equal(connectorPath(0, 1, 3, 4), 'M0,50 C50,50 50,87.5 100,87.5')
 })
+
+
+test('new cost and tax nodes expose only explicit reported values', () => {
+  const explicit = {...values, costOfSales:220, operatingCosts:60, incomeTax:24}
+  const nodes = byId(wideFlow(explicit))
+  for (const id of ['costOfSales','operatingCosts','taxes'] as const) assert.equal(nodes.get(id)?.pending,false)
+  assert.equal(nodeValue('costOfSales',explicit),220)
+  assert.equal(nodeValue('operatingCosts',explicit),60)
+  assert.equal(nodeValue('taxes',explicit),24)
+  assert.equal(nodeValue('costOfSales',values),null)
+  assert.equal(nodeValue('retained',explicit),null)
+})

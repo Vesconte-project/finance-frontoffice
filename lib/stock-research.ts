@@ -81,11 +81,11 @@ function formatMetricValue(row: LatestFundamentalsRow, currency: string): string
 
   const label = normalizeLabel(`${row.metric} ${row.metricLabel}`)
   if (/(yield|margin|growth|return on|\broe\b|\broa\b|payout|percent|pct)/.test(label)) {
-    const scaled = Math.abs(value) <= 1.5 ? value * 100 : value
+    const scaled = row.unit === 'fraction' ? value * 100 : Math.abs(value) <= 1.5 ? value * 100 : value
     return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(scaled)}%`
   }
   if (/(market cap|revenue|sales|ebitda|cash|debt|asset|liabilit|equity|income|cash flow|free cash flow|enterprise value|profit)/.test(label)) {
-    return formatCompactMoney(value, currency)
+    return formatCompactMoney(value, row.currency ?? currency)
   }
   // `display` last, not first: the backend sends full precision in it, so a
   // trailing P/E rendered as 37.681973 on a page of two-decimal figures.

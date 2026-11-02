@@ -333,7 +333,7 @@ test('Fundamentals and Financials follow the accepted ticker Spec (PRD-78, phase
 
   // Nothing is derived from two reported values: no subtraction between line
   // items, no ratio and no growth in the reading layer.
-  assert.doesNotMatch(reading, /\.value\s*[-/]\s*[\w.]+\.value|growth\s*=|yoy/i)
+  assert.doesNotMatch(reading, /\.value\s*[-/]\s*[\w.]+\.value|growth\s*=/i)
 })
 
 test('Valuation follows the accepted ticker Spec (PRD-78, phase 4): reported multiples, the rest being built', () => {

@@ -23,6 +23,8 @@ export default async function FundamentalsPage({ params }: { params: Promise<{ t
       data={data}
       revenue={income?.available ? annualSeries(income.rows, 'revenue') : []}
       dividends={dividends?.available ? dividendHistory(dividends.rows, today) : null}
+      revenueGrowth={income?.available ? annualSeries(income.rows, 'revenueGrowth') : []}
+      operatingMargins={income?.available ? annualSeries(income.rows, 'operatingIncomeShare') : []}
     />
   )
 }
