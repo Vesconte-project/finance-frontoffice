@@ -67,9 +67,15 @@ test('errors carry a code and a fixed message, never the detail', async () => {
   assert.equal(JSON.stringify(res.body).includes('drop table'), false)
 })
 
-test('team routes answer 403 to everyone else', async () => {
-  assert.equal((await call({ method: 'GET', parts: ['admin', 'queue'] })).status, 403)
-  assert.equal((await call({ method: 'GET', parts: ['admin', 'trends'] })).status, 403)
+test('admin routes answer 403 to everyone else', async () => {
+  assert.equal((await call({ method: 'GET', parts: ['admin', 'shared'] })).status, 403)
+  assert.equal((await call({ method: 'GET', parts: ['admin', 'candidates'] })).status, 403)
+  assert.equal((await call({ method: 'POST', parts: ['admin', 'candidates'], body: { thesisId: '3f2b8c1e-6d4a-4b7e-9c10-2a5d7e8f9b01' } })).status, 403)
+})
+
+test('platform control is not served by the frontoffice', async () => {
+  for (const b of ['queue', 'trends', 'access-requests', 'data-health'])
+    assert.equal((await call({ method: 'GET', parts: ['admin', b] })).status, 404)
 })
 
 test('a draft is checked field by field', () => {

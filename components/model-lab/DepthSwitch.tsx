@@ -9,7 +9,7 @@ import type { Depth } from '@/lib/model-lab/params'
 const DEPTHS: readonly { key: Depth; label: string; hint: string }[] = [
   { key: 'guided', label: 'Guided', hint: 'The sentence and the essentials' },
   { key: 'advanced', label: 'Advanced', hint: 'Every rule and trading assumption' },
-  { key: 'lab', label: 'Lab', hint: 'The full engine, for team members' },
+  { key: 'lab', label: 'Lab', hint: 'The full engine, for admins' },
 ]
 
 export default function DepthSwitch({ depth, lab }: { depth: Depth; lab: boolean }) {

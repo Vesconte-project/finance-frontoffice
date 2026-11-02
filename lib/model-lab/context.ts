@@ -20,7 +20,7 @@ export type LabContext = Readonly<{
 }>
 
 export function resolveDepth(requested: string | undefined, viewer: Viewer): Depth {
-  if (requested === 'lab' && viewer.role === 'team') return 'lab'
+  if (requested === 'lab' && viewer.role === 'admin') return 'lab'
   if (requested === 'advanced' || requested === 'lab') return 'advanced'
   return 'guided'
 }

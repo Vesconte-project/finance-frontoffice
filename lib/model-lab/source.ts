@@ -1,8 +1,6 @@
 import type {
-  AccessRequest,
   AlertItem,
   Candidate,
-  DataHealth,
   Draft,
   LibraryModel,
   Note,
@@ -13,10 +11,9 @@ import type {
   PanelToday,
   PipelineKind,
   PipelineView,
-  QueueRow,
-  ThesisTrends,
   Quote,
   Run,
+  SharedModel,
   TestResults,
   ThesisDetail,
   ThesisEvidence,
@@ -52,7 +49,8 @@ export interface ModelLabSource {
   getTestResults(testId: string): Promise<TestResults>
   addNote(thesisId: string, text: string): Promise<Note>
   updateWatch(thesisId: string, watch: WatchSettings): Promise<WatchSettings>
-  submitCopy(thesisId: string): Promise<ThesisSummary>
+  /** Admins only, and only for their own thesis. */
+  shareThesis(thesisId: string): Promise<ThesisSummary>
 
   quote(draft: Draft): Promise<Quote>
   submitRun(draft: Draft, idempotencyKey: string): Promise<Run>
@@ -71,11 +69,10 @@ export interface ModelLabSource {
   listAlerts(): Promise<readonly AlertItem[]>
   markAlertsRead(ids: readonly string[] | 'all'): Promise<void>
 
-  teamQueue(): Promise<readonly QueueRow[]>
-  teamPipeline(kind: PipelineKind): Promise<PipelineView>
-  teamCandidates(): Promise<readonly Candidate[]>
-  teamAccessRequests(): Promise<readonly AccessRequest[]>
-  requestAccess(experimentId: string, reason: string, expires: '24h' | '7d'): Promise<AccessRequest>
-  teamDataHealth(): Promise<DataHealth>
-  teamTrends(): Promise<ThesisTrends>
+  /** Admins only. Approval, deployments, analytics and monitoring live in the backoffice. */
+  adminShared(): Promise<readonly SharedModel[]>
+  adminCandidates(): Promise<readonly Candidate[]>
+  /** The thesis must be the admin's own or shared by another admin. */
+  selectCandidate(thesisId: string): Promise<Candidate>
+  adminPipeline(kind: PipelineKind): Promise<PipelineView>
 }

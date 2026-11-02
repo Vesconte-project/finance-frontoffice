@@ -3,10 +3,8 @@ import { camelizeKeys, snakeizeKeys } from './case'
 import {
   ModelLabError,
   errorFromStatus,
-  type AccessRequest,
   type AlertItem,
   type Candidate,
-  type DataHealth,
   type Draft,
   type LibraryModel,
   type Note,
@@ -17,8 +15,7 @@ import {
   type PanelToday,
   type PipelineKind,
   type PipelineView,
-  type QueueRow,
-  type ThesisTrends,
+  type SharedModel,
   type Quote,
   type Run,
   type TestResults,
@@ -90,7 +87,7 @@ export class BackendSource implements ModelLabSource {
   getTestResults = (id: string) => this.read<TestResults>(`/model-lab/tests/${id}/results`)
   addNote = (thesisId: string, text: string) => this.send<Note>('POST', `/model-lab/theses/${thesisId}/notes`, { text })
   updateWatch = (thesisId: string, watch: WatchSettings) => this.send<WatchSettings>('PATCH', `/model-lab/theses/${thesisId}/watch`, watch)
-  submitCopy = (thesisId: string) => this.send<ThesisSummary>('POST', `/model-lab/theses/${thesisId}/submit`, {})
+  shareThesis = (thesisId: string) => this.send<ThesisSummary>('POST', `/model-lab/theses/${thesisId}/share`, {})
 
   quote = (draft: Draft) => this.send<Quote>('POST', '/model-lab/quotes', draft)
   submitRun = (draft: Draft, key: string) => this.send<Run>('POST', '/model-lab/runs', draft, key)
@@ -109,14 +106,10 @@ export class BackendSource implements ModelLabSource {
   async listAlerts() { return this.list<AlertItem>(await this.read('/model-lab/alerts'), 'alerts') }
   async markAlertsRead(ids: readonly string[] | 'all') { await this.send('POST', '/model-lab/alerts/read', { ids }) }
 
-  async teamQueue() { return this.list<QueueRow>(await this.read('/model-lab/admin/queue'), 'rows') }
-  teamPipeline = (kind: PipelineKind) => this.read<PipelineView>(`/model-lab/admin/pipeline/${kind}`)
-  async teamCandidates() { return this.list<Candidate>(await this.read('/model-lab/admin/candidates'), 'candidates') }
-  async teamAccessRequests() { return this.list<AccessRequest>(await this.read('/model-lab/admin/access-requests'), 'requests') }
-  requestAccess = (experimentId: string, reason: string, expires: '24h' | '7d') =>
-    this.send<AccessRequest>('POST', '/model-lab/admin/access-requests', { experimentId, reason, expires })
-  teamDataHealth = () => this.read<DataHealth>('/model-lab/admin/data-health')
-  teamTrends = () => this.read<ThesisTrends>('/model-lab/admin/trends')
+  async adminShared() { return this.list<SharedModel>(await this.read('/model-lab/admin/shared'), 'models') }
+  async adminCandidates() { return this.list<Candidate>(await this.read('/model-lab/admin/candidates'), 'candidates') }
+  selectCandidate = (thesisId: string) => this.send<Candidate>('POST', '/model-lab/admin/candidates', { thesisId })
+  adminPipeline = (kind: PipelineKind) => this.read<PipelineView>(`/model-lab/admin/pipeline/${kind}`)
 }
 
 export function toModelLabError(error: unknown): ModelLabError {

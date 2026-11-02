@@ -123,24 +123,36 @@ test('compare puts two theses side by side', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Checks' })).toBeVisible()
 })
 
-test('the team console is closed to customers and open to the team', async ({ page }) => {
-  await page.goto('/models/team')
+test('admin tools are closed to customers, and admins share and select candidates', async ({ page }) => {
+  await page.goto('/models/admin')
   await expect(page.getByText('Not available on your account')).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Team' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Admin' })).toHaveCount(0)
+  await page.goto('/models')
+  await page.locator('a[href^="/models/theses/"]').first().click()
+  await expect(page.getByRole('link', { name: 'Edit thesis' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Share with admins' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Select as candidate' })).toHaveCount(0)
 
-  await preview(page, 'role=team', 'lab')
-  await page.goto('/models/team')
-  await expect(page.getByRole('heading', { name: 'Team', level: 1 })).toBeVisible()
-  await expect(page.getByText('A customer').first()).toBeVisible()
-  await page.getByRole('link', { name: 'Trends' }).click()
-  await expect(page.getByRole('heading', { name: 'Which stocks' })).toBeVisible()
-  await expect(page.getByText(/Counts only/)).toBeVisible()
-  await page.getByRole('link', { name: 'Access requests' }).click()
-  const send = page.getByRole('button', { name: 'Request access' })
-  await expect(send).toBeDisabled()
-  await page.getByLabel('Experiment id').fill('00000000-0000-4000-8000-000000000001')
-  await page.getByLabel(/Why you need to see it/).fill('Investigating a failed run for support')
-  await expect(send).toBeEnabled()
+  await preview(page, 'role=admin', 'lab')
+  await page.reload()
+  // The fixture world is shared by the whole run, so a retry may find it shared already.
+  const share = page.getByRole('button', { name: 'Share with admins' })
+  await expect(share.or(page.getByText('Shared with admins'))).toBeVisible()
+  if (await share.isVisible()) {
+    await share.click()
+    await page.getByRole('button', { name: 'Share', exact: true }).click()
+  }
+  await expect(page.getByText('Shared with admins')).toBeVisible()
+
+  await page.getByRole('link', { name: 'Admin' }).click()
+  await expect(page.getByRole('heading', { name: 'Admin', level: 1 })).toBeVisible()
+  await expect(page.getByText(/Shared by You/)).toBeVisible()
+  await expect(page.getByText(/Shared by Model review/)).toBeVisible()
+  await page.getByRole('link', { name: 'Candidates' }).click()
+  await expect(page.getByText(/Approval, deployment and switching a model on or off happen in the backoffice/)).toBeVisible()
+  await expect(page.getByText('Waiting for approval').first()).toBeVisible()
+  for (const gone of ['Queue', 'Trends', 'Pipeline', 'Access requests', 'Data health'])
+    await expect(page.getByRole('link', { name: gone, exact: true })).toHaveCount(0)
 })
 
 test('a free account sees the upgrade path, not an empty promise', async ({ page }) => {

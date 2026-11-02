@@ -41,5 +41,5 @@ export default async function NewTestPage({ searchParams }: { searchParams: Prom
     initial = { ...initial, sentence, assets, thesisId, mode: query.edit === '1' ? 'edit' : 'again' }
   }
 
-  return <Composer initial={initial} depth={depth} isTeam={viewer.role === 'team'} />
+  return <Composer initial={initial} depth={depth} isAdmin={viewer.role === 'admin'} />
 }

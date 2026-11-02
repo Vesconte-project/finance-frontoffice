@@ -1,6 +1,6 @@
 import { ModelLabError, statusFromError } from './contract'
 import type { ModelLabSource } from './source'
-import { parseAccessRequest, parseAlertsRead, parseDraft, parseNote, parsePanelDraft, parsePanelPatch, parseWatch, isUuid } from './validate'
+import { parseAlertsRead, parseCandidate, parseDraft, parseNote, parsePanelDraft, parsePanelPatch, parseWatch, isUuid } from './validate'
 import type { PipelineKind } from './contract'
 
 export type BffMethod = 'GET' | 'POST' | 'PATCH'
@@ -39,13 +39,10 @@ async function get(source: ModelLabSource, p: readonly string[]): Promise<unknow
     if (c === 'alerts') return source.panelAlerts(id(b))
   }
   if (a === 'admin' && p.length === 2) {
-    if (b === 'queue') return { rows: await source.teamQueue() }
-    if (b === 'candidates') return { candidates: await source.teamCandidates() }
-    if (b === 'access-requests') return { requests: await source.teamAccessRequests() }
-    if (b === 'data-health') return source.teamDataHealth()
-    if (b === 'trends') return source.teamTrends()
+    if (b === 'shared') return { models: await source.adminShared() }
+    if (b === 'candidates') return { candidates: await source.adminCandidates() }
   }
-  if (a === 'admin' && b === 'pipeline' && p.length === 3) return source.teamPipeline(pipelineKind(c))
+  if (a === 'admin' && b === 'pipeline' && p.length === 3) return source.adminPipeline(pipelineKind(c))
   throw new ModelLabError('not-found')
 }
 
@@ -63,11 +60,8 @@ async function post(source: ModelLabSource, p: readonly string[], body: unknown,
     return { ok: true }
   }
   if (a === 'theses' && p.length === 3 && c === 'notes') return source.addNote(id(b), parseNote(body))
-  if (a === 'theses' && p.length === 3 && c === 'submit') return source.submitCopy(id(b))
-  if (a === 'admin' && b === 'access-requests' && p.length === 2) {
-    const r = parseAccessRequest(body)
-    return source.requestAccess(r.experimentId, r.reason, r.expires)
-  }
+  if (a === 'theses' && p.length === 3 && c === 'share') return source.shareThesis(id(b))
+  if (a === 'admin' && b === 'candidates' && p.length === 2) return source.selectCandidate(parseCandidate(body))
   throw new ModelLabError('not-found')
 }
 

@@ -203,10 +203,9 @@ export function parseAlertsRead(body: unknown): readonly string[] | 'all' {
   return body.ids as string[]
 }
 
-export function parseAccessRequest(body: unknown): { experimentId: string; reason: string; expires: '24h' | '7d' } {
-  if (!isObject(body) || typeof body.experimentId !== 'string' || typeof body.reason !== 'string') bad()
-  if (body.expires !== '24h' && body.expires !== '7d') bad()
-  return { experimentId: body.experimentId, reason: body.reason, expires: body.expires }
+export function parseCandidate(body: unknown): string {
+  if (!isObject(body) || typeof body.thesisId !== 'string' || !isUuid(body.thesisId)) bad()
+  return body.thesisId
 }
 
 export function isUuid(value: string): boolean {

@@ -24,7 +24,7 @@ export default async function PanelPage({ params, searchParams }: { params: Prom
   const panel = await load(() => source.getPanel(id))
   if (!panel.ok) return <Problem error={panel.error} back={BACK} />
 
-  const lineage = depth === 'lab' && viewer.role === 'team'
+  const lineage = depth === 'lab' && viewer.role === 'admin'
   const tabs: (TabItem & { key: TabKey })[] = [
     { key: 'today', label: 'Today', href: `/models/panels/${id}` },
     { key: 'models', label: 'Models and rule', href: `/models/panels/${id}?tab=models` },
@@ -47,7 +47,7 @@ export default async function PanelPage({ params, searchParams }: { params: Prom
     const alerts = await load(() => source.panelAlerts(id))
     body = alerts.ok ? <AlertsTab panel={panel.data} replays={alerts.data.replays} /> : <Problem error={alerts.error} />
   } else {
-    const view = await load(() => source.teamPipeline('panel'))
+    const view = await load(() => source.adminPipeline('panel'))
     body = view.ok ? <PipelineSteps view={view.data} /> : <Problem error={view.error} />
   }
 

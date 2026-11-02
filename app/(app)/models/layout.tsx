@@ -33,9 +33,9 @@ export default async function ModelsLayout({ children }: { children: React.React
   return (
     <div className="container-md section-gap">
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-[var(--line)]">
-        <LabNav unread={viewer.unreadAlerts} team={viewer.role === 'team'} />
+        <LabNav unread={viewer.unreadAlerts} admin={viewer.role === 'admin'} />
         <div className="flex flex-wrap items-center gap-3 pb-2">
-          <DepthSwitch depth={depth} lab={viewer.role === 'team'} />
+          <DepthSwitch depth={depth} lab={viewer.role === 'admin'} />
           {viewer.plan === 'free' ? (
             <>
               <Tag>Free plan</Tag>

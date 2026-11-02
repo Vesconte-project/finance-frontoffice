@@ -2,7 +2,7 @@
 
 Status: built against a target contract the backend does not serve yet (`docs/api/model-lab.md`). It runs on synthetic fixtures for Preview and browser QA (`MODEL_LAB_FIXTURES=true`), and on the platform API when `MODEL_LAB_ENABLED=true`.
 
-One Model Lab for a self-directed investor, replacing the three older labs. Depth is Guided, Advanced or Lab in the same product; team members use the same product behind `research.internal.run` and see the Lab depth and the Team page. Founder direction is in `docs/product/decision-register.md`.
+One Model Lab for a self-directed investor, replacing the three older labs. Depth is Guided, Advanced or Lab in the same product; admins use the same product (role `admin`, permission `research.internal.run`) and also see the Lab depth and the Admin page. Platform control lives in the backoffice. Founder direction is in `docs/product/decision-register.md`.
 
 ## Pages
 
@@ -16,12 +16,12 @@ One Model Lab for a self-directed investor, replacing the three older labs. Dept
 | `/models/compare` | Two to four theses side by side |
 | `/models/panels`, `/new`, `/[id]` | Combine tested models: Today, Models and rule, Evidence, Alerts, How it was calculated (Lab) |
 | `/models/alerts` | Inbox with filters, day groups, mark as read |
-| `/models/team` | Queue (customers anonymous), trends (counts only), pipeline, candidates, access requests, data health (permission) |
+| `/models/admin` | Models shared between admins, and candidates for production (admins only). Approval is in the backoffice |
 
 ## Where it lives
 
 - `lib/model-lab/`: `contract.ts` (types), `source.ts` (interface), `backend-source.ts` and `fixtures/` (two implementations), `bff.ts` + `validate.ts` (route logic), `params.ts` (settings by layer and depth), `thesis-sentence.ts`, `value-track.ts`, `mode.ts`.
-- `components/model-lab/`: composer (`Composer`, `SentenceBuilder`, `ParamEditor`, `ValueTrack`, `StockPicker`), run and results, thesis tabs, panel tabs, alerts, team.
+- `components/model-lab/`: composer (`Composer`, `SentenceBuilder`, `ParamEditor`, `ValueTrack`, `StockPicker`), run and results, thesis tabs, panel tabs, alerts, admin sharing and candidates.
 - `app/(app)/models/**` pages and `app/api/model-lab/[...parts]/route.ts`.
 
 ## Behaviour to preserve

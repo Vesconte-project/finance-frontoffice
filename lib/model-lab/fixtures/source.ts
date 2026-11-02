@@ -1,9 +1,7 @@
 import {
   ModelLabError,
-  type AccessRequest,
   type AlertItem,
   type Candidate,
-  type DataHealth,
   type Draft,
   type LibraryModel,
   type Note,
@@ -15,12 +13,11 @@ import {
   type PipelineKind,
   type PipelineView,
   type Plan,
-  type QueueRow,
-  type ThesisTrends,
   type Quote,
   type Role,
   type Run,
   type RunStage,
+  type SharedModel,
   type TestResults,
   type TestSummary,
   type ThesisDetail,
@@ -36,7 +33,7 @@ import { describeThesis } from '../thesis-sentence'
 import { libraryModels, memberFor, memberKeyOfRun, initialPanels, panelAlerts, panelEvidence, panelToday } from './panels'
 import { CREDIT_UNIT, quoteDraft } from './quote'
 import { buildResults, resultsId, seedFor } from './sets'
-import { dataHealth, initialAccessRequests, initialCandidates, initialQueue, lineageOf, pipelineOf, thesisTrends } from './team'
+import { initialCandidates, lineageOf, pipelineOf, readinessChecks, sharedByOthers } from './admin'
 import { DEFAULT_WATCH, THESIS_SPECS, evidenceOf, specId, summaryOf, testId, type ThesisSpec } from './theses'
 import { fixtureId, hash, rng } from './random'
 import { daysAgoIso } from './world'
@@ -53,7 +50,7 @@ export type FixtureState = Readonly<{
 export const DEFAULT_FIXTURE_STATE: FixtureState = { role: 'investor', plan: 'pro', account: 'full', credits: 'plenty', run: 'ok', data: 'fresh' }
 
 const CHOICES = {
-  role: ['investor', 'team'],
+  role: ['investor', 'admin'],
   plan: ['pro', 'free'],
   account: ['full', 'empty'],
   credits: ['plenty', 'low'],
@@ -63,7 +60,7 @@ const CHOICES = {
 
 export const FIXTURE_STATE_COOKIE = 'model_lab_preview'
 
-/** The state is kept in one cookie, `role=team;plan=free`, set by the preview panel. */
+/** The state is kept in one cookie, `role=admin;plan=free`, set by the preview panel. */
 export function parseFixtureState(raw: string | undefined): FixtureState {
   const out: Record<string, string> = { ...DEFAULT_FIXTURE_STATE }
   for (const part of (raw ?? '').split(';')) {
@@ -105,7 +102,8 @@ type RunRecord = {
 
 type World = {
   specs: ThesisSpec[]
-  submitted: Set<string>
+  /** Thesis id to when the admin shared it. */
+  shared: Map<string, string>
   notes: Map<string, Note[]>
   watch: Map<string, WatchSettings>
   tests: Map<string, TestSummary[]>
@@ -114,8 +112,6 @@ type World = {
   idempotency: Map<string, { body: string; runId: string }>
   panels: PanelSummary[]
   read: Set<string>
-  access: AccessRequest[]
-  queue: QueueRow[]
   candidates: Candidate[]
   credits: number
   counter: number
@@ -145,7 +141,7 @@ function createWorld(): World {
   ])
   return {
     specs,
-    submitted: new Set(),
+    shared: new Map(),
     notes: new Map(),
     watch: new Map(),
     tests,
@@ -154,8 +150,6 @@ function createWorld(): World {
     idempotency: new Map(),
     panels: initialPanels(),
     read: new Set(),
-    access: initialAccessRequests(),
-    queue: initialQueue(),
     candidates: initialCandidates(),
     credits: 78,
     counter: 0,
@@ -183,8 +177,17 @@ export class FixtureSource implements ModelLabSource {
     private readonly now: () => number = Date.now
   ) {}
 
-  private requireTeam(): void {
-    if (this.state.role !== 'team') throw new ModelLabError('forbidden')
+  private isAdmin(): boolean {
+    return this.state.role === 'admin'
+  }
+
+  private requireAdmin(): void {
+    if (!this.isAdmin()) throw new ModelLabError('forbidden')
+  }
+
+  /** Customers never see sharing: it is between admins only. */
+  private sharedAt(id: string): string | null {
+    return this.isAdmin() ? this.world.shared.get(id) ?? null : null
   }
 
   private spec(id: string): ThesisSpec {
@@ -198,11 +201,10 @@ export class FixtureSource implements ModelLabSource {
   }
 
   async viewer(): Promise<Viewer> {
-    const team = this.state.role === 'team'
     return {
       role: this.state.role,
       plan: this.state.plan,
-      quota: { kind: team ? 'budget' : 'credits', unit: CREDIT_UNIT, remaining: round1(this.remaining()), limit: 100, periodEndsAt: '2026-11-03T00:00:00.000Z' },
+      quota: { kind: this.isAdmin() ? 'budget' : 'credits', unit: CREDIT_UNIT, remaining: round1(this.remaining()), limit: 100, periodEndsAt: '2026-11-03T00:00:00.000Z' },
       unreadAlerts: (await this.listAlerts()).filter((a) => !a.read).length,
       premiumDeletedAt: this.state.plan === 'free' ? '2027-01-12T00:00:00.000Z' : null,
     }
@@ -210,12 +212,12 @@ export class FixtureSource implements ModelLabSource {
 
   async listTheses(): Promise<readonly ThesisSummary[]> {
     if (this.state.account === 'empty') return []
-    return this.world.specs.map((s) => summaryOf(s, this.world.submitted.has(specId(s.key))))
+    return this.world.specs.map((s) => summaryOf(s, this.sharedAt(specId(s.key))))
   }
 
   async getThesis(id: string): Promise<ThesisDetail> {
     const spec = this.spec(id)
-    const summary = summaryOf(spec, this.world.submitted.has(id))
+    const summary = summaryOf(spec, this.sharedAt(id))
     const notes = this.world.notes.get(id) ?? [{ id: fixtureId(`note:${id}:seed`), at: isoDaysAgo(21), text: 'Started this after reading the Q2 reports. I will add more stocks only if the recent-months check holds.', checksHolding: summary.checksHolding }]
     const versions: Version[] = [
       { id: fixtureId(`version:${id}:1`), label: 'v1', at: isoDaysAgo(21), summary: 'First version', current: false },
@@ -226,13 +228,13 @@ export class FixtureSource implements ModelLabSource {
       notes,
       versions,
       tests: this.world.tests.get(id) ?? [],
-      lineage: this.state.role === 'team' ? lineageOf(spec) : null,
+      lineage: this.isAdmin() ? lineageOf(spec) : null,
     }
   }
 
   async getEvidence(id: string): Promise<ThesisEvidence> {
     const spec = this.spec(id)
-    return evidenceOf(spec, this.state.role === 'team', this.world.watch.get(id) ?? DEFAULT_WATCH, this.state.data === 'stale' ? 2 : null, this.state.data === 'partial')
+    return evidenceOf(spec, this.isAdmin(), this.world.watch.get(id) ?? DEFAULT_WATCH, this.state.data === 'stale' ? 2 : null, this.state.data === 'partial')
   }
 
   async getTestResults(id: string): Promise<TestResults> {
@@ -256,10 +258,11 @@ export class FixtureSource implements ModelLabSource {
     return watch
   }
 
-  async submitCopy(thesisId: string): Promise<ThesisSummary> {
+  async shareThesis(thesisId: string): Promise<ThesisSummary> {
+    this.requireAdmin()
     const spec = this.spec(thesisId)
-    this.world.submitted.add(thesisId)
-    return summaryOf(spec, true)
+    if (!this.world.shared.has(thesisId)) this.world.shared.set(thesisId, new Date(this.now()).toISOString())
+    return summaryOf(spec, this.sharedAt(thesisId))
   }
 
   async quote(draft: Draft): Promise<Quote> {
@@ -291,8 +294,6 @@ export class FixtureSource implements ModelLabSource {
     this.world.runs.set(id, record)
     this.world.idempotency.set(key, { body, runId: id })
     this.world.credits = round1(this.world.credits - quote.total)
-    const job = { id: `job-${8842 + this.world.counter}`, variants: quote.variants, stage: STAGES[0][0], state: 'running', worker: 'worker-1', minutes: 0 } as const
-    this.world.queue.unshift(this.state.role === 'team' ? { ...job, owner: 'team', who: 'you', thesis: describeThesis(draft.sentence).slice(0, 34) + '…' } : { ...job, owner: 'customer' })
     return this.getRun(id)
   }
 
@@ -490,43 +491,41 @@ export class FixtureSource implements ModelLabSource {
     for (const a of all) if (ids === 'all' || ids.includes(a.id)) this.world.read.add(a.id)
   }
 
-  async teamQueue(): Promise<readonly QueueRow[]> {
-    this.requireTeam()
-    return this.world.queue
+  async adminShared(): Promise<readonly SharedModel[]> {
+    this.requireAdmin()
+    const mine = this.world.specs.flatMap((spec): SharedModel[] => {
+      const at = this.world.shared.get(specId(spec.key))
+      if (!at) return []
+      const s = summaryOf(spec, at)
+      return [{ thesisId: s.id, statement: s.statement, sharedBy: 'You', mine: true, sharedAt: at, checksHolding: s.checksHolding, checksTotal: s.checksTotal, returnAfterCosts: s.returnAfterCosts, benchmarkReturn: s.benchmarkReturn }]
+    })
+    return [...mine, ...sharedByOthers()]
   }
 
-  async teamPipeline(kind: PipelineKind): Promise<PipelineView> {
-    this.requireTeam()
-    const p = this.world.panels[0]
-    return pipelineOf(kind, p?.agreementNeeded ?? 3, p?.holdDays ?? 2)
-  }
-
-  async teamCandidates(): Promise<readonly Candidate[]> {
-    this.requireTeam()
+  async adminCandidates(): Promise<readonly Candidate[]> {
+    this.requireAdmin()
     return this.world.candidates
   }
 
-  async teamAccessRequests(): Promise<readonly AccessRequest[]> {
-    this.requireTeam()
-    return this.world.access
+  async selectCandidate(thesisId: string): Promise<Candidate> {
+    this.requireAdmin()
+    const earlier = this.world.candidates.find((c) => c.thesisId === thesisId)
+    if (earlier) return earlier
+    const own = this.world.specs.find((s) => specId(s.key) === thesisId)
+    const model = own ? summaryOf(own, this.sharedAt(thesisId)) : sharedByOthers().find((m) => m.thesisId === thesisId)
+    if (!model) throw new ModelLabError('not-found')
+    const candidate: Candidate = {
+      id: fixtureId(`candidate:${thesisId}`), thesisId, name: model.statement, selectedBy: 'You',
+      selectedAt: new Date(this.now()).toISOString(), review: 'waiting', checks: readinessChecks(model.checksHolding),
+    }
+    this.world.candidates = [candidate, ...this.world.candidates]
+    return candidate
   }
 
-  async requestAccess(experimentId: string, reason: string, expires: '24h' | '7d'): Promise<AccessRequest> {
-    this.requireTeam()
-    if (!/^exp-[0-9]{3,8}$/.test(experimentId.trim()) || !reason.trim() || reason.length > 500) throw new ModelLabError('invalid')
-    const req: AccessRequest = { id: fixtureId(`access:${this.world.counter++}`), experimentId: experimentId.trim(), reason: reason.trim(), expires: `expires in ${expires === '24h' ? '24 hours' : '7 days'}`, status: 'Logged · owner notified' }
-    this.world.access = [req, ...this.world.access]
-    return req
-  }
-
-  async teamDataHealth(): Promise<DataHealth> {
-    this.requireTeam()
-    return dataHealth()
-  }
-
-  async teamTrends(): Promise<ThesisTrends> {
-    this.requireTeam()
-    return thesisTrends()
+  async adminPipeline(kind: PipelineKind): Promise<PipelineView> {
+    this.requireAdmin()
+    const p = this.world.panels[0]
+    return pipelineOf(kind, p?.agreementNeeded ?? 3, p?.holdDays ?? 2)
   }
 }
 

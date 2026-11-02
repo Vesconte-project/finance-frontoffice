@@ -10,17 +10,20 @@ import type { ThesisSentence } from './thesis-sentence'
  *   verdict on a thesis, and no text field is a forecast.
  * - Money-like amounts (`cost`, `quota`) are in the units the API names in
  *   `Unit`; the pages never assume what a unit is called.
- * - Every list is account-scoped by the server. A customer's experiment is
- *   private to the account unless a copy was submitted.
+ * - Every list is account-scoped by the server. A model is private to its
+ *   owner. Only an admin can share one, and only with the other admins.
+ * - The frontoffice is where everyone builds and tests models, admins included.
+ *   Platform control (approval, deployments, analytics, monitoring, audit) is
+ *   in the backoffice and has no route here.
  */
 
 export type Unit = Readonly<{ one: string; many: string }>
 
-export type Role = 'investor' | 'team'
+export type Role = 'investor' | 'admin'
 export type Plan = 'free' | 'pro'
 
 export type Quota = Readonly<{
-  /** `credits` for customers, `budget` for team members (an internal budget). */
+  /** `credits` for customers, `budget` for admins (an internal budget). */
   kind: 'credits' | 'budget'
   unit: Unit
   remaining: number
@@ -57,7 +60,8 @@ export type ThesisSummary = Readonly<{
   returnAfterCosts: number | null
   benchmarkReturn: number | null
   sparkline: Sparkline | null
-  submittedAt: string | null
+  /** When an admin shared it with the other admins; always null for customers. */
+  sharedAt: string | null
 }>
 
 export type EvidenceCheck = Readonly<{
@@ -127,7 +131,7 @@ export type ThesisEvidence = Readonly<{
   performance: Readonly<{ series: EquitySeries; stats: PerformanceStats }>
   contributions: readonly Contribution[]
   limits: readonly LimitRow[]
-  /** Present only for team members. */
+  /** Present only for admins. */
   ordering: OrderingMeasures | null
   history: readonly HistoryPoint[]
   watch: WatchSettings
@@ -169,7 +173,7 @@ export type ThesisDetail = Readonly<{
   notes: readonly Note[]
   versions: readonly Version[]
   tests: readonly TestSummary[]
-  /** Present only for team members. */
+  /** Present only for admins. */
   lineage: Lineage | null
 }>
 
@@ -369,51 +373,37 @@ export type AlertItem = Readonly<{
   read: boolean
 }>
 
-/* ---------- team ---------- */
+/* ---------- admins ---------- */
 
-/**
- * A customer's job carries no account and no thesis: the team sees the load on the
- * workers, never whose work it is or what it tests. Only the team's own jobs are named.
- */
-export type QueueRow = Readonly<
-  {
-    id: string
-    variants: number
-    stage: string
-    state: 'running' | 'completed' | 'failed'
-    worker: string
-    minutes: number
-  } & ({ owner: 'customer' } | { owner: 'team'; who: string; thesis: string })
->
+/** A model an admin shared with the other admins. Read-only for everyone but its owner. */
+export type SharedModel = Readonly<{
+  thesisId: string
+  statement: string
+  sharedBy: string
+  mine: boolean
+  sharedAt: string
+  checksHolding: number
+  checksTotal: number
+  returnAfterCosts: number | null
+  benchmarkReturn: number | null
+}>
 export type CandidateCheck = Readonly<{ label: string; state: CheckState }>
+/**
+ * A model an admin selected as a candidate for production. Approval happens in
+ * the backoffice; `review` only reports where it stands.
+ */
 export type Candidate = Readonly<{
   id: string
+  thesisId: string
   name: string
-  from: string
-  source: 'internal' | 'customer-copy'
-  status: 'candidate' | 'shadow'
+  selectedBy: string
+  selectedAt: string
+  review: 'waiting' | 'approved' | 'declined'
   checks: readonly CandidateCheck[]
 }>
-export type AccessRequest = Readonly<{ id: string; experimentId: string; reason: string; expires: string; status: string }>
 export type PipelineStep = Readonly<{ index: number; title: string; owner: string; ids: string; lines: readonly string[]; reused: boolean; cost: number | null; members?: readonly { name: string; id: string; how: string; note: string }[] }>
 export type PipelineKind = 'thesis' | 'reuse' | 'panel'
 export type PipelineView = Readonly<{ kind: PipelineKind; title: string; steps: readonly PipelineStep[]; note: string | null }>
-export type DataFamily = Readonly<{ family: string; features: number; coverage: number; latest: string; state: 'ok' | 'warn' | 'bad' }>
-export type DataHealth = Readonly<{ snapshot: Readonly<{ id: string; hash: string }>; families: readonly DataFamily[] }>
-
-/**
- * What kinds of theses people test, counted only. No row names an account, a thesis
- * or a result. A group with fewer than `minAccounts` accounts is folded into `other`.
- */
-export type TrendDimension = 'who' | 'does' | 'universe' | 'condition' | 'horizon' | 'model'
-export type TrendGroup = Readonly<{ key: string; label: string; accounts: number; theses: number }>
-export type ThesisTrends = Readonly<{
-  periodDays: number
-  accounts: number
-  theses: number
-  minAccounts: number
-  dimensions: readonly Readonly<{ dimension: TrendDimension; groups: readonly TrendGroup[]; other: Readonly<{ accounts: number; theses: number }> }>[]
-}>
 
 export type DepthAccess = Readonly<{ advanced: boolean; lab: boolean }>
 

@@ -21,12 +21,12 @@ Status: **not served by the backend yet.** This is the contract the frontoffice 
 
 | Method and path | Purpose | Who |
 |---|---|---|
-| `GET /model-lab/viewer` | Role (`investor` or `team`), plan, quota (`kind`, `unit`, `remaining`, `limit`, `period_ends_at`), unread alerts | signed in |
-| `GET /model-lab/theses` · `GET /model-lab/theses/{id}` | Summaries; one thesis with notes, versions, tests and (team only) lineage | owner |
-| `GET /model-lab/theses/{id}/evidence` | Checks, performance, contributions, limits, history, watch settings; `ordering` only for team | owner |
+| `GET /model-lab/viewer` | Role (`investor` or `admin`), plan, quota (`kind`, `unit`, `remaining`, `limit`, `period_ends_at`), unread alerts | signed in |
+| `GET /model-lab/theses` · `GET /model-lab/theses/{id}` | Summaries; one thesis with notes, versions, tests and (admins only) lineage | owner |
+| `GET /model-lab/theses/{id}/evidence` | Checks, performance, contributions, limits, history, watch settings; `ordering` only for admins | owner |
 | `POST /model-lab/theses/{id}/notes` | Add a note (≤ 4000 chars) | owner |
 | `PATCH /model-lab/theses/{id}/watch` | Re-test cadence and alert settings | owner |
-| `POST /model-lab/theses/{id}/submit` | Submit a **copy** to Vesconte. Experiments are otherwise private | owner |
+| `POST /model-lab/theses/{id}/share` | Share the thesis with the other admins (read-only for them) | admin, owner |
 | `GET /model-lab/tests/{id}/results` | Variants of a set, dimensions, series | owner |
 | `POST /model-lab/quotes` | Price and preflight findings for a draft; no side effects | Pro |
 | `POST /model-lab/runs` | Start a run from a draft (202). Requires `Idempotency-Key`; the same key returns the same run | Pro |
@@ -35,7 +35,11 @@ Status: **not served by the backend yet.** This is the contract the frontoffice 
 | `GET/POST /model-lab/panels` · `GET/PATCH /model-lab/panels/{id}` | Panels; PATCH changes rule, hold, alerts and delivery | owner |
 | `GET /model-lab/panels/{id}/today` · `/evidence` · `/alerts` | Today's flags, evidence, alert replays | owner |
 | `GET /model-lab/alerts` · `POST /model-lab/alerts/read` | Inbox; mark ids or `all` | owner |
-| `GET /model-lab/admin/queue`, `/trends`, `/pipeline/{thesis,reuse,panel}`, `/candidates`, `/access-requests`, `/data-health` · `POST /model-lab/admin/access-requests` | Team console | permission `research.internal.run` |
+| `GET /model-lab/admin/shared` | Models the admins shared with each other (`{ models: [...] }`, `mine` marks the viewer's own) | admin |
+| `GET /model-lab/admin/candidates` · `POST /model-lab/admin/candidates` `{ thesis_id }` | Candidates for production; select one. The thesis must be the admin's own or shared by another admin; selecting twice returns the same candidate | admin |
+| `GET /model-lab/admin/pipeline/{thesis,reuse,panel}` | How a run moves through the engine (Lab depth) | admin |
+
+`admin` is the role behind the permission `research.internal.run` today. The mapping is the backend's to confirm (ENG-259).
 
 ## Errors
 
@@ -43,10 +47,11 @@ Status: **not served by the backend yet.** This is the contract the frontoffice 
 
 ## Rules the backend must keep
 
-- A customer's experiments are private to the account. Team access to an unsubmitted experiment is an exception per experiment: reason, expiry, audit record, owner notified.
-- The team queue names no customer and no customer thesis: a customer's row is `{ owner: "customer" }` with the job's id, variants, stage, state, worker and minutes. Only the team's own jobs carry `who` and `thesis`.
-- `/admin/trends` returns counts only (`accounts` and `theses` per group of sentence choice, horizon band and model, over `period_days`). No account, thesis text, settings or result appears. A group with fewer than `min_accounts` distinct accounts (10 today) is folded into `other`.
-- A run is a research job. The backend compiles a draft into its existing research job (`/v1/research/jobs` compiler, `claim-next` worker, the `internal_research` queue for team runs) and does not add a second way to run models (ENG-208).
+- The frontoffice is where everyone builds models, admins included: create, edit their own, run and test, read results and history. Admins also share models with each other, see what was shared and select candidates for production. Nothing else is served under `/model-lab/admin`.
+- A model is private to its owner. Only an admin can share, only their own thesis, and only with the other admins. A customer's model is never shared, and `shared_at` is always null for a customer.
+- A shared model is read-only for everyone but its owner.
+- Selecting a candidate does not approve it. Approval, switching models on or off in production, versions and deployments, linking models to public pages, analytics, monitoring and audit logs are backoffice work (`finance-backoffice`). `review` on a candidate only reports the backoffice decision (`waiting`, `approved`, `declined`).
+- A run is a research job. The backend compiles a draft into its existing research job (`/v1/research/jobs` compiler, `claim-next` worker, the `internal_research` queue for admin runs) and does not add a second way to run models (ENG-208).
 - The platform returns numbers and thresholds ("3 of 5 checks hold"), never a verdict label about a thesis, and never a forecast.
 - The quota `unit` is named by the API (`{ one, many }`); the UI renders whatever it names (unit still undecided, Linear PRD-80).
 - A failed run refunds its cost and says so (`failure.refunded`).

@@ -2,7 +2,6 @@ import assert from 'node:assert/strict'
 import test, { beforeEach } from 'node:test'
 import { ModelLabError, type Draft } from '../lib/model-lab/contract'
 import { DEFAULT_FIXTURE_STATE, FixtureSource, parseFixtureState, resetFixtureWorld, serializeFixtureState } from '../lib/model-lab/fixtures/source'
-import { foldTrends } from '../lib/model-lab/fixtures/team'
 import { defaultValues } from '../lib/model-lab/params'
 import { DEFAULT_SENTENCE } from '../lib/model-lab/thesis-sentence'
 
@@ -41,9 +40,9 @@ beforeEach(() => {
 })
 
 test('the preview state survives a round trip and ignores anything unknown', () => {
-  const state = { ...DEFAULT_FIXTURE_STATE, role: 'team', plan: 'free', data: 'stale' } as const
+  const state = { ...DEFAULT_FIXTURE_STATE, role: 'admin', plan: 'free', data: 'stale' } as const
   assert.deepEqual(parseFixtureState(serializeFixtureState(state)), state)
-  assert.deepEqual(parseFixtureState('role=admin;plan=pro;x=1;data'), DEFAULT_FIXTURE_STATE)
+  assert.deepEqual(parseFixtureState('role=root;plan=pro;x=1;data'), DEFAULT_FIXTURE_STATE)
   assert.deepEqual(parseFixtureState(undefined), DEFAULT_FIXTURE_STATE)
 })
 
@@ -65,14 +64,14 @@ test('every thesis has five checks, a change, and no verdict field', async () =>
   }
 })
 
-test('ordering measures and lineage are for team members only', async () => {
+test('ordering measures and lineage are for admins only', async () => {
   const investor = make()
-  const team = make({ role: 'team' })
+  const admin = make({ role: 'admin' })
   const [first] = await investor.listTheses()
   assert.equal((await investor.getEvidence(first.id)).ordering, null)
   assert.equal((await investor.getThesis(first.id)).lineage, null)
-  assert.ok((await team.getEvidence(first.id)).ordering)
-  assert.ok((await team.getThesis(first.id)).lineage)
+  assert.ok((await admin.getEvidence(first.id)).ordering)
+  assert.ok((await admin.getThesis(first.id)).lineage)
 })
 
 test('stale and partial data show up in the evidence', async () => {
@@ -185,15 +184,18 @@ test('notes are kept with the checks that held when they were written', async ()
   assert.equal(await code(source.addNote(first.id, '   ')), 'invalid')
 })
 
-test('submitting a copy marks the thesis and nothing else', async () => {
-  const source = make()
-  const [first, second] = await source.listTheses()
-  assert.equal(first.submittedAt, null)
-  assert.ok((await source.submitCopy(first.id)).submittedAt)
-  const again = await source.listTheses()
-  assert.ok(again[0].submittedAt)
-  assert.equal(again[1].submittedAt, null)
+test('only an admin shares, and the share marks that thesis and nothing else', async () => {
+  const investor = make()
+  const [first, second] = await investor.listTheses()
+  assert.equal(await code(investor.shareThesis(first.id)), 'forbidden')
+  const admin = make({ role: 'admin' })
+  assert.equal(first.sharedAt, null)
+  assert.ok((await admin.shareThesis(first.id)).sharedAt)
+  const again = await admin.listTheses()
+  assert.ok(again[0].sharedAt)
+  assert.equal(again[1].sharedAt, null)
   assert.equal(again[1].id, second.id)
+  assert.equal((await investor.listTheses())[0].sharedAt, null)
 })
 
 test('panels validate their members and clamp the agreement needed', async () => {
@@ -237,47 +239,41 @@ test('alerts can be marked read one at a time or all at once', async () => {
   assert.equal((await source.viewer()).unreadAlerts, 0)
 })
 
-test('the team console is closed to everyone else', async () => {
+test('the admin tools are closed to everyone else', async () => {
   const investor = make()
-  for (const call of [() => investor.teamQueue(), () => investor.teamCandidates(), () => investor.teamAccessRequests(), () => investor.teamDataHealth(), () => investor.teamTrends(), () => investor.teamPipeline('panel')])
+  const [first] = await investor.listTheses()
+  for (const call of [() => investor.adminShared(), () => investor.adminCandidates(), () => investor.selectCandidate(first.id), () => investor.adminPipeline('panel')])
     assert.equal(await code(call()), 'forbidden')
-  assert.equal(await code(investor.requestAccess('exp-5001', 'why', '24h')), 'forbidden')
 })
 
-test('access to an unsubmitted experiment needs a real id and a reason, and is logged', async () => {
-  const team = make({ role: 'team' })
-  assert.equal(await code(team.requestAccess('anything', 'why', '24h')), 'invalid')
-  assert.equal(await code(team.requestAccess('exp-5001', '  ', '24h')), 'invalid')
-  const request = await team.requestAccess('exp-5001', 'Owner reported a failed run', '7d')
-  assert.equal(request.expires, 'expires in 7 days')
-  assert.equal((await team.teamAccessRequests())[0].id, request.id)
-  assert.ok((await team.teamCandidates()).some((c) => c.source === 'customer-copy'))
+test('shared models list what admins shared, yours first', async () => {
+  const admin = make({ role: 'admin' })
+  const before = await admin.adminShared()
+  assert.ok(before.length > 0 && before.every((m) => !m.mine))
+  const [first] = await admin.listTheses()
+  await admin.shareThesis(first.id)
+  const after = await admin.adminShared()
+  assert.equal(after[0].thesisId, first.id)
+  assert.ok(after[0].mine)
+  assert.equal(after.length, before.length + 1)
 })
 
-test('the team queue never names a customer or their thesis', async () => {
-  await make().submitRun(draft(), 'customer-run-1')
-  const queue = await make({ role: 'team' }).teamQueue()
-  const customers = queue.filter((r) => r.owner === 'customer')
-  assert.ok(customers.length > 1)
-  for (const row of customers) assert.deepEqual(Object.keys(row).sort(), ['id', 'minutes', 'owner', 'stage', 'state', 'variants', 'worker'])
-  assert.ok(queue.some((r) => r.owner === 'team' && r.who && r.thesis))
+test('an admin selects their own or a shared model as a candidate, once', async () => {
+  const admin = make({ role: 'admin' })
+  const [first] = await admin.listTheses()
+  const [other] = await admin.adminShared()
+  const count = (await admin.adminCandidates()).length
+  const mine = await admin.selectCandidate(first.id)
+  assert.equal(mine.review, 'waiting')
+  assert.equal(mine.thesisId, first.id)
+  assert.equal((await admin.selectCandidate(first.id)).id, mine.id)
+  // Another admin's shared model that is already a candidate is not added twice.
+  assert.equal((await admin.selectCandidate(other.thesisId)).thesisId, other.thesisId)
+  assert.equal((await admin.adminCandidates()).length, count + 1)
+  assert.equal(await code(admin.selectCandidate('3f2b8c1e-6d4a-4b7e-9c10-2a5d7e8f9b01')), 'not-found')
 })
 
-test('trends are counts only, and small groups are folded into other', async () => {
-  const trends = await make({ role: 'team' }).teamTrends()
-  assert.ok(trends.dimensions.length > 0)
-  for (const d of trends.dimensions) {
-    for (const g of d.groups) {
-      assert.deepEqual(Object.keys(g).sort(), ['accounts', 'key', 'label', 'theses'])
-      assert.ok(g.accounts >= trends.minAccounts)
-    }
-  }
-  const folded = foldTrends('who', [['a', 'A', 12, 20], ['b', 'B', 9, 15], ['c', 'C', 1, 1]], 10)
-  assert.deepEqual(folded.groups.map((g) => g.key), ['a'])
-  assert.deepEqual(folded.other, { accounts: 10, theses: 16 })
-})
-
-test('team members see a budget, everyone else sees credits', async () => {
+test('admins see a budget, everyone else sees credits', async () => {
   assert.equal((await make().viewer()).quota.kind, 'credits')
-  assert.equal((await make({ role: 'team' }).viewer()).quota.kind, 'budget')
+  assert.equal((await make({ role: 'admin' }).viewer()).quota.kind, 'budget')
 })

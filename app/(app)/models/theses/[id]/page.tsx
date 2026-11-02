@@ -2,10 +2,11 @@ import Link from 'next/link'
 import EvidenceTab from '@/components/model-lab/thesis/EvidenceTab'
 import LineageTab from '@/components/model-lab/thesis/LineageTab'
 import NotesTab from '@/components/model-lab/thesis/NotesTab'
-import SubmitCopy from '@/components/model-lab/thesis/SubmitCopy'
+import ShareWithAdmins from '@/components/model-lab/thesis/ShareWithAdmins'
 import TestsTab from '@/components/model-lab/thesis/TestsTab'
 import WatchingTab from '@/components/model-lab/thesis/WatchingTab'
 import Problem from '@/components/model-lab/Problem'
+import SelectCandidate from '@/components/model-lab/SelectCandidate'
 import { Tag } from '@/components/model-lab/ui'
 import { buttonClass } from '@/components/ui/Button'
 import Tabs, { type TabItem } from '@/components/ui/Tabs'
@@ -36,6 +37,9 @@ export default async function ThesisPage({ params, searchParams }: { params: Pro
   ]
   const active: TabKey = tabs.some((t) => t.key === requested) ? (requested as TabKey) : 'evidence'
   const lastSet = tests.find((t) => t.status === 'completed')
+  const admin = viewer.role === 'admin'
+  const candidates = admin ? await load(() => source.adminCandidates()) : null
+  const selected = candidates?.ok === true && candidates.data.some((c) => c.thesisId === id)
 
   let body: React.ReactNode
   if (active === 'evidence') {
@@ -67,7 +71,8 @@ export default async function ThesisPage({ params, searchParams }: { params: Pro
           </ul>
         </div>
         <div className="flex flex-wrap items-center gap-2 md:max-w-md md:justify-end">
-          <SubmitCopy thesisId={id} submitted={summary.submittedAt !== null} />
+          {admin ? <ShareWithAdmins thesisId={id} shared={summary.sharedAt !== null} /> : null}
+          {admin ? <SelectCandidate thesisId={id} selected={selected} /> : null}
           <Link href={`/models/new?thesis=${id}&edit=1`} className={buttonClass({ variant: 'secondary', size: 'sm' })}>Edit thesis</Link>
           <Link href={`/models/new?thesis=${id}`} className={buttonClass({ size: 'sm' })}>Test again</Link>
         </div>

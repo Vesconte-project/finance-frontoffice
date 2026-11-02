@@ -43,7 +43,7 @@ export type ComposerInitial = Readonly<{
 type ComposerProps = {
   initial: ComposerInitial
   depth: Depth
-  isTeam: boolean
+  isAdmin: boolean
 }
 
 function amountText(amount: number, unit: Unit): string {
@@ -51,7 +51,7 @@ function amountText(amount: number, unit: Unit): string {
   return `${rounded} ${rounded === '1.0' || rounded === '1' ? unit.one : unit.many}`
 }
 
-export default function Composer({ initial, depth, isTeam }: ComposerProps) {
+export default function Composer({ initial, depth, isAdmin }: ComposerProps) {
   const router = useRouter()
   const [sentence, setSentence] = useState<ThesisSentence>(initial.sentence)
   const [assets, setAssets] = useState<string[]>([...initial.assets])
@@ -89,9 +89,9 @@ export default function Composer({ initial, depth, isTeam }: ComposerProps) {
       diagnostics,
       reuseTestId: reuse?.testId ?? null,
       thesisId: initial.mode === 'new' ? null : initial.thesisId,
-      registerCandidate: isTeam && depth === 'lab' && register,
+      registerCandidate: isAdmin && depth === 'lab' && register,
     }),
-    [sentence, assets, rigor, values, families, diagnostics, reuse, initial.mode, initial.thesisId, isTeam, depth, register]
+    [sentence, assets, rigor, values, families, diagnostics, reuse, initial.mode, initial.thesisId, isAdmin, depth, register]
   )
   const draftJson = JSON.stringify(draft)
 
@@ -269,7 +269,7 @@ export default function Composer({ initial, depth, isTeam }: ComposerProps) {
                     </label>
                   </li>
                 ))}
-                {isTeam ? (
+                {isAdmin ? (
                   <li>
                     <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-content-primary">
                       <input type="checkbox" checked={register} onChange={(event) => setRegister(event.target.checked)} className="h-4 w-4 cursor-pointer accent-[var(--accent)]" />

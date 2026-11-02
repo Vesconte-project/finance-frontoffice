@@ -124,7 +124,7 @@ function build(spec: ThesisSpec): Built {
   return { strategy, baseline, periods, holding, history, baselineGap }
 }
 
-export function summaryOf(spec: ThesisSpec, submitted: boolean): ThesisSummary {
+export function summaryOf(spec: ThesisSpec, sharedAt: string | null): ThesisSummary {
   const b = build(spec)
   const st = stats(b.strategy)
   return {
@@ -139,13 +139,13 @@ export function summaryOf(spec: ThesisSpec, submitted: boolean): ThesisSummary {
     returnAfterCosts: st.ret,
     benchmarkReturn: BENCH_STATS.ret,
     sparkline: { thesis: downsample(b.strategy), benchmark: downsample(BENCH) },
-    submittedAt: submitted ? isoDaysAgo(0) : null,
+    sharedAt,
   }
 }
 
 export const DEFAULT_WATCH: WatchSettings = { retest: 'monthly', alertOnWeaker: true, alertOnBetter: false, email: true, inApp: true }
 
-export function evidenceOf(spec: ThesisSpec, team: boolean, watch: WatchSettings, stale: number | null, partial: boolean): ThesisEvidence {
+export function evidenceOf(spec: ThesisSpec, admin: boolean, watch: WatchSettings, stale: number | null, partial: boolean): ThesisEvidence {
   const b = build(spec)
   const st = stats(b.strategy)
   const who = spec.sentence.who
@@ -227,7 +227,7 @@ export function evidenceOf(spec: ThesisSpec, team: boolean, watch: WatchSettings
       { key: 'costs', state: 'known', title: 'Costs', text: '5 bps of costs and 2 bps of slippage on every position change, the same for every stock.' },
       { key: 'benchmark', state: 'partly', title: 'Benchmark', text: 'SPY, in US dollars. A stock listed in another currency is compared in its own returns.' },
     ],
-    ordering: team
+    ordering: admin
       ? {
           rankIc: ic,
           rankIcStability: round(ic / sdIc, 2),

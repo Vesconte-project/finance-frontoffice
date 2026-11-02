@@ -7,7 +7,7 @@ import { setPreferenceCookie } from '@/lib/model-lab/cookies'
 import { cn } from '@/lib/utils'
 
 const GROUPS: readonly { key: keyof FixtureState; label: string; options: readonly (readonly [string, string])[] }[] = [
-  { key: 'role', label: 'Who', options: [['investor', 'Investor'], ['team', 'Team member']] },
+  { key: 'role', label: 'Who', options: [['investor', 'Investor'], ['admin', 'Admin']] },
   { key: 'plan', label: 'Plan', options: [['pro', 'Pro'], ['free', 'Free']] },
   { key: 'account', label: 'Account', options: [['full', 'With theses'], ['empty', 'Empty']] },
   { key: 'credits', label: 'Credit', options: [['plenty', 'Plenty'], ['low', 'Almost out']] },
@@ -24,7 +24,7 @@ export default function PreviewStates({ state }: { state: FixtureState }) {
   function set(key: keyof FixtureState, value: string) {
     const next = { ...state, [key]: value } as FixtureState
     setPreferenceCookie(FIXTURE_STATE_COOKIE, serializeFixtureState(next))
-    if (key === 'role' && value !== 'team') setPreferenceCookie('model_lab_depth', 'guided')
+    if (key === 'role' && value !== 'admin') setPreferenceCookie('model_lab_depth', 'guided')
     start(() => router.refresh())
   }
 
