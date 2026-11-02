@@ -11,6 +11,7 @@
 
 export type StatementRowLike = {
   lineItemId: string
+  source?: string | null
   displayLabel: string | null
   value: number | null
   currency: string | null
@@ -93,7 +94,15 @@ function yearOf(row: StatementRowLike): number {
  */
 export function annualSeries(rows: readonly StatementRowLike[], measure: MeasureKey): ReportedPoint[] {
   const matcher = MEASURES[measure]
-  const annual = rows.filter((row) => row.periodType === 'annual' && /^\d{4}-\d{2}-\d{2}/.test(row.periodEnd))
+  const derivedMeasure = measure.endsWith('Share') || measure.endsWith('Growth')
+  const annual = rows.filter((row) => {
+    if (row.periodType !== 'annual' || !/^\d{4}-\d{2}-\d{2}/.test(row.periodEnd)) return false
+    // Ratios travel on the same route as statement amounts. Exclude them before
+    // matching raw IDs/labels so an absent amount cannot fall back to a ratio.
+    const derivedRow = row.source === 'derived_reported_statements'
+      || /_(share_of_revenue|growth_yoy)$/i.test(row.lineItemId)
+    return derivedMeasure || !derivedRow
+  })
   const byId = new Map<string, StatementRowLike[]>()
   for (const row of annual) {
     const list = byId.get(row.lineItemId)

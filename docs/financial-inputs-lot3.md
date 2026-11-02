@@ -23,3 +23,7 @@ Two bounded browser rounds were run; the final run produced 18 screenshots with 
 ## Release review
 
 Draft only. Founder-authorized implementation follows the existing experience; product, visual and release acceptance remain pending independent review. Companion changes belong to finance-data-ops, finance-feature-store and finance-backend. Until their explicit inputs are ingested and published, the existing Being built state remains visible. No source-revenue earnings fix, ten-year historical ingestion, merge, production refresh or deploy is performed in this lot.
+
+## Server review follow-up
+
+The statement route intentionally carries raw amounts and canonical annual ratios. Raw monetary selectors now explicitly reject `source=derived_reported_statements` and the reserved `_share_of_revenue` / `_growth_yoy` IDs before both ID and tolerant label matching. Derived selectors still consume their exact canonical IDs. This prevents an absent gross/operating/net profit amount from falling back to a derived ratio with a similar display label. No generic statement table renders the combined rows, and no backend route filter is needed. Regression cases cover missing raw inputs, absent source metadata, and a derived-source row reusing a raw ID.

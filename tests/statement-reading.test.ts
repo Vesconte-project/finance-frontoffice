@@ -170,3 +170,33 @@ test('a raw monetary history cannot silently mix reporting currencies', () => {
   assert.deepEqual(points.map((point)=>point.currency),['EUR'])
   assert.deepEqual(annualSeries([row('revenue',2025,120,{currency:null})],'revenue'),[])
 })
+
+
+test('derived source rows cannot stand in for absent raw statement amounts', () => {
+  const rows = [
+    row('gross_profit_growth_yoy', 2025, .1, {source:'derived_reported_statements',displayLabel:'Gross Profit Growth Yoy'}),
+    row('operating_income_share_of_revenue', 2025, .2, {source:'derived_reported_statements',displayLabel:'Operating Income Share Of Revenue'}),
+    row('net_income_growth_yoy', 2025, .3, {source:'derived_reported_statements',displayLabel:'Net Income Growth Yoy'}),
+    row('custom_ratio', 2025, .4, {source:'derived_reported_statements',displayLabel:'Gross profit'}),
+  ]
+  const series=incomeSeries(rows)
+  assert.deepEqual(series.grossProfit,[])
+  assert.deepEqual(series.operatingIncome,[])
+  assert.deepEqual(series.netIncome,[])
+  assert.equal(series.grossProfitGrowth?.[0]?.value,.1)
+  assert.equal(series.operatingIncomeShare?.[0]?.value,.2)
+  assert.equal(series.netIncomeGrowth?.[0]?.value,.3)
+})
+
+test('reserved derived ids remain separate when source metadata is absent', () => {
+  const derived=row('gross_profit_growth_yoy',2025,.1,{displayLabel:'Gross profit growth'})
+  assert.deepEqual(annualSeries([derived],'grossProfit'),[])
+  assert.equal(annualSeries([derived],'grossProfitGrowth')[0]?.value,.1)
+})
+
+test('raw series select reported rows even if a derived-source row reuses a raw id', () => {
+  assert.equal(annualSeries([
+    row('gross_profit',2025,.2,{source:'derived_reported_statements'}),
+    row('gross_profit',2025,40,{source:'yahoo_finance'}),
+  ],'grossProfit')[0]?.value,40)
+})
