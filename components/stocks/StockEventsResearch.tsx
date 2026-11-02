@@ -3,7 +3,7 @@ import EventCalendar from '@/components/calendar/EventCalendar'
 import type { CanonicalEvent, DisclosurePayload, EventCalendarPayload } from '@/lib/canonical-research'
 import type { CalendarResult } from '@/lib/calendar-events'
 import type { CalendarCategory } from '@/lib/calendar-model'
-import { normalizeEarningsHistory } from '@/lib/event-research'
+import { normalizeEarningsHistory, selectNextResearchEvent } from '@/lib/event-research'
 import { formatCompactMoney } from '@/lib/currency'
 import BeingBuilt from '@/components/stocks/research/BeingBuilt'
 import ResearchChapter, { LeadStat } from '@/components/stocks/research/ResearchChapter'
@@ -159,8 +159,7 @@ export default function StockEventsResearch({
     .slice(0, 12)
 
   const earnings = data.summary.nextEarnings
-  const next = upcoming[0] ?? null
-  const nextDate = next?.row.occursAt ?? earnings?.earningsDate ?? null
+  const { entry: next, date: nextDate } = selectNextResearchEvent(isFund, earnings?.earningsDate ?? null, upcoming)
   const nextContext = [
     earnings?.fiscalPeriod,
     earnings?.epsEstimate === null || earnings?.epsEstimate === undefined ? null : `EPS estimate ${formatNumber(earnings.epsEstimate)}`,

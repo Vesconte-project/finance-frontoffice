@@ -1,6 +1,6 @@
 import 'server-only'
 
-import type { EarningsHistoryRow } from '@/lib/ticker-data'
+import type { EarningsHistoryRow } from './ticker-data'
 
 export type SafeEarningsObservation = {
   earningsDate: string
@@ -57,4 +57,27 @@ export function normalizeEarningsHistory(rows: EarningsHistoryRow[]): EarningsHi
     duplicateKeys: [...duplicateKeys],
     rawRows: rows.length,
   }
+}
+
+/** The selected earnings date belongs to the summary, not the generic calendar. */
+export function selectNextResearchEvent<T extends { row: { domain: string; occursAt: string | null } }>(
+  isFund: boolean,
+  earningsDate: string | null,
+  upcoming: readonly T[],
+  today = new Date().toISOString().slice(0, 10),
+): { entry: T | null; date: string | null } {
+  if (isFund) {
+    const entry = upcoming[0] ?? null
+    return { entry, date: entry?.row.occursAt ?? null }
+  }
+  const selectedDate = earningsDate
+    && /^\d{4}-\d{2}-\d{2}/.test(earningsDate)
+    && Number.isFinite(Date.parse(earningsDate))
+    && earningsDate.slice(0, 10) >= today
+    ? earningsDate : null
+  const entry = selectedDate ? upcoming.find((candidate) => (
+    candidate.row.domain === 'earningsEvents'
+    && candidate.row.occursAt?.slice(0, 10) === selectedDate.slice(0, 10)
+  )) ?? null : null
+  return { entry, date: selectedDate }
 }

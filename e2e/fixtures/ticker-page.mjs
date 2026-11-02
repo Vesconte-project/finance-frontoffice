@@ -145,14 +145,26 @@ export function tickerSummaryFixture(ticker) {
     latestFundamentals: tickerLatestFundamentalsFixture(ticker),
     nextEarnings: {
       ticker,
-      earningsDate: '2026-11-03',
+      earningsDate: ticker === 'QAS' ? new Date(Date.now() + 2 * DAY_MS).toISOString().slice(0, 10)
+        : ticker === 'QAM' ? '2000-01-01' : '2026-11-03',
       earningsTime: null,
       epsEstimate: null,
       revenueEstimate: null,
       fiscalPeriod: null,
       asOf,
     },
-    earningsHistory: [],
+    earningsHistory: ticker === 'QAS' ? [
+      { ticker, earningsDate: '2026-07-30', fiscalPeriod: '2026Q3', epsActual: 2, epsEstimate: 1.8,
+        epsSurprisePct: null, revenueActual: null, revenueEstimate: null, revenueSurprisePct: null },
+      { ticker, earningsDate: '2026-04-30', fiscalPeriod: '2026Q2', epsActual: 1.5, epsEstimate: 1.4,
+        epsSurprisePct: null, revenueActual: null, revenueEstimate: null, revenueSurprisePct: null },
+    ] : [],
+    ...(['QAS', 'QAM'].includes(ticker) ? { profile: {
+      ticker, about: 'A synthetic company description for browser QA.',
+      aboutSource: ticker === 'QAS' ? 'yahoo_finance' : 'data_ops', aboutFetchedAt: '2026-10-30T23:55:00Z',
+      returns: {}, price: {}, snapshot: [], holdings: [], sectorWeights: [],
+      profile: [], portfolio: [], distributions: [], risk: [],
+    } } : {}),
     componentMissingInputs: [],
     ...listingsFixture(ticker),
   }
