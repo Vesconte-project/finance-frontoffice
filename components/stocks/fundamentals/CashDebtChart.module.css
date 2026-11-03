@@ -1,0 +1,7 @@
+.frame { max-width: 48rem; }
+.legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; margin: 0 0 1.25rem; font-size: 0.875rem; color: var(--text-small); }
+.cash { fill: color-mix(in srgb, var(--text) 62%, transparent); }
+.debt { fill: color-mix(in srgb, var(--down) 65%, transparent); }
+.net { stroke: var(--text); stroke-width: 2; }
+.dot { fill: var(--text); }
+.zero { stroke: var(--line-strong); stroke-width: 1; }
