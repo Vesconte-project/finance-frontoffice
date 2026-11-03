@@ -1,10 +1,12 @@
 import Link from 'next/link'
 import ResearchViewShell, { ResearchAdPlacement } from '@/components/stocks/ResearchViewShell'
+import CashDebtChart from '@/components/stocks/fundamentals/CashDebtChart'
+import type { CapitalHistory } from '@/lib/capital-statements'
 import RevenueChapter from '@/components/stocks/fundamentals/RevenueChapter'
 import styles from '@/components/stocks/fundamentals/Fundamentals.module.css'
 import BeingBuilt, { BeingBuiltBadge } from '@/components/stocks/research/BeingBuilt'
 import ReportedBars from '@/components/stocks/research/ReportedBars'
-import ResearchChapter, { LeadStat } from '@/components/stocks/research/ResearchChapter'
+import ResearchChapter, { ChapterCard, LeadStat } from '@/components/stocks/research/ResearchChapter'
 import { formatChartMoney, formatCompactMoney, formatMoney } from '@/lib/currency'
 import {
   formatFraction,
@@ -72,7 +74,7 @@ function OperatingMarginChapter({ data, sinceYear, history }: { data: StockResea
   )
 }
 
-function CashAndDebtChapter({ data }: { data: StockResearchData }) {
+function CashAndDebtChapter({ data, history }: { data: StockResearchData; history: CapitalHistory['cashDebt'] }) {
   const netCash = summaryAmount(data.summary.latestFundamentals, /^net\s+cash\b/i)
   const netCashRow = data.summary.latestFundamentals.find((row) => /^net\s+cash\b/i.test(row.metricLabel || row.metric.replace(/_/g, ' ')))
   const netCashCurrency = netCashRow?.currency ?? data.currency
@@ -92,7 +94,7 @@ function CashAndDebtChapter({ data }: { data: StockResearchData }) {
         </BeingBuilt>
       )}
     >
-      <BeingBuilt size="chart">Cash above and debt below the zero line over ten years, with the net cash line, is being added.</BeingBuilt>
+      {history.length ? <CashDebtChart points={history} /> : <BeingBuilt size="chart">Cash above and debt below the zero line, with the net cash line, is being added.</BeingBuilt>}
     </ResearchChapter>
   )
 }
@@ -101,7 +103,9 @@ function DividendsChapter({
   ticker,
   dividends,
   currency,
+  annualPayments,
 }: {
+  annualPayments: ReportedPoint[]
   ticker: string
   dividends: DividendHistory | null
   currency: string
@@ -134,6 +138,10 @@ function DividendsChapter({
       ) : null}
       aside={(
         <>
+          {annualPayments.length ? <ChapterCard title="Total dividends paid" meta={`year ended ${formatDay(annualPayments.at(-1)!.periodEnd)}`}>
+            <p className={styles.leadNote}>{formatCompactMoney(annualPayments.at(-1)!.value,annualPayments.at(-1)!.currency!)}</p>
+            <ReportedBars ariaLabel="Total annual dividends paid" bars={annualPayments.map(point=>({key:point.periodEnd,value:point.value,valueLabel:formatCompactMoney(point.value,point.currency!),axisLabel:String(point.year),axisShort:shortYear(point.year)}))} />
+          </ChapterCard> : <BeingBuilt label="Total dividends paid">Annual dividend payments are being added.</BeingBuilt>}
           <BeingBuilt label="Each $100 of profit">How each $100 of profit went to buybacks, dividends and what the company kept is being added.</BeingBuilt>
           <Link prefetch={false} className={styles.chapterLink} href={`/stocks/${ticker}/ownership`}>Ownership & Capital →</Link>
         </>
@@ -201,8 +209,10 @@ export default function StockFundamentalsResearch({
   dividends,
   revenueGrowth = [],
   operatingMargins = [],
+  capital,
 }: {
   data: StockResearchData
+  capital?: CapitalHistory
   /** Reported annual revenue, oldest first. */
   revenue: ReportedPoint[]
   revenueGrowth?: ReportedPoint[]
@@ -221,8 +231,8 @@ export default function StockFundamentalsResearch({
           <>
             <RevenueChapter points={revenue} currency={data.currency} growth={revenueGrowth} />
             <OperatingMarginChapter data={data} sinceYear={revenue.length ? revenue.slice(-10)[0].year : null} history={operatingMargins} />
-            <CashAndDebtChapter data={data} />
-            <DividendsChapter ticker={data.ticker} dividends={dividends} currency={data.currency} />
+            <CashAndDebtChapter data={data} history={capital?.cashDebt ?? []} />
+            <DividendsChapter ticker={data.ticker} dividends={dividends} currency={data.currency} annualPayments={capital?.dividends ?? []} />
           </>
         )}
       </div>

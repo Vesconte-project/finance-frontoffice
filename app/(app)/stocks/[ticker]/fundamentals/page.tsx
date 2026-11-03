@@ -1,6 +1,7 @@
 import StockFundamentalsResearch from '@/components/stocks/StockFundamentalsResearch'
 import ResearchUnavailable from '@/components/stocks/ResearchUnavailable'
 import { getTickerCorporateActions, getTickerFinancialStatements } from '@/lib/canonical-research'
+import { capitalHistory } from '@/lib/capital-statements'
 import { annualSeries, dividendHistory } from '@/lib/statement-reading'
 import { getStockResearchData } from '@/lib/stock-research'
 
@@ -17,10 +18,16 @@ export default async function FundamentalsPage({ params }: { params: Promise<{ t
     getTickerCorporateActions(ticker, { actionType: 'dividend', limit: 200 }).catch(() => null),
   ])
   if (!data) return <ResearchUnavailable ticker={ticker} />
+  const [balance,cashflow] = data.kind === 'fund' ? [null,null] : await Promise.all([
+    getTickerFinancialStatements(ticker, { statementType: 'balance_sheet', periodType: 'annual', limit: 500 }).catch(() => null),
+    getTickerFinancialStatements(ticker, { statementType: 'cash_flow', periodType: 'annual', limit: 500 }).catch(() => null),
+  ])
+  const capital=capitalHistory(balance?.available ? balance.rows : [],cashflow?.available ? cashflow.rows : [])
   const today = new Date().toISOString().slice(0, 10)
   return (
     <StockFundamentalsResearch
       data={data}
+      capital={capital}
       revenue={income?.available ? annualSeries(income.rows, 'revenue') : []}
       dividends={dividends?.available ? dividendHistory(dividends.rows, today) : null}
       revenueGrowth={income?.available ? annualSeries(income.rows, 'revenueGrowth') : []}

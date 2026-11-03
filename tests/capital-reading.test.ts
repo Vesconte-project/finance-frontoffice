@@ -1,3 +1,5 @@
+import { capitalHistory } from '../lib/capital-statements'
+import type { StatementRowLike } from '../lib/statement-reading'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { buybackExecutions, type CapitalEventLike } from '../lib/capital-reading'
@@ -87,4 +89,51 @@ test('the price by year or quarter: each period’s last close and the close it 
   const quarters = pricePeriods(points, 'quarter', '2016-01-01')
   assert.deepEqual(quarters.map((period) => period.label), ['Q1 2016', 'Q2 2016', 'Q4 2016', 'Q1 2017'])
   assert.deepEqual([quarters[1].startClose, quarters[1].endClose], [10, 12])
+})
+
+
+function statement(id:string,value:number|null,periodEnd='2025-09-30',extra:Partial<StatementRowLike & {knownAt:string;dataQualityFlags:unknown}>={}) {
+  return {lineItemId:id,displayLabel:id,value,currency:'EUR',knownAt:'2025-11-01',dataQualityFlags:{inputValues:{cash_and_equivalents:50,total_debt:80},inputKnownAt:{cash_and_equivalents:'2025-11-01',total_debt:'2025-11-01'}},periodType:'annual',fiscalYear:Number(periodEnd.slice(0,4)),periodEnd,
+    source:['net_cash','dividends_paid_amount','share_repurchases_amount'].includes(id)?'derived_reported_statements':'yahoo_finance',...extra}
+}
+
+test('annual capital facts stay separate from executions, aliases and share issuance',()=>{
+  const balance=[statement('cash_and_equivalents',50),statement('total_debt',80),statement('net_cash',-30),statement('shares_outstanding',120),statement('shares_issued',140)]
+  const cash=[statement('dividends_paid_amount',12),statement('share_repurchases_amount',20),statement('net_common_stock_issuance',-50),statement('dividends_paid',-12)]
+  const facts=capitalHistory(balance,cash)
+  assert.deepEqual(facts.cashDebt,[{periodEnd:'2025-09-30',year:2025,cash:50,debt:80,netCash:-30,currency:'EUR'}])
+  assert.equal(facts.dividends[0].value,12)
+  assert.equal(facts.buybacks[0].value,20)
+  assert.equal(facts.shares[0].value,120)
+  assert.equal(capitalHistory([], [statement('net_common_stock_issuance',-50)]).buybacks.length,0)
+})
+
+test('capital charts require same period and currency, and cannot revive a null latest revision',()=>{
+  const rows=[statement('cash_and_equivalents',50),statement('total_debt',10),statement('net_cash',null),statement('net_cash',40)]
+  assert.deepEqual(capitalHistory(rows,[]).cashDebt,[])
+  assert.deepEqual(capitalHistory([statement('cash_and_equivalents',50),statement('total_debt',10,'2024-09-30'),statement('net_cash',40)],[]).cashDebt,[])
+  assert.deepEqual(capitalHistory([statement('cash_and_equivalents',50),statement('total_debt',10,undefined,{currency:'USD'}),statement('net_cash',40)],[]).cashDebt,[])
+  assert.deepEqual(capitalHistory([], [statement('share_repurchases_amount',null),statement('share_repurchases_amount',20)]).buybacks,[])
+})
+
+test('capital readers only accept canonical derived amounts and never invert raw payments',()=>{
+  const rows=[statement('share_repurchases_amount',30,undefined,{source:'fixture'}),statement('dividends_paid',-20)]
+  assert.deepEqual(capitalHistory([],rows).buybacks,[])
+  assert.deepEqual(capitalHistory([],rows).dividends,[])
+  assert.equal(capitalHistory([], [statement('share_repurchases_amount',0)]).buybacks[0].value,0)
+})
+
+test('capital money histories stay in the latest currency while share counts do not need currency',()=>{
+  const cash=[statement('share_repurchases_amount',20,'2024-09-30',{currency:'USD'}),statement('share_repurchases_amount',30)]
+  assert.deepEqual(capitalHistory([],cash).buybacks.map(row=>row.currency),['EUR'])
+  assert.deepEqual(capitalHistory([], [statement('dividends_paid_amount',20,undefined,{currency:null})]).dividends,[])
+  assert.equal(capitalHistory([statement('shares_outstanding',100,undefined,{currency:null})],[]).shares[0].value,100)
+})
+
+
+test('a partially published balance cannot combine new raw values with an old net cash fact',()=>{
+  const rows=[statement('cash_and_equivalents',50),statement('total_debt',80),statement('net_cash',-30)]
+  assert.equal(capitalHistory(rows,[]).cashDebt.length,1)
+  assert.deepEqual(capitalHistory([statement('cash_and_equivalents',70),...rows.slice(1)],[]).cashDebt,[])
+  assert.deepEqual(capitalHistory([{...rows[0],knownAt:'2026-01-01'},...rows.slice(1)],[]).cashDebt,[])
 })

@@ -3,6 +3,9 @@ import { PriceHistoryChapter, PricePaysForChapter } from '@/components/stocks/ow
 import BeingBuilt, { BeingBuiltBadge } from '@/components/stocks/research/BeingBuilt'
 import PairedBars from '@/components/stocks/research/PairedBars'
 import ResearchChapter, { ChapterCard, LeadStat } from '@/components/stocks/research/ResearchChapter'
+import type { CapitalHistory } from '@/lib/capital-statements'
+import { shortYear, type ReportedPoint } from '@/lib/statement-reading'
+import ReportedBars from '@/components/stocks/research/ReportedBars'
 import type { BuybackSummary, PricePeriod } from '@/lib/capital-reading'
 import { formatCompactMoney } from '@/lib/currency'
 import { currentResearchSnapshot } from '@/lib/research-evidence'
@@ -26,9 +29,9 @@ function formatDay(value: string): string {
  * and today's count. The 2016 count, the shares issued to staff and the rings
  * with each share's larger stake come from the backend (ENG-167).
  */
-function ShareBalanceCard({ bought, today, todayAsOf }: { bought: number | null; today: number | null; todayAsOf: string | null }) {
+function ShareBalanceCard({ bought, today, todayAsOf, history = [] }: { bought: number | null; today: number | null; todayAsOf: string | null; history?: ReportedPoint[] }) {
   const rows = [
-    { key: 'start', label: `Shares in ${SINCE_YEAR}`, value: null as string | null },
+    { key: 'start', label: `Shares in ${SINCE_YEAR}`, value: history.find(point=>point.year===SINCE_YEAR) ? shareCount.format(history.find(point=>point.year===SINCE_YEAR)!.value) : null as string | null },
     { key: 'bought', label: 'Bought back', value: bought === null ? null : `−${shareCount.format(bought)}` },
     { key: 'issued', label: 'Issued to staff', value: null },
     { key: 'today', label: 'Shares today', value: today === null ? null : shareCount.format(today) },
@@ -61,7 +64,9 @@ function BuybacksChapter({
   sharesBought,
   sharesToday,
   sharesTodayAsOf,
+  annual,
 }: {
+  annual?: CapitalHistory
   summary: BuybackSummary | null
   mixedCurrencies: boolean
   currency: string
@@ -69,6 +74,16 @@ function BuybacksChapter({
   sharesToday: number | null
   sharesTodayAsOf: string | null
 }) {
+  const payments=annual?.buybacks ?? []
+  if (payments.length) {
+    const current=payments.at(-1)!
+    return <ResearchChapter id="buybacks" label="Buybacks"
+      lead={<LeadStat value={formatCompactMoney(current.value,current.currency!)} context={`cash spent on buybacks · year ended ${formatDay(current.periodEnd)}`} />}
+      aside={<ShareBalanceCard bought={sharesBought} today={sharesToday} todayAsOf={sharesTodayAsOf} history={annual?.shares} />}>
+      <ReportedBars ariaLabel="Annual cash spent on buybacks" bars={payments.map(point=>({key:point.periodEnd,value:point.value,valueLabel:formatCompactMoney(point.value,point.currency!),axisLabel:String(point.year),axisShort:shortYear(point.year)}))} />
+      <p className={styles.chartNote}><BeingBuiltBadge /> What those shares are worth now is being added.</p>
+    </ResearchChapter>
+  }
   const recentFrom = summary && summary.recentShare !== null ? summary.years.findIndex((year) => year.year === summary.recentYears[0]) : -1
   return (
     <ResearchChapter
@@ -122,6 +137,7 @@ function BuybacksChapter({
 
 type OwnershipProps = {
   data: StockResearchData
+  annual?: CapitalHistory
   buybackYears: BuybackSummary | null
   mixedCurrencies: boolean
   sharesBought: number | null
@@ -131,7 +147,7 @@ type OwnershipProps = {
   priceByQuarter: PricePeriod[]
 }
 
-function EquityOwnership({ data, buybackYears, mixedCurrencies, sharesBought, sharesToday, sharesTodayAsOf, priceByYear, priceByQuarter }: OwnershipProps) {
+function EquityOwnership({ data, annual, buybackYears, mixedCurrencies, sharesBought, sharesToday, sharesTodayAsOf, priceByYear, priceByQuarter }: OwnershipProps) {
   const snapshot = currentResearchSnapshot(data)
   const currency = snapshot.currency || data.currency
   return (
@@ -155,12 +171,18 @@ function EquityOwnership({ data, buybackYears, mixedCurrencies, sharesBought, sh
 
       <BuybacksChapter
         summary={buybackYears}
+        annual={annual}
         mixedCurrencies={mixedCurrencies}
         currency={currency}
         sharesBought={sharesBought}
         sharesToday={sharesToday}
         sharesTodayAsOf={sharesTodayAsOf}
       />
+
+      <ResearchChapter id="shares-outstanding" label="Shares outstanding" band>
+        {annual?.shares.length ? <ReportedBars ariaLabel="Annual shares outstanding" bars={annual.shares.map(point=>({key:point.periodEnd,value:point.value,valueLabel:shareCount.format(point.value),axisLabel:String(point.year),axisShort:shortYear(point.year)}))} />
+          : <BeingBuilt size="chart">The number of shares outstanding over time is being added.</BeingBuilt>}
+      </ResearchChapter>
 
       <PricePaysForChapter marketCap={tickerMarketCap(data.summary)} marketCapAsOf={snapshot.marketCap !== null ? snapshot.reportingPeriod : null} currency={currency} />
 
