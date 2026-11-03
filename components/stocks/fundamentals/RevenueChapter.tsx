@@ -6,7 +6,7 @@ import ReportedBars from '@/components/stocks/research/ReportedBars'
 import ResearchChapter, { ChapterCard } from '@/components/stocks/research/ResearchChapter'
 import SegmentedControl from '@/components/ui/SegmentedControl'
 import { formatChartMoney, formatCompactMoney } from '@/lib/currency'
-import type { ReportedPoint } from '@/lib/statement-reading'
+import { formatFraction, type ReportedPoint } from '@/lib/statement-reading'
 import styles from './Fundamentals.module.css'
 
 /** "$B", "€B", "B kr": the unit the bars are written in, for the toggle. */
@@ -22,12 +22,14 @@ function billionsUnit(currency: string): string {
 export default function RevenueChapter({
   points,
   currency,
+  growth = [],
 }: {
   /** Reported annual revenue, oldest first. */
   points: ReportedPoint[]
+  growth?: ReportedPoint[]
   currency: string
 }) {
-  const amount = billionsUnit(currency)
+  const amount = billionsUnit(points.at(-1)?.currency ?? currency)
   const options = [amount, '% growth'] as const
   const [view, setView] = useState<string>(amount)
   const latest = points.at(-1) ?? null
@@ -77,7 +79,11 @@ export default function RevenueChapter({
           </p>
         </>
       ) : (
-        <BeingBuilt size="chart">Each year’s revenue growth against the year before is being added.</BeingBuilt>
+        growth.length > 0 ? <ReportedBars
+          ariaLabel="Annual revenue growth against the year before"
+          bars={growth.slice(-10).map((point) => ({ key: point.periodEnd, value: point.value,
+            valueLabel: formatFraction(point.value), axisLabel: String(point.year), axisShort: `'${String(point.year).slice(-2)}` }))}
+        /> : <BeingBuilt size="chart">Each year’s revenue growth against the year before is being added.</BeingBuilt>
       )}
     </ResearchChapter>
   )

@@ -33,6 +33,9 @@ export type FlowValues = {
   grossProfit: number | null
   operatingIncome: number | null
   netIncome: number | null
+  costOfSales?: number | null
+  operatingCosts?: number | null
+  incomeTax?: number | null
 }
 
 export type FlowNodeInfo = {
@@ -51,7 +54,7 @@ export const NODE_LABEL: Record<FlowNodeId, string> = {
   grossProfit: 'Gross profit',
   operatingCosts: 'Operating costs',
   operatingIncome: 'Operating income',
-  taxes: 'Taxes and other',
+  taxes: 'Income tax',
   netIncome: 'Net income',
   buybacks: 'Buybacks',
   dividends: 'Dividends',
@@ -68,11 +71,14 @@ export function nodeValue(id: FlowNodeId, values: FlowValues): number | null {
     case 'grossProfit': return values.grossProfit
     case 'operatingIncome': return values.operatingIncome
     case 'netIncome': return values.netIncome
+    case 'costOfSales': return values.costOfSales ?? null
+    case 'operatingCosts': return values.operatingCosts ?? null
+    case 'taxes': return values.incomeTax ?? null
     default: return null
   }
 }
 
-export const REPORTED_NODES: readonly FlowNodeId[] = ['sales', 'grossProfit', 'operatingIncome', 'netIncome']
+export const REPORTED_NODES: readonly FlowNodeId[] = ['sales', 'grossProfit', 'operatingIncome', 'netIncome', 'costOfSales', 'operatingCosts', 'taxes']
 
 export function isReportedNode(id: FlowNodeId): boolean {
   return REPORTED_NODES.includes(id)
@@ -156,9 +162,9 @@ export function wideFlow(values: FlowValues, box: PlotBox = WIDE_FLOW_BOX): Wide
   const operating = main('operatingIncome', 3, values.operatingIncome)
   const net = main('netIncome', 4, values.netIncome)
   const business = pending('business', 0, sales.y, sales.height)
-  const costOfSales = pending('costOfSales', 2, pendingTop)
-  const operatingCosts = pending('operatingCosts', 3, pendingTop)
-  const taxes = pending('taxes', 4, pendingTop)
+  const costOfSales = { ...pending('costOfSales', 2, pendingTop), pending: values.costOfSales == null }
+  const operatingCosts = { ...pending('operatingCosts', 3, pendingTop), pending: values.operatingCosts == null }
+  const taxes = { ...pending('taxes', 4, pendingTop), pending: values.incomeTax == null }
   const costOfSalesParts = pending('costOfSalesParts', 3, partsTop)
   const operatingCostsParts = pending('operatingCostsParts', 4, partsTop)
   const uses = (['buybacks', 'dividends', 'retained'] as const).map((id, index) => {

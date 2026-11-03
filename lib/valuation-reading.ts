@@ -30,17 +30,21 @@ export type MultiplePoint = { date: string; value: number }
  * keeps its latest-known revision.
  */
 export function multipleSeries(rows: readonly MetricRowLike[]): MultiplePoint[] {
-  const byDate = new Map<string, { value: number; knownAt: string }>()
+  const byDate = new Map<string, { value: number | null; knownAt: string }>()
   for (const row of rows) {
-    if (row.value === null || !Number.isFinite(row.value) || !/^\d{4}-\d{2}-\d{2}/.test(row.observationDate)) continue
+    if (!/^\d{4}-\d{2}-\d{2}/.test(row.observationDate)) continue
     const date = row.observationDate.slice(0, 10)
     const knownAt = row.knownAt ?? ''
     const current = byDate.get(date)
     if (!current || knownAt > current.knownAt) byDate.set(date, { value: row.value, knownAt })
   }
-  return [...byDate.entries()]
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([date, entry]) => ({ date, value: entry.value }))
+  const ordered = [...byDate.entries()].sort(([left], [right]) => left.localeCompare(right))
+  const latest = ordered.at(-1)?.[1].value
+  // An explicitly unavailable latest snapshot must not revive yesterday's
+  // valid ratio and present it as today's value.
+  if (latest == null || !Number.isFinite(latest)) return []
+  return ordered.flatMap(([date, entry]) => entry.value !== null && Number.isFinite(entry.value)
+    ? [{ date, value: entry.value }] : [])
 }
 
 /** The highest reported observation (the latest one on a tie). */

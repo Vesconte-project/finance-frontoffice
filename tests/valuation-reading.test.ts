@@ -7,7 +7,7 @@ test('a multiple is one reported value per day, oldest first, latest revision wi
     { value: 30, observationDate: '2026-09-02', knownAt: '2026-09-02T20:00:00Z' },
     { value: 31, observationDate: '2026-09-02', knownAt: '2026-09-03T08:00:00Z' },
     { value: 29, observationDate: '2026-09-01', knownAt: '2026-09-01T20:00:00Z' },
-    { value: null, observationDate: '2026-09-03', knownAt: '2026-09-03T20:00:00Z' },
+    { value: null, observationDate: '2026-08-31', knownAt: '2026-09-03T20:00:00Z' },
     { value: 28, observationDate: 'bad', knownAt: null },
   ])
   assert.deepEqual(series, [{ date: '2026-09-01', value: 29 }, { date: '2026-09-02', value: 31 }])
@@ -43,4 +43,16 @@ test('the line stays inside its box and multiples are written plainly', () => {
   assert.equal(formatMultiple(27.04), '27×')
   assert.equal(formatMultiple(6.48), '6.48×')
   assert.equal(formatMultiple(-12.3), '−12.3×')
+})
+
+
+test('an unavailable latest ratio never revives an older value as current', () => {
+  assert.deepEqual(multipleSeries([
+    { value: 30, observationDate: '2026-09-01', knownAt: '2026-09-01' },
+    { value: null, observationDate: '2026-09-02', knownAt: '2026-09-02' },
+  ]), [])
+  assert.deepEqual(multipleSeries([
+    { value: 30, observationDate: '2026-09-01', knownAt: '2026-09-01' },
+    { value: null, observationDate: '2026-09-01', knownAt: '2026-09-02' },
+  ]), [])
 })

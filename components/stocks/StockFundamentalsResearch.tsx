@@ -7,6 +7,7 @@ import ReportedBars from '@/components/stocks/research/ReportedBars'
 import ResearchChapter, { LeadStat } from '@/components/stocks/research/ResearchChapter'
 import { formatChartMoney, formatCompactMoney, formatMoney } from '@/lib/currency'
 import {
+  formatFraction,
   shortYear,
   summaryAmount,
   summaryDate,
@@ -23,7 +24,7 @@ function formatDay(value: string): string {
   return Number.isFinite(parsed) ? dateFormat.format(parsed) : value
 }
 
-function OperatingMarginChapter({ data, sinceYear }: { data: StockResearchData; sinceYear: number | null }) {
+function OperatingMarginChapter({ data, sinceYear, history }: { data: StockResearchData; sinceYear: number | null; history: ReportedPoint[] }) {
   const rows = data.summary.latestFundamentals
   const operating = summaryPercent(rows, /operating\s+margin/i)
   const net = summaryPercent(rows, /net\s+(profit\s+)?margin/i)
@@ -46,9 +47,13 @@ function OperatingMarginChapter({ data, sinceYear }: { data: StockResearchData; 
         </BeingBuilt>
       )}
     >
-      <BeingBuilt size="chart">
-        The operating margin over ten years, against the median of its sector, with the gap written between them, is being added.
-      </BeingBuilt>
+      {history.length > 0 ? <>
+        <ReportedBars ariaLabel="Annual operating margin" bars={history.slice(-10).map((point) => ({
+          key: point.periodEnd, value: point.value, valueLabel: formatFraction(point.value),
+          axisLabel: String(point.year), axisShort: shortYear(point.year),
+        }))} />
+        <p className={styles.chartNote}><BeingBuiltBadge /> The sector comparison is being added.</p>
+      </> : <BeingBuilt size="chart">The operating margin and sector comparison are being added.</BeingBuilt>}
       {/* Spec PRD-78: the net margin is the chapter's footer. */}
       {net !== null ? (
         <p className={styles.chapterFooter} data-net-margin="">
@@ -69,13 +74,15 @@ function OperatingMarginChapter({ data, sinceYear }: { data: StockResearchData; 
 
 function CashAndDebtChapter({ data }: { data: StockResearchData }) {
   const netCash = summaryAmount(data.summary.latestFundamentals, /^net\s+cash\b/i)
+  const netCashRow = data.summary.latestFundamentals.find((row) => /^net\s+cash\b/i.test(row.metricLabel || row.metric.replace(/_/g, ' ')))
+  const netCashCurrency = netCashRow?.currency ?? data.currency
   const netCashDate = summaryDate(data.summary.latestFundamentals, /^net\s+cash\b/i)
   return (
     <ResearchChapter
       id="cash-and-debt"
       label="Cash and debt"
       lead={netCash !== null ? (
-        <LeadStat value={formatCompactMoney(netCash, data.currency)} context={`net cash: cash minus debt${netCashDate ? ` · as of ${formatDay(netCashDate)}` : ''}`} tone={netCash < 0 ? 'down' : undefined} />
+        <LeadStat value={formatCompactMoney(netCash, netCashCurrency)} context={`net cash: cash minus debt${netCashDate ? ` · as of ${formatDay(netCashDate)}` : ''}`} tone={netCash < 0 ? 'down' : undefined} />
       ) : (
         <BeingBuilt size="inline">Net cash, the cash left after all debt, is being added.</BeingBuilt>
       )}
@@ -192,10 +199,14 @@ export default function StockFundamentalsResearch({
   data,
   revenue,
   dividends,
+  revenueGrowth = [],
+  operatingMargins = [],
 }: {
   data: StockResearchData
   /** Reported annual revenue, oldest first. */
   revenue: ReportedPoint[]
+  revenueGrowth?: ReportedPoint[]
+  operatingMargins?: ReportedPoint[]
   /** Reported dividends; null when they could not be read. */
   dividends: DividendHistory | null
 }) {
@@ -208,8 +219,8 @@ export default function StockFundamentalsResearch({
           <FundChapters data={data} />
         ) : (
           <>
-            <RevenueChapter points={revenue} currency={data.currency} />
-            <OperatingMarginChapter data={data} sinceYear={revenue.length ? revenue.slice(-10)[0].year : null} />
+            <RevenueChapter points={revenue} currency={data.currency} growth={revenueGrowth} />
+            <OperatingMarginChapter data={data} sinceYear={revenue.length ? revenue.slice(-10)[0].year : null} history={operatingMargins} />
             <CashAndDebtChapter data={data} />
             <DividendsChapter ticker={data.ticker} dividends={dividends} currency={data.currency} />
           </>
