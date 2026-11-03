@@ -10,7 +10,9 @@ financials, and query variants are disallowed: the overview is the search entry
 point; detail views multiply backend work and add little discovery value.
 Rendering assets remain crawlable. This is a crawl allowlist, not access control.
 
-## Phased policy — proposal pending Francisco's confirmation
+## Phased policy
+
+Francisco confirmed phase 2 on 2026-11-03 (ENG-225); the edge configuration is applied separately in the Vercel Firewall.
 
 Phase 1: keep Vercel AI Bots Managed Ruleset in Deny until frontoffice PRs #83,
 #84 and #86 are in production. Per Francisco it has been Deny since 2026-10-26
@@ -18,8 +20,10 @@ Phase 1: keep Vercel AI Bots Managed Ruleset in Deny until frontoffice PRs #83,
 facts, not measurements reproduced here. The Vercel owner handles Attack
 Challenge Mode. This PR changes no Firewall configuration.
 
-Phase 2 target in this PR: Googlebot and Bingbot keep the full ordinary public
-allowlist above. OAI-SearchBot, Claude-SearchBot and PerplexityBot may crawl only
+Phase 2: Googlebot, Bingbot and Applebot keep the full ordinary public
+allowlist above. The AI search agents that cite sources and, per their operators,
+do not train (OAI-SearchBot, Claude-SearchBot, PerplexityBot, DuckAssistBot,
+MistralAI-Index, Amzn-SearchBot and meta-webindexer) may crawl only
 `/`, `/product`, `/pricing`, `/faq`, `/about` and `/stocks/{ticker}`; necessary
 static assets and robots/sitemap remain accessible. Their specific group repeats
 all exclusions because it replaces the wildcard group. Markets and Picks remain
@@ -28,9 +32,11 @@ One sitemap advertises the general public indexable set; it is not an access
 grant to every crawler. APIs, accounts, query variants and all ticker subpages
 remain excluded for every permitted search crawler.
 
-Training/use-control tokens, on-demand agents and AI search operators outside
-the three explicitly approved agents get deny-all groups. This includes
-ChatGPT-User, Claude-User and Perplexity-User. Search permission does not imply
+Training/use-control tokens and on-demand agents get deny-all groups. This
+includes ChatGPT-User, Claude-User, Perplexity-User, MistralAI-User, Amzn-User,
+Meta-ExternalFetcher and Google-Agent, until the backend has a separate budget
+for verified agents (phase 3). Applebot-Extended stays denied, so Applebot's data
+is kept out of Apple model training while Apple search can still index. Search permission does not imply
 permission for the corresponding user-triggered fetcher; some answers may still
 fail to fetch a live page. Do not promise complete chatbot reachability.
 
@@ -47,7 +53,7 @@ entitlements and budgets; separate product decision, not part of this PR.
 
 ## Operator token audit
 
-Checked **2026-10-27** against the official pages linked below. These are operator
+Checked **2026-10-27**, and on **2026-11-03** for the Mistral, DuckDuckGo, Amazon, Meta, Apple and xAI rows, against the official pages linked below. These are operator
 statements, not observed compliance tests. No UA string establishes identity.
 
 | Tokens in policy | Purpose and robots behavior | Official source |
@@ -62,9 +68,16 @@ statements, not observed compliance tests. No UA string establishes identity.
 | `Google-Agent`, `Google-GeminiNotebook` | User-triggered fetchers generally **ignore robots**; denied preference only. Current Notebook token replaces Google-NotebookLM, supported only until August 2026. | [Google user-triggered fetchers](https://developers.google.com/crawling/docs/crawlers-fetchers/google-user-triggered-fetchers) |
 | `Applebot-Extended` | Robots training-use token; does not crawl itself. Blocking it does not block Apple search. Denied. | [Applebot](https://support.apple.com/en-us/119829) |
 | `CCBot` | Common Crawl corpus collection; operator documents robots opt-out. Denied. | [Common Crawl](https://commoncrawl.org/ccbot) |
-| `meta-externalagent`, `meta-externalads`, `meta-webindexer` | Model/product collection, advertising and AI-search indexing respectively; official robots controls. All denied; WebIndexer is not an approved search exception. | [Meta crawlers](https://developers.facebook.com/docs/sharing/webmasters/web-crawlers/) |
+| `meta-externalagent`, `meta-externalads` | Model/product collection and advertising; official robots controls. Denied. | [Meta crawlers](https://developers.facebook.com/docs/sharing/webmasters/web-crawlers/) |
+| `meta-webindexer` | Meta AI search indexing ("helps us cite and link to your content"); respects robots. Restricted AI-search group since 2026-11-03. | [Meta crawlers](https://developers.facebook.com/docs/sharing/webmasters/web-crawlers/) |
 | `meta-externalfetcher` | On-demand/agentic fetches; **may bypass robots**. Denied preference only. | [Meta crawlers](https://developers.facebook.com/docs/sharing/webmasters/web-crawlers/) |
-| `Amazonbot`, `Amzn-SearchBot`, `Amzn-User` | Training/product improvement, search and on-demand respectively. Automated crawls respect REP; User **may not follow all directives**. All denied; Amazon search is outside the approved three. | [Amazon bots](https://developer.amazon.com/en/amazonbot) |
+| `Amazonbot`, `Amzn-User` | Product improvement and "may be used to train Amazon AI models"; on-demand Alexa fetches that **may not follow all directives**. Denied. | [Amazon bots](https://developer.amazon.com/en/amazonbot) |
+| `Amzn-SearchBot` | Alexa search; "does not crawl content for generative AI model training". Restricted AI-search group since 2026-11-03. | [Amazon bots](https://developer.amazon.com/en/amazonbot) |
+| `MistralAI-Index` | Mistral search; content "not used for generative AI training of any kind". Restricted AI-search group. | [Mistral crawlers](https://docs.mistral.ai/robots) |
+| `MistralAI-Training`, `MistralAI-User` | Training dataset collection; on-demand fetches for Vibe users. Denied. | [Mistral crawlers](https://docs.mistral.ai/robots) |
+| `DuckAssistBot` | Real-time fetches for DuckDuckGo AI-assisted answers with citations; "not used in any way to train AI models"; opt-out by robots. Restricted AI-search group. | [DuckAssistBot](https://duckduckgo.com/duckduckgo-help-pages/results/duckassistbot) |
+| `Applebot` | Search for Spotlight, Siri and Safari; its data "may also be used to help train Apple foundation models" unless Applebot-Extended is disallowed, which it is. General search allowlist. | [Applebot](https://support.apple.com/en-us/119829) |
+| `xAI-Grok`, `GrokBot`, `Grok-DeepSearch` | **No official xAI documentation or IP ranges found.** Third-party directories disagree on the token, and some Grok traffic reportedly uses generic browser user agents from data centres. Precautionary deny; does **not** count as protection. | none (third-party only) |
 | `Diffbot`, `Diffbot-User` | Search/knowledge graph and on-demand; not foundation-model training per operator. Robots respected by default, but hosted crawls can override it. Both denied. | [Diffbot robots FAQ](https://www.diffbot.com/docs/crawl/faq/robots-txt) |
 | `Bytespider` | Token confirmed in official Toutiao documentation. That page describes search, not an explicit AI-training purpose, and does not establish robots compliance. Denied; compliance **unconfirmed**, not asserted to ignore REP. | [Toutiao: About Bytespider](https://zhanzhang.toutiao.com/docs/intro/26899) |
 | `anthropic-ai`, `cohere-ai` | Existing precautionary deny tokens. Current operator documentation confirming these exact tokens/robots behavior was **not found**. Do not represent them as verified current training identities. | [Anthropic current token list](https://privacy.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler); no matching Cohere primary page found |
