@@ -14,24 +14,32 @@ export const INDEXABLE_PAGES = [
   { path: '/about', changeFrequency: 'monthly', priority: 0.5 },
 ] as const
 
-// Phase 2 proposal; edge admission is a separate Vercel-owner decision.
-export const AI_SEARCH_ROBOTS = ['OAI-SearchBot', 'Claude-SearchBot', 'PerplexityBot'] as const
+// Phase 2 (Francisco, 2026-11-03): AI search that cites and does not train.
+// Edge admission is configured separately in the Vercel Firewall (ENG-225).
+export const AI_SEARCH_ROBOTS = [
+  'OAI-SearchBot', 'Claude-SearchBot', 'PerplexityBot', 'DuckAssistBot',
+  'MistralAI-Index', 'Amzn-SearchBot', 'meta-webindexer',
+] as const
 export const AI_SEARCH_INSTITUTIONAL_PATHS = ['/', '/product', '/pricing', '/faq', '/about'] as const
 
 // Product tokens, not authenticated identities or a Firewall ruleset.
-// Includes on-demand agents and unapproved search, not only training.
-// Google-Extended and Applebot-Extended are usage-control tokens.
-// Sources and unconfirmed legacy tokens: docs/eng196-crawlers.md.
+// Training collection and on-demand agents. Google-Extended and
+// Applebot-Extended are usage-control tokens, so Applebot itself keeps the
+// general search policy while its data stays out of Apple model training.
+// Sources and unconfirmed tokens: docs/eng196-crawlers.md.
 export const BLOCKED_AI_ROBOTS = [
-  'meta-externalagent', 'meta-externalfetcher', 'meta-webindexer', 'meta-externalads',
+  'meta-externalagent', 'meta-externalfetcher', 'meta-externalads',
   'GPTBot', 'ChatGPT-User',
   'ClaudeBot', 'Claude-User',
   'anthropic-ai', // Legacy, unconfirmed current token; does not count as protection.
   'CCBot', 'Bytespider', 'Perplexity-User',
-  'Amazonbot', 'Amzn-SearchBot', 'Amzn-User',
+  'Amazonbot', 'Amzn-User',
+  'MistralAI-Training', 'MistralAI-User',
   'Applebot-Extended', 'Google-Extended', 'Google-Agent', 'Google-GeminiNotebook',
   'cohere-ai', // Legacy, unconfirmed current token; does not count as protection.
   'Diffbot', 'Diffbot-User',
+  // xAI publishes no crawler documentation; third-party candidates only. Does not count as protection.
+  'xAI-Grok', 'GrokBot', 'Grok-DeepSearch',
 ] as const
 
 export function crawlRules(): MetadataRoute.Robots['rules'] {

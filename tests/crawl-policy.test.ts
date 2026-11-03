@@ -41,7 +41,7 @@ test('training, on-demand and unapproved AI tokens refuse every page', () => {
 })
 
 test('approved AI search reaches institutional pages and ticker overviews only', () => {
-  for (const agent of ['OAI-SearchBot', 'Claude-SearchBot', 'PerplexityBot']) {
+  for (const agent of AI_SEARCH_ROBOTS) {
     for (const path of ['/', '/product', '/pricing', '/faq', '/about', '/stocks/AAPL', '/stocks/BRK.B', '/stocks/%5EGSPC', '/_next/static/app.js']) {
       assert.equal(allowed(path, agent), true, `${agent}: ${path}`)
     }
@@ -52,6 +52,24 @@ test('approved AI search reaches institutional pages and ticker overviews only',
       assert.equal(allowed(path, agent), false, `${agent}: ${path}`)
     }
   }
+})
+
+test('search tokens that cite and do not train are in the restricted AI-search group', () => {
+  for (const agent of ['DuckAssistBot', 'MistralAI-Index', 'Amzn-SearchBot', 'meta-webindexer']) {
+    assert.ok((AI_SEARCH_ROBOTS as readonly string[]).includes(agent), agent)
+    assert.equal(allowed('/stocks/AAPL', agent), true, agent)
+    assert.equal(allowed('/stocks/AAPL/events', agent), false, agent)
+  }
+  for (const agent of ['MistralAI-Training', 'MistralAI-User', 'Amzn-User', 'xAI-Grok']) {
+    assert.equal(allowed('/', agent), false, agent)
+  }
+})
+
+test('Applebot keeps the general search policy while Applebot-Extended keeps its data out of training', () => {
+  assert.equal(allowed('/markets', 'Applebot'), true)
+  assert.equal(allowed('/stocks/AAPL', 'Applebot'), true)
+  assert.equal(allowed('/stocks/AAPL/events', 'Applebot'), false)
+  assert.equal(allowed('/', 'Applebot-Extended'), false)
 })
 
 test('AI search and blocked groups never overlap or inherit the broader wildcard policy', () => {
