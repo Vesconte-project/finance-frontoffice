@@ -143,7 +143,7 @@ function WideFlow({
     <div className={styles.wide} data-flow-variant="wide" style={{ aspectRatio: `${box.width} / ${box.height}` } as CSSProperties}>
       <svg className={styles.drawing} viewBox={`0 0 ${box.width} ${box.height}`} preserveAspectRatio="none" aria-hidden="true" focusable="false">
         {flow.links.map((link) => (
-          <path key={`${link.from}-${link.to}`} className={styles.link} data-pending={link.pending ? 'true' : undefined} data-negative={(nodeValue(link.to, values) ?? 0) < 0 ? 'true' : undefined} d={link.d} />
+          <path key={`${link.from}-${link.to}`} className={styles.link} data-flow-link={`${link.from}-${link.to}`} data-pending={link.pending ? 'true' : undefined} data-negative={(nodeValue(link.to, values) ?? 0) < 0 ? 'true' : undefined} d={link.d} />
         ))}
         {flow.nodes.map((node) => (
           <rect

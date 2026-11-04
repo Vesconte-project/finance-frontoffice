@@ -137,3 +137,51 @@ test('compact bars share the wide scale without imposing a minimum size or infer
   const oversized = byId(wideFlow({ ...explicit, costOfSales: 900 }))
   assert.ok(oversized.get('costOfSales')!.y + oversized.get('costOfSales')!.height < oversized.get('grossProfit')!.y)
 })
+
+test('outgoing cost and tax ribbons never overlap the continuing result band', () => {
+  const cases = [
+    // The screenshot: net income is larger than operating income.
+    { revenue: 402836, grossProfit: 240301, operatingIncome: 129039, netIncome: 132170,
+      costOfSales: 162535, operatingCosts: 111262, incomeTax: 26656 },
+    { ...values, costOfSales: 220, operatingCosts: 60, incomeTax: 24 },
+    { ...values, costOfSales: 900, operatingCosts: 300, incomeTax: 200 },
+    { ...values, costOfSales: 0, operatingCosts: 0, incomeTax: 0 },
+    { ...values, operatingIncome: 0, incomeTax: 24 },
+    { ...values, operatingIncome: -120, netIncome: -150, incomeTax: -30 },
+    { ...values, grossProfit: null, incomeTax: 24 },
+    values,
+  ]
+  for (const input of cases) {
+    const flow = wideFlow(input)
+    const nodes = byId(flow)
+    for (const [source, branch, continuation] of [
+      ['sales', 'costOfSales', 'grossProfit'],
+      ['grossProfit', 'operatingCosts', 'operatingIncome'],
+      ['operatingIncome', 'taxes', 'netIncome'],
+    ] as const) {
+      const edge = (target: string) => flow.links.find(link => link.from === source && link.to === target)!
+      // All these ribbons use the same x control points. Their y boundaries
+      // therefore follow the same smoothstep at each horizontal position.
+      const bounds = (target: string, t: number) => {
+        const n = edge(target).d.match(/-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/g)!.map(Number)
+        const ease = t * t * (3 - 2 * t)
+        return [n[1] + (n[7] - n[1]) * ease, n[15] + (n[9] - n[15]) * ease]
+      }
+      const parent = nodes.get(source)!
+      for (let step = 0; step <= 64; step++) {
+        const upper = bounds(branch, step / 64)
+        const lower = bounds(continuation, step / 64)
+        assert.ok(upper[1] <= lower[0] + 1e-9, `${source}: ${branch} overlaps ${continuation} at ${step}/64`)
+      }
+      assert.ok(bounds(branch, 0)[0] >= parent.y - 1e-9)
+      assert.ok(bounds(continuation, 0)[1] <= parent.y + parent.height + 1e-9)
+      for (const target of [branch, continuation]) {
+        if (!edge(target).pending) {
+          const end = bounds(target, 1)
+          const originalHeight = target === branch ? nodes.get(target)!.height : Math.min(parent.height, nodes.get(target)!.height)
+          assert.ok(Math.abs(end[1] - end[0] - originalHeight) < 1e-9, `${target} keeps its existing destination size`)
+        }
+      }
+    }
+  }
+})
