@@ -62,15 +62,21 @@ for (const theme of ['light', 'dark'] as const) {
         await expect(page.locator(`${variant} [data-flow-column="children"] [data-flow-amount]`)).toHaveCount(0)
       }
       for (const [id, expected] of [['costOfSales', cost], ['sales', palette.sales], ['netIncome', palette.profit]] as const) {
-        await page.locator(`${variant} [data-flow-node="${id}"]`).click()
+        const node = page.locator(`${variant} [data-flow-node="${id}"]`)
+        await node.click()
+        await expect(node).toHaveAttribute('aria-pressed', 'true')
         const history = `[data-flow-history="${id}"] [data-chart-variant]:visible`
-        const highlighted = await paint(page, `${history} rect[data-highlighted="true"]`)
-        sameColour(highlighted, expected)
-        expect(highlighted[3]).toBe(255)
-        const earlier = await paint(page, `${history} rect:not([data-highlighted]):first-of-type`)
-        sameColour(earlier, expected)
-        expect(earlier[3]).toBeLessThan(highlighted[3])
-        expect(contrast(earlier, palette.surface), `${theme}: historical ${id} contrast`).toBeGreaterThanOrEqual(3)
+        // Selection can commit before the inherited SVG paint has settled.
+        // Re-read both bars; keep the same colour, alpha and contrast requirements.
+        await expect(async () => {
+          const highlighted = await paint(page, `${history} rect[data-highlighted="true"]`)
+          sameColour(highlighted, expected)
+          expect(highlighted[3]).toBe(255)
+          const earlier = await paint(page, `${history} rect:not([data-highlighted]):first-of-type`)
+          sameColour(earlier, expected)
+          expect(earlier[3]).toBeLessThan(highlighted[3])
+          expect(contrast(earlier, palette.surface), `${theme}: historical ${id} contrast`).toBeGreaterThanOrEqual(3)
+        }).toPass({ timeout: 5_000 })
       }
       const unit = page.getByRole('radiogroup', { name: 'Show amounts or share of sales' })
       await unit.getByRole('radio', { name: '% of sales', exact: true }).click()
