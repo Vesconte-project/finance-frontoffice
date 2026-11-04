@@ -10,6 +10,35 @@ async function capture(page: Page, info: TestInfo, name: string) {
   await page.screenshot({path:info.outputPath(`${name}.png`),fullPage:true})
 }
 
+test('reported amounts keep their proportions across layout and unit changes', async ({page}, info) => {
+  await page.goto('/stocks/QAS/financials')
+  const ratios = { costOfSales: .56, operatingCosts: .14, taxes: .06, netIncome: .24 }
+  for (const width of [320, 390, 768, 1366, 1536, 1920]) {
+    await page.setViewportSize({width, height:900})
+    for (const unit of ['Amount', '% of sales']) {
+      await page.getByRole('radiogroup', {name:'Show amounts or share of sales'}).getByRole('radio', {name:unit, exact:true}).click()
+      const wide = page.locator('[data-flow-variant="wide"]')
+      if (await wide.isVisible()) {
+        const sales = await wide.locator('[data-flow-shape="sales"]').boundingBox()
+        for (const [id, expected] of Object.entries(ratios)) {
+          const node = await wide.locator(`[data-flow-shape="${id}"]`).boundingBox()
+          expect(node!.height / sales!.height).toBeCloseTo(expected, 2)
+        }
+      } else {
+        const narrow = page.locator('[data-flow-variant="narrow"]')
+        for (const [id, expected] of Object.entries(ratios)) {
+          const ratio = await narrow.locator(`[data-flow-amount="${id}"]`).evaluate(bar =>
+            bar.getBoundingClientRect().width / bar.parentElement!.getBoundingClientRect().width)
+          expect(ratio).toBeCloseTo(expected, 2)
+        }
+        await expect(narrow.locator('[data-flow-column="children"] [data-flow-amount]')).toHaveCount(0)
+      }
+      await overflow(page)
+    }
+    if ([390,1366,1920].includes(width)) await capture(page, info, `financials-proportions-${width}`)
+  }
+})
+
 test('reported costs and supplied percent/growth values work at desktop and mobile sizes', async ({page},info)=>{
   const errors:string[]=[]
   page.on('pageerror',error=>errors.push(error.message))

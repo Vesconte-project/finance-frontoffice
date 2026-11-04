@@ -4,6 +4,8 @@ import {
   NARROW_GROUPS,
   WIDE_FLOW_BOX,
   connectorPath,
+  flowFraction,
+  flowScale,
   isReportedNode,
   narrowGroupOf,
   nodeValue,
@@ -62,11 +64,14 @@ test('the wide flow shows what the cost of sales and the operating costs are mad
   }
 })
 
-test('a loss or a missing year keeps a thin line rather than a negative band', () => {
+test('losses retain their magnitude, missing values are outlines and zero has no band', () => {
   const nodes = byId(wideFlow({ revenue: 400, grossProfit: null, operatingIncome: -20, netIncome: -35 }))
-  assert.equal(nodes.get('grossProfit')!.height, 2)
-  assert.equal(nodes.get('operatingIncome')!.height, 2)
-  assert.equal(nodes.get('netIncome')!.height, 2)
+  assert.equal(nodes.get('grossProfit')!.pending, true)
+  assert.equal(nodes.get('operatingIncome')!.pending, false)
+  assert.equal(nodes.get('operatingIncome')!.height / nodes.get('netIncome')!.height, 20 / 35)
+  const zero = byId(wideFlow({ ...values, incomeTax: 0 })).get('taxes')!
+  assert.equal(zero.height, 0)
+  assert.equal(zero.pending, false)
   const noSales = byId(wideFlow({ revenue: null, grossProfit: 50, operatingIncome: 25, netIncome: 10 }))
   assert.ok(noSales.get('grossProfit')!.height > noSales.get('netIncome')!.height)
 })
@@ -90,4 +95,45 @@ test('new cost and tax nodes expose only explicit reported values', () => {
   assert.equal(nodeValue('taxes',explicit),24)
   assert.equal(nodeValue('costOfSales',values),null)
   assert.equal(nodeValue('retained',explicit),null)
+})
+
+test('reported branches and ribbons use the same scale as sales, including a dominant cost', () => {
+  const explicit = { revenue: 19510, grossProfit: 2340, operatingIncome: 2140, netIncome: 1120,
+    costOfSales: 17200, operatingCosts: 207, incomeTax: 685 }
+  const flow = wideFlow(explicit)
+  const nodes = byId(flow)
+  const sales = nodes.get('sales')!
+  for (const id of ['grossProfit', 'operatingIncome', 'netIncome', 'costOfSales', 'operatingCosts', 'taxes'] as const) {
+    const node = nodes.get(id)!
+    assert.ok(Math.abs(node.height / sales.height - nodeValue(id, explicit)! / explicit.revenue) < 1e-9, id)
+    assert.ok(node.y + node.height <= WIDE_FLOW_BOX.height)
+  }
+  assert.ok(nodes.get('costOfSales')!.height > nodes.get('grossProfit')!.height * 7)
+  for (const [from, to] of [['sales', 'costOfSales'], ['grossProfit', 'operatingCosts'], ['operatingIncome', 'taxes']] as const) {
+    const link = flow.links.find(link => link.from === from && link.to === to)!
+    assert.equal(link.pending, false)
+    const numbers = link.d.match(/-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/g)!.map(Number)
+    // The ribbon's target vertical edge encodes the full reported amount.
+    assert.ok(Math.abs(numbers[9] - numbers[7] - nodes.get(to)!.height) < 1e-9)
+  }
+  const percent = Object.fromEntries(Object.entries(explicit).map(([key, value]) => [key, value / explicit.revenue]))
+  const percentNodes = byId(wideFlow(percent as typeof explicit))
+  for (const [id, node] of nodes) assert.ok(Math.abs(node.height - percentNodes.get(id)!.height) < 1e-9, `${id}: amount and percent agree`)
+})
+
+test('compact bars share the wide scale without imposing a minimum size or inferring missing inputs', () => {
+  const explicit = { ...values, costOfSales: 220, operatingCosts: 60, incomeTax: 0.01 }
+  const scale = flowScale(explicit)
+  const nodes = byId(wideFlow(explicit))
+  for (const id of ['costOfSales', 'operatingCosts', 'taxes', 'netIncome'] as const) {
+    const value = nodeValue(id, explicit)!
+    assert.equal(flowFraction(value, scale), value / scale)
+    assert.ok(Math.abs(nodes.get(id)!.height / nodes.get('sales')!.height - value / explicit.revenue) < 1e-9)
+  }
+  assert.equal(flowFraction(null, scale), null)
+  assert.equal(flowFraction(Number.NaN, scale), null)
+  assert.equal(flowFraction(0, scale), 0)
+  assert.equal(flowFraction(-60, scale), flowFraction(60, scale))
+  const oversized = byId(wideFlow({ ...explicit, costOfSales: 900 }))
+  assert.ok(oversized.get('costOfSales')!.y + oversized.get('costOfSales')!.height < oversized.get('grossProfit')!.y)
 })
