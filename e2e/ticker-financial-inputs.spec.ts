@@ -19,10 +19,20 @@ test('reported amounts keep their proportions across layout and unit changes', a
       await page.getByRole('radiogroup', {name:'Show amounts or share of sales'}).getByRole('radio', {name:unit, exact:true}).click()
       const wide = page.locator('[data-flow-variant="wide"]')
       if (await wide.isVisible()) {
-        const sales = await wide.locator('[data-flow-shape="sales"]').boundingBox()
-        for (const [id, expected] of Object.entries(ratios)) {
-          const node = await wide.locator(`[data-flow-shape="${id}"]`).boundingBox()
-          expect(node!.height / sales!.height).toBeCloseTo(expected, 2)
+        for (const selected of ['netIncome', 'costOfSales']) {
+          await wide.locator(`[data-flow-node="${selected}"]`).click()
+          await expect(wide.locator(`[data-flow-node="${selected}"]`)).toHaveAttribute('aria-pressed', 'true')
+          // Playwright's boundingBox includes the selected node's non-scaling
+          // stroke. Compare SVG fill geometry, measured together in one frame,
+          // so the 3px interaction outline cannot change a financial ratio.
+          const measured = await wide.locator('svg').evaluate(svg => {
+            const shapes = Array.from(svg.querySelectorAll<SVGRectElement>('[data-flow-shape]'))
+            const heights = Object.fromEntries(shapes.map(shape => [shape.dataset.flowShape!, shape.getBBox().height]))
+            return Object.fromEntries(Object.entries(heights).map(([id, height]) => [id, height / heights.sales]))
+          })
+          for (const [id, expected] of Object.entries(ratios)) {
+            expect(measured[id], `${id}, ${width}px, ${unit}, selected ${selected}`).toBeCloseTo(expected, 5)
+          }
         }
       } else {
         const narrow = page.locator('[data-flow-variant="narrow"]')
