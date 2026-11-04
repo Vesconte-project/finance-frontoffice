@@ -235,6 +235,7 @@ function NarrowFlow({
             key={group.id}
             className={styles.connector}
             data-flow-role={flowRole(group.id)}
+            data-negative={(nodeValue(group.id, values) ?? 0) < 0 ? 'true' : undefined}
             data-pending={isReportedNode(group.id) && nodeValue(group.id, values) !== null ? undefined : 'true'}
             data-open={group.id === openId ? 'true' : undefined}
             d={connectorPath(0, 1, index, NARROW_GROUPS.length)}

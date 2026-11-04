@@ -246,6 +246,10 @@
   stroke-width: 3;
 }
 
+.connector[data-negative='true']:not([data-pending='true']) {
+  stroke: var(--down);
+}
+
 .connector[data-pending='true'] {
   stroke: var(--line-strong);
   stroke-width: 1.5;

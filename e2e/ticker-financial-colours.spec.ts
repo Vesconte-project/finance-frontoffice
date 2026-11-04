@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 
 test.use({ hasTouch: true })
 
-async function paint(page: Page, selector: string, property: 'fill' | 'backgroundColor' = 'fill') {
+async function paint(page: Page, selector: string, property: 'fill' | 'backgroundColor' | 'stroke' = 'fill') {
   return page.locator(selector).first().evaluate((element, property) => {
     // Chromium resolves rgb(), color(srgb) and color-mix() through the same
     // canvas colour parser. Preserve alpha for contrast against the real panel.
@@ -98,6 +98,11 @@ for (const theme of ['light', 'dark'] as const) {
     const neutral = palette.surface.map((value, index) => value * .55 + palette.bg[index] * .45)
     sameColour(await paint(page, tax), neutral)
     await page.screenshot({ path: info.outputPath(`financials-loss-${theme}.png`), fullPage: true })
+    await page.setViewportSize({ width: 390, height: 844 })
+    sameColour(await paint(page, '[data-flow-variant="narrow"] [data-flow-amount="netIncome"]', 'backgroundColor'), palette.down)
+    sameColour(await paint(page, '[data-flow-variant="narrow"] path[data-flow-role="profit"]', 'stroke'), palette.down)
+    await page.screenshot({ path: info.outputPath(`financials-loss-compact-${theme}.png`), fullPage: true })
+    await page.setViewportSize({ width: 1440, height: 900 })
     await years.getByRole('radio', { name: '2023', exact: true }).click()
     const gross = '[data-flow-variant="wide"] [data-flow-shape="grossProfit"]'
     await expect(page.locator(gross)).toHaveAttribute('data-pending', 'true')
