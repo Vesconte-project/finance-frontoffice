@@ -192,16 +192,6 @@ export function wideFlow(values: FlowValues, box: PlotBox = WIDE_FLOW_BOX): Wide
     return pending(id, 5, mainTop + slot * index + (slot - PENDING_HEIGHT) / 2, PENDING_HEIGHT, 'left')
   })
 
-  const reportedLink = (from: WideNode, to: WideNode): WideLink => {
-    const thickness = Math.min(from.height, to.height)
-    const x1 = from.x + from.width
-    return {
-      from: from.id,
-      to: to.id,
-      d: bandPath(x1, from.y + from.height - thickness, from.y + from.height, to.x, to.y + to.height - thickness, to.y + to.height),
-      pending: false,
-    }
-  }
   // A being-built branch leaves from the top edge of its source as a thin
   // outlined ribbon: it says where the money goes, not how much.
   const pendingLink = (from: WideNode, to: WideNode): WideLink => {
@@ -215,30 +205,38 @@ export function wideFlow(values: FlowValues, box: PlotBox = WIDE_FLOW_BOX): Wide
     }
   }
 
-  const amountLink = (from: WideNode, to: WideNode): WideLink => {
-    if (from.pending || to.pending) return pendingLink(from, to)
-    // Use the branch amount, not a fixed ribbon. The far end always matches
-    // the target node; partial/non-reconciling inputs are never made to balance.
-    const thickness = Math.min(from.height, to.height)
-    return {
-      from: from.id, to: to.id, pending: false,
-      d: bandPath(from.x + from.width, from.y, from.y + thickness, to.x, to.y, to.y + to.height),
-    }
+  const splitLinks = (from: WideNode, branch: WideNode, continuation: WideNode): WideLink[] => {
+    const targetHeight = (to: WideNode) => from.pending || to.pending ? 6 : to.height
+    const branchHeight = targetHeight(branch)
+    const continuingHeight = targetHeight(continuation)
+    const total = branchHeight + continuingHeight
+    // Both outgoing ribbons must fit the same source edge. When supplied
+    // amounts do not reconcile, taper the source ends together rather than
+    // painting one ribbon over the other. Destination sizes stay untouched;
+    // this routes geometry only and derives no financial amount.
+    const portScale = total > 0 ? Math.min(1, from.height / total) : 0
+    return [branch, continuation].map((to, index) => {
+      const pending = from.pending || to.pending
+      const destinationHeight = targetHeight(to)
+      const sourceHeight = destinationHeight * portScale
+      const sourceTop = index === 0 ? from.y : from.y + from.height - sourceHeight
+      const destinationTop = pending ? to.y + (to.height - destinationHeight) / 2 : to.y
+      return {
+        from: from.id, to: to.id, pending,
+        d: bandPath(from.x + from.width, sourceTop, sourceTop + sourceHeight,
+          to.x, destinationTop, destinationTop + destinationHeight),
+      }
+    })
   }
-
-  const mainLink = (from: WideNode, to: WideNode) => from.pending || to.pending ? pendingLink(from, to) : reportedLink(from, to)
 
   const nodes = [business, sales, costOfSales, costOfSalesParts, gross, operatingCosts, operatingCostsParts, operating, taxes, net, ...uses]
   const links: WideLink[] = [
     { from: 'business', to: 'sales', d: bandPath(business.x + business.width, business.y, business.y + business.height, sales.x, sales.y, sales.y + sales.height), pending: true },
-    amountLink(sales, costOfSales),
+    ...splitLinks(sales, costOfSales, gross),
     pendingLink(costOfSales, costOfSalesParts),
     pendingLink(operatingCosts, operatingCostsParts),
-    mainLink(sales, gross),
-    amountLink(gross, operatingCosts),
-    mainLink(gross, operating),
-    amountLink(operating, taxes),
-    mainLink(operating, net),
+    ...splitLinks(gross, operatingCosts, operating),
+    ...splitLinks(operating, taxes, net),
     ...uses.map((use) => pendingLink(net, use)),
   ]
   return { box, nodes, links }
