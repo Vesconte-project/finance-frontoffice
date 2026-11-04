@@ -26,7 +26,7 @@ The base palette above remains the only set of literal colours. `globals.css` de
 
 ## Type and logo
 
-`app/layout.tsx` loads IBM Plex Sans and IBM Plex Mono through `next/font`, each at 400 and 500. `--font-display` resolves to Plex Sans: page and section headings, FAQ questions, the company name at the top of a company page, and the wordmark use it with slightly tight tracking (`-0.01em`). Interface copy and controls use Plex Sans. Tickers, prices, scores, and dates use Plex Mono. Numbers use tabular figures.
+`app/layout.tsx` loads the vendored official IBM Plex Sans and IBM Plex Mono files through `next/font/local`, each at 400 and 500. `--font-display` resolves to Plex Sans: page and section headings, FAQ questions, the company name at the top of a company page, and the wordmark use it with slightly tight tracking (`-0.01em`). Interface copy and controls use Plex Sans. Tickers, prices, scores, and dates use Plex Mono. Numbers use tabular figures.
 
 The only logo is “VESCONTE” in Plex Sans 500 uppercase, about 15 px, with `0.2em` letter spacing and `--text`. There is no separate symbol. Do not add the old initials or footer slash mark.
 
