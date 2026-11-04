@@ -49,6 +49,37 @@ test('reported amounts keep their proportions across layout and unit changes', a
   }
 })
 
+test('wide cost and tax ribbons stay separate from continuing result bands', async ({page}, info) => {
+  await page.setViewportSize({width:1440, height:900})
+  for (const [ticker, year] of [['QAS', '2025'], ['QAM', '2023'], ['QAM', '2024']]) {
+    await page.goto(`/stocks/${ticker}/financials`)
+    await page.getByRole('radiogroup', {name:'Fiscal year'}).getByRole('radio', {name:year, exact:true}).click()
+    const wide = page.locator('[data-flow-variant="wide"]')
+    await expect(wide).toBeVisible()
+    const overlaps = await wide.locator('svg').evaluate(svg => {
+      const bounds = (from: string, to: string, t: number) => {
+        const path = svg.querySelector(`[data-flow-link="${from}-${to}"]`)
+        if (!path) throw new Error(`Missing ribbon ${from}-${to}`)
+        const n = path.getAttribute('d')!.match(/-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/g)!.map(Number)
+        const ease = t * t * (3 - 2 * t)
+        return [n[1] + (n[7] - n[1]) * ease, n[15] + (n[9] - n[15]) * ease]
+      }
+      return [
+        ['sales', 'costOfSales', 'grossProfit'],
+        ['grossProfit', 'operatingCosts', 'operatingIncome'],
+        ['operatingIncome', 'taxes', 'netIncome'],
+      ].map(([from, branch, continuation]) => ({
+        label: `${from}: ${branch} / ${continuation}`,
+        overlap: Math.max(...Array.from({length:65}, (_, step) =>
+          bounds(from, branch, step / 64)[1] - bounds(from, continuation, step / 64)[0])),
+      }))
+    })
+    for (const result of overlaps) expect(result.overlap, `${ticker} ${year}: ${result.label}`).toBeLessThanOrEqual(1e-6)
+    await overflow(page)
+    await capture(page, info, `financials-no-overlap-${ticker}-${year}`)
+  }
+})
+
 test('reported costs and supplied percent/growth values work at desktop and mobile sizes', async ({page},info)=>{
   const errors:string[]=[]
   page.on('pageerror',error=>errors.push(error.message))
