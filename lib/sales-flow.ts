@@ -206,9 +206,10 @@ export function wideFlow(values: FlowValues, box: PlotBox = WIDE_FLOW_BOX): Wide
   }
 
   const splitLinks = (from: WideNode, branch: WideNode, continuation: WideNode): WideLink[] => {
-    const targetHeight = (to: WideNode) => from.pending || to.pending ? 6 : to.height
-    const branchHeight = targetHeight(branch)
-    const continuingHeight = targetHeight(continuation)
+    const targetHeight = (to: WideNode, branch: boolean) => from.pending || to.pending ? 6
+      : branch ? to.height : Math.min(from.height, to.height)
+    const branchHeight = targetHeight(branch, true)
+    const continuingHeight = targetHeight(continuation, false)
     const total = branchHeight + continuingHeight
     // Both outgoing ribbons must fit the same source edge. When supplied
     // amounts do not reconcile, taper the source ends together rather than
@@ -217,10 +218,11 @@ export function wideFlow(values: FlowValues, box: PlotBox = WIDE_FLOW_BOX): Wide
     const portScale = total > 0 ? Math.min(1, from.height / total) : 0
     return [branch, continuation].map((to, index) => {
       const pending = from.pending || to.pending
-      const destinationHeight = targetHeight(to)
+      const destinationHeight = targetHeight(to, index === 0)
       const sourceHeight = destinationHeight * portScale
       const sourceTop = index === 0 ? from.y : from.y + from.height - sourceHeight
-      const destinationTop = pending ? to.y + (to.height - destinationHeight) / 2 : to.y
+      const destinationTop = pending ? to.y + (to.height - destinationHeight) / 2
+        : index === 0 ? to.y : to.y + to.height - destinationHeight
       return {
         from: from.id, to: to.id, pending,
         d: bandPath(from.x + from.width, sourceTop, sourceTop + sourceHeight,

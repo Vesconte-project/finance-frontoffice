@@ -178,7 +178,8 @@ test('outgoing cost and tax ribbons never overlap the continuing result band', (
       for (const target of [branch, continuation]) {
         if (!edge(target).pending) {
           const end = bounds(target, 1)
-          assert.ok(Math.abs(end[1] - end[0] - nodes.get(target)!.height) < 1e-9, `${target} keeps its reported size`)
+          const originalHeight = target === branch ? nodes.get(target)!.height : Math.min(parent.height, nodes.get(target)!.height)
+          assert.ok(Math.abs(end[1] - end[0] - originalHeight) < 1e-9, `${target} keeps its existing destination size`)
         }
       }
     }
