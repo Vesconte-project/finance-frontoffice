@@ -11,6 +11,8 @@ import {
   NARROW_GROUPS,
   NODE_LABEL,
   connectorPath,
+  flowFraction,
+  flowScale,
   isReportedNode,
   narrowGroupOf,
   nodeValue,
@@ -141,7 +143,7 @@ function WideFlow({
     <div className={styles.wide} data-flow-variant="wide" style={{ aspectRatio: `${box.width} / ${box.height}` } as CSSProperties}>
       <svg className={styles.drawing} viewBox={`0 0 ${box.width} ${box.height}`} preserveAspectRatio="none" aria-hidden="true" focusable="false">
         {flow.links.map((link) => (
-          <path key={`${link.from}-${link.to}`} className={styles.link} data-pending={link.pending ? 'true' : undefined} d={link.d} />
+          <path key={`${link.from}-${link.to}`} className={styles.link} data-pending={link.pending ? 'true' : undefined} data-negative={(nodeValue(link.to, values) ?? 0) < 0 ? 'true' : undefined} d={link.d} />
         ))}
         {flow.nodes.map((node) => (
           <rect
@@ -149,6 +151,8 @@ function WideFlow({
             className={styles.node}
             data-pending={node.pending ? 'true' : undefined}
             data-selected={node.id === selected ? 'true' : undefined}
+            data-negative={(nodeValue(node.id, values) ?? 0) < 0 ? 'true' : undefined}
+            data-flow-shape={node.id}
             x={node.x}
             y={node.y}
             width={node.width}
@@ -199,6 +203,7 @@ function NarrowFlow({
   const openIndex = NARROW_GROUPS.findIndex((group) => group.id === openId)
   const children = NARROW_GROUPS[openIndex]?.children ?? []
   const sales = values.revenue
+  const scale = flowScale(values)
 
   return (
     <div className={styles.narrow} data-flow-variant="narrow">
@@ -227,6 +232,7 @@ function NarrowFlow({
       <div className={styles.narrowColumn} data-flow-column="groups">
         {NARROW_GROUPS.map((group) => {
           const value = nodeValue(group.id, values)
+          const fraction = flowFraction(value, scale)
           return (
             <button
               key={group.id}
@@ -241,6 +247,16 @@ function NarrowFlow({
               onClick={() => onSelect(group.id)}
             >
               <NodeText id={group.id} value={value} unit={unit} currency={currency} chevron />
+              {fraction !== null ? (
+                <span className={styles.amountTrack} aria-hidden="true">
+                  <span
+                    className={styles.amountBar}
+                    data-flow-amount={group.id}
+                    data-negative={value !== null && value < 0 ? 'true' : undefined}
+                    style={{ width: `${fraction * 100}%` }}
+                  />
+                </span>
+              ) : null}
             </button>
           )
         })}
@@ -440,6 +456,9 @@ export default function SalesFlowChapter({
         <WideFlow values={values} unit={unit} currency={flowCurrency} selected={selected} onSelect={setSelected} />
         <NarrowFlow values={values} unit={unit} currency={flowCurrency} selected={selected} onSelect={setSelected} />
       </div>
+      {Object.values(values).some((value) => value !== null && value < 0) ? (
+        <p className={styles.flowNote}>Sizes compare absolute amounts. Negative amounts are shown in red.</p>
+      ) : null}
     </ResearchChapter>
   )
 }

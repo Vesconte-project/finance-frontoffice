@@ -3,12 +3,10 @@
  *
  * The flow runs left to right, always horizontal. Its main path is the chain
  * of reported results — sales, gross profit, operating income, net income —
- * drawn to scale, so the bands narrow from what was sold to what was kept. The
- * branches between them (cost of sales, operating costs, taxes) and the uses
- * of profit (buybacks, dividends, what was kept), and what the costs are made
- * of, are not reported line items yet (ENG-88, ENG-163); they are drawn as
- * outlined "being built" nodes of a fixed size, never sized from a difference
- * of two reported values.
+ * drawn to scale, so the bands narrow from what was sold to what was kept.
+ * Reported branches use the same amount scale as the main path. Missing
+ * branches and breakdowns remain fixed-size outlines, never amounts inferred
+ * from a difference between two reported values.
  */
 import type { PlotBox } from './chart-labels'
 
@@ -84,6 +82,23 @@ export function isReportedNode(id: FlowNodeId): boolean {
   return REPORTED_NODES.includes(id)
 }
 
+/** One visual scale for supplied amounts; never an economic reconciliation. */
+export function flowScale(values: FlowValues): number {
+  const magnitude = (value: number | null | undefined) => Number.isFinite(value) ? Math.abs(value ?? 0) : 0
+  return Math.max(
+    magnitude(values.revenue),
+    magnitude(values.costOfSales) + magnitude(values.grossProfit),
+    magnitude(values.operatingCosts) + magnitude(values.operatingIncome),
+    magnitude(values.incomeTax) + magnitude(values.netIncome),
+  ) || 1
+}
+
+/** Shared by SVG bands and compact bars. Null has no quantitative geometry. */
+export function flowFraction(value: number | null, scale: number): number | null {
+  if (value === null || !Number.isFinite(value) || !(scale > 0)) return null
+  return Math.abs(value) / scale
+}
+
 /* ---------------- Wide flow (the chart has 900px or more) ---------------- */
 
 export type WideNode = {
@@ -132,8 +147,8 @@ function bandPath(x1: number, top1: number, bottom1: number, x2: number, top2: n
 /**
  * Lays the wide flow out. Reported nodes are bottom-aligned and scaled to
  * sales, so profit runs along the bottom and each step's height is its own
- * reported value. A reported node with no value for the year, or with a loss,
- * keeps a thin line at the bottom: a loss has no width to flow.
+ * reported magnitude. Missing nodes are outlines; zero has no band. Signed
+ * amounts retain their labels and receive a separate negative treatment.
  */
 export function wideFlow(values: FlowValues, box: PlotBox = WIDE_FLOW_BOX): WideFlow {
   // Two rows of being-built nodes above the reported path: the costs that leave
@@ -144,14 +159,15 @@ export function wideFlow(values: FlowValues, box: PlotBox = WIDE_FLOW_BOX): Wide
   const mainTop = pendingTop + PENDING_HEIGHT + 34
   const bottom = box.height - 16
   const mainHeight = bottom - mainTop
-  const base = values.revenue !== null && values.revenue > 0
-    ? values.revenue
-    : Math.max(...[values.grossProfit, values.operatingIncome, values.netIncome].map((value) => value ?? 0), 1)
-  const height = (value: number | null) => (value !== null && value > 0 ? Math.max(2, (Math.min(value, base) / base) * mainHeight) : 2)
+  const base = flowScale(values)
+  const height = (value: number | null) => {
+    const fraction = flowFraction(value, base)
+    return fraction === null ? PENDING_HEIGHT : fraction * mainHeight
+  }
 
   const main = (id: FlowNodeId, column: number, value: number | null): WideNode => {
     const h = height(value)
-    return { id, x: COLUMN_X[column], y: bottom - h, width: NODE_WIDTH, height: h, pending: false, labelSide: 'right' }
+    return { id, x: COLUMN_X[column], y: bottom - h, width: NODE_WIDTH, height: h, pending: flowFraction(value, base) === null, labelSide: 'right' }
   }
   const pending = (id: FlowNodeId, column: number, y: number, h = PENDING_HEIGHT, side: 'right' | 'left' = 'right'): WideNode => ({
     id, x: COLUMN_X[column], y, width: NODE_WIDTH, height: h, pending: true, labelSide: side,
@@ -162,9 +178,13 @@ export function wideFlow(values: FlowValues, box: PlotBox = WIDE_FLOW_BOX): Wide
   const operating = main('operatingIncome', 3, values.operatingIncome)
   const net = main('netIncome', 4, values.netIncome)
   const business = pending('business', 0, sales.y, sales.height)
-  const costOfSales = { ...pending('costOfSales', 2, pendingTop), pending: values.costOfSales == null }
-  const operatingCosts = { ...pending('operatingCosts', 3, pendingTop), pending: values.operatingCosts == null }
-  const taxes = { ...pending('taxes', 4, pendingTop), pending: values.incomeTax == null }
+  const branch = (id: FlowNodeId, column: number, value: number | null): WideNode => ({
+    ...pending(id, column, pendingTop, height(value)),
+    pending: flowFraction(value, base) === null,
+  })
+  const costOfSales = branch('costOfSales', 2, values.costOfSales ?? null)
+  const operatingCosts = branch('operatingCosts', 3, values.operatingCosts ?? null)
+  const taxes = branch('taxes', 4, values.incomeTax ?? null)
   const costOfSalesParts = pending('costOfSalesParts', 3, partsTop)
   const operatingCostsParts = pending('operatingCostsParts', 4, partsTop)
   const uses = (['buybacks', 'dividends', 'retained'] as const).map((id, index) => {
@@ -195,17 +215,30 @@ export function wideFlow(values: FlowValues, box: PlotBox = WIDE_FLOW_BOX): Wide
     }
   }
 
+  const amountLink = (from: WideNode, to: WideNode): WideLink => {
+    if (from.pending || to.pending) return pendingLink(from, to)
+    // Use the branch amount, not a fixed ribbon. The far end always matches
+    // the target node; partial/non-reconciling inputs are never made to balance.
+    const thickness = Math.min(from.height, to.height)
+    return {
+      from: from.id, to: to.id, pending: false,
+      d: bandPath(from.x + from.width, from.y, from.y + thickness, to.x, to.y, to.y + to.height),
+    }
+  }
+
+  const mainLink = (from: WideNode, to: WideNode) => from.pending || to.pending ? pendingLink(from, to) : reportedLink(from, to)
+
   const nodes = [business, sales, costOfSales, costOfSalesParts, gross, operatingCosts, operatingCostsParts, operating, taxes, net, ...uses]
   const links: WideLink[] = [
     { from: 'business', to: 'sales', d: bandPath(business.x + business.width, business.y, business.y + business.height, sales.x, sales.y, sales.y + sales.height), pending: true },
-    pendingLink(sales, costOfSales),
+    amountLink(sales, costOfSales),
     pendingLink(costOfSales, costOfSalesParts),
     pendingLink(operatingCosts, operatingCostsParts),
-    reportedLink(sales, gross),
-    pendingLink(gross, operatingCosts),
-    reportedLink(gross, operating),
-    pendingLink(operating, taxes),
-    reportedLink(operating, net),
+    mainLink(sales, gross),
+    amountLink(gross, operatingCosts),
+    mainLink(gross, operating),
+    amountLink(operating, taxes),
+    mainLink(operating, net),
     ...uses.map((use) => pendingLink(net, use)),
   ]
   return { box, nodes, links }

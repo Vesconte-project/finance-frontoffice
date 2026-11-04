@@ -10,6 +10,45 @@ async function capture(page: Page, info: TestInfo, name: string) {
   await page.screenshot({path:info.outputPath(`${name}.png`),fullPage:true})
 }
 
+test('reported amounts keep their proportions across layout and unit changes', async ({page}, info) => {
+  await page.goto('/stocks/QAS/financials')
+  const ratios = { costOfSales: .56, operatingCosts: .14, taxes: .06, netIncome: .24 }
+  for (const width of [320, 390, 768, 1366, 1536, 1920]) {
+    await page.setViewportSize({width, height:900})
+    for (const unit of ['Amount', '% of sales']) {
+      await page.getByRole('radiogroup', {name:'Show amounts or share of sales'}).getByRole('radio', {name:unit, exact:true}).click()
+      const wide = page.locator('[data-flow-variant="wide"]')
+      if (await wide.isVisible()) {
+        for (const selected of ['netIncome', 'costOfSales']) {
+          await wide.locator(`[data-flow-node="${selected}"]`).click()
+          await expect(wide.locator(`[data-flow-node="${selected}"]`)).toHaveAttribute('aria-pressed', 'true')
+          // Playwright's boundingBox includes the selected node's non-scaling
+          // stroke. Compare SVG fill geometry, measured together in one frame,
+          // so the 3px interaction outline cannot change a financial ratio.
+          const measured = await wide.locator('svg').evaluate(svg => {
+            const shapes = Array.from(svg.querySelectorAll<SVGRectElement>('[data-flow-shape]'))
+            const heights = Object.fromEntries(shapes.map(shape => [shape.dataset.flowShape!, shape.getBBox().height]))
+            return Object.fromEntries(Object.entries(heights).map(([id, height]) => [id, height / heights.sales]))
+          })
+          for (const [id, expected] of Object.entries(ratios)) {
+            expect(measured[id], `${id}, ${width}px, ${unit}, selected ${selected}`).toBeCloseTo(expected, 5)
+          }
+        }
+      } else {
+        const narrow = page.locator('[data-flow-variant="narrow"]')
+        for (const [id, expected] of Object.entries(ratios)) {
+          const ratio = await narrow.locator(`[data-flow-amount="${id}"]`).evaluate(bar =>
+            bar.getBoundingClientRect().width / bar.parentElement!.getBoundingClientRect().width)
+          expect(ratio).toBeCloseTo(expected, 2)
+        }
+        await expect(narrow.locator('[data-flow-column="children"] [data-flow-amount]')).toHaveCount(0)
+      }
+      await overflow(page)
+    }
+    if ([390,1366,1920].includes(width)) await capture(page, info, `financials-proportions-${width}`)
+  }
+})
+
 test('reported costs and supplied percent/growth values work at desktop and mobile sizes', async ({page},info)=>{
   const errors:string[]=[]
   page.on('pageerror',error=>errors.push(error.message))
