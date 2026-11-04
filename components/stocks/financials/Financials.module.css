@@ -331,6 +331,11 @@
   border-inline-start: 3px solid var(--accent);
 }
 
+.detail,
+.history {
+  min-width: 0;
+}
+
 /* The reusable bars retain their existing neutral defaults on every other
    page. Only this selected Financials history supplies the colour overrides. */
 .history {
