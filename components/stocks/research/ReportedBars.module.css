@@ -8,13 +8,17 @@
 }
 
 .bar {
-  fill: color-mix(in srgb, var(--text) 62%, transparent);
+  fill: var(--reported-bar-fill, color-mix(in srgb, var(--text) 62%, transparent));
 }
 
 .bar[data-negative='true'] {
-  fill: color-mix(in srgb, var(--down) 70%, transparent);
+  fill: var(--reported-bar-negative-fill, color-mix(in srgb, var(--down) 70%, transparent));
 }
 
 .bar[data-highlighted='true'] {
-  fill: var(--text);
+  fill: var(--reported-bar-highlight-fill, var(--text));
+}
+
+.bar[data-highlighted='true'][data-negative='true'] {
+  fill: var(--reported-bar-negative-highlight-fill, var(--reported-bar-highlight-fill, var(--text)));
 }
