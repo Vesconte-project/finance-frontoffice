@@ -65,6 +65,14 @@ type Unit = typeof AMOUNT | typeof SHARE
 const LABEL_HEIGHT_PX = 40
 const WIDE_MIN_PX = 900
 
+/** Colour describes the measure; availability and selection remain separate. */
+function flowRole(id: FlowNodeId): 'sales' | 'cost' | 'profit' | 'pending' {
+  if (id === 'sales') return 'sales'
+  if (id === 'costOfSales' || id === 'operatingCosts' || id === 'taxes') return 'cost'
+  if (id === 'grossProfit' || id === 'operatingIncome' || id === 'netIncome') return 'profit'
+  return 'pending'
+}
+
 function NodeText({
   id,
   value,
@@ -143,7 +151,7 @@ function WideFlow({
     <div className={styles.wide} data-flow-variant="wide" style={{ aspectRatio: `${box.width} / ${box.height}` } as CSSProperties}>
       <svg className={styles.drawing} viewBox={`0 0 ${box.width} ${box.height}`} preserveAspectRatio="none" aria-hidden="true" focusable="false">
         {flow.links.map((link) => (
-          <path key={`${link.from}-${link.to}`} className={styles.link} data-flow-link={`${link.from}-${link.to}`} data-pending={link.pending ? 'true' : undefined} data-negative={(nodeValue(link.to, values) ?? 0) < 0 ? 'true' : undefined} d={link.d} />
+          <path key={`${link.from}-${link.to}`} className={styles.link} data-flow-link={`${link.from}-${link.to}`} data-flow-role={flowRole(link.to)} data-pending={link.pending ? 'true' : undefined} data-negative={(nodeValue(link.to, values) ?? 0) < 0 ? 'true' : undefined} d={link.d} />
         ))}
         {flow.nodes.map((node) => (
           <rect
@@ -153,6 +161,7 @@ function WideFlow({
             data-selected={node.id === selected ? 'true' : undefined}
             data-negative={(nodeValue(node.id, values) ?? 0) < 0 ? 'true' : undefined}
             data-flow-shape={node.id}
+            data-flow-role={flowRole(node.id)}
             x={node.x}
             y={node.y}
             width={node.width}
@@ -213,6 +222,8 @@ function NarrowFlow({
       <button
         type="button"
         className={styles.narrowBar}
+        data-pending={sales === null ? 'true' : undefined}
+        data-negative={sales !== null && sales < 0 ? 'true' : undefined}
         data-flow-node="sales"
         aria-pressed={selected === 'sales'}
         aria-label={accessibleName('sales', sales, unit, currency)}
@@ -223,6 +234,8 @@ function NarrowFlow({
           <path
             key={group.id}
             className={styles.connector}
+            data-flow-role={flowRole(group.id)}
+            data-negative={(nodeValue(group.id, values) ?? 0) < 0 ? 'true' : undefined}
             data-pending={isReportedNode(group.id) && nodeValue(group.id, values) !== null ? undefined : 'true'}
             data-open={group.id === openId ? 'true' : undefined}
             d={connectorPath(0, 1, index, NARROW_GROUPS.length)}
@@ -239,6 +252,7 @@ function NarrowFlow({
               type="button"
               className={styles.narrowNode}
               data-flow-node={group.id}
+              data-flow-role={flowRole(group.id)}
               data-pending={isReportedNode(group.id) && nodeValue(group.id, values) !== null ? undefined : 'true'}
               data-open={group.id === openId ? 'true' : undefined}
               aria-pressed={selected === group.id}
@@ -319,36 +333,40 @@ function NodeCard({
     return found ? [{ year: candidate, point: found }] : []
   })
   return (
-    <ChapterCard title={NODE_LABEL[id]} meta={`FY${year}`}>
-      <div data-flow-card={id}>
-        {point ? (
-          <p className={styles.cardFigure}>
-            <strong data-tone={point.value < 0 ? 'down' : undefined}>{formatCompactMoney(point.value, point.currency ?? currency)}</strong>
-            <span>{REPORTED_SENTENCE[id]}</span>
-          </p>
-        ) : (
-          <BeingBuilt size="inline">{NODE_LABEL[id]} for FY{year} is being added.</BeingBuilt>
-        )}
-      </div>
-      <p className={styles.cardNote}>
-        {growth ? <span>{formatFraction(growth.value)} against the year before. </span> : <BeingBuiltBadge />}
-        {share ? <span>{formatFraction(share.value)} of sales.</span> : <BeingBuiltBadge />}
-      </p>
-      {history.length > 0 ? (
-        <ReportedBars
-          ariaLabel={`${NODE_LABEL[id]} by fiscal year, FY${year} highlighted`}
-          values={{ wide: 'all', compact: 'ends' }}
-          bars={history.map(({ year: barYear, point: barPoint }) => ({
-            key: String(barYear),
-            value: barPoint.value,
-            valueLabel: formatChartMoney(barPoint.value, barPoint.currency ?? currency),
-            axisLabel: String(barYear),
-            axisShort: shortYear(barYear),
-            highlighted: barYear === year,
-          }))}
-        />
-      ) : null}
-    </ChapterCard>
+    <div className={styles.detail} data-flow-role={flowRole(id)}>
+      <ChapterCard title={NODE_LABEL[id]} meta={`FY${year}`}>
+        <div data-flow-card={id}>
+          {point ? (
+            <p className={styles.cardFigure}>
+              <strong data-tone={point.value < 0 ? 'down' : undefined}>{formatCompactMoney(point.value, point.currency ?? currency)}</strong>
+              <span>{REPORTED_SENTENCE[id]}</span>
+            </p>
+          ) : (
+            <BeingBuilt size="inline">{NODE_LABEL[id]} for FY{year} is being added.</BeingBuilt>
+          )}
+        </div>
+        <p className={styles.cardNote}>
+          {growth ? <span>{formatFraction(growth.value)} against the year before. </span> : <BeingBuiltBadge />}
+          {share ? <span>{formatFraction(share.value)} of sales.</span> : <BeingBuiltBadge />}
+        </p>
+        {history.length > 0 ? (
+          <div className={styles.history} data-flow-history={id}>
+            <ReportedBars
+              ariaLabel={`${NODE_LABEL[id]} by fiscal year, FY${year} highlighted`}
+              values={{ wide: 'all', compact: 'ends' }}
+              bars={history.map(({ year: barYear, point: barPoint }) => ({
+                key: String(barYear),
+                value: barPoint.value,
+                valueLabel: formatChartMoney(barPoint.value, barPoint.currency ?? currency),
+                axisLabel: String(barYear),
+                axisShort: shortYear(barYear),
+                highlighted: barYear === year,
+              }))}
+            />
+          </div>
+        ) : null}
+      </ChapterCard>
+    </div>
   )
 }
 

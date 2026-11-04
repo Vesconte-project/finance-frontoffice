@@ -26,7 +26,7 @@ The base palette above remains the only set of literal colours. `globals.css` de
 
 ## Type and logo
 
-`app/layout.tsx` loads IBM Plex Sans and IBM Plex Mono through `next/font`, each at 400 and 500. `--font-display` resolves to Plex Sans: page and section headings, FAQ questions, the company name at the top of a company page, and the wordmark use it with slightly tight tracking (`-0.01em`). Interface copy and controls use Plex Sans. Tickers, prices, scores, and dates use Plex Mono. Numbers use tabular figures.
+`app/layout.tsx` loads the vendored official IBM Plex Sans and IBM Plex Mono files through `next/font/local`, each at 400 and 500. `--font-display` resolves to Plex Sans: page and section headings, FAQ questions, the company name at the top of a company page, and the wordmark use it with slightly tight tracking (`-0.01em`). Interface copy and controls use Plex Sans. Tickers, prices, scores, and dates use Plex Mono. Numbers use tabular figures.
 
 The only logo is “VESCONTE” in Plex Sans 500 uppercase, about 15 px, with `0.2em` letter spacing and `--text`. There is no separate symbol. Do not add the old initials or footer slash mark.
 
@@ -42,6 +42,8 @@ The homepage network distributes ETF nodes around the field in `--accent`. Other
 
 Keep green and red in data displays. The accent (blue in light, ocre in dark) marks where the reader is: focus, selection, active navigation, and the selected network node. It should not cover large areas. Canvas and Three.js components resolve computed CSS tokens at the rendering boundary; they must not carry a second palette.
 Absolute financial amounts use neutral ink marks in charts; signed changes may use the up/down roles. This prevents a large accent-coloured chart from implying that every number is a selection.
+
+**Scoped exception — Financials flow and selected history.** The founder requested and approved the colour proposal in conversation on 2026-11-04. Available sales use the theme accent (blue in light, ocre in dark), positive result nodes use `--up`, and cost/tax nodes use a soft terracotta derived from `--down`. Flow bands are softer versions of their node colours. Terracotta identifies the cost category, not a worsening change; negative results use the full down colour and keep their explicit sign. Missing inputs stay neutral and dashed; zero remains an available value. Selection and focus use a separate accent outline. The selected Financials history uses the same measure colour, softened for other years, with negative bars retaining the down role. Labels and values retain readable text roles. This exception adds no literal palette, economic calculation, geometry or styling change to other research pages. Candidate visual and release review remain separate.
 
 ## Accessibility and implementation
 

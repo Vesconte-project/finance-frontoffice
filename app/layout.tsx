@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import { ClerkProvider } from '@clerk/nextjs'
 import AnalyticsProvider from '@/components/analytics/AnalyticsProvider'
 import OptionalSessionReplay from '@/components/analytics/OptionalSessionReplay'
@@ -12,8 +12,24 @@ import { siteOrigin } from '@/lib/site-url'
 import 'lenis/dist/lenis.css'
 import "./globals.css";
 
-const plexSans = IBM_Plex_Sans({ variable: "--font-plex-sans", subsets: ["latin"], weight: ["400", "500"] });
-const plexMono = IBM_Plex_Mono({ variable: "--font-plex-mono", subsets: ["latin"], weight: ["400", "500"] });
+// Keep the existing families and weights without a Google Fonts fetch during
+// the build. Source packages, unmodified font files and licences: app/fonts/.
+const plexSans = localFont({
+  variable: "--font-plex-sans",
+  display: "swap",
+  src: [
+    { path: "./fonts/IBMPlexSans-Regular.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/IBMPlexSans-Medium.woff2", weight: "500", style: "normal" },
+  ],
+});
+const plexMono = localFont({
+  variable: "--font-plex-mono",
+  display: "swap",
+  src: [
+    { path: "./fonts/IBMPlexMono-Regular.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/IBMPlexMono-Medium.woff2", weight: "500", style: "normal" },
+  ],
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteOrigin()),
