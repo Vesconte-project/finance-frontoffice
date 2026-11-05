@@ -95,10 +95,11 @@ function ListingsSection({ ticker, displayName, listings, onNavigate }: {
 /**
  * The ticker header's listings-and-currency control: one button that opens a
  * dialog with the listings of the same company we track (each other listing
- * links to its own page) and the currencies the price can also be shown in.
- * The currencies are only those `/v1/currencies` lists; choosing one changes
- * the URL (`?currency=`), which is the only place the choice lives. The page
- * keeps the listing's own currency: a converted price sits beside it.
+ * links to its own page) and the currencies the page can be shown in. The
+ * currencies are only those `/v1/currencies` lists; choosing one changes the
+ * URL (`?currency=`), the only place the choice lives, and it is the one
+ * control for the whole ticker page (founder, 2026-11-05). Nothing is
+ * remembered: a new visit starts in the listing's currency.
  */
 export default function DisplayCurrencySelect({
   ticker,
@@ -141,7 +142,7 @@ export default function DisplayCurrencySelect({
         className={styles.face}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={`Listings and currency: ${listingLabel} listing${selected ? `, price also shown in ${selected}` : ''}`}
+        aria-label={`Listings and currency: ${listingLabel} listing${selected ? `, shown in ${selected}` : ''}`}
         data-display-currency={selected ?? ''}
         data-converted={selected ? '' : undefined}
         onClick={() => setOpen(true)}
@@ -160,16 +161,16 @@ export default function DisplayCurrencySelect({
           <div className={styles.panel} data-listings-currency-dialog="">
             <h2 id={titleId} className={styles.title}>Listings and currency</h2>
             <p id={descriptionId} className={styles.lead}>
-              Where we track {displayName}, and the currencies its price can also be shown in.
+              Where we track {displayName}, and the currencies its page can be shown in.
             </p>
 
             {listings ? <ListingsSection ticker={ticker} displayName={displayName} listings={listings} onNavigate={close} /> : null}
 
             <section className={styles.section} aria-labelledby={currencyHeadingId} data-display-currencies="">
-              <h3 id={currencyHeadingId} className={styles.sectionTitle}>Show the price in</h3>
+              <h3 id={currencyHeadingId} className={styles.sectionTitle}>Show {displayName} in</h3>
               <p className={styles.note}>
-                A converted price uses the exchange rate of each day. It is not a listing traded in that currency.
-                Indicators, signals, scores and financial statements stay in {listingLabel}.
+                Prices and amounts are converted at the exchange rate of their own day. It is not a listing traded in
+                that currency. Ratios, scores and percentages do not change.
               </p>
               <ul className={styles.list}>
                 <li>

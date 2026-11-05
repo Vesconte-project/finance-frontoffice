@@ -2,7 +2,10 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import {
+  convertedAmountOf,
   convertedClosesFromHistory,
+  currencyName,
+  indexedInBothCurrencies,
   convertedValueOf,
   currencyDecomposition,
   displayCurrencyCode,
@@ -169,4 +172,37 @@ test('price conversion refuses a different or missing basis without substituting
   const quote = { price_basis: 'raw', price: 100, money: { price: converted(50, 100) } }
   assert.equal(convertedValueOf(quote, 'price', 'USD'), null)
   assert.equal(convertedValueOf({ ...quote, money: { price: { ...converted(50, 100), price_basis: 'raw' } } }, 'price', 'USD')?.value, 50)
+})
+
+test('both lines start at 100 on the first day with a conversion and compare the same days', () => {
+  const points = [
+    { date: '2026-01-02', close: 100, converted: null, price_basis: 'adjusted' as const },
+    { date: '2026-01-05', close: 200, converted: 10, price_basis: 'adjusted' as const },
+    { date: '2026-01-06', close: 300, converted: null, price_basis: 'adjusted' as const },
+    { date: '2026-01-07', close: 400, converted: 22, price_basis: 'adjusted' as const },
+  ]
+  const { listing, display } = indexedInBothCurrencies(points)
+  assert.deepEqual(listing, [{ date: '2026-01-05', value: 100 }, { date: '2026-01-07', value: 200 }])
+  assert.deepEqual(display.map((point) => point.date), ['2026-01-05', '2026-01-07'])
+  assert.ok(Math.abs(display[1].value - 220) < 1e-9)
+  // The lines end where the decomposition says: listing return and display return over the same days.
+  const split = currencyDecomposition(points).result!
+  assert.ok(Math.abs(listing[1].value / 100 - 1 - split.localReturn) < 1e-9)
+  assert.ok(Math.abs(display[1].value / 100 - 1 - split.convertedReturn) < 1e-9)
+  assert.deepEqual(indexedInBothCurrencies(points.slice(0, 2)), { listing: [], display: [] })
+})
+
+test('currencies are named in words when the runtime knows them', () => {
+  assert.equal(currencyName('KRW'), 'South Korean won')
+  assert.equal(currencyName('USD'), 'US dollar')
+  assert.equal(currencyName('EUR'), 'euro')
+  assert.equal(currencyName('ZZZ'), 'ZZZ')
+})
+
+test('an amount that is not a price converts without a price basis, and only into the currency asked for', () => {
+  const holder = { marketCap: 1.4e15, money: { marketCap: { value: 1.4e15, currency: 'KRW', sourceCurrency: 'KRW', date: '2026-11-02',
+    converted: { value: 5.7e12, currency: 'BRL', rate: 0.0041, rateDate: '2026-11-02' }, unconvertedReason: null } } }
+  assert.equal(convertedAmountOf(holder, 'marketCap', 'BRL')?.value, 5.7e12)
+  assert.equal(convertedAmountOf(holder, 'marketCap', 'USD'), null)
+  assert.equal(convertedAmountOf({ marketCap: 1 }, 'marketCap', 'BRL'), null)
 })

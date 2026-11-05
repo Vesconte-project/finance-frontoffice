@@ -1,0 +1,114 @@
+/* What the currency did: the price in both currencies from the same start, the gap
+   between them shaded as the currency's part, and the split in words and figures. */
+
+.lead {
+  max-width: 46rem;
+  margin: 0 0 1.25rem;
+  color: var(--text-body);
+  font-size: 1.05rem;
+  line-height: 1.55;
+}
+
+.lead b {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.lead b[data-tone='up'],
+.split dd[data-tone='up'] {
+  color: var(--up-ink, var(--up));
+}
+
+.lead b[data-tone='down'],
+.split dd[data-tone='down'] {
+  color: var(--down);
+}
+
+.base {
+  stroke: var(--line);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.band {
+  stroke: none;
+  opacity: 0.14;
+}
+
+.band[data-tone='up'] {
+  fill: var(--up);
+}
+
+.band[data-tone='down'] {
+  fill: var(--down);
+}
+
+.listing {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.display {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+}
+
+.displayEnd {
+  fill: var(--accent);
+  stroke: var(--bg);
+  stroke-width: 2;
+}
+
+.listingEnd {
+  fill: var(--text-muted);
+  stroke: var(--bg);
+  stroke-width: 2;
+}
+
+.split {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.split div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.split div[data-total] {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.split dt {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.split div[data-total] dt {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.split dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.note {
+  margin: 0.75rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}

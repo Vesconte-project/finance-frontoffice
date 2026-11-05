@@ -4,7 +4,7 @@ import { browserRead } from '@/lib/read-client'
 
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { Suspense, use, useMemo, useRef, useState } from 'react'
+import { Suspense, use, useEffect, useMemo, useRef, useState } from 'react'
 import { ChartCandlestick, ChartLine, Maximize2 } from 'lucide-react'
 import SegmentedControl from '@/components/ui/SegmentedControl'
 import TemporalLineChart, { type TemporalLinePoint } from '@/components/charts/TemporalLineChart'
@@ -28,7 +28,6 @@ import {
   isoCurrency,
   parseConvertedCloses,
   type ConvertedClose,
-  type CurrencyDecomposition,
 } from '@/lib/display-currency'
 import { shortYear, type ReportedPoint } from '@/lib/statement-reading'
 import ResearchChapter, { ChapterCard } from '@/components/stocks/research/ResearchChapter'
@@ -37,6 +36,7 @@ import { cn } from '@/lib/utils'
 import styles from './StockOverviewClient.module.css'
 import expandedChartStyles from './ExpandedChart.module.css'
 import ScorecardDisc from './ScorecardDisc'
+import CurrencyStory from './CurrencyStory'
 
 // The expanded chart's code loads only when a reader opens it.
 const ExpandedChartDialog = dynamic(() => import('./ExpandedChartDialog'), { ssr: false })
@@ -471,110 +471,6 @@ function RevenueCard({ revenuePromise, currency }: { revenuePromise: Promise<Rep
   )
 }
 
-const rangeDay = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
-
-function formatRangeDay(value: string): string {
-  return rangeDay.format(new Date(`${value.slice(0, 10)}T00:00:00Z`))
-}
-
-function formatReturn(value: number): string {
-  return formatCompactPercent(value * 100)
-}
-
-function returnTone(value: number): 'up' | 'down' | undefined {
-  return value > 0 ? 'up' : value < 0 ? 'down' : undefined
-}
-
-/**
- * The price chart's "Show in {currency}" toggle and, when on, how the visible
- * range's return splits: the company in its listing currency, the currency's
- * effect, and the return in the display currency, all from the backend's
- * reported and converted closes of the same days. Days without a conversion are
- * left out and counted; nothing is filled in.
- */
-function ChartCurrencyView({
-  ticker,
-  listingCurrency,
-  displayCurrency,
-  pressed,
-  state,
-  onToggle,
-  decomposition,
-}: {
-  ticker: string
-  listingCurrency: string
-  displayCurrency: string
-  pressed: boolean
-  state: 'idle' | 'loading' | 'loaded' | 'error'
-  onToggle: () => void
-  decomposition: { result: CurrencyDecomposition | null; excludedDays: number } | null
-}) {
-  const result = decomposition?.result ?? null
-  const excluded = decomposition?.excludedDays ?? 0
-  const excludedText = excluded > 0
-    ? `${excluded} ${excluded === 1 ? 'day' : 'days'} without a ${displayCurrency} rate ${excluded === 1 ? 'is' : 'are'} left out.`
-    : `Every day in this range has a ${displayCurrency} rate.`
-  return (
-    <div className={styles.currencyView} data-chart-currency={displayCurrency}>
-      <div className={styles.currencyViewBar}>
-        <button
-          type="button"
-          className={styles.currencyToggle}
-          aria-pressed={pressed}
-          aria-busy={state === 'loading' || undefined}
-          data-chart-currency-toggle=""
-          onClick={onToggle}
-        >
-          Show in {displayCurrency}
-        </button>
-        <p className={styles.currencyViewNote}>
-          {pressed && state !== 'error'
-            ? `Converted at each day’s exchange rate. Not a listing traded in ${displayCurrency}.`
-            : `The chart is in ${listingCurrency}, the listing’s currency.`}
-        </p>
-      </div>
-      <p className="sr-only" role="status">
-        {state === 'loading' && pressed ? `Loading the price in ${displayCurrency}.` : ''}
-        {state === 'loaded' && pressed ? `Chart shown in ${displayCurrency}.` : ''}
-      </p>
-      {state === 'error' ? (
-        <p className={styles.chartStatus} role="status" data-chart-currency-error="">
-          The price in {displayCurrency} could not be loaded. The chart stays in {listingCurrency}.
-        </p>
-      ) : null}
-      {decomposition ? (
-        <section className={styles.decomposition} aria-label={`${ticker} return in ${displayCurrency} over this range`} data-currency-decomposition="">
-          {result ? (
-            <>
-              <dl className={styles.decompositionFigures}>
-                <div>
-                  <dt>{ticker} in {listingCurrency}</dt>
-                  <dd data-tone={returnTone(result.localReturn)} data-decomposition="local">{formatReturn(result.localReturn)}</dd>
-                </div>
-                <div>
-                  <dt>Currency effect, {listingCurrency} to {displayCurrency}</dt>
-                  <dd data-tone={returnTone(result.currencyEffect)} data-decomposition="currency">{formatReturn(result.currencyEffect)}</dd>
-                </div>
-                <div>
-                  <dt>Return in {displayCurrency}</dt>
-                  <dd data-tone={returnTone(result.convertedReturn)} data-decomposition="converted">{formatReturn(result.convertedReturn)}</dd>
-                </div>
-              </dl>
-              <p className={styles.decompositionNote} data-decomposition-range="">
-                {formatRangeDay(result.from)} to {formatRangeDay(result.to)}. {excludedText}
-              </p>
-            </>
-          ) : (
-            <p className={styles.decompositionNote} data-decomposition-range="">
-              Fewer than two days in this range have a {displayCurrency} rate, so the return is not split. {excludedText}
-            </p>
-          )}
-        </section>
-      ) : null}
-    </div>
-  )
-}
-
 export default function StockOverviewClient({
   ticker,
   currency,
@@ -617,38 +513,30 @@ export default function StockOverviewClient({
     () => filterChartData(chartHistory, heroTimeframe),
     [chartHistory, heroTimeframe],
   )
-  // The chart in the display currency: only when the reader asks for it.
-  const [convertedRequested, setConvertedRequested] = useState(false)
+  // The chart in the display currency: chosen once, in the header, for the whole page.
   const [convertedSeries, setConvertedSeries] = useState<ConvertedClose[] | null>(null)
-  const [convertedState, setConvertedState] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle')
-  const showConverted = Boolean(displayCurrency) && convertedRequested && convertedSeries !== null
+  const [convertedState, setConvertedState] = useState<'loading' | 'loaded' | 'error'>('loading')
+  useEffect(() => {
+    if (!displayCurrency) return
+    let active = true
+    void browserRead(`/api/stocks/${encodeURIComponent(ticker)}/history?${DISPLAY_CURRENCY_PARAM}=${encodeURIComponent(displayCurrency)}&price_basis=${ADJUSTED_CHART_VERSION}`, { cache: 'no-store' })
+      .then(async (response) => {
+        const points = parseConvertedCloses(await response.json().catch(() => null))
+        if (!response.ok || points.length < 2) throw new Error('Converted history unavailable.')
+        if (!active) return
+        setConvertedSeries(points)
+        setConvertedState('loaded')
+      })
+      .catch(() => { if (active) setConvertedState('error') })
+    return () => { active = false }
+  }, [ticker, displayCurrency])
+  const showConverted = Boolean(displayCurrency) && convertedSeries !== null
   // Every day of the visible range, with or without a conversion; days without one are left out of the line.
   const convertedRange = useMemo(
     () => (showConverted && convertedSeries ? filterChartData(convertedSeries, heroTimeframe) : []),
     [showConverted, convertedSeries, heroTimeframe],
   )
   const decomposition = useMemo(() => currencyDecomposition(convertedRange), [convertedRange])
-  const toggleConverted = () => {
-    if (!displayCurrency) return
-    if (convertedRequested) {
-      setConvertedRequested(false)
-      return
-    }
-    setConvertedRequested(true)
-    if (convertedSeries || convertedState === 'loading') return
-    setConvertedState('loading')
-    void browserRead(`/api/stocks/${encodeURIComponent(ticker)}/history?${DISPLAY_CURRENCY_PARAM}=${encodeURIComponent(displayCurrency)}&price_basis=${ADJUSTED_CHART_VERSION}`, { cache: 'no-store' })
-      .then(async (response) => {
-        const points = parseConvertedCloses(await response.json().catch(() => null))
-        if (!response.ok || points.length < 2) throw new Error('Converted history unavailable.')
-        setConvertedSeries(points)
-        setConvertedState('loaded')
-      })
-      .catch(() => {
-        setConvertedState('error')
-        setConvertedRequested(false)
-      })
-  }
 
   const showCandles = chartKind === 'candles' && canExpandChart && !showConverted
   const heroPoints = useMemo<TemporalLinePoint[]>(
@@ -965,16 +853,10 @@ export default function StockOverviewClient({
                 />
               </div>
             </div>
-            {displayCurrency ? (
-              <ChartCurrencyView
-                ticker={ticker}
-                listingCurrency={isoCurrency(currency) ?? currency}
-                displayCurrency={displayCurrency}
-                pressed={convertedRequested}
-                state={convertedState}
-                onToggle={toggleConverted}
-                decomposition={showConverted ? decomposition : null}
-              />
+            {displayCurrency && convertedState === 'error' ? (
+              <p className={styles.chartStatus} role="status" data-chart-currency-error="">
+                The price in {displayCurrency} could not be loaded. The chart stays in {isoCurrency(currency) ?? currency}.
+              </p>
             ) : null}
           </div>
 
@@ -1038,6 +920,18 @@ export default function StockOverviewClient({
       </section>
 
       <div className={styles.editorialSequence}>
+        {displayCurrency ? (
+          <CurrencyStory
+            ticker={ticker}
+            listing={isoCurrency(currency) ?? currency}
+            display={displayCurrency}
+            range={heroTimeframe}
+            points={convertedRange}
+            split={decomposition.result}
+            excludedDays={decomposition.excludedDays}
+            state={convertedState}
+          />
+        ) : null}
         {sinceSection}
         {timingSection}
         {questionsSection}

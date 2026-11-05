@@ -135,6 +135,15 @@ export function convertedValueOf(holder: unknown, field: string, target: string)
   return conversion && conversion.currency === target ? conversion : null
 }
 
+/**
+ * The backend's conversion of an amount that is not a price (a market value, a
+ * statement line, a dividend): no price basis is involved, so none is required.
+ */
+export function convertedAmountOf(holder: unknown, field: string, target: string): MoneyConversion | null {
+  const conversion = moneyEntryOf(holder, field)?.converted
+  return conversion && conversion.currency === target ? conversion : null
+}
+
 export function parseCurrenciesPayload(raw: unknown): CurrenciesPayload | null {
   const record = asRecord(raw)
   if (!record || !Array.isArray(record.currencies)) return null
@@ -321,5 +330,40 @@ export function currencyDecomposition(points: readonly ConvertedClose[]): { resu
       excludedDays,
     },
     excludedDays,
+  }
+}
+
+export type IndexedPoint = { date: string; value: number }
+
+/**
+ * The same days in both currencies, each line starting at 100 on the first day
+ * with a conversion: the gap between them is the currency's part of the return.
+ * Uses only the backend's reported and converted closes; days without a
+ * conversion are left out of both lines, so they always compare the same days.
+ */
+export function indexedInBothCurrencies(points: readonly ConvertedClose[]): { listing: IndexedPoint[]; display: IndexedPoint[] } {
+  const used = points.filter((point) => point.converted !== null && point.converted > 0 && point.close > 0)
+  if (used.length < 2) return { listing: [], display: [] }
+  const baseClose = used[0].close
+  const baseConverted = used[0].converted as number
+  return {
+    listing: used.map((point) => ({ date: point.date, value: (point.close / baseClose) * 100 })),
+    display: used.map((point) => ({ date: point.date, value: ((point.converted as number) / baseConverted) * 100 })),
+  }
+}
+
+/**
+ * A currency's English name for prose ("South Korean won", "US dollar", "euro"),
+ * or its code when the runtime has none. The unit is lower-cased; the place stays.
+ */
+export function currencyName(code: string): string {
+  try {
+    const name = new Intl.DisplayNames(['en'], { type: 'currency' }).of(code)
+    if (!name || name === code) return code
+    const words = name.split(' ')
+    words[words.length - 1] = words[words.length - 1].toLowerCase()
+    return words.join(' ')
+  } catch {
+    return code
   }
 }
