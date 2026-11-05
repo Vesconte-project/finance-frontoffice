@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { currencyForTicker, formatCompactMoney } from '@/lib/currency'
+import { isoCurrency, localizeSummary } from '@/lib/display-currency'
 import {
   getTickerFundamentals,
   type TickerFinancialRow,
@@ -33,7 +34,15 @@ export type StockResearchData = {
   ticker: string
   name: string
   kind: ResearchAssetKind
+  /** The currency the page's amounts are in: the display currency when the summary converts, else the listing's. */
   currency: string
+  /**
+   * The listing's own currency. Earnings estimates and actuals carry no currency
+   * in the read model, so the backend never converts them: they are always in this.
+   */
+  listingCurrency: string
+  /** The display currency the page was asked for and shows, or null. */
+  displayCurrency: string | null
   summary: TickerPageSummary
   fundamentals: TickerFundamentals
   description: string | null
@@ -195,10 +204,22 @@ function splitProfileRows(rows: TickerFinancialRow[]): {
   return { profileFacts, identifiers }
 }
 
-export async function getStockResearchData(tickerRaw: string): Promise<StockResearchData> {
+/**
+ * The summary in the display currency when every amount it holds converts
+ * (`localizeSummary`); otherwise as reported. Earnings stay in the listing currency.
+ */
+async function summaryIn(ticker: string, displayCurrency: string | null | undefined) {
+  if (!displayCurrency) return { summary: await getTickerPageSummary(ticker), converted: false }
+  const raw = await getTickerPageSummary(ticker, displayCurrency)
+  const listing = raw.fundamentalsSummary?.currency || currencyForTicker(ticker)
+  if (isoCurrency(listing) === displayCurrency) return { summary: raw, converted: false }
+  return localizeSummary(raw, displayCurrency)
+}
+
+export async function getStockResearchData(tickerRaw: string, displayCurrency: string | null = null): Promise<StockResearchData> {
   const ticker = tickerRaw.trim().toUpperCase()
-  const [summary, fundamentals] = await Promise.all([
-    getTickerPageSummary(ticker),
+  const [{ summary, converted }, fundamentals] = await Promise.all([
+    summaryIn(ticker, displayCurrency),
     getTickerFundamentals(ticker),
   ])
   const name = summary.quote?.name?.trim() || ticker
@@ -208,7 +229,8 @@ export async function getStockResearchData(tickerRaw: string): Promise<StockRese
     name,
     latestFundamentals: summary.latestFundamentals,
   }).kind
-  const currency = summary.fundamentalsSummary?.currency || currencyForTicker(ticker)
+  const listingCurrency = converted ? currencyOfListing(summary, ticker) : summary.fundamentalsSummary?.currency || currencyForTicker(ticker)
+  const currency = converted && displayCurrency ? displayCurrency : listingCurrency
   const { profileFacts, identifiers } = splitProfileRows(fundamentals.profile)
   const hasProfileEvidence = Boolean(
     fundamentals.about ||
@@ -222,6 +244,8 @@ export async function getStockResearchData(tickerRaw: string): Promise<StockRese
     name,
     kind,
     currency,
+    listingCurrency,
+    displayCurrency: converted ? displayCurrency : null,
     summary,
     fundamentals,
     description: fundamentals.about,
@@ -236,12 +260,26 @@ export async function getStockResearchData(tickerRaw: string): Promise<StockRese
 }
 
 
-export type StockResearchIdentity = Pick<StockResearchData, 'ticker' | 'name' | 'kind' | 'currency' | 'summary'>
+export type StockResearchIdentity = Pick<StockResearchData, 'ticker' | 'name' | 'kind' | 'currency' | 'listingCurrency' | 'displayCurrency' | 'summary'>
 
-export async function getStockResearchIdentity(tickerRaw: string): Promise<StockResearchIdentity> {
+/** The listing's currency, read where conversion does not touch it: the asset block, else the symbol. */
+function currencyOfListing(summary: TickerPageSummary, ticker: string): string {
+  return summary.asset?.currency || currencyForTicker(ticker)
+}
+
+export async function getStockResearchIdentity(tickerRaw: string, displayCurrency: string | null = null): Promise<StockResearchIdentity> {
   const ticker = tickerRaw.trim().toUpperCase()
-  const summary = await getTickerPageSummary(ticker)
+  const { summary, converted } = await summaryIn(ticker, displayCurrency)
   const name = summary.quote?.name?.trim() || ticker
   const kind = resolveStockAsset({ assetType: summary.asset?.assetType, ticker, name, latestFundamentals: summary.latestFundamentals }).kind
-  return { ticker, summary, name, kind, currency: summary.fundamentalsSummary?.currency || currencyForTicker(ticker) }
+  const listingCurrency = converted ? currencyOfListing(summary, ticker) : summary.fundamentalsSummary?.currency || currencyForTicker(ticker)
+  return {
+    ticker,
+    summary,
+    name,
+    kind,
+    currency: converted && displayCurrency ? displayCurrency : listingCurrency,
+    listingCurrency,
+    displayCurrency: converted ? displayCurrency : null,
+  }
 }

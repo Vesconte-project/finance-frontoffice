@@ -14,7 +14,7 @@ import { BackendDataError } from '@/lib/backend'
 import { getTickerFinancialStatements } from '@/lib/canonical-research'
 import { annualSeries, summaryAmount, summaryCurrency, summaryDate, summaryPercent, type ReportedPoint } from '@/lib/statement-reading'
 import { currencyForTicker, formatCompactMoney } from '@/lib/currency'
-import { convertedAmountOf, isoCurrency } from '@/lib/display-currency'
+import { convertedAmountOf, isoCurrency, localizeSummary } from '@/lib/display-currency'
 import { resolveDisplayCurrency } from '@/lib/display-currency-server'
 import {
   getOhlcData,
@@ -263,7 +263,7 @@ export default async function TickerPage({
   // Not awaited; the card waits for it on its own.
   const revenuePromise = runWithBackendRequestLogContext(requestLogContext, () =>
     loadOptionalStockDataset<ReportedPoint[] | null>(requestLogContext, `/tickers/${ticker}/financial-statements`, null, async () => {
-      const income = await getTickerFinancialStatements(ticker, { statementType: 'income_statement', periodType: 'annual', limit: 500 })
+      const income = await getTickerFinancialStatements(ticker, { statementType: 'income_statement', periodType: 'annual', limit: 500, displayCurrency })
       return income.available ? annualSeries(income.rows, 'revenue') : null
     })
   )
@@ -366,6 +366,9 @@ export default async function TickerPage({
       ? convertedSummary?.fundamentalsSummary
       : null
   const marketCapConverted = displayCurrency && marketCapSource ? convertedAmountOf(marketCapSource, 'marketCap', displayCurrency) : null
+  // Amounts among the latest fundamentals (net cash) in the display currency when all of them convert.
+  const localizedSummary = displayCurrency && convertedSummary ? localizeSummary(convertedSummary, displayCurrency) : null
+  const amountRows = localizedSummary?.converted ? localizedSummary.summary.latestFundamentals : latestFundamentals
   const marketCapValue = marketCapConverted
     ? formatCompactMoney(marketCapConverted.value, displayCurrency)
     : marketCapNumeric !== null
@@ -415,7 +418,7 @@ export default async function TickerPage({
         scorecard={scorecard}
         revenue={revenuePromise}
         operatingMargin={overviewFigure(summaryPercent(latestFundamentals, /operating\s+margin/i), summaryDate(latestFundamentals, /operating\s+margin/i))}
-        netCash={overviewFigure(summaryAmount(latestFundamentals, /^net\s+cash\b/i), summaryDate(latestFundamentals, /^net\s+cash\b/i), summaryCurrency(latestFundamentals, /^net\s+cash\b/i))}
+        netCash={overviewFigure(summaryAmount(amountRows, /^net\s+cash\b/i), summaryDate(amountRows, /^net\s+cash\b/i), summaryCurrency(amountRows, /^net\s+cash\b/i))}
       />
     </div>
   )

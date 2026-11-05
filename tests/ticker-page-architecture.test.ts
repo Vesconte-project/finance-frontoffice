@@ -343,7 +343,8 @@ test('Fundamentals and Financials follow the accepted ticker Spec (PRD-78, phase
   assert.match(flow, /narrowBarLabel/)
   assert.match(financialsPage, /incomeSeries/)
   // The statement tables and the history by plan were removed (founder, 2026-10-04).
-  assert.doesNotMatch(financialsPage, /cutStatementHistory|tierFor|searchParams/)
+  // The page reads only `?currency=` (founder, 2026-11-05); the old `?period=` / `?statement=` stay ignored.
+  assert.doesNotMatch(financialsPage, /cutStatementHistory|tierFor|\.period\b|\.statement\b/)
 
   // Nothing is derived from two reported values: no subtraction between line
   // items, no ratio and no growth in the reading layer.

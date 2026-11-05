@@ -229,7 +229,8 @@ export default function StockFundamentalsResearch({
           <FundChapters data={data} />
         ) : (
           <>
-            <RevenueChapter points={revenue} currency={data.currency} growth={revenueGrowth} />
+            {/* A series is labelled in its own rows' currency: converted only when every amount converted. */}
+            <RevenueChapter points={revenue} currency={revenue[0]?.currency ?? data.currency} growth={revenueGrowth} />
             <OperatingMarginChapter data={data} sinceYear={revenue.length ? revenue.slice(-10)[0].year : null} history={operatingMargins} />
             <CashAndDebtChapter data={data} history={capital?.cashDebt ?? []} />
             <DividendsChapter ticker={data.ticker} dividends={dividends} currency={data.currency} annualPayments={capital?.dividends ?? []} />

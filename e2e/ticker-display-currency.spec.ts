@@ -78,7 +78,7 @@ test('the control lists the listings we track, each other one linking to its pag
   await expect(control(page)).toBeFocused()
 })
 
-test('choosing USD in the header converts the Overview; there is no second toggle', async ({ page }) => {
+test('choosing USD in the header converts the ticker page; there is no second toggle', async ({ page }) => {
   await page.goto('/stocks/QAK')
   await control(page).click()
   await dialog(page).locator('[data-currency-option="USD"]').click()
@@ -93,17 +93,22 @@ test('choosing USD in the header converts the Overview; there is no second toggl
   // The header choice is the only control: the chart follows it, no toggle under the chart.
   await expect(page.locator('[data-chart-currency-toggle]')).toHaveCount(0)
   await expect(page.locator('[data-currency-story="USD"]')).toBeVisible({ timeout: 15_000 })
-  // Statements follow in the next change; for now the Overview's fundamentals cards stay in won.
-  await expect(page.locator('[data-fundamental-card="net-cash"]')).toContainText('₩')
-  await expect(page.locator('[data-fundamental-card="revenue"]')).toContainText('₩')
-  await expect(page.locator('[data-fundamental-card="revenue"]')).not.toContainText('$')
+  // A card is in one currency, never both: converted when every amount it draws converts.
+  for (const card of ['net-cash', 'revenue']) {
+    const text = await page.locator(`[data-fundamental-card="${card}"]`).textContent()
+    expect(/₩/.test(text ?? '') && /\$/.test(text ?? '')).toBe(false)
+  }
 
-  // The tabs keep the currency, and those pages stay in won.
+  // The tabs keep the currency and read their amounts in it.
   await expect(page.getByRole('link', { name: 'Fundamentals', exact: true })).toHaveAttribute('href', '/stocks/QAK/fundamentals?currency=USD')
   await page.goto('/stocks/QAK/fundamentals?currency=USD')
   await expect(page.locator('[data-ticker-price-converted="USD"]')).toContainText('≈ $', { timeout: 15_000 })
+  // The fixture has no won rate before 2019, so ten years of dividends cannot all convert:
+  // they stay in won, whole, and the tab says so.
   await expect(page.locator('#dividends')).toContainText('₩361')
   await expect(page.locator('#dividends')).not.toContainText(/\$\d+\.\d{2}/)
+  await expect(page.locator('[data-currency-notice="USD"]')).toContainText('dividends')
+  await expect(page.locator('[data-currency-notice="USD"]')).toContainText('stay in KRW')
 })
 
 test('the chart in USD uses each day’s backend value, and “What the currency did” splits the range return', async ({ page }) => {

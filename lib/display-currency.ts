@@ -367,3 +367,91 @@ export function currencyName(code: string): string {
     return code
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* A whole read in the display currency                               */
+/* ------------------------------------------------------------------ */
+
+type Holder = Record<string, unknown>
+
+/**
+ * One object's amounts in `target`: every field the backend annotated is
+ * replaced by its `converted.value`. An amount whose currency the backend does
+ * not know (`currency_unknown`, e.g. earnings estimates and actuals) is left as
+ * reported. Any other amount without a conversion into `target` makes the
+ * object unconvertible (`ok: false`), so a caller never mixes currencies.
+ * `converted` says whether any field was replaced.
+ */
+export function localizeHolder<T>(holder: T, target: string): { holder: T; ok: boolean; converted: boolean } {
+  const record = asRecord(holder)
+  const money = asRecord(record?.money)
+  if (!record || !money) return { holder, ok: true, converted: false }
+  const next: Holder = { ...record }
+  let converted = false
+  for (const [field, raw] of Object.entries(money)) {
+    const entry = parseMoneyEntry(raw)
+    if (!entry || entry.value === null || record[field] === null || record[field] === undefined) continue
+    if (entry.converted && entry.converted.currency === target) {
+      next[field] = entry.converted.value
+      converted = true
+      continue
+    }
+    if (entry.unconvertedReason === 'currency_unknown') continue
+    return { holder, ok: false, converted: false }
+  }
+  return { holder: next as T, ok: true, converted }
+}
+
+/**
+ * Every row of a read in `target`, or none: rows whose amounts were converted
+ * take `target` as their currency; rows without amounts (ratios, counts) stay as
+ * they are. If any row cannot be converted, the read is returned as reported
+ * and `converted` is false, so a chart or a total never mixes currencies.
+ */
+export function localizeRows<T>(rows: readonly T[], target: string, currencyField = 'currency'): { rows: T[]; converted: boolean } {
+  const next: T[] = []
+  let converted = false
+  for (const row of rows) {
+    const result = localizeHolder(row, target)
+    if (!result.ok) return { rows: [...rows], converted: false }
+    if (result.converted) {
+      converted = true
+      next.push({ ...(result.holder as Holder), [currencyField]: target } as T)
+    } else {
+      next.push(row)
+    }
+  }
+  return { rows: next, converted }
+}
+
+/**
+ * The ticker summary in `target`: the quote, market stats, fundamentals, profile
+ * and the latest fundamentals rows, all or none. Earnings estimates and actuals
+ * carry no currency and stay as reported (see `localizeHolder`).
+ */
+export function localizeSummary<S>(summary: S, target: string): { summary: S; converted: boolean } {
+  const record = asRecord(summary)
+  if (!record) return { summary, converted: false }
+  const next: Holder = { ...record }
+  let converted = false
+  for (const key of ['quote', 'marketStats', 'fundamentalsSummary', 'profile', 'nextEarnings']) {
+    if (!asRecord(record[key])) continue
+    const result = localizeHolder(record[key], target)
+    if (!result.ok) return { summary, converted: false }
+    if (result.converted) {
+      converted = true
+      next[key] = key === 'fundamentalsSummary' ? { ...(result.holder as Holder), currency: target } : result.holder
+    }
+  }
+  for (const key of ['latestFundamentals', 'earningsHistory']) {
+    if (!Array.isArray(record[key])) continue
+    const rows = record[key] as unknown[]
+    if (rows.some((row) => !localizeHolder(row, target).ok)) return { summary, converted: false }
+    const result = localizeRows(rows, target)
+    if (result.converted) {
+      converted = true
+      next[key] = result.rows
+    }
+  }
+  return { summary: (converted ? next : summary) as S, converted }
+}

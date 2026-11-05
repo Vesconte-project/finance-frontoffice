@@ -597,3 +597,17 @@ export const getConvertedCloses = cache(async (
   )
   return { points: refused ? [] : convertedClosesFromHistory(payload, currency), refused }
 })
+
+/**
+ * Daily closes for a research tab: in the display currency when one is chosen
+ * (the backend's value of each day; days without a rate are left out), else as
+ * reported. A currency the backend stopped listing falls back to reported closes.
+ */
+export async function getClosesIn(ticker: string, periodDays: number, currency: string | null): Promise<{ points: PricePoint[]; currency: string | null }> {
+  if (!currency) return { points: await getHistoricalData(ticker, periodDays), currency: null }
+  const { points, refused } = await getConvertedCloses(ticker, currency)
+  const converted = points.flatMap((point) => (point.converted === null ? [] : [{ date: point.date, close: point.converted, price_basis: point.price_basis }]))
+  if (refused || converted.length < 2) return { points: await getHistoricalData(ticker, periodDays), currency: null }
+  const since = new Date(Date.now() - periodDays * 86_400_000).toISOString().slice(0, 10)
+  return { points: converted.filter((point) => point.date >= since), currency }
+}

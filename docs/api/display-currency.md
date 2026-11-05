@@ -45,8 +45,21 @@ that the header choice is meant to change the ticker's data on every tab.
     - the split in words and figures: the company in its own currency, the currency
       against the display currency ((1 + r_ccy) / (1 + r_local) − 1), and the two together;
     - days without a conversion are left out of both lines and counted.
-- **Other tabs** (Fundamentals, Financials, Valuation, Ownership & Capital, Events) follow
-  in a second change; the expanded chart's currency comparison in a third.
+- **Every tab** (Fundamentals, Financials, Valuation, Ownership & Capital, Events, Business):
+  - the page reads `?currency=` and asks each read in it: the summary
+    (`getStockResearchData` / `getStockResearchIdentity`), statements, dividends, buybacks,
+    and the daily closes (`getClosesIn`, only when the page's summary converted);
+  - **a read is shown in the currency whole or not at all** (`localizeRows`,
+    `localizeSummary`): if any of its amounts has no conversion (for example a won amount
+    before the first published rate), the read stays as reported, so a chart or a total
+    never mixes currencies. Rows that converted carry the display currency, so every label
+    follows its own data;
+  - when part of a tab stays in the listing currency, one line at the top says which
+    (`CurrencyNotice`);
+  - earnings estimates and actuals carry no currency and are never converted; the Events
+    tab formats them in the listing currency (`data.listingCurrency`);
+  - multiples, margins, growth, scores, signals and technical indicators do not change.
+- The expanded chart's currency comparison is a third change.
 
 ## How the site uses it
 
@@ -59,6 +72,9 @@ that the header choice is meant to change the ticker's data on every tab.
 | Server reads | `lib/display-currency-server.ts` (`resolveDisplayCurrency`, `fetchInDisplayCurrency`), used by `lib/ticker-data.ts` and `lib/finance.ts` (`getConvertedCloses`) |
 | Parsing and the decomposition | `lib/display-currency.ts` (pure, unit-tested in `tests/display-currency.test.ts`) |
 | Control and dialog | `components/stocks/DisplayCurrencySelect.tsx`, in the ticker chrome beside the watchlist button |
+| A read in the currency, whole or not at all | `localizeHolder`, `localizeRows`, `localizeSummary` in `lib/display-currency.ts`; `readInCurrency` in `lib/canonical-research.ts` |
+| Closes for a tab | `getClosesIn` in `lib/finance.ts` |
+| What stayed in the listing currency | `components/stocks/CurrencyNotice.tsx` |
 | Overview chart in the currency | `StockOverviewClient.tsx` (loads `history?currency=` when a currency is chosen) |
 | What the currency did | `components/stocks/CurrencyStory.tsx`, `indexedInBothCurrencies` and `currencyDecomposition` in `lib/display-currency.ts` |
 

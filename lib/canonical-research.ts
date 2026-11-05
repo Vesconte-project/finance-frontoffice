@@ -1,12 +1,36 @@
 import 'server-only'
 
 import { fetchBackendJson } from './backend'
+import { localizeRows } from './display-currency'
+import { fetchInDisplayCurrency } from './display-currency-server'
 
 export type CanonicalAvailability = {
   available: boolean
   reason: string | null
   symbol: string
   count: number
+  /**
+   * Set when the read was asked for in a display currency: `converted` when its
+   * amounts are now in `code` (every one of them), false when they stay as reported.
+   */
+  displayCurrency?: { code: string; converted: boolean } | null
+}
+
+/**
+ * A ticker read in the display currency: asked with `?currency=` and, when every
+ * amount has the backend's conversion, returned in it (rows carry the currency).
+ * Otherwise, or after a 422, the read as reported. Without a currency, the plain read.
+ */
+async function readInCurrency<P extends CanonicalAvailability & { rows: unknown[] }>(
+  path: string,
+  context: string,
+  currency: string | null | undefined,
+): Promise<P> {
+  if (!currency) return fetchBackendJson<P>(path, { context })
+  const { payload, refused } = await fetchInDisplayCurrency(path, currency, (url) => fetchBackendJson<P>(url, { context }))
+  if (refused || !payload?.available || !Array.isArray(payload.rows)) return { ...payload, displayCurrency: { code: currency, converted: false } }
+  const { rows, converted } = localizeRows(payload.rows, currency)
+  return { ...payload, rows, displayCurrency: { code: currency, converted } } as P
 }
 
 export type FinancialStatementType = 'income_statement' | 'balance_sheet' | 'cash_flow'
@@ -154,16 +178,19 @@ export async function getTickerFinancialStatements(
     statementType?: FinancialStatementType
     periodType?: FinancialStatementPeriod
     limit?: number
+    /** Amounts in this currency when the backend converts every one (`readInCurrency`). */
+    displayCurrency?: string | null
   } = {},
 ): Promise<FinancialStatementsPayload> {
   const ticker = normalizedTicker(tickerRaw)
-  return fetchBackendJson<FinancialStatementsPayload>(
+  return readInCurrency<FinancialStatementsPayload>(
     `/v1/tickers/${encodeURIComponent(ticker)}/financial-statements${queryString({
       statementType: options.statementType,
       periodType: options.periodType,
       limit: options.limit ?? 500,
     })}`,
-    { context: `ticker.financial-statements.${ticker}` },
+    `ticker.financial-statements.${ticker}`,
+    options.displayCurrency,
   )
 }
 
@@ -184,30 +211,32 @@ export async function getTickerMarketMetrics(
 
 export async function getTickerCorporateActions(
   tickerRaw: string,
-  options: { actionType?: 'dividend' | 'split'; limit?: number } = {},
+  options: { actionType?: 'dividend' | 'split'; limit?: number; displayCurrency?: string | null } = {},
 ): Promise<CorporateActionsPayload> {
   const ticker = normalizedTicker(tickerRaw)
-  return fetchBackendJson<CorporateActionsPayload>(
+  return readInCurrency<CorporateActionsPayload>(
     `/v1/tickers/${encodeURIComponent(ticker)}/corporate-actions${queryString({
       actionType: options.actionType,
       latestOnly: true,
       limit: options.limit ?? 200,
     })}`,
-    { context: `ticker.corporate-actions.${ticker}` },
+    `ticker.corporate-actions.${ticker}`,
+    options.displayCurrency,
   )
 }
 
 export async function getTickerEquityCapitalEvents(
   tickerRaw: string,
-  options: { limit?: number } = {},
+  options: { limit?: number; displayCurrency?: string | null } = {},
 ): Promise<EquityCapitalEventsPayload> {
   const ticker = normalizedTicker(tickerRaw)
-  return fetchBackendJson<EquityCapitalEventsPayload>(
+  return readInCurrency<EquityCapitalEventsPayload>(
     `/v1/tickers/${encodeURIComponent(ticker)}/equity-capital-events${queryString({
       latestOnly: true,
       limit: options.limit ?? 500,
     })}`,
-    { context: `ticker.equity-capital-events.${ticker}` },
+    `ticker.equity-capital-events.${ticker}`,
+    options.displayCurrency,
   )
 }
 
