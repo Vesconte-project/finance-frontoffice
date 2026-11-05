@@ -495,7 +495,12 @@ test('Signals, Events, Relationships, AI Research and Methodology are research c
   assert.doesNotMatch(retiredSignals, /getSignalResearchData|fetch\(/)
 
   const events = readRepoFile('components/stocks/StockEventsResearch.tsx')
-  inOrder(events, ['id="next-event"', 'id="calendar"', 'id="reported-against-estimate"', 'id="documents"'], 'Events')
+  inOrder(events, ['id="next-event"', 'id="timeline"', 'id="reported-against-estimate"', 'id="documents"'], 'Events')
+  // Events sit on the price, results against estimate are drawn, filings have plain names.
+  assert.match(events, /<EventTimeline/)
+  assert.match(events, /<EarningsAgainstEstimate/)
+  assert.match(events, /describeFiling/)
+  assert.doesNotMatch(events, /<EventCalendar\b|components\/calendar\/EventCalendar/)
   assert.doesNotMatch(events, /title="Scheduled"|title="Past"|reported twice/)
   const calendarStyles = readRepoFile('components/calendar/EventCalendar.module.css')
   assert.doesNotMatch(calendarStyles, /@media \(max-width/)

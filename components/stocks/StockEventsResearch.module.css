@@ -1,104 +1,181 @@
-/* Events: the next results, the calendar, results against estimates and the
-   filed documents, each a research chapter (Spec PRD-78, global rules). */
+/* Events: the next results, the events on the price, results against estimates and
+   the filed documents, each a research chapter (Spec PRD-78, global rules). */
 
 .page {
   display: grid;
   min-width: 0;
 }
 
-.tableWrap {
+.action {
+  color: var(--accent);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* ---- Next results: how long until, when, what is expected, and the recent record ---- */
+
+.next {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1.25rem 1.75rem;
   min-width: 0;
-  overflow-x: auto;
 }
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
+@container research-chapter (width >= 56rem) {
+  .next {
+    grid-template-columns: auto minmax(0, 1fr) minmax(14rem, 17rem);
+  }
+}
+
+.countdown {
+  display: grid;
+  place-items: center;
+  width: 6.5rem;
+  height: 6.5rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+  align-content: center;
+  gap: 0.1rem;
+}
+
+.countdown strong {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 2rem;
   font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
-.table th,
-.table td {
-  padding: 9px 0 9px 22px;
-  border-bottom: 1px solid var(--research-line, var(--color-border));
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.table th:first-child,
-.table td:first-child {
-  padding-left: 0;
-  color: var(--color-text-primary);
-  font-weight: 500;
-  text-align: left;
-}
-
-.table thead th {
-  color: var(--color-text-muted);
-  font-size: 9px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
+.countdown span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
-.table td {
-  font-weight: 500;
-}
-
-/* Direction carries a sign as well as the positive and negative colours. */
-.table td[data-direction='up'] {
-  color: var(--up-ink, var(--up));
-}
-
-.table td[data-direction='down'] {
-  color: var(--down);
-}
-
-.notReported {
-  font-weight: 400;
-  color: var(--text-muted);
-}
-
-.calendar {
+.when {
   display: grid;
-  gap: 0;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.date {
   margin: 0;
-  padding: 0;
-  list-style: none;
+  color: var(--text);
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 600;
+  line-height: 1.1;
 }
 
-.calendar li {
+.weekday {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.moved {
+  color: var(--text-small);
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.5rem 0 0;
+}
+
+.facts div {
   display: grid;
-  grid-template-columns: 110px minmax(0, 1fr) auto;
-  gap: 20px;
-  align-items: baseline;
-  padding: 11px 0;
-  border-bottom: 1px solid var(--research-line, var(--color-border));
+  gap: 0.15rem;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  background: var(--surface);
 }
 
-.calendar time {
-  color: var(--color-text-muted);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+.facts dt {
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
-.calendar strong {
-  font-size: 12px;
-  font-weight: 500;
+.facts dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 
-.calendar a {
-  color: var(--color-accent);
-  font-size: 11px;
-  font-weight: 500;
-  text-decoration: none;
-  white-space: nowrap;
+.recent {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 0.35rem;
+  margin: 0;
 }
 
-.calendar a:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
+@container research-chapter (width >= 56rem) {
+  .recent {
+    grid-column: auto;
+  }
+}
+
+.recent svg {
+  display: block;
+  width: 100%;
+  max-width: 20rem;
+  height: auto;
+  overflow: visible;
+}
+
+.recent figcaption {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.recentQuarter {
+  --mark: var(--text-muted);
+}
+
+.recentQuarter[data-direction='above'] {
+  --mark: var(--up-ink, var(--up));
+}
+
+.recentQuarter[data-direction='below'] {
+  --mark: var(--down);
+}
+
+.recentQuarter line {
+  stroke: var(--mark);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.55;
+}
+
+.recentQuarter circle[data-mark='estimate'] {
+  fill: var(--bg);
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+}
+
+.recentQuarter circle[data-mark='actual'] {
+  fill: var(--mark);
+  stroke: var(--bg);
+  stroke-width: 1.5;
+}
+
+@container research-chapter (width < 30rem) {
+  .countdown {
+    width: 5rem;
+    height: 5rem;
+  }
+
+  .countdown strong {
+    font-size: 1.6rem;
+  }
 }

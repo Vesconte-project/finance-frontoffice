@@ -13,7 +13,11 @@ test('description provenance and reported earnings render from published summary
     await expect(page.locator('#next-event')).toContainText(nextDate)
     await expect(page.locator('#reported-against-estimate tbody tr')).toHaveCount(2)
     await expect(page.locator('#reported-against-estimate tbody')).toContainText('2026Q3')
-    await expect(page.locator('#reported-against-estimate tbody')).toContainText('Not reported')
+    // EPS is drawn against its estimate; what the source does not carry yet is one sentence, not empty columns.
+    await expect(page.locator('#reported-against-estimate [data-earnings-measure="eps"]')).toBeVisible()
+    await expect(page.locator('#reported-against-estimate [data-earnings-measure="revenue"]')).toHaveCount(0)
+    await expect(page.locator('#reported-against-estimate')).toContainText('Revenue, its estimate and the surprise for each quarter are being added.')
+    await expect(page.locator('#reported-against-estimate thead')).not.toContainText('Revenue')
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
     expect(overflow).toBeLessThanOrEqual(1)
     await page.screenshot({ path: testInfo.outputPath(`earnings-${width}.png`), fullPage: true })

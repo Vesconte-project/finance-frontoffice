@@ -36,12 +36,14 @@ test.describe('ticker Signals & Events Phase 2 slice', () => {
     await page.goto('/stocks/AAPL/events')
     await expectResearchContext(page, 'Events')
     await expect(page.getByRole('heading', { name: 'Next earnings', exact: true })).toBeVisible()
-    // Chapters in their order: next results, calendar, results against estimates, documents.
+    // Chapters in their order: next results, events on the price, results against estimates, documents.
     const chapters = await page.locator('[data-research-chapter]').evaluateAll((nodes) => nodes.map((node) => node.id))
-    expect(chapters.slice(0, 3)).toEqual(['next-event', 'calendar', 'reported-against-estimate'])
+    expect(chapters.slice(0, 3)).toEqual(['next-event', 'timeline', 'reported-against-estimate'])
     // One entry per filed document, not one per time we observed it: the read model is bitemporal.
-    const documents = await page.locator('[data-event-documents] li strong').allTextContents()
+    const documents = await page.locator('[data-event-documents] li a').evaluateAll((links) => links.map((link) => link.getAttribute('href')))
     expect(new Set(documents).size).toBe(documents.length)
+    // A source's file name is never shown as a filing's title.
+    await expect(page.locator('[data-event-documents]')).not.toContainText('primary_doc.xml')
     // No source ids and no blank cells in the table.
     await expect(page.getByText(/^Source: /)).toHaveCount(0)
     await expectNoHorizontalOverflow(page)

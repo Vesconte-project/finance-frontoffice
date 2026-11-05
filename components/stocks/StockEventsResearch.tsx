@@ -1,12 +1,19 @@
+import Link from 'next/link'
 import ResearchViewShell, { ResearchAdPlacement } from '@/components/stocks/ResearchViewShell'
-import EventCalendar from '@/components/calendar/EventCalendar'
 import type { CanonicalEvent, DisclosurePayload, EventCalendarPayload } from '@/lib/canonical-research'
-import type { CalendarResult } from '@/lib/calendar-events'
-import type { CalendarCategory } from '@/lib/calendar-model'
+import { eventCategory, readableTitle } from '@/lib/calendar-model'
 import { normalizeEarningsHistory, selectNextResearchEvent } from '@/lib/event-research'
+import { buildEventMarkers } from '@/lib/event-markers'
+import type { TimelineClose, TimelineEvent } from '@/lib/event-timeline'
+import { daysBetween } from '@/lib/event-timeline'
+import { earningsChart } from '@/lib/earnings-chart'
+import { describeFiling } from '@/lib/filing-labels'
 import { formatCompactMoney } from '@/lib/currency'
 import BeingBuilt from '@/components/stocks/research/BeingBuilt'
-import ResearchChapter, { LeadStat } from '@/components/stocks/research/ResearchChapter'
+import ResearchChapter from '@/components/stocks/research/ResearchChapter'
+import EventTimeline from '@/components/stocks/events/EventTimeline'
+import EarningsAgainstEstimate from '@/components/stocks/events/EarningsAgainstEstimate'
+import FilingsList, { type Filing } from '@/components/stocks/events/FilingsList'
 import type { StockResearchIdentity } from '@/lib/stock-research'
 import styles from './StockEventsResearch.module.css'
 
@@ -18,12 +25,6 @@ function formatDate(value: string | null): string {
 function formatNumber(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return ''
   return value.toLocaleString('en-US', { maximumFractionDigits: 2 })
-}
-
-function formatSurprise(value: number | null): string {
-  if (value === null || !Number.isFinite(value)) return ''
-  const rounded = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }).format(Math.abs(value))
-  return `${value >= 0 ? '+' : '−'}${rounded}%`
 }
 
 type CalendarEntry = {
@@ -63,88 +64,52 @@ function collapseEvents(rows: CanonicalEvent[]): CalendarEntry[] {
   })
 }
 
-/** Filings and announcements with their document: the one thing the calendar does not carry. */
-function Documents({ entries }: { entries: CalendarEntry[] }) {
-  return (
-    <ol className={styles.calendar} data-event-documents="">
-      {entries.map((entry) => (
-        <li key={entry.key}>
-          <time dateTime={entry.row.occursAt ?? undefined}>{formatDate(entry.row.occursAt)}</time>
-          <strong>{entry.row.title}</strong>
-          <a href={entry.row.documentUrl!} target="_blank" rel="noreferrer">
-            {entry.row.documentType ? entry.row.documentType.replace(/_/g, ' ') : 'Document'} ↗
-          </a>
-        </li>
-      ))}
-    </ol>
-  )
-}
-
-/** A reported figure, or a plain "Not reported" — never a blank cell or a dash. */
-function Cell({ value }: { value: string }) {
-  return value ? <>{value}</> : <span className={styles.notReported}>Not reported</span>
-}
-
-function EarningsHistory({ data }: { data: StockResearchIdentity }) {
+/** The last quarters' EPS, reported against estimate, small: beside the next date. */
+function RecentQuarters({ data }: { data: StockResearchIdentity }) {
   const { rows } = normalizeEarningsHistory(data.summary.earningsHistory)
-  if (rows.length === 0) {
-    return <BeingBuilt size="chart">Each quarter’s reported earnings and revenue against what was expected are being added.</BeingBuilt>
-  }
-
+  const chart = earningsChart(rows, 'eps', { width: 240, height: 90 }, 8)
+  const drawn = chart.quarters.filter((quarter) => quarter.actualY !== null || quarter.estimateY !== null)
+  if (drawn.length < 2) return null
   return (
-    <div className={styles.tableWrap}>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th scope="col">Period</th>
-            <th scope="col">Reported</th>
-            <th scope="col">EPS</th>
-            <th scope="col">Estimate</th>
-            <th scope="col">Surprise</th>
-            <th scope="col">Revenue</th>
-            <th scope="col">Estimate</th>
-            <th scope="col">Surprise</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={`${row.earningsDate}-${row.fiscalPeriod ?? 'period'}`}>
-              <th scope="row">{row.fiscalPeriod ?? formatDate(row.earningsDate)}</th>
-              <td><Cell value={formatDate(row.earningsDate)} /></td>
-              <td><Cell value={formatNumber(row.epsActual)} /></td>
-              <td><Cell value={formatNumber(row.epsEstimate)} /></td>
-              <td data-direction={row.epsSurprisePct === null ? undefined : row.epsSurprisePct >= 0 ? 'up' : 'down'}>
-                <Cell value={formatSurprise(row.epsSurprisePct)} />
-              </td>
-              <td><Cell value={row.revenueActual === null ? '' : formatCompactMoney(row.revenueActual, data.currency)} /></td>
-              <td><Cell value={row.revenueEstimate === null ? '' : formatCompactMoney(row.revenueEstimate, data.currency)} /></td>
-              <td data-direction={row.revenueSurprisePct === null ? undefined : row.revenueSurprisePct >= 0 ? 'up' : 'down'}>
-                <Cell value={formatSurprise(row.revenueSurprisePct)} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <figure className={styles.recent} aria-label={`Earnings per share against the estimate, last ${chart.quarters.length} quarters`}>
+      <svg viewBox={`0 0 ${chart.width} ${chart.height}`} aria-hidden="true" focusable="false">
+        {chart.quarters.map((quarter) => (
+          <g key={quarter.key} data-direction={quarter.direction ?? undefined} className={styles.recentQuarter}>
+            {quarter.actualY !== null && quarter.estimateY !== null ? (
+              <line x1={quarter.x} x2={quarter.x} y1={quarter.estimateY} y2={quarter.actualY} />
+            ) : null}
+            {quarter.estimateY !== null ? <circle cx={quarter.x} cy={quarter.estimateY} r={4.5} data-mark="estimate" /> : null}
+            {quarter.actualY !== null ? <circle cx={quarter.x} cy={quarter.actualY} r={5} data-mark="actual" /> : null}
+          </g>
+        ))}
+      </svg>
+      <figcaption>EPS against the estimate, last {chart.quarters.length} quarters</figcaption>
+    </figure>
   )
+}
+
+function timelineEvent(row: CanonicalEvent, key: string): TimelineEvent | null {
+  if (!row.occursAt || !/^\d{4}-\d{2}-\d{2}/.test(row.occursAt) || !row.title?.trim()) return null
+  const category = row.domain === 'guidance' ? 'guidance' : eventCategory(row.domain, row.eventType, row.title)
+  if (category === 'macro') return null
+  return { id: key, date: row.occursAt.slice(0, 10), category, title: readableTitle(row.title) }
+}
+
+function formatDay(date: string): string {
+  return new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'UTC' }).format(new Date(`${date.slice(0, 10)}T00:00:00Z`))
 }
 
 export default function StockEventsResearch({
   data,
   events,
   disclosures,
-  calendar,
-  month,
-  category,
-  selectedDay,
+  closes,
 }: {
   data: StockResearchIdentity
   events: EventCalendarPayload | null
   disclosures: DisclosurePayload | null
-  calendar: CalendarResult
-  month: string
-  category: CalendarCategory
-  selectedDay?: string
+  /** Reported daily closes, oldest first; empty when prices are unavailable. */
+  closes: TimelineClose[]
 }) {
   const isFund = data.kind === 'fund'
   const entries = collapseEvents([...(events?.rows ?? []), ...(disclosures?.rows ?? [])])
@@ -152,53 +117,100 @@ export default function StockEventsResearch({
   const upcoming = entries
     .filter((entry) => (entry.row.occursAt ?? '') >= today)
     .sort((left, right) => (left.row.occursAt ?? '').localeCompare(right.row.occursAt ?? ''))
-  // Documents are what the calendar does not show; the events themselves live in the calendar.
-  const documents = entries
-    .filter((entry) => entry.row.documentUrl && (entry.row.occursAt ?? '') < today)
-    .sort((left, right) => (right.row.occursAt ?? '').localeCompare(left.row.occursAt ?? ''))
-    .slice(0, 12)
 
   const earnings = data.summary.nextEarnings
   const { entry: next, date: nextDate } = selectNextResearchEvent(isFund, earnings?.earningsDate ?? null, upcoming)
-  const nextContext = [
-    earnings?.fiscalPeriod,
-    earnings?.epsEstimate === null || earnings?.epsEstimate === undefined ? null : `EPS estimate ${formatNumber(earnings.epsEstimate)}`,
-    earnings?.revenueEstimate === null || earnings?.revenueEstimate === undefined ? null : `revenue estimate ${formatCompactMoney(earnings.revenueEstimate, data.currency)}`,
-    next?.movedFrom ? `moved from ${formatDate(next.movedFrom)}` : null,
-  ].filter(Boolean).join(' · ')
+  const facts = [
+    earnings?.fiscalPeriod ? { label: 'Period', value: earnings.fiscalPeriod } : null,
+    earnings?.epsEstimate === null || earnings?.epsEstimate === undefined ? null : { label: 'EPS estimate', value: formatNumber(earnings.epsEstimate) },
+    earnings?.revenueEstimate === null || earnings?.revenueEstimate === undefined ? null : { label: 'Revenue estimate', value: formatCompactMoney(earnings.revenueEstimate, data.currency) },
+  ].filter((fact): fact is { label: string; value: string } => fact !== null)
+  const days = nextDate ? daysBetween(today, nextDate.slice(0, 10)) : null
+
+  // The timeline: events that happened (one per event, at its own date) and the scheduled ones.
+  const guidance = (disclosures?.rows ?? []).filter((row) => row.domain === 'guidance')
+  const past: TimelineEvent[] = buildEventMarkers([...(events?.rows ?? []), ...guidance], today)
+    .map((marker) => ({ ...marker, title: readableTitle(marker.title) }))
+  const scheduled = upcoming
+    .map((entry) => timelineEvent(entry.row, entry.key))
+    .filter((event): event is TimelineEvent => event !== null && event.date > today)
+  if (!isFund && nextDate && nextDate.slice(0, 10) > today && !scheduled.some((event) => event.category === 'earnings' && event.date === nextDate.slice(0, 10))) {
+    scheduled.push({ id: 'next-earnings', date: nextDate.slice(0, 10), category: 'earnings', title: `Results${earnings?.fiscalPeriod ? ` for ${earnings.fiscalPeriod}` : ''}` })
+  }
+
+  // Filed documents, newest first, with plain names.
+  const filings: Filing[] = entries
+    .filter((entry) => entry.row.documentUrl && entry.row.occursAt && entry.row.occursAt.slice(0, 10) <= today)
+    .sort((left, right) => (right.row.occursAt ?? '').localeCompare(left.row.occursAt ?? ''))
+    .slice(0, 60)
+    .map((entry) => ({
+      key: entry.key,
+      date: entry.row.occursAt!.slice(0, 10),
+      url: entry.row.documentUrl!,
+      ...describeFiling(entry.row.documentType, entry.row.title),
+    }))
+
+  const history = normalizeEarningsHistory(data.summary.earningsHistory).rows
 
   return (
     // No page header: the tab above already says Events.
     <ResearchViewShell title={isFund ? 'Fund Events' : 'Earnings & Events'} showHeader={false}>
       <div className={styles.page} data-events-research="">
-        <ResearchChapter
-          id="next-event"
-          label={isFund ? 'Next fund event' : 'Next earnings'}
-          lead={nextDate ? (
-            <LeadStat value={formatDate(nextDate)} context={nextContext || (next ? next.row.title : undefined)} />
+        <ResearchChapter id="next-event" label={isFund ? 'Next fund event' : 'Next earnings'}>
+          {nextDate && days !== null ? (
+            <div className={styles.next} data-next-event="">
+              <div className={styles.countdown} aria-hidden="true">
+                <strong>{days}</strong>
+                <span>{days === 1 ? 'day' : 'days'}</span>
+              </div>
+              <div className={styles.when}>
+                <p className={styles.date}>
+                  <time dateTime={nextDate.slice(0, 10)}>{formatDate(nextDate)}</time>
+                </p>
+                <p className={styles.weekday}>
+                  {formatDay(nextDate)} · {days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`}
+                  {next?.movedFrom ? <span className={styles.moved}> · moved from {formatDate(next.movedFrom)}</span> : null}
+                </p>
+                {facts.length ? (
+                  <dl className={styles.facts}>
+                    {facts.map((fact) => (
+                      <div key={fact.label}>
+                        <dt>{fact.label}</dt>
+                        <dd>{fact.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                ) : isFund && next ? <p className={styles.weekday}>{readableTitle(next.row.title)}</p> : null}
+              </div>
+              {!isFund ? <RecentQuarters data={data} /> : null}
+            </div>
           ) : (
             <BeingBuilt size="inline">The date of {data.ticker}’s next {isFund ? 'fund event' : 'results'} is being added.</BeingBuilt>
           )}
-        >
-          {null}
         </ResearchChapter>
 
-        <ResearchChapter id="calendar" label="Calendar" band>
-          <EventCalendar month={month} selectedDay={selectedDay} category={category}
-            events={calendar.events} scope="ticker" basePath={`/stocks/${encodeURIComponent(data.ticker)}/events`}
-            available={calendar.available} reason={calendar.available ? null : 'The event calendar is unavailable for this symbol right now.'}
-            unavailableDomains={calendar.unavailableDomains} truncated={calendar.truncated} />
+        <ResearchChapter
+          id="timeline"
+          label="Events on the price"
+          band
+          actions={<Link href="/calendar" className={styles.action}>Open the full calendar →</Link>}
+        >
+          {past.length || scheduled.length ? (
+            <EventTimeline ticker={data.ticker} closes={closes} past={past} upcoming={scheduled} today={today} />
+          ) : (
+            <BeingBuilt size="chart">{data.ticker}’s results, dividends and company events are being added.</BeingBuilt>
+          )}
         </ResearchChapter>
 
         {!isFund ? (
           <ResearchChapter id="reported-against-estimate" label="Reported against estimate">
-            <EarningsHistory data={data} />
+            <EarningsAgainstEstimate rows={history} currency={data.currency} />
           </ResearchChapter>
         ) : null}
 
-        {documents.length > 0 ? (
+        {filings.length > 0 ? (
           <ResearchChapter id="documents" label="Filings and documents" band={!isFund}>
-            <Documents entries={documents} />
+            <FilingsList filings={filings} />
           </ResearchChapter>
         ) : null}
 
