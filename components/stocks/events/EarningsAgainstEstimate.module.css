@@ -1,0 +1,202 @@
+/* Reported against estimate: a hollow mark for the estimate, a filled one for what
+   was reported, joined by a line, green above and red below. */
+
+.wrap {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.legend i {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+}
+
+.legendEstimate {
+  border: 2px solid var(--text-muted);
+}
+
+.legendAbove {
+  background: var(--up-ink, var(--up));
+}
+
+.legendBelow {
+  background: var(--down);
+}
+
+.charts {
+  display: grid;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+@container research-chapter (width >= 56rem) {
+  .charts[data-count='2'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.measure {
+  display: grid;
+  gap: 0.6rem;
+  min-width: 0;
+  margin: 0;
+}
+
+.caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+}
+
+.title {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.tally {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.grid {
+  stroke: color-mix(in srgb, var(--line) 70%, transparent);
+  stroke-width: 1;
+}
+
+.zero {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+}
+
+.quarter {
+  --mark: var(--text-muted);
+}
+
+.quarter[data-direction='above'] {
+  --mark: var(--up-ink, var(--up));
+}
+
+.quarter[data-direction='below'] {
+  --mark: var(--down);
+}
+
+.join {
+  stroke: var(--mark);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  opacity: 0.55;
+}
+
+.estimate {
+  fill: var(--bg);
+  stroke: var(--text-muted);
+  stroke-width: 2;
+}
+
+.actual {
+  fill: var(--mark);
+  stroke: var(--bg);
+  stroke-width: 2;
+  animation: earnings-pop 420ms var(--motion-ease-soft, ease-out) backwards;
+}
+
+.details {
+  border-top: 1px solid var(--line);
+  padding-top: 0.75rem;
+}
+
+.details summary {
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.details[open] summary {
+  margin-bottom: 0.75rem;
+}
+
+.tableWrap {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.table th,
+.table td {
+  padding: 9px 0 9px 22px;
+  border-bottom: 1px solid var(--research-line, var(--color-border));
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.table th:first-child,
+.table td:first-child {
+  padding-left: 0;
+  color: var(--color-text-primary);
+  font-weight: 500;
+  text-align: left;
+}
+
+.table thead th {
+  color: var(--color-text-muted);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.table td {
+  font-weight: 500;
+}
+
+.table td[data-direction='up'] {
+  color: var(--up-ink, var(--up));
+}
+
+.table td[data-direction='down'] {
+  color: var(--down);
+}
+
+.notReported {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+@keyframes earnings-pop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .actual {
+    animation: none;
+  }
+}

@@ -1,0 +1,265 @@
+/* The Events timeline: price as a quiet area, events as coloured markers in lanes
+   above it, the scheduled part of the window shaded after today. Category colours
+   follow the expanded chart's events layer: earnings in the accent, dividends in
+   the up colour. */
+
+.timeline {
+  --event-earnings: var(--accent);
+  --event-dividends: var(--up-ink, var(--up));
+  --event-guidance: color-mix(in srgb, var(--text) 78%, var(--accent));
+  --event-company: var(--network-node);
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.count {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.dot {
+  display: inline-block;
+  flex: none;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: var(--event-color, var(--event-company));
+}
+
+.timeline [data-category='earnings'] { --event-color: var(--event-earnings); }
+.timeline [data-category='dividends'] { --event-color: var(--event-dividends); }
+.timeline [data-category='guidance'] { --event-color: var(--event-guidance); }
+.timeline [data-category='company'] { --event-color: var(--event-company); }
+
+/* ---------------------------------------------------------------- drawing */
+
+.fillTop {
+  stop-color: var(--accent);
+  stop-opacity: 0.16;
+}
+
+.fillBottom {
+  stop-color: var(--accent);
+  stop-opacity: 0;
+}
+
+.line {
+  fill: none;
+  stroke: color-mix(in srgb, var(--accent) 80%, var(--text));
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+.future {
+  fill: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.today {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.tick {
+  stroke: color-mix(in srgb, var(--line) 60%, transparent);
+  stroke-width: 1;
+}
+
+.base,
+.laneRule {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.laneRule {
+  stroke-dasharray: 1 5;
+}
+
+.stem {
+  stroke: var(--event-color);
+  stroke-width: 1;
+  opacity: 0.35;
+}
+
+.stem[data-upcoming='true'] {
+  stroke-dasharray: 3 4;
+}
+
+.stem[data-selected='true'] {
+  opacity: 1;
+  stroke-width: 1.6;
+}
+
+.touch {
+  fill: var(--bg);
+  stroke: var(--event-color);
+  stroke-width: 1.5;
+}
+
+.touch[data-selected='true'] {
+  fill: var(--event-color);
+}
+
+/* ---------------------------------------------------------------- labels */
+
+.tickLabel,
+.todayLabel {
+  position: absolute;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  white-space: nowrap;
+}
+
+.todayLabel {
+  margin-left: 0.3rem;
+  color: var(--text-small);
+  font-weight: 600;
+}
+
+.marker {
+  position: absolute;
+  display: grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.marker span {
+  width: 0.7rem;
+  height: 0.7rem;
+  border: 2px solid var(--event-color);
+  border-radius: 999px;
+  background: var(--event-color);
+  box-shadow: 0 0 0 2px var(--bg);
+  transition: transform var(--motion-fast, 120ms) ease;
+}
+
+/* Scheduled: hollow, so it reads as not yet happened. */
+.marker[data-upcoming='true'] span {
+  background: var(--bg);
+}
+
+.marker:hover span,
+.marker[data-selected='true'] span {
+  transform: scale(1.35);
+}
+
+.marker[data-selected='true'] span {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px color-mix(in srgb, var(--event-color) 45%, transparent);
+}
+
+.marker:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ---------------------------------------------------------------- reading */
+
+.reading {
+  display: grid;
+  gap: 0.4rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--event-color);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  animation: timeline-reading 220ms var(--motion-ease-soft, ease-out);
+}
+
+.readingHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.7rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.readingKind {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.readingHead time {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.badge {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.readingTitle {
+  margin: 0;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.readingMove,
+.readingNote {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.readingMove strong {
+  margin: 0 0.4rem;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.readingMove strong[data-tone='up'] {
+  color: var(--up-ink, var(--up));
+}
+
+.readingMove strong[data-tone='down'] {
+  color: var(--down);
+}
+
+.empty {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+@keyframes timeline-reading {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reading {
+    animation: none;
+  }
+
+  .marker span {
+    transition: none;
+  }
+}

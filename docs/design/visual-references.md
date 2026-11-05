@@ -218,7 +218,7 @@ The public calendar (`/calendar`, `/calendar/[category]`) opens on a week board 
 - **A company is a node:** a hollow ring in `--network-node`, the ticker in Plex Mono and the company name from the ticker index (`lib/calendar-names.ts`, server-only, fails open to tickers alone). It fills with the accent under the pointer or focus. There are no boxes and no logos, because no logo source exists. After fourteen companies a native `<details>` opens the rest in place.
 - **The accent marks today:** the date, and a breathing dot beside "Today".
 - **Locked weeks and the month view** use the Rankings silhouette: ghost nodes built from nothing, with one solid offer panel over them.
-- **The month grid** (`EventCalendar`, shared with the ticker Events tab) drops the bare count in the corner and names what remains, for example "+50 more earnings". On `/calendar` it renders `bare`, under the same header band.
+- **The month grid** (`EventCalendar`; the ticker Events tab no longer uses it, see "Events tab" below) drops the bare count in the corner and names what remains, for example "+50 more earnings". On `/calendar` it renders `bare`, under the same header band.
 
 - **Companies bar** under the header: All · My watchlist · Related to [ticker] · Sector. Watchlist and Related need an account and show a lock for a signed-out reader. Related is a plain GET form with no suggestions, so it adds no lookup path. The sector list counts the window's companies per sector and loads on change (`SectorSelect`, the page's only client piece; without script a button does the same). The company in focus has its node lit in the accent and comes first on its day. Every related company shows how it relates in small mono ("Theme: …", "Moves with it", "Moves before it").
 
@@ -245,3 +245,14 @@ The founder asked for the Relationships tab to read like the atlas instead of a 
 - **The list** under it keeps the region colours (swatch, bar fill and region name) and, signed out, shows the rest of the list as the Rankings silhouette with one solid offer panel over it.
 
 No external code, assets or data were used.
+
+## Events tab — 2026-11-05
+
+The founder found the ticker Events tab plain: a lone date, a month grid mostly empty for one company, a table half "Not reported" and filings listed by raw form codes and file names. The tab is rebuilt on the research chapters, in this order: Next earnings, Events on the price, Reported against estimate, Filings and documents.
+
+- **Next earnings:** a ringed countdown (days to go), the date with its weekday, the period and the estimates as labelled facts, and a small record of the last quarters' EPS against estimate.
+- **Events on the price** (`components/stocks/events/EventTimeline.tsx`, geometry in `lib/event-timeline.ts`) replaces the month grid. The reported closes are a quiet area. Each event is a marker in a lane above the price, with a stem to its day's close; markers closer than 22px stack. Events that happened are filled; scheduled ones are hollow, to the right of a dashed Today line, on a shaded band. Kind chips with counts filter the markers, and 1Y / 2Y / 5Y set the window. Choosing a marker reads it below the chart: its kind, date and title, and for a past event the next session's move, the same reported-close arithmetic as the expanded chart's events layer. The month calendar stays at `/calendar`, linked from the chapter.
+- **Reported against estimate** (`EarningsAgainstEstimate.tsx`, `lib/earnings-chart.ts`): per quarter, a hollow mark for the estimate and a filled one for what was reported, joined by a line, green above and red below. No amount is computed in the frontend (founder decision, 2026-11-05); the surprise shows when the source sends it. A measure the source does not carry yet (revenue today) is one sentence, not a column of "Not reported", and the full table, with only the columns that have values, is in a fold.
+- **Filings and documents** (`FilingsList.tsx`, `lib/filing-labels.ts`): plain names ("Quarterly report", "Insider trade", "Large holder over 5%"), the form code beside them, the filer kept when the title names one, never a file name. Grouped by month with a coloured edge per kind, filterable by kind, twelve at first.
+
+Category colours follow the expanded chart's events layer. Reduced motion removes the reading's rise and the marks' fade. No external code, assets or data were used.
