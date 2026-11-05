@@ -1,5 +1,5 @@
-/* Events: the next results, the events on the price, results against estimates and
-   the filed documents, each a research chapter (Spec PRD-78, global rules). */
+/* Events: events on the price with the next results beside them, results against
+   estimates and the filed documents, each a research chapter (Spec PRD-78). */
 
 .page {
   display: grid;
@@ -13,68 +13,59 @@
   text-decoration: none;
 }
 
-/* ---- Next results: how long until, when, what is expected, and the recent record ---- */
+.withoutTimeline {
+  display: grid;
+  gap: 1rem;
+}
+
+/* ---- Next results: a compact card at the top of the timeline's side column ---- */
 
 .next {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 1.25rem 1.75rem;
-  min-width: 0;
+  gap: 0.35rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
 }
 
-@container research-chapter (width >= 56rem) {
-  .next {
-    grid-template-columns: auto minmax(0, 1fr) minmax(14rem, 17rem);
-  }
-}
-
-.countdown {
-  display: grid;
-  place-items: center;
-  width: 6.5rem;
-  height: 6.5rem;
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
-  align-content: center;
-  gap: 0.1rem;
-}
-
-.countdown strong {
-  color: var(--accent);
-  font-family: var(--font-mono);
-  font-size: 2rem;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-
-.countdown span {
+.nextLabel {
+  margin: 0;
   color: var(--text-muted);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
-.when {
-  display: grid;
-  gap: 0.35rem;
-  min-width: 0;
+.nextWhen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.6rem;
 }
 
 .date {
-  margin: 0;
   color: var(--text);
-  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-size: 1.4rem;
   font-weight: 600;
-  line-height: 1.1;
+  line-height: 1.2;
+}
+
+.countdown {
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .weekday {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.92rem;
+  font-size: 0.85rem;
 }
 
 .moved {
@@ -82,100 +73,30 @@
 }
 
 .facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  margin: 0.5rem 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+  gap: 0.5rem 1rem;
+  margin: 0.4rem 0 0;
+  padding-top: 0.6rem;
+  border-top: 1px solid color-mix(in srgb, var(--accent) 18%, var(--line));
 }
 
 .facts div {
   display: grid;
-  gap: 0.15rem;
-  padding: 0.45rem 0.8rem;
-  border: 1px solid var(--line);
-  border-radius: 0.65rem;
-  background: var(--surface);
+  gap: 0.1rem;
 }
 
 .facts dt {
   color: var(--text-muted);
   font-size: 0.66rem;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .facts dd {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
-}
-
-.recent {
-  display: grid;
-  grid-column: 1 / -1;
-  gap: 0.35rem;
-  margin: 0;
-}
-
-@container research-chapter (width >= 56rem) {
-  .recent {
-    grid-column: auto;
-  }
-}
-
-.recent svg {
-  display: block;
-  width: 100%;
-  max-width: 20rem;
-  height: auto;
-  overflow: visible;
-}
-
-.recent figcaption {
-  color: var(--text-muted);
-  font-size: 0.75rem;
-}
-
-.recentQuarter {
-  --mark: var(--text-muted);
-}
-
-.recentQuarter[data-direction='above'] {
-  --mark: var(--up-ink, var(--up));
-}
-
-.recentQuarter[data-direction='below'] {
-  --mark: var(--down);
-}
-
-.recentQuarter line {
-  stroke: var(--mark);
-  stroke-width: 2;
-  stroke-linecap: round;
-  opacity: 0.55;
-}
-
-.recentQuarter circle[data-mark='estimate'] {
-  fill: var(--bg);
-  stroke: var(--text-muted);
-  stroke-width: 1.5;
-}
-
-.recentQuarter circle[data-mark='actual'] {
-  fill: var(--mark);
-  stroke: var(--bg);
-  stroke-width: 1.5;
-}
-
-@container research-chapter (width < 30rem) {
-  .countdown {
-    width: 5rem;
-    height: 5rem;
-  }
-
-  .countdown strong {
-    font-size: 1.6rem;
-  }
 }

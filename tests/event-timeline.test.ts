@@ -3,6 +3,7 @@ import test from 'node:test'
 import { daysBetween, laneY, timelineGeometry, timelineWindow, type TimelineEvent } from '../lib/event-timeline'
 import { earningsChart, hasMeasure, reportedColumns, type EarningsObservation } from '../lib/earnings-chart'
 import { describeFiling, filingCode } from '../lib/filing-labels'
+import { eventDetails, formatAmount } from '../lib/event-details'
 
 const TODAY = '2026-11-05'
 
@@ -100,4 +101,44 @@ test('filings get plain names and never show a file name as a title', () => {
     { label: 'Shareholder campaign notice', group: 'meetings', code: 'PX14A6G', detail: 'NATIONAL LEGAL AND POLICY CENTER' })
   assert.deepEqual(describeFiling('XYZ-9', 'Something filed'), { label: 'XYZ-9', group: 'other', code: 'XYZ-9', detail: 'Something filed' })
   assert.deepEqual(describeFiling(null, null), { label: 'Filing', group: 'other', code: null, detail: null })
+})
+
+test('a chosen event says what the page already knows about it, as reported', () => {
+  const events: TimelineEvent[] = [
+    { id: 'r', date: '2026-07-30', category: 'earnings', title: 'Results' },
+    { id: 'd', date: '2026-08-10', category: 'dividends', title: 'Dividend ex-date' },
+    { id: 's', date: '2026-06-01', category: 'company', title: 'Stock split' },
+    { id: 'n', date: '2027-01-28', category: 'earnings', title: 'Next results' },
+  ]
+  const details = eventDetails(events, {
+    today: TODAY,
+    earnings: [{ ...ROW, earningsDate: '2026-07-31' }],
+    next: { date: '2027-01-28', fiscalPeriod: '2027Q1', epsEstimate: 2.9, revenueEstimate: null },
+    actions: [
+      { eventId: 'x', symbol: 'Q', actionType: 'dividend', exDate: '2026-08-10', paymentDate: '2026-08-14', recordDate: '2026-08-11',
+        declarationDate: null, cashAmount: 0.265, adjustedCashAmount: 0.265, frequency: 'quarterly', currency: 'USD', knownAt: null, source: null, methodologyVersion: null },
+      { eventId: 'y', symbol: 'Q', actionType: 'split', exDate: '2026-06-01', paymentDate: null, splitRatioText: '4-for-1',
+        cashAmount: null, adjustedCashAmount: null, frequency: null, currency: null, knownAt: null, source: null, methodologyVersion: null },
+    ],
+    documents: [{ date: '2026-07-30', label: 'Current report', url: 'https://example.com/8k' }],
+    closes: closes(400),
+    currency: 'USD',
+    compactMoney: (value) => `$${value}`,
+  })
+  const facts = (id: string) => Object.fromEntries(details[id].facts.map((fact) => [fact.label, fact.value]))
+  // Results a day apart from the event still match their quarter.
+  assert.equal(facts('r').Period, '2026Q3')
+  assert.equal(facts('r')['EPS reported'], '2')
+  assert.equal(facts('r')['EPS estimate'], '1.8')
+  assert.equal(facts('r')['EPS surprise'], undefined)
+  assert.equal(details.r.documents[0].label, 'Current report')
+  assert.equal(facts('d')['Amount per share'], '$0.265')
+  assert.equal(facts('d').Paid, 'Aug 14, 2026')
+  assert.equal(facts('d')['Record date'], 'Aug 11, 2026')
+  assert.equal(facts('d').Frequency, 'Quarterly')
+  assert.equal(facts('s')['Split ratio'], '4-for-1')
+  assert.ok(facts('d')['Close that day'])
+  // Scheduled: the estimates, and no close that has not happened.
+  assert.deepEqual(facts('n'), { Period: '2027Q1', 'EPS estimate': '2.9' })
+  assert.equal(formatAmount(1234.5, 'EUR'), '€1,234.50')
 })

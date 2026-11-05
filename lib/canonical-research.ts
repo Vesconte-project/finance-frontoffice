@@ -41,6 +41,10 @@ export type CorporateActionRow = {
   actionType: string | null
   exDate: string | null
   paymentDate: string | null
+  /** Sent by the backend; older fixtures leave them out. */
+  recordDate?: string | null
+  declarationDate?: string | null
+  splitRatioText?: string | null
   cashAmount: number | null
   adjustedCashAmount: number | null
   frequency: string | null

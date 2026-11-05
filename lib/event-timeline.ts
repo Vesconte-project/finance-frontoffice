@@ -10,6 +10,7 @@ import { markerBarIndex, nextSessionChange, stackMarkerLevels, type EventMarkerC
 
 export type TimelineRange = '1Y' | '2Y' | '5Y'
 export const TIMELINE_RANGES: readonly TimelineRange[] = ['1Y', '2Y', '5Y']
+const MAX_LANES = 4
 const RANGE_DAYS: Record<TimelineRange, number> = { '1Y': 365, '2Y': 730, '5Y': 1826 }
 
 export type TimelineClose = { date: string; close: number }
@@ -34,6 +35,8 @@ export type TimelineGeometry = {
   height: number
   /** Top of the price area: the event lanes sit above it. */
   plotTop: number
+  /** Marker lanes above the price. */
+  lanes: number
   start: string
   end: string
   today: string
@@ -88,8 +91,17 @@ export function timelineGeometry(input: {
   const edge = Math.max(10, input.gap * 0.6)
   const xOf = (date: string) => edge + ((toTime(date) - t0) / span) * (width - edge * 2)
   const closes = input.closes.filter((point) => point.date >= start && point.date <= today && Number.isFinite(point.close))
-  const lanes = 4
-  const laneHeight = Math.max(14, height * 0.07)
+  const dates = closes.map((point) => point.date)
+  const prices = closes.map((point) => point.close)
+  const inWindow = [
+    ...input.past.filter((event) => event.date >= start && event.date <= today).map((event) => ({ event, upcoming: false })),
+    ...input.upcoming.filter((event) => event.date > today && event.date <= end).map((event) => ({ event, upcoming: true })),
+  ]
+  const xs = inWindow.map(({ event }) => xOf(event.date))
+  const levels = stackMarkerLevels(xs, input.gap)
+  // Only as many marker lanes as the stacking needs (at least two), so few events leave little empty space.
+  const lanes = Math.min(MAX_LANES, Math.max(2, ...levels.map((level) => level + 1), 0))
+  const laneHeight = Math.max(14, height * 0.065)
   const plotTop = lanes * laneHeight + 8
   const bottom = height - 22
   const values = closes.map((point) => point.close)
@@ -103,14 +115,6 @@ export function timelineGeometry(input: {
     ? `${path} L ${round(xOf(closes[closes.length - 1].date))} ${bottom} L ${round(xOf(closes[0].date))} ${bottom} Z`
     : ''
 
-  const dates = closes.map((point) => point.date)
-  const prices = closes.map((point) => point.close)
-  const inWindow = [
-    ...input.past.filter((event) => event.date >= start && event.date <= today).map((event) => ({ event, upcoming: false })),
-    ...input.upcoming.filter((event) => event.date > today && event.date <= end).map((event) => ({ event, upcoming: true })),
-  ]
-  const xs = inWindow.map(({ event }) => xOf(event.date))
-  const levels = stackMarkerLevels(xs, input.gap)
   const events: PlacedEvent[] = inWindow.map(({ event, upcoming }, index) => {
     const bar = upcoming ? null : markerBarIndex(dates, event.date)
     return {
@@ -144,6 +148,7 @@ export function timelineGeometry(input: {
     width,
     height,
     plotTop,
+    lanes,
     start,
     end,
     today,
@@ -159,7 +164,6 @@ export function timelineGeometry(input: {
 
 /** The y of an event's marker dot, in its lane above the price area. */
 export function laneY(geometry: TimelineGeometry, level: number): number {
-  const lanes = 4
-  const laneHeight = (geometry.plotTop - 8) / lanes
+  const laneHeight = (geometry.plotTop - 8) / geometry.lanes
   return geometry.plotTop - 8 - laneHeight * (level + 0.5)
 }
