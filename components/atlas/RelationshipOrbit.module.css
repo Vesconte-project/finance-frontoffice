@@ -337,16 +337,6 @@
   display: none;
 }
 
-@container research-chapter (width >= 56rem) {
-  .readingCard[data-variant='aside'] {
-    display: grid;
-  }
-
-  .overlay {
-    display: none;
-  }
-}
-
 .overlay {
   position: absolute;
   right: 0;
@@ -363,6 +353,17 @@
   box-shadow: 0 10px 30px color-mix(in srgb, var(--text) 14%, transparent);
   pointer-events: auto;
   animation: orbit-card 220ms var(--motion-ease-soft, ease-out) backwards;
+}
+
+/* After the base rules above, so the wide layout wins over them. */
+@container research-chapter (width >= 56rem) {
+  .readingCard[data-variant='aside'] {
+    display: grid;
+  }
+
+  .overlay {
+    display: none;
+  }
 }
 
 .readingHead {
