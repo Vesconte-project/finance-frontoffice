@@ -142,7 +142,7 @@ async function loadStockOhlcDataset(
   const expectsPrices = coverageExpectsPrices(coverage)
 
   try {
-    return await getOhlcData(context.ticker, 3650, expectsPrices)
+    return await getOhlcData(context.ticker, 0, expectsPrices)
   } catch (error) {
     const details = backendErrorDetails(error)
     const result =
@@ -160,7 +160,7 @@ async function loadStockOhlcDataset(
 
     const logLevel = expectsPrices ? 'warn' : 'error'
     logStockPageEvent(logLevel, 'ohlc dataset unavailable', context, {
-      endpoint: `/tickers/${context.ticker}/ohlc?period_days=3650`,
+      endpoint: `/tickers/${context.ticker}/ohlc?period_days=0`,
       coverageHasPrices: coverage.hasPrices,
       coveragePriceRows: coverage.priceRows,
       coverageFirstPriceDate: coverage.firstPriceDate,

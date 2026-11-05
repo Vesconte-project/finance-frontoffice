@@ -3,6 +3,7 @@ import 'server-only'
 import { fetchBackendJson } from './backend'
 import { localizeRows } from './display-currency'
 import { fetchInDisplayCurrency } from './display-currency-server'
+import { collectHistoryPages } from './full-history'
 
 export type CanonicalAvailability = {
   available: boolean
@@ -26,8 +27,14 @@ async function readInCurrency<P extends CanonicalAvailability & { rows: unknown[
   context: string,
   currency: string | null | undefined,
 ): Promise<P> {
-  if (!currency) return fetchBackendJson<P>(path, { context })
-  const { payload, refused } = await fetchInDisplayCurrency(path, currency, (url) => fetchBackendJson<P>(url, { context }))
+  const readPages = (url: string) => collectHistoryPages((page) => {
+    const [pathname, query = ''] = url.split('?')
+    const params = new URLSearchParams(query)
+    params.set('page', String(page))
+    return fetchBackendJson<P>(`${pathname}?${params}`, { context })
+  })
+  if (!currency) return readPages(path)
+  const { payload, refused } = await fetchInDisplayCurrency(path, currency, readPages)
   if (refused || !payload?.available || !Array.isArray(payload.rows)) return { ...payload, displayCurrency: { code: currency, converted: false } }
   const { rows, converted } = localizeRows(payload.rows, currency)
   return { ...payload, rows, displayCurrency: { code: currency, converted } } as P
@@ -199,14 +206,15 @@ export async function getTickerMarketMetrics(
   options: { metric?: string; latestOnly?: boolean; limit?: number } = {},
 ): Promise<MarketMetricsPayload> {
   const ticker = normalizedTicker(tickerRaw)
-  return fetchBackendJson<MarketMetricsPayload>(
+  return collectHistoryPages((page) => fetchBackendJson<MarketMetricsPayload>(
     `/v1/tickers/${encodeURIComponent(ticker)}/market-metrics${queryString({
       metric: options.metric,
       latestOnly: options.latestOnly ?? false,
+      page,
       limit: options.limit ?? 250,
     })}`,
     { context: `ticker.market-metrics.${ticker}` },
-  )
+  ))
 }
 
 export async function getTickerCorporateActions(

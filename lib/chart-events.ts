@@ -8,7 +8,7 @@ export async function chartEventsResponse(ticker: string): Promise<Response> {
   if (!/^[A-Z0-9][A-Z0-9.-]{0,14}$/.test(ticker)) return Response.json({ error: 'Invalid ticker' }, { status: 400 })
   try {
     const today = new Date().toISOString().slice(0, 10)
-    const start = new Date(Date.now() - 3650 * 86400000).toISOString().slice(0, 10)
+    const start = '0001-01-01'
     const [events, disclosures] = await Promise.all([
       getTickerEvents(ticker, { startDate: start, endDate: today, latestOnly: true, limit: 200 }),
       getTickerDisclosures(ticker, { latestOnly: true, limit: 100 }).catch(() => null),

@@ -14,8 +14,8 @@ export type ExpandedChartRange = '1M' | '3M' | 'YTD' | '1Y' | '5Y' | '10Y' | 'AL
 /** Ranges that need intraday bars, which the backend does not supply (ENG-153). */
 export const INTRADAY_RANGES = ['1D', '5D'] as const
 
-/** The ticker page loads at most this many days of OHLC (see `loadStockOhlcDataset`). */
-export const OHLC_LOAD_WINDOW_DAYS = 3650
+/** Zero requests all available OHLC pages (see `loadStockOhlcDataset`). */
+export const OHLC_LOAD_WINDOW_DAYS = 0
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const RANGE_DAYS: Record<Exclude<ExpandedChartRange, 'YTD' | 'ALL'>, number> = {
@@ -36,11 +36,12 @@ function dayValue(date: string): number {
 
 /**
  * "All" is only offered when the loaded rows are the whole history. The page
- * loads a ten-year window, so a series that starts at that window's edge is
+ * now exhausts all backend pages. Explicit nonzero windows still detect a series
+ * that starts at that window's edge and is
  * probably cut off, and calling it "All" would overstate it.
  */
 export function isFullHistoryLoaded(bars: readonly OhlcPoint[], loadWindowDays = OHLC_LOAD_WINDOW_DAYS): boolean {
-  if (bars.length < 2) return true
+  if (loadWindowDays === 0 || bars.length < 2) return true
   const first = dayValue(bars[0].date)
   const last = dayValue(bars[bars.length - 1].date)
   return last - first < (loadWindowDays - 14) * DAY_MS

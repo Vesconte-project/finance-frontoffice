@@ -33,14 +33,14 @@ export default function RevenueChapter({
   const options = [amount, '% growth'] as const
   const [view, setView] = useState<string>(amount)
   const latest = points.at(-1) ?? null
-  const shown = points.slice(-10)
+  const shown = points
 
   return (
     <ResearchChapter
       id="revenue"
       label="Revenue"
       lead={(
-        <BeingBuilt size="inline">Revenue growth a year over the last five years is being added.</BeingBuilt>
+        <BeingBuilt size="inline">Revenue growth a year over the available history is being added.</BeingBuilt>
       )}
       actions={shown.length > 0 ? (
         <SegmentedControl options={options} value={view} onChange={setView} ariaLabel="Revenue in" analyticsId="ticker_revenue_unit" />
@@ -81,7 +81,7 @@ export default function RevenueChapter({
       ) : (
         growth.length > 0 ? <ReportedBars
           ariaLabel="Annual revenue growth against the year before"
-          bars={growth.slice(-10).map((point) => ({ key: point.periodEnd, value: point.value,
+          bars={growth.map((point) => ({ key: point.periodEnd, value: point.value,
             valueLabel: formatFraction(point.value), axisLabel: String(point.year), axisShort: `'${String(point.year).slice(-2)}` }))}
         /> : <BeingBuilt size="chart">Each year’s revenue growth against the year before is being added.</BeingBuilt>
       )}

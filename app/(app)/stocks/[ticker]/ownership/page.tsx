@@ -10,9 +10,6 @@ import { summaryDate } from '@/lib/statement-reading'
 import { getStockResearchData } from '@/lib/stock-research'
 import { resolveDisplayCurrency } from '@/lib/display-currency-server'
 
-/** The Spec's buyback chapter reads from 2016. */
-const SINCE_YEAR = 2016
-const SINCE = `${SINCE_YEAR}-01-01`
 
 export default async function OwnershipPage({ params, searchParams }: { params: Promise<{ ticker: string }>; searchParams: Promise<{ currency?: string | string[] }> }) {
   const { ticker: rawTicker } = await params
@@ -33,15 +30,15 @@ export default async function OwnershipPage({ params, searchParams }: { params: 
   const annual=capitalHistory(balance?.available ? balance.rows : [],cashflow?.available ? cashflow.rows : [])
   const snapshot = currentResearchSnapshot(data)
   const currency = snapshot.currency || data.currency
-  const buybacks = data.kind === 'fund' || !capital?.available ? [] : buybackExecutions(capital.rows, SINCE)
+  const buybacks = data.kind === 'fund' || !capital?.available ? [] : buybackExecutions(capital.rows, '0001-01-01')
   // Spending is never added across currencies; such a company's buybacks are being built.
   const oneCurrency = singleCurrency(buybacks, currency)
   const thisYear = new Date().getUTCFullYear()
-  // "How the price got here" reads the last five years, by year or by quarter.
-  const priceSince = `${thisYear - 4}-01-01`
+  const priceSince = '0001-01-01'
+  const firstBuybackYear = buybacks.length ? Number(buybacks[0].date.slice(0, 4)) : thisYear
   // Years add up the executions and value their shares at today's price.
   const summary = oneCurrency
-    ? buybackSummary(buybacks, data.summary.quote?.price ?? null, { fromYear: SINCE_YEAR, toYear: thisYear })
+    ? buybackSummary(buybacks, data.summary.quote?.price ?? null, { fromYear: firstBuybackYear, toYear: thisYear })
     : null
   return (
     <>

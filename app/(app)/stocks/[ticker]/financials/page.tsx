@@ -24,7 +24,7 @@ export default async function FinancialsPage({ params, searchParams }: { params:
   return (
     <>
       <CurrencyNotice display={displayCurrency} listing={data.listingCurrency} summaryConverted={data.displayCurrency !== null} kept={keptAsReported([{ label: 'the flow of sales', read: income }])} />
-      <StockFinancialsResearch data={data} series={series} years={reportedYears(series, 5)} />
+      <StockFinancialsResearch data={data} series={series} years={reportedYears(series)} />
     </>
   )
 }

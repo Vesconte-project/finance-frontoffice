@@ -1,6 +1,7 @@
+import { collectPricePages } from './full-history'
 import { cache } from 'react'
 import { normalizeAdjustedHistory } from './price-basis'
-import { BackendDataError, fetchBackendJson } from './backend'
+import { BackendDataError, fetchBackendJson, fetchBackendResponse } from './backend'
 import {
   normalizeOhlcPayload,
   type OhlcLoadResult,
@@ -9,7 +10,6 @@ import { getCachedTickerSummary } from './ticker-data'
 import { formatCompactMoney, formatMoney } from './currency'
 import { convertedClosesFromHistory, convertedOhlcFromRows, type ConvertedClose } from './display-currency'
 import type { OhlcPoint as ConvertedBar } from './ohlc-data'
-import { fetchInDisplayCurrency } from './display-currency-server'
 
 const FUNDAMENTALS_FRESH_MS = 6 * 60 * 60 * 1000
 /** `period_days` maximum for ticker history and OHLC in finance-backend OpenAPI. */
@@ -516,15 +516,39 @@ async function loadQuote(tickerRaw: string): Promise<StockQuote | null> {
   }
 }
 
+async function allPriceRows(ticker: string, resource: 'history' | 'ohlc', days: number, currency?: string): Promise<unknown[]> {
+  let requestedStart: string | null = null
+  return collectPricePages(async (endDate) => {
+    const query = new URLSearchParams({ period_days: String(days >= BACKEND_HISTORY_PERIOD_DAYS_MAX ? 0 : days) })
+    if (currency) query.set('currency', currency)
+    if (endDate) query.set('endDate', endDate)
+    if (requestedStart) query.set('startDate', requestedStart)
+    const response = await fetchBackendResponse(`/v1/tickers/${encodeURIComponent(ticker)}/${resource}?${query}`, { context: `backend.tickers.${resource}` })
+    if (!response.ok) throw new BackendDataError(`backend.tickers.${resource}`, 'History unavailable', response.status)
+    const rows: unknown = await response.json()
+    if (!Array.isArray(rows)) throw new Error('price_history_page_invalid')
+    const link = response.headers.get('link')
+    const target = link?.match(/<([^>]+)>;\s*rel="next"/)
+    let nextEnd: string | null = null
+    if (target) {
+      const parsed = new URL(target[1], 'https://internal.invalid')
+      if (parsed.pathname !== `/v1/tickers/${encodeURIComponent(ticker)}/${resource}`) throw new Error('price_history_link_invalid')
+      const start = parsed.searchParams.get('startDate')
+      if (start && (!/^\d{4}-\d{2}-\d{2}$/.test(start) || (requestedStart && requestedStart !== start))) throw new Error('price_history_link_invalid')
+      if (start) requestedStart = start
+      nextEnd = parsed.searchParams.get('endDate')
+      if (!nextEnd) throw new Error('price_history_link_invalid')
+    }
+    return { rows, nextEnd }
+  })
+}
+
 async function loadHistorical(tickerRaw: string, periodDays: number): Promise<PricePoint[]> {
   const ticker = normalizeTicker(tickerRaw)
   const safeDays = Number.isFinite(periodDays) && periodDays > 0
     ? Math.max(30, Math.min(periodDays, BACKEND_HISTORY_PERIOD_DAYS_MAX))
     : 0
-  const payload = await fetchBackendJson<Array<{ date?: string; close?: number }>>(
-    `/v1/tickers/${encodeURIComponent(ticker)}/history?period_days=${safeDays}`,
-    { context: 'backend.tickers.history' }
-  )
+  const payload = await allPriceRows(ticker, 'history', safeDays)
   return normalizeAdjustedHistory(payload)
 }
 
@@ -537,10 +561,7 @@ async function loadOhlc(
   const safeDays = Number.isFinite(periodDays) && periodDays > 0
     ? Math.max(30, Math.min(periodDays, BACKEND_HISTORY_PERIOD_DAYS_MAX))
     : 0
-  const payload = await fetchBackendJson<unknown>(
-    `/v1/tickers/${encodeURIComponent(ticker)}/ohlc?period_days=${safeDays}`,
-    { context: 'backend.tickers.ohlc' }
-  )
+  const payload = await allPriceRows(ticker, 'ohlc', safeDays)
   return normalizeOhlcPayload(payload, { coverageExpectsPrices })
 }
 
@@ -574,7 +595,7 @@ export const getHistoricalData = cache(async (ticker: string, periodDays: number
 
 export const getOhlcData = cache(async (
     ticker: string,
-    periodDays: number = 1825,
+    periodDays: number = 0,
     coverageExpectsPrices: boolean = false
   ): Promise<OhlcLoadResult> => loadOhlc(ticker, periodDays, coverageExpectsPrices))
 
@@ -591,12 +612,13 @@ export const getConvertedCloses = cache(async (
     currency: string,
   ): Promise<{ points: ConvertedClose[]; refused: boolean }> => {
   const ticker = normalizeTicker(tickerRaw)
-  const { payload, refused } = await fetchInDisplayCurrency(
-    `/v1/tickers/${encodeURIComponent(ticker)}/history?period_days=${BACKEND_HISTORY_PERIOD_DAYS_MAX}`,
-    currency,
-    (path) => fetchBackendJson<unknown>(path, { context: 'backend.tickers.history' }),
-  )
-  return { points: refused ? [] : convertedClosesFromHistory(payload, currency), refused }
+  try {
+    const payload = await allPriceRows(ticker, 'history', 0, currency)
+    return { points: convertedClosesFromHistory(payload, currency), refused: false }
+  } catch (error) {
+    if (error instanceof BackendDataError && error.status === 422) return { points: [], refused: true }
+    throw error
+  }
 })
 
 /**
@@ -610,21 +632,22 @@ export async function getClosesIn(ticker: string, periodDays: number, currency: 
   const converted = points.flatMap((point) => (point.converted === null ? [] : [{ date: point.date, close: point.converted, price_basis: point.price_basis }]))
   if (refused || converted.length < 2) return { points: await getHistoricalData(ticker, periodDays), currency: null }
   const since = new Date(Date.now() - periodDays * 86_400_000).toISOString().slice(0, 10)
-  return { points: converted.filter((point) => point.date >= since), currency }
+  return { points: periodDays <= 0 || periodDays >= BACKEND_HISTORY_PERIOD_DAYS_MAX ? converted : converted.filter((point) => point.date >= since), currency }
 }
 
 /**
- * Ten years of daily bars in the display currency (the backend's conversion of
+ * All available daily bars in the display currency (the backend's conversion of
  * each price at its day's rate), for the charts only: candles and the expanded
  * chart. Days without a converted close are left out. Empty when the currency
  * is no longer listed. The technical summary keeps reading reported bars.
  */
 export const getConvertedOhlc = cache(async (tickerRaw: string, currency: string): Promise<ConvertedBar[]> => {
   const ticker = normalizeTicker(tickerRaw)
-  const { payload, refused } = await fetchInDisplayCurrency(
-    `/v1/tickers/${encodeURIComponent(ticker)}/ohlc?period_days=3650`,
-    currency,
-    (path) => fetchBackendJson<unknown>(path, { context: 'backend.tickers.ohlc' }),
-  )
-  return refused ? [] : convertedOhlcFromRows(payload, currency)
+  try {
+    const payload = await allPriceRows(ticker, 'ohlc', 0, currency)
+    return convertedOhlcFromRows(payload, currency)
+  } catch (error) {
+    if (error instanceof BackendDataError && error.status === 422) return []
+    throw error
+  }
 })

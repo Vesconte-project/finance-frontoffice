@@ -1,4 +1,4 @@
-export const STOCK_OHLC_CACHE_KEY = 'stock-ohlc-cache-adjusted-fx-v4'
+export const STOCK_OHLC_CACHE_KEY = 'stock-ohlc-cache-adjusted-fx-v5-full-history'
 
 export type OhlcPoint = {
   price_basis: 'adjusted'

@@ -427,3 +427,7 @@
 .changesList dd { margin: 0; font-variant-numeric: tabular-nums; }
 .changesList dd[data-tone='down'] { color: var(--down); }
 .changesList dd[data-tone='up'] { color: var(--up); }
+
+.yearChoice { display: flex; align-items: center; gap: 0.5rem; color: var(--text-body); font-size: 0.875rem; }
+.yearChoice select { min-height: 44px; background: var(--surface); color: var(--text); border: 1px solid var(--line-strong); border-radius: 6px; padding: 0.5rem; font: inherit; font-size: 1rem; }
+.yearChoice select:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }

@@ -29,8 +29,8 @@ const PAYS_SENTENCE: Record<PaysNode, string> = {
   company: 'What the whole company costs, shares and debt together, is being added.',
   business: 'What the business itself is valued at, without its cash, is being added.',
   cash: 'The cash the company holds, and how it changed, is being added.',
-  profits: 'How much of the value today’s profits support, per share and over five years, is being added.',
-  growth: 'How much of the value is a bet on growth, per share and over five years, with the growth it needs against its record, is being added.',
+  profits: 'How much of the value today’s profits support, per share and over the available history, is being added.',
+  growth: 'How much of the value is a bet on growth, per share and over the available history, with the growth it needs against its record, is being added.',
 }
 
 /** The flow's columns, left to right: what is paid, the company, what it holds, what backs it. */
@@ -58,7 +58,7 @@ export function PricePaysForChapter({ marketCap, marketCapAsOf, currency }: { ma
           <p className={styles.cardText} data-pays-card="shares">
             {PAYS_SENTENCE.shares}{marketCapAsOf ? ` As of ${formatDay(marketCapAsOf)}.` : ''}
           </p>
-          <p className={styles.cardNote}><BeingBuiltBadge /> Its share of each share’s price, its change and five years of it are being added.</p>
+          <p className={styles.cardNote}><BeingBuiltBadge /> Its share of each share’s price, its change and its history are being added.</p>
         </ChapterCard>
       ) : (
         <BeingBuilt label={PAYS_LABEL[selected]}>{PAYS_SENTENCE[selected]}</BeingBuilt>

@@ -50,7 +50,7 @@ function OperatingMarginChapter({ data, sinceYear, history }: { data: StockResea
       )}
     >
       {history.length > 0 ? <>
-        <ReportedBars ariaLabel="Annual operating margin" bars={history.slice(-10).map((point) => ({
+        <ReportedBars ariaLabel="Annual operating margin" bars={history.map((point) => ({
           key: point.periodEnd, value: point.value, valueLabel: formatFraction(point.value),
           axisLabel: String(point.year), axisShort: shortYear(point.year),
         }))} />
@@ -231,7 +231,7 @@ export default function StockFundamentalsResearch({
           <>
             {/* A series is labelled in its own rows' currency: converted only when every amount converted. */}
             <RevenueChapter points={revenue} currency={revenue[0]?.currency ?? data.currency} growth={revenueGrowth} />
-            <OperatingMarginChapter data={data} sinceYear={revenue.length ? revenue.slice(-10)[0].year : null} history={operatingMargins} />
+            <OperatingMarginChapter data={data} sinceYear={revenue.length ? revenue[0].year : null} history={operatingMargins} />
             <CashAndDebtChapter data={data} history={capital?.cashDebt ?? []} />
             <DividendsChapter ticker={data.ticker} dividends={dividends} currency={data.currency} annualPayments={capital?.dividends ?? []} />
           </>

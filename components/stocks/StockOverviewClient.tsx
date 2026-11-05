@@ -406,7 +406,7 @@ function formatDay(value: string): string {
 }
 
 /**
- * One Fundamentals card (Spec PRD-78): the value, a short line and ten years of
+ * One Fundamentals card (Spec PRD-78): the value, a short line and the available
  * bars. What has not arrived carries the badge and no value.
  */
 function FundamentalCard({
@@ -448,12 +448,12 @@ function FundamentalCard({
   )
 }
 
-/** Revenue: the latest reported year and ten years of bars, the last one highlighted. */
+/** Revenue: the latest reported year and all reported years of bars, the last one highlighted. */
 function RevenueCard({ revenuePromise, currency }: { revenuePromise: Promise<ReportedPoint[] | null>; currency: string }) {
-  const points = (use(revenuePromise) ?? []).slice(-10)
+  const points = (use(revenuePromise) ?? [])
   const latest = points.at(-1) ?? null
   if (!latest) {
-    return <FundamentalCard label="Revenue" figure={null} context="" pending="The latest revenue and ten years of its history are being added." />
+    return <FundamentalCard label="Revenue" figure={null} context="" pending="The latest revenue and its available history are being added." />
   }
   return (
     <FundamentalCard
@@ -755,14 +755,14 @@ export default function StockOverviewClient({
               figure={operatingMargin ? `${Math.round(operatingMargin.value)}%` : null}
               tone={operatingMargin && operatingMargin.value < 0 ? 'down' : undefined}
               context={`operating profit per dollar of sales${operatingMargin?.asOf ? ` · as of ${formatDay(operatingMargin.asOf)}` : ''}`}
-              pending={operatingMargin ? 'Ten years of the margin is being added.' : 'The operating margin and ten years of its history are being added.'}
+              pending={operatingMargin ? 'The margin history is being added.' : 'The operating margin and its available history are being added.'}
             />
             <FundamentalCard
               label="Net cash"
               figure={netCash ? formatCompactMoney(netCash.value, netCash.currency ?? currency) : null}
               tone={netCash && netCash.value < 0 ? 'down' : undefined}
               context={`cash minus debt${netCash?.asOf ? ` · as of ${formatDay(netCash.asOf)}` : ''}`}
-              pending={netCash ? 'Ten years of cash and debt is being added.' : 'Net cash and ten years of cash and debt are being added.'}
+              pending={netCash ? 'The cash and debt history is being added.' : 'Net cash and the cash and debt history are being added.'}
             />
           </>
         )}

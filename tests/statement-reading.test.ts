@@ -61,6 +61,7 @@ test('the flow years are the newest reported ones, and nothing is derived', () =
   ]
   const series = incomeSeries(rows)
   assert.deepEqual(reportedYears(series, 5), [2025, 2024, 2023, 2022, 2021])
+  assert.equal(reportedYears(series).length,7)
   assert.equal(valueInYear(series.netIncome, 2025)?.value, -10)
   assert.equal(valueInYear(series.grossProfit, 2024), null)
   assert.equal(shortYear(2025), "'25")
@@ -79,7 +80,7 @@ test('dividends are reported payments by ex-date over ten years, never mixing ad
   ]
   const history = dividendHistory(rows, '2026-10-04')
   assert.equal(history.adjusted, true)
-  assert.deepEqual(history.payments.map((payment) => [payment.exDate, payment.amount]), [['2026-05-10', 0.25], ['2026-08-10', 0.26]])
+  assert.deepEqual(history.payments.map((payment) => [payment.exDate, payment.amount]), [['2016-01-01',0.125], ['2026-05-10', 0.25], ['2026-08-10', 0.26]])
 
   const partlyAdjusted = dividendHistory([
     { actionType: 'dividend', exDate: '2019-05-10', cashAmount: 0.8, adjustedCashAmount: null, currency: 'USD' },

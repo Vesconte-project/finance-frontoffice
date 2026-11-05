@@ -40,8 +40,8 @@ function weekdayBars(days: number): OhlcPoint[] {
 
 test('All is offered only when the loaded rows cover the whole history', () => {
   const capped = weekdayBars(3650)
-  assert.equal(isFullHistoryLoaded(capped), false)
-  assert.deepEqual(availableRanges(capped), ['1M', '3M', 'YTD', '1Y', '5Y', '10Y'])
+  assert.equal(isFullHistoryLoaded(capped, 3650), false)
+  assert.deepEqual(availableRanges(capped), ['1M', '3M', 'YTD', '1Y', '5Y', '10Y', 'ALL'])
 
   const young = weekdayBars(900)
   assert.equal(isFullHistoryLoaded(young), true)

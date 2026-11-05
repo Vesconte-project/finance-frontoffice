@@ -171,7 +171,7 @@ export function incomeSeries(rows: readonly StatementRowLike[]): IncomeSeries {
 }
 
 /** The fiscal years any income measure reports, newest first, at most `limit`. */
-export function reportedYears(series: IncomeSeries, limit = 5): number[] {
+export function reportedYears(series: IncomeSeries, limit = Number.POSITIVE_INFINITY): number[] {
   const years = new Set<number>()
   for (const points of Object.values(series)) for (const point of points ?? []) years.add(point.year)
   return [...years].sort((left, right) => right - left).slice(0, limit)
@@ -216,9 +216,9 @@ export type DividendHistory = {
 export function dividendHistory(
   rows: readonly CorporateActionLike[],
   today: string,
-  years = 10,
+  years?: number,
 ): DividendHistory {
-  const start = `${Number(today.slice(0, 4)) - years}${today.slice(4, 10)}`
+  const start = years === undefined ? '0001-01-01' : `${Number(today.slice(0, 4)) - years}${today.slice(4, 10)}`
   const byDate = new Map<string, CorporateActionLike>()
   for (const row of rows) {
     if (row.actionType !== 'dividend' || !row.exDate) continue
