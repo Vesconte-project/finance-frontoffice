@@ -17,6 +17,7 @@ import {
   atlasCompanyFixture,
   atlasOverviewFixture,
   atlasZoneFixture,
+  MEMBERS,
   tickerIndexFixture,
 } from '../e2e/fixtures/market-atlas.mjs'
 import {
@@ -193,6 +194,16 @@ const server = createServer((request, response) => {
   if (actionsRoute && isFixtureTicker(decodeURIComponent(actionsRoute[1]))) {
     const ticker = decodeURIComponent(actionsRoute[1])
     sendTickerRead(response, url, 'corporate-actions', ticker, tickerCorporateActionsFixture(ticker))
+    return
+  }
+
+  // An atlas fixture company (FX…) has a summary, so its ticker pages render; the rest of its
+  // ticker reads stay unavailable. Its identity comes from the atlas fixture, the shape from QAS.
+  const atlasSummary = path.match(/^\/v1\/tickers\/([^/]+)\/summary$/)
+  const atlasMember = atlasSummary && MEMBERS.find((member) => member.symbol === decodeURIComponent(atlasSummary[1]))
+  if (atlasMember) {
+    const base = JSON.parse(JSON.stringify(tickerSummaryFixture('QAS')).replaceAll('"QAS"', JSON.stringify(atlasMember.symbol)))
+    send(response, 200, { ...base, quote: { ...base.quote, name: atlasMember.name } })
     return
   }
 

@@ -40,8 +40,11 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
 
     // A pointer on a company reads its tie.
     if (viewport.width >= 900) {
-      await plot.getByRole('link').first().hover()
-      await expect(orbit.locator('[data-orbit-reading]')).toContainText('0.62')
+      const first = plot.getByRole('link').first()
+      const symbol = (await first.textContent())?.trim() ?? ''
+      await first.hover()
+      await expect(orbit.locator('[data-orbit-reading]')).toContainText(symbol)
+      await expect(orbit.locator('[data-orbit-reading]')).toContainText(/0\.\d\d/)
     }
 
     await plot.getByRole('button', { name: /10 more/ }).click()
