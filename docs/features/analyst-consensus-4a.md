@@ -50,3 +50,16 @@ remain authority. Local QA uses existing Development auth in memory only; no
 credentials in this branch. Vercel preview/human visual and source coverage review
 remain pending. Local fixture proof does not certify production data or acceptance.
 No merge/deploy/real provider call or SEC operation was performed.
+
+## Server re-review and main integration — 05 November
+
+Server approved 4A: feature-store full suite 943 passed. The accepted conservative
+v1 currency rule withholds targets for 38 symbols (including HK/ADRs and other
+quote/report currency mismatches), plus 12 without a quote marker. These are
+server counts, not locally repeated measurements or a new conversion permission.
+This branch reapplies 4A onto main cb9513c1. The sole content conflict was the
+package.json test command: preserve all current main tests (including relationships,
+events and currency comparisons), and add analyst-consensus.test.ts. Main fonts,
+financial-flow and display-currency changes remain intact. The analyst UI and
+contract were not redesigned. Frontend #100 enters before 4B and scenario; those
+branches still require their own rebase/retest after predecessor merges.
