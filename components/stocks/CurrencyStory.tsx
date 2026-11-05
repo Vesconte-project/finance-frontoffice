@@ -70,7 +70,8 @@ function Lines({ points, listing, display, variant }: {
       variant={variant}
       labels={(
         <>
-          <ChartLabel box={box} x={0} y={y(100) - 10} anchor="start" tone="muted">Start = 100</ChartLabel>
+          {/* At the baseline's right end, on the side the lines do not end on, so it never sits on them. */}
+          <ChartLabel box={box} x={box.width - right} y={y(100) + (Math.min(lastListing, lastDisplay) >= 100 ? 12 : -12)} anchor="end" tone="muted">Start = 100</ChartLabel>
           <ChartLabel box={box} x={endX} y={displayY} anchor="start" strong>{`In ${display} ${percent(lastDisplay / 100 - 1)}`}</ChartLabel>
           <ChartLabel box={box} x={endX} y={listingY} anchor="start" tone="muted">{`In ${listing} ${percent(lastListing / 100 - 1)}`}</ChartLabel>
           <ChartLabel box={box} x={0} y={box.height - 8} anchor="start" tone="muted">{day(points.find((point) => point.converted !== null)?.date ?? points[0].date)}</ChartLabel>
