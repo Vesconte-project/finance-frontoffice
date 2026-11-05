@@ -165,7 +165,10 @@ export default function CurrencyCompare({
               <span key={tick} className={styles.tick} style={{ top: `${(y(tick) / BOX.height) * 100}%` }}>{percent(tick)}</span>
             ))}
             <span className={styles.dateStart}>{day(result.dates[0])}</span>
-            <span className={styles.dateEnd}>{day(result.dates[shown])}</span>
+            <span className={styles.dateEnd}>{day(result.dates[count - 1])}</span>
+            {hover !== null ? (
+              <span className={styles.cursorDate} style={{ left: `calc(var(--axis) + (100% - var(--axis)) * ${(x(hover) / BOX.width).toFixed(4)})` }} data-compare-day="">{day(result.dates[hover])}</span>
+            ) : null}
           </div>
         </div>
       ) : (
