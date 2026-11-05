@@ -14,9 +14,10 @@ import { BackendDataError } from '@/lib/backend'
 import { getTickerFinancialStatements } from '@/lib/canonical-research'
 import { annualSeries, summaryAmount, summaryCurrency, summaryDate, summaryPercent, type ReportedPoint } from '@/lib/statement-reading'
 import { currencyForTicker, formatCompactMoney } from '@/lib/currency'
-import { isoCurrency } from '@/lib/display-currency'
+import { convertedAmountOf, isoCurrency, localizeSummary } from '@/lib/display-currency'
 import { resolveDisplayCurrency } from '@/lib/display-currency-server'
 import {
+  getConvertedOhlc,
   getOhlcData,
   getStockQuote,
   getTickerFundamentals,
@@ -250,10 +251,10 @@ export default async function TickerPage({
     )
   }
 
-  // The listing's currency, as the header shows it. The whole page stays in it.
+  // The listing's currency, as the header shows it.
   const currency = tickerSummary.asset?.currency ?? tickerSummary.fundamentalsSummary?.currency ?? currencyForTicker(ticker)
-  // `?currency=`: only offers the chart in that currency (converted by the
-  // backend, on request); a code the backend does not list, or the listing's
+  // `?currency=`: the page's amounts in that currency, converted by the backend
+  // at each value's own date; a code the backend does not list, or the listing's
   // own currency, is no display currency.
   const requestedCurrency = await resolveDisplayCurrency(resolvedSearchParams.currency).catch(() => null)
   const displayCurrency = requestedCurrency && requestedCurrency !== isoCurrency(currency) ? requestedCurrency : null
@@ -263,7 +264,7 @@ export default async function TickerPage({
   // Not awaited; the card waits for it on its own.
   const revenuePromise = runWithBackendRequestLogContext(requestLogContext, () =>
     loadOptionalStockDataset<ReportedPoint[] | null>(requestLogContext, `/tickers/${ticker}/financial-statements`, null, async () => {
-      const income = await getTickerFinancialStatements(ticker, { statementType: 'income_statement', periodType: 'annual', limit: 500 })
+      const income = await getTickerFinancialStatements(ticker, { statementType: 'income_statement', periodType: 'annual', limit: 500, displayCurrency })
       return income.available ? annualSeries(income.rows, 'revenue') : null
     })
   )
@@ -355,9 +356,29 @@ export default async function TickerPage({
   })
   const marketCapNumeric = canonicalStats.marketCap ?? parseCompactCurrencyNumber(canonicalStats.marketCapText)
   // Under the chart: market cap and next earnings only (Spec PRD-78, decision 7).
-  const marketCapValue = marketCapNumeric !== null
-    ? formatCompactMoney(marketCapNumeric, currency)
-    : canonicalStats.marketCapText ?? null
+  // In the display currency: the backend's conversion of the same market value it reports
+  // (the profile's or the fundamentals', whichever the page shows); without one it stays as reported.
+  const convertedSummary = displayCurrency
+    ? await runWithBackendRequestLogContext(requestLogContext, () => getTickerPageSummary(ticker, displayCurrency)).catch(() => null)
+    : null
+  const marketCapSource = canonicalStats.marketCap !== null && canonicalStats.marketCap === tickerSummary.profile?.marketCap
+    ? convertedSummary?.profile
+    : canonicalStats.marketCap !== null && canonicalStats.marketCap === fundamentalsSummary?.marketCap
+      ? convertedSummary?.fundamentalsSummary
+      : null
+  const marketCapConverted = displayCurrency && marketCapSource ? convertedAmountOf(marketCapSource, 'marketCap', displayCurrency) : null
+  // The charts' bars in the display currency (candles and the expanded chart); the technical summary keeps reported bars.
+  const displayBars = displayCurrency
+    ? await runWithBackendRequestLogContext(requestLogContext, () => getConvertedOhlc(ticker, displayCurrency)).catch(() => [])
+    : null
+  // Amounts among the latest fundamentals (net cash) in the display currency when all of them convert.
+  const localizedSummary = displayCurrency && convertedSummary ? localizeSummary(convertedSummary, displayCurrency) : null
+  const amountRows = localizedSummary?.converted ? localizedSummary.summary.latestFundamentals : latestFundamentals
+  const marketCapValue = marketCapConverted
+    ? formatCompactMoney(marketCapConverted.value, displayCurrency)
+    : marketCapNumeric !== null
+      ? formatCompactMoney(marketCapNumeric, currency)
+      : canonicalStats.marketCapText ?? null
   const holdings = isEtf ? fundamentals?.holdings ?? [] : []
 
   return (
@@ -389,6 +410,7 @@ export default async function TickerPage({
         historicalData={historicalData}
         historicalChartState={historicalChartState}
         ohlcData={ohlcData}
+        displayBars={displayBars}
         marketCap={marketCapValue}
         holdings={holdings}
         sectorWeights={fundamentals?.sectorWeights ?? []}
@@ -402,7 +424,7 @@ export default async function TickerPage({
         scorecard={scorecard}
         revenue={revenuePromise}
         operatingMargin={overviewFigure(summaryPercent(latestFundamentals, /operating\s+margin/i), summaryDate(latestFundamentals, /operating\s+margin/i))}
-        netCash={overviewFigure(summaryAmount(latestFundamentals, /^net\s+cash\b/i), summaryDate(latestFundamentals, /^net\s+cash\b/i), summaryCurrency(latestFundamentals, /^net\s+cash\b/i))}
+        netCash={overviewFigure(summaryAmount(amountRows, /^net\s+cash\b/i), summaryDate(amountRows, /^net\s+cash\b/i), summaryCurrency(amountRows, /^net\s+cash\b/i))}
       />
     </div>
   )

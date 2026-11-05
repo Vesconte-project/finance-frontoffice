@@ -14,6 +14,7 @@ import {
   INTRADAY_RANGES,
   availableRanges,
   panView,
+  rangeStartIndex,
   summarizeVisible,
   viewForRange,
   type ChartView,
@@ -21,6 +22,8 @@ import {
 } from '@/lib/expanded-chart'
 import { ADJUSTED_PRICE_LABEL, readyAdjustedOverlays, type TechnicalChartPayload } from '@/lib/price-basis'
 import type { OhlcPoint } from '@/lib/ohlc-data'
+import { DISPLAY_CURRENCY_PARAM } from '@/lib/display-currency'
+import CurrencyCompare from './CurrencyCompare'
 import { cn } from '@/lib/utils'
 import ExpandedPriceCanvas, {
   type ChartAnchor,
@@ -67,8 +70,14 @@ export type ExpandedChartDialogProps = {
   open: boolean
   onClose: () => void
   ticker: string
+  /** The currency `bars` are in: the display currency when they were converted. */
   currency: string
   bars: readonly OhlcPoint[]
+  /** The listing's currency and its reported bars, for comparing currencies. */
+  listingCurrency?: string
+  listingBars?: readonly OhlcPoint[]
+  /** Set when `bars` are in a display currency: the indicators are asked in it too. */
+  displayCurrency?: string | null
   /** Line or candles, shared with the hero chart. */
   kind: ChartKind
   onKindChange: (kind: ChartKind) => void
@@ -83,7 +92,7 @@ export type ExpandedChartDialogProps = {
  * series draw only when the backend marks their adjusted basis ready.
  * Missing/stale indicators and intraday ranges remain explicit unavailable states.
  */
-export default function ExpandedChartDialog({ open, onClose, ticker, currency, bars, kind, onKindChange, returnFocusRef }: ExpandedChartDialogProps) {
+export default function ExpandedChartDialog({ open, onClose, ticker, currency, bars, listingCurrency, listingBars, displayCurrency = null, kind, onKindChange, returnFocusRef }: ExpandedChartDialogProps) {
   const [events, setEvents] = useState<readonly EventMarker[] | null>([])
   const [eventsLoading, setEventsLoading] = useState(true)
   const ranges = useMemo(() => availableRanges(bars), [bars])
@@ -91,7 +100,9 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
   const [selectedIndicators, setSelectedIndicators] = useState<string[]>([])
   useEffect(() => {
     const controller = new AbortController()
-    void browserRead(`/api/stocks/${encodeURIComponent(ticker)}/technical-series`, { cache: 'no-store', signal: controller.signal })
+    // In a display currency, price-unit indicators come converted at each day's rate; RSI does not change.
+    const indicatorsQuery = displayCurrency ? `?${DISPLAY_CURRENCY_PARAM}=${encodeURIComponent(displayCurrency)}` : ''
+    void browserRead(`/api/stocks/${encodeURIComponent(ticker)}/technical-series${indicatorsQuery}`, { cache: 'no-store', signal: controller.signal })
       .then(async response => response.ok ? response.json() as Promise<TechnicalChartPayload> : null)
       .then(payload => { if (!controller.signal.aborted) setOverlayPayload(payload) })
       .catch(() => { if (!controller.signal.aborted) setOverlayPayload(null) })
@@ -100,7 +111,7 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
       .then(payload => { if (!controller.signal.aborted) { setEvents(Array.isArray(payload) ? payload : null); setEventsLoading(false) } })
       .catch(() => { if (!controller.signal.aborted) { setEvents(null); setEventsLoading(false) } })
     return () => controller.abort()
-  }, [ticker])
+  }, [ticker, displayCurrency])
   const readyOverlays = readyAdjustedOverlays(overlayPayload, bars)
 
   const [range, setRange] = useState<ExpandedChartRange>('1Y')
@@ -118,6 +129,12 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
   const [announcement, setAnnouncement] = useState('')
   const canvasFocusRef = useRef<HTMLCanvasElement | null>(null)
   const [showEvents, setShowEvents] = useState(false)
+  // Comparing the price in several currencies replaces the price chart while on.
+  const [comparing, setComparing] = useState(false)
+  const compareListing = listingCurrency ?? currency
+  const compareBars = listingBars ?? bars
+  const compareCloses = useMemo(() => compareBars.map((item) => ({ date: item.date, value: item.close })), [compareBars])
+  const compareStart = compareBars[rangeStartIndex(compareBars, range)]?.date ?? compareBars[0]?.date ?? ''
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null)
   const currentViewRef = useRef<ChartView>(viewRequest.view)
   // Each event on its trading day; events outside the loaded prices are left out.
@@ -269,10 +286,12 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
       <div className={styles.layout}>
         <header className={styles.header}>
           <h2 id="expanded-chart-title" className={styles.title}>{ticker}</h2>
-          <p className={styles.subtitle}>Price chart · daily · {currency} · {ADJUSTED_PRICE_LABEL}</p>
+          <p className={styles.subtitle}>
+            {comparing ? 'Compared across currencies · daily · change since the start of the range' : `Price chart · daily · ${currency} · ${ADJUSTED_PRICE_LABEL}`}
+          </p>
         </header>
 
-        {measurement ? (
+        {comparing ? null : measurement ? (
           <div className={styles.legend}>
             <MeasureSummary measurement={measurement} formatChange={formatChange} inline />
           </div>
@@ -288,6 +307,15 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
         ) : null}
 
         <div ref={chartAreaRef} className={styles.chartArea} data-expanded-chart-canvas="">
+          {comparing ? (
+            <CurrencyCompare
+              ticker={ticker}
+              listing={compareListing}
+              listingCloses={compareCloses}
+              start={compareStart}
+              initial={[compareListing, displayCurrency ?? (compareListing === 'USD' ? 'EUR' : 'USD')]}
+            />
+          ) : (
           <ExpandedPriceCanvas
             focusRef={canvasFocusRef}
             bars={bars}
@@ -313,6 +341,7 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
             ariaLabel={`${ticker} daily price chart. Use plus and minus to zoom and the arrow keys to move.`}
             describedBy="expanded-chart-summary"
           />
+          )}
           {drawTool ? (
             <span className={styles.hint} aria-hidden="true">{pending ? 'Tap the second point' : 'Tap the first point'}</span>
           ) : null}
@@ -323,7 +352,7 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
           <p className="sr-only" aria-live="polite">{announcement}</p>
         </div>
 
-        {showEvents ? (
+        {showEvents && !comparing ? (
           <div className={styles.eventCard} data-event-card="" aria-live="polite">
             {selected ? (
               <>
@@ -408,6 +437,21 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
           <button
             type="button"
             className={styles.tool}
+            aria-pressed={comparing}
+            data-compare-toggle=""
+            onClick={() => {
+              setComparing((value) => !value)
+              setDrawTool(null)
+              setPending(null)
+              setStatus(null)
+            }}
+          >
+            <span className={styles.toolDot} aria-hidden="true" />Compare currencies
+          </button>
+          {comparing ? null : (<>
+          <button
+            type="button"
+            className={styles.tool}
             aria-pressed={showVolume}
             onClick={() => setShowVolume((value) => !value)}
           >
@@ -456,6 +500,7 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
               Clear drawings
             </button>
           ) : null}
+          </>)}
         </div>
       </div>
     </Dialog>

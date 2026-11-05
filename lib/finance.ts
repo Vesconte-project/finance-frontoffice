@@ -7,7 +7,8 @@ import {
 } from './ohlc-data'
 import { getCachedTickerSummary } from './ticker-data'
 import { formatCompactMoney, formatMoney } from './currency'
-import { convertedClosesFromHistory, type ConvertedClose } from './display-currency'
+import { convertedClosesFromHistory, convertedOhlcFromRows, type ConvertedClose } from './display-currency'
+import type { OhlcPoint as ConvertedBar } from './ohlc-data'
 import { fetchInDisplayCurrency } from './display-currency-server'
 
 const FUNDAMENTALS_FRESH_MS = 6 * 60 * 60 * 1000
@@ -596,4 +597,34 @@ export const getConvertedCloses = cache(async (
     (path) => fetchBackendJson<unknown>(path, { context: 'backend.tickers.history' }),
   )
   return { points: refused ? [] : convertedClosesFromHistory(payload, currency), refused }
+})
+
+/**
+ * Daily closes for a research tab: in the display currency when one is chosen
+ * (the backend's value of each day; days without a rate are left out), else as
+ * reported. A currency the backend stopped listing falls back to reported closes.
+ */
+export async function getClosesIn(ticker: string, periodDays: number, currency: string | null): Promise<{ points: PricePoint[]; currency: string | null }> {
+  if (!currency) return { points: await getHistoricalData(ticker, periodDays), currency: null }
+  const { points, refused } = await getConvertedCloses(ticker, currency)
+  const converted = points.flatMap((point) => (point.converted === null ? [] : [{ date: point.date, close: point.converted, price_basis: point.price_basis }]))
+  if (refused || converted.length < 2) return { points: await getHistoricalData(ticker, periodDays), currency: null }
+  const since = new Date(Date.now() - periodDays * 86_400_000).toISOString().slice(0, 10)
+  return { points: converted.filter((point) => point.date >= since), currency }
+}
+
+/**
+ * Ten years of daily bars in the display currency (the backend's conversion of
+ * each price at its day's rate), for the charts only: candles and the expanded
+ * chart. Days without a converted close are left out. Empty when the currency
+ * is no longer listed. The technical summary keeps reading reported bars.
+ */
+export const getConvertedOhlc = cache(async (tickerRaw: string, currency: string): Promise<ConvertedBar[]> => {
+  const ticker = normalizeTicker(tickerRaw)
+  const { payload, refused } = await fetchInDisplayCurrency(
+    `/v1/tickers/${encodeURIComponent(ticker)}/ohlc?period_days=3650`,
+    currency,
+    (path) => fetchBackendJson<unknown>(path, { context: 'backend.tickers.ohlc' }),
+  )
+  return refused ? [] : convertedOhlcFromRows(payload, currency)
 })

@@ -2,7 +2,13 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import {
+  convertedAmountOf,
+  localizeHolder,
+  localizeRows,
+  localizeSummary,
   convertedClosesFromHistory,
+  currencyName,
+  indexedInBothCurrencies,
   convertedValueOf,
   currencyDecomposition,
   displayCurrencyCode,
@@ -141,19 +147,23 @@ test('links carry the display currency in the URL, the only place it lives', () 
   }
 })
 
-test('indicators, signals, scorecards and statements never read a display currency', () => {
-  for (const file of [
-    'app/(app)/stocks/[ticker]/financials/page.tsx',
-    'app/(app)/stocks/[ticker]/fundamentals/page.tsx',
-    'app/(app)/stocks/[ticker]/signals/page.tsx',
-    'lib/canonical-research.ts',
-    'lib/statement-reading.ts',
-    'lib/stock-research.ts',
-  ]) {
-    assert.doesNotMatch(readFileSync(file, 'utf8'), /display-currency|displayCurrency/, file)
+test('the tabs read their amounts in the display currency; indicators and signals stay as reported', () => {
+  // Founder, 2026-11-05: the header choice changes the ticker's amounts on every tab.
+  for (const [file, reads] of [
+    ['app/(app)/stocks/[ticker]/fundamentals/page.tsx', [/getStockResearchData\(ticker, displayCurrency\)/, /displayCurrency \}\)/]],
+    ['app/(app)/stocks/[ticker]/financials/page.tsx', [/getStockResearchIdentity\(ticker, displayCurrency\)/, /displayCurrency \}\)/]],
+    ['app/(app)/stocks/[ticker]/ownership/page.tsx', [/getStockResearchData\(ticker, displayCurrency\)/, /getClosesIn\(ticker, BACKEND_HISTORY_PERIOD_DAYS_MAX, data\.displayCurrency\)/]],
+    ['app/(app)/stocks/[ticker]/events/page.tsx', [/getStockResearchIdentity\(ticker, displayCurrency\)/, /getClosesIn\(/]],
+    ['app/(app)/stocks/[ticker]/valuation/page.tsx', [/getStockResearchData\(ticker, displayCurrency\)/]],
+  ] as const) {
+    const source = readFileSync(file, 'utf8')
+    for (const read of reads) assert.match(source, read, file)
   }
+  // Earnings figures carry no currency, so the Events tab formats them in the listing's.
+  assert.match(readFileSync('components/stocks/StockEventsResearch.tsx', 'utf8'), /EarningsAgainstEstimate rows=\{history\} currency=\{data\.listingCurrency\}/)
+  // Signals and the bars that feed the technical summary are read as reported.
+  assert.doesNotMatch(readFileSync('app/(app)/stocks/[ticker]/signals/page.tsx', 'utf8'), /display-currency|displayCurrency/)
   const overview = readFileSync('app/(app)/stocks/[ticker]/page.tsx', 'utf8')
-  // The bars that feed the technical summary are read as reported.
   assert.match(overview, /getOhlcData\(context\.ticker, 3650, expectsPrices\)/)
 })
 
@@ -169,4 +179,80 @@ test('price conversion refuses a different or missing basis without substituting
   const quote = { price_basis: 'raw', price: 100, money: { price: converted(50, 100) } }
   assert.equal(convertedValueOf(quote, 'price', 'USD'), null)
   assert.equal(convertedValueOf({ ...quote, money: { price: { ...converted(50, 100), price_basis: 'raw' } } }, 'price', 'USD')?.value, 50)
+})
+
+test('both lines start at 100 on the first day with a conversion and compare the same days', () => {
+  const points = [
+    { date: '2026-01-02', close: 100, converted: null, price_basis: 'adjusted' as const },
+    { date: '2026-01-05', close: 200, converted: 10, price_basis: 'adjusted' as const },
+    { date: '2026-01-06', close: 300, converted: null, price_basis: 'adjusted' as const },
+    { date: '2026-01-07', close: 400, converted: 22, price_basis: 'adjusted' as const },
+  ]
+  const { listing, display } = indexedInBothCurrencies(points)
+  assert.deepEqual(listing, [{ date: '2026-01-05', value: 100 }, { date: '2026-01-07', value: 200 }])
+  assert.deepEqual(display.map((point) => point.date), ['2026-01-05', '2026-01-07'])
+  assert.ok(Math.abs(display[1].value - 220) < 1e-9)
+  // The lines end where the decomposition says: listing return and display return over the same days.
+  const split = currencyDecomposition(points).result!
+  assert.ok(Math.abs(listing[1].value / 100 - 1 - split.localReturn) < 1e-9)
+  assert.ok(Math.abs(display[1].value / 100 - 1 - split.convertedReturn) < 1e-9)
+  assert.deepEqual(indexedInBothCurrencies(points.slice(0, 2)), { listing: [], display: [] })
+})
+
+test('currencies are named in words when the runtime knows them', () => {
+  assert.equal(currencyName('KRW'), 'South Korean won')
+  assert.equal(currencyName('USD'), 'US dollar')
+  assert.equal(currencyName('EUR'), 'euro')
+  assert.equal(currencyName('ZZZ'), 'ZZZ')
+})
+
+test('an amount that is not a price converts without a price basis, and only into the currency asked for', () => {
+  const holder = { marketCap: 1.4e15, money: { marketCap: { value: 1.4e15, currency: 'KRW', sourceCurrency: 'KRW', date: '2026-11-02',
+    converted: { value: 5.7e12, currency: 'BRL', rate: 0.0041, rateDate: '2026-11-02' }, unconvertedReason: null } } }
+  assert.equal(convertedAmountOf(holder, 'marketCap', 'BRL')?.value, 5.7e12)
+  assert.equal(convertedAmountOf(holder, 'marketCap', 'USD'), null)
+  assert.equal(convertedAmountOf({ marketCap: 1 }, 'marketCap', 'BRL'), null)
+})
+
+const conv = (value: number, converted: number | null, reason: string | null = null) => ({
+  value, currency: 'KRW', sourceCurrency: 'KRW', date: '2026-10-01',
+  converted: converted === null ? null : { value: converted, currency: 'BRL', rate: 0.004, rateDate: '2026-10-01' },
+  unconvertedReason: reason,
+})
+
+test('a read is shown in the display currency all or none, so a chart never mixes currencies', () => {
+  const rows = [
+    { lineItemId: 'revenue', value: 1000, currency: 'KRW', money: { value: conv(1000, 4) } },
+    { lineItemId: 'revenueGrowth', value: 0.1, currency: null },
+    { lineItemId: 'netIncome', value: 200, currency: 'KRW', money: { value: conv(200, 0.8) } },
+  ]
+  const all = localizeRows(rows, 'BRL')
+  assert.equal(all.converted, true)
+  assert.deepEqual(all.rows.map((row) => [row.value, row.currency]), [[4, 'BRL'], [0.1, null], [0.8, 'BRL']])
+  // One amount without a rate: the read stays as reported.
+  const gap = localizeRows([...rows, { lineItemId: 'cash', value: 5, currency: 'KRW', money: { value: conv(5, null, 'no_rate') } }], 'BRL')
+  assert.equal(gap.converted, false)
+  assert.equal(gap.rows[0].value, 1000)
+  // Converted into another currency than asked: not used.
+  assert.equal(localizeRows(rows, 'USD').converted, false)
+})
+
+test('amounts without a known currency stay as reported; the summary converts all or none', () => {
+  const estimate = localizeHolder({ epsEstimate: 2.9, money: { epsEstimate: conv(2.9, null, 'currency_unknown') } }, 'BRL')
+  assert.deepEqual([estimate.ok, estimate.converted, estimate.holder.epsEstimate], [true, false, 2.9])
+  const summary = {
+    quote: { price: 75000, money: { price: conv(75000, 300) } },
+    fundamentalsSummary: { currency: 'KRW', marketCap: 1e15, money: { marketCap: conv(1e15, 4e12) } },
+    latestFundamentals: [{ metric: 'revenue', valueNumber: 9, currency: 'KRW', money: { valueNumber: conv(9, 0.036) } }],
+    earningsHistory: [{ epsActual: 2, money: { epsActual: conv(2, null, 'currency_unknown') } }],
+  }
+  const result = localizeSummary(summary, 'BRL')
+  assert.equal(result.converted, true)
+  assert.equal(result.summary.quote.price, 300)
+  assert.equal(result.summary.fundamentalsSummary.currency, 'BRL')
+  assert.equal(result.summary.latestFundamentals[0].currency, 'BRL')
+  assert.equal(result.summary.earningsHistory[0].epsActual, 2)
+  const stale = localizeSummary({ ...summary, quote: { price: 75000, money: { price: conv(75000, null, 'no_rate') } } }, 'BRL')
+  assert.equal(stale.converted, false)
+  assert.equal(stale.summary.quote.price, 75000)
 })

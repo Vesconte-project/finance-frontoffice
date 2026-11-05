@@ -30,7 +30,7 @@ export default function StockFinancialsResearch({
             </p>
           </ResearchChapter>
         ) : (
-          <SalesFlowChapter years={years} series={series} currency={data.currency} />
+          <SalesFlowChapter years={years} series={series} currency={series.revenue[0]?.currency ?? data.currency} />
         )}
       </div>
       <ResearchAdPlacement />

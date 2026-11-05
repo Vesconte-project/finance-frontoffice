@@ -40,7 +40,7 @@ test('the page reads in the listing currency until a currency is chosen; nothing
   expect(currencyReads).toEqual([])
   await expect(page.locator('[data-ticker-price]')).toHaveText('₩75,000')
   await expect(page.locator('[data-ticker-price-converted]')).toHaveCount(0)
-  await expect(page.locator('[data-chart-currency-toggle]')).toHaveCount(0)
+  await expect(page.locator('[data-currency-story]')).toHaveCount(0)
   await expect(control(page)).toHaveAccessibleName('Listings and currency: KRW listing')
   expect(await page.evaluate(() => Object.keys(window.localStorage).filter((key) => key.includes('currency')))).toEqual([])
 })
@@ -78,68 +78,75 @@ test('the control lists the listings we track, each other one linking to its pag
   await expect(control(page)).toBeFocused()
 })
 
-test('choosing USD adds the converted price beside the original; indicators and statements stay in won', async ({ page }) => {
+test('choosing USD in the header converts the ticker page; there is no second toggle', async ({ page }) => {
   await page.goto('/stocks/QAK')
   await control(page).click()
   await dialog(page).locator('[data-currency-option="USD"]').click()
   await expect(page).toHaveURL(/\/stocks\/QAK\?currency=USD$/)
   await expect(control(page)).toBeFocused()
-  await expect(control(page)).toHaveAccessibleName('Listings and currency: KRW listing, price also shown in USD')
+  await expect(control(page)).toHaveAccessibleName('Listings and currency: KRW listing, shown in USD')
 
   // Header: the original stays, the converted value is beside it.
   await expect(page.locator('[data-ticker-price]')).toHaveText('₩75,000')
   await expect(page.locator('[data-ticker-price-converted="USD"]')).toContainText('≈ $54.', { timeout: 15_000 })
 
-  // The chart is still in won until asked; statements and net cash never convert.
-  const toggle = page.locator('[data-chart-currency-toggle]')
-  await expect(toggle).toHaveAttribute('aria-pressed', 'false')
-  await expect(page.locator('[data-currency-decomposition]')).toHaveCount(0)
-  await expect(page.locator('[data-fundamental-card="net-cash"]')).toContainText('₩')
-  await expect(page.locator('[data-fundamental-card="revenue"]')).toContainText('₩')
-  await expect(page.locator('[data-fundamental-card="revenue"]')).not.toContainText('$')
+  // The header choice is the only control: the chart follows it, no toggle under the chart.
+  await expect(page.locator('[data-chart-currency-toggle]')).toHaveCount(0)
+  await expect(page.locator('[data-currency-story="USD"]')).toBeVisible({ timeout: 15_000 })
+  // A card is in one currency, never both: converted when every amount it draws converts.
+  for (const card of ['net-cash', 'revenue']) {
+    const text = await page.locator(`[data-fundamental-card="${card}"]`).textContent()
+    expect(/₩/.test(text ?? '') && /\$/.test(text ?? '')).toBe(false)
+  }
 
-  // The tabs keep the currency, and those pages stay in won.
+  // The tabs keep the currency and read their amounts in it.
   await expect(page.getByRole('link', { name: 'Fundamentals', exact: true })).toHaveAttribute('href', '/stocks/QAK/fundamentals?currency=USD')
   await page.goto('/stocks/QAK/fundamentals?currency=USD')
   await expect(page.locator('[data-ticker-price-converted="USD"]')).toContainText('≈ $', { timeout: 15_000 })
+  // The fixture has no won rate before 2019, so ten years of dividends cannot all convert:
+  // they stay in won, whole, and the tab says so.
   await expect(page.locator('#dividends')).toContainText('₩361')
   await expect(page.locator('#dividends')).not.toContainText(/\$\d+\.\d{2}/)
+  await expect(page.locator('[data-currency-notice="USD"]')).toContainText('dividends')
+  await expect(page.locator('[data-currency-notice="USD"]')).toContainText('stay in KRW')
 })
 
-test('the chart in USD uses each day’s backend value and splits the range return; days without a rate are counted', async ({ page }) => {
+test('the chart in USD uses each day’s backend value, and “What the currency did” splits the range return', async ({ page }) => {
   await page.goto('/stocks/QAK?currency=USD')
-  const toggle = page.locator('[data-chart-currency-toggle]')
-  await expect(toggle).toHaveText('Show in USD')
-  await toggle.click()
-  await expect(toggle).toHaveAttribute('aria-pressed', 'true')
-  const decomposition = page.locator('[data-currency-decomposition]')
+  const story = page.locator('#currency')
+  const decomposition = story.locator('[data-currency-decomposition]')
   await expect(decomposition).toBeVisible({ timeout: 15_000 })
-  await expect(decomposition.locator('dt')).toHaveText(['QAK in KRW', 'Currency effect, KRW to USD', 'Return in USD'])
+  await expect(decomposition.locator('dt')).toHaveText(['The company, in KRW', 'The currency, KRW against USD', 'Together, in USD'])
   for (const part of ['local', 'currency', 'converted']) {
-    await expect(decomposition.locator(`[data-decomposition="${part}"]`)).toHaveText(/^[+−]?\d+\.\d{2}%$/)
+    await expect(decomposition.locator(`[data-decomposition="${part}"]`)).toHaveText(/^[+−]\d+\.\d%$/)
   }
+  // The split said in words, and both lines drawn from the same start.
+  await expect(story.locator('[data-currency-story-sentence]')).toContainText('in USD')
+  await expect(story.locator('[data-currency-story-sentence]')).toContainText('South Korean won')
+  await expect(story.locator('[data-chart-variant="wide"] path').nth(2)).toBeAttached()
   // The fixture publishes no KRW rate in June 2026, inside the default one-year range.
-  await expect(decomposition.locator('[data-decomposition-range]')).toContainText(/\d+ days without a USD rate are left out\./)
-  await expect(page.locator('[data-chart-currency]')).toContainText('Not a listing traded in USD.')
-  // Candles are only for the listing's own prices.
-  await expect(page.locator('[data-chart-kind-toggle]')).toBeHidden()
+  await expect(story.locator('[data-decomposition-range]')).toContainText(/\d+ days without a USD rate are left out\./)
+  await expect(story.locator('[data-decomposition-range]')).toContainText('not a listing traded in USD')
+  // Candles follow the currency too: the backend converts each day's bar.
+  await expect(page.locator('[data-chart-kind-toggle]')).toBeVisible()
   await capture(page, 'qak-1440-chart-usd')
 
-  // The split holds: (1 + USD) = (1 + KRW)(1 + currency effect), within rounding.
+  // The split holds: (1 + USD) = (1 + KRW)(1 + currency), within rounding of one decimal.
   const [local, fx, usd] = await Promise.all(['local', 'currency', 'converted'].map(async (part) => {
     const value = await decomposition.locator(`[data-decomposition="${part}"]`).textContent()
-    return Number((value ?? '').replace('−', '-').replace('%', '')) / 100
+    return Number((value ?? '').replace('−', '-').replace('+', '').replace('%', '')) / 100
   }))
-  expect(Math.abs((1 + usd) - (1 + local) * (1 + fx))).toBeLessThan(0.0005)
+  expect(Math.abs((1 + usd) - (1 + local) * (1 + fx))).toBeLessThan(0.003)
 
-  // Before 2019 there is no KRW rate: the whole range counts more left-out days.
+  // The chapter follows the chart's range: before 2019 there is no KRW rate, so ALL counts more left-out days.
   await page.getByRole('radiogroup', { name: 'Chart timeframe' }).getByRole('radio', { name: 'ALL', exact: true }).click()
-  await expect(decomposition.locator('[data-decomposition-range]')).toContainText(/\d{3,} days without a USD rate/)
+  await expect(story.locator('[data-decomposition-range]')).toContainText(/\d{3,} days without a USD rate/)
 
-  // Back to won.
-  await toggle.click()
-  await expect(toggle).toHaveAttribute('aria-pressed', 'false')
-  await expect(decomposition).toHaveCount(0)
+  // Back to won, from the header: the chapter goes and candles return.
+  await control(page).click()
+  await dialog(page).locator('[data-currency-option=""]').click()
+  await expect(page).toHaveURL(/\/stocks\/QAK$/)
+  await expect(story).toHaveCount(0)
   await expect(page.locator('[data-chart-kind-toggle]')).toBeVisible()
 })
 
@@ -160,7 +167,7 @@ test('unavailable or absent listings fail open; a currency the backend does not 
   await page.goto('/stocks/QAK?currency=XYZ')
   await expect(page.locator('[data-ticker-price]')).toHaveText('₩75,000')
   await expect(page.locator('[data-ticker-price-converted]')).toHaveCount(0)
-  await expect(page.locator('[data-chart-currency-toggle]')).toHaveCount(0)
+  await expect(page.locator('[data-currency-story]')).toHaveCount(0)
 })
 
 test('a dollar listing can show its price in euros', async ({ page }) => {
@@ -195,8 +202,7 @@ test.describe('phone', () => {
     await capture(page, 'qak-375-dialog')
     await page.keyboard.press('Escape')
 
-    await page.locator('[data-chart-currency-toggle]').tap()
-    await expect(page.locator('[data-currency-decomposition]')).toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('#currency [data-currency-decomposition]')).toBeVisible({ timeout: 15_000 })
     await noHorizontalOverflow(page)
     await capture(page, 'qak-375-chart-usd')
   })
@@ -213,4 +219,30 @@ test('with reduced motion the dialog opens and closes without animation and keep
   await page.keyboard.press('Escape')
   await expect(dialog(page)).toBeHidden()
   await expect(control(page)).toBeFocused()
+})
+
+test('the expanded chart is in the chosen currency and compares several currencies from the same day', async ({ page }) => {
+  await page.goto('/stocks/QAK?currency=USD')
+  await page.locator('[data-expand-chart]').click()
+  const chart = page.getByRole('dialog')
+  await expect(chart).toContainText('Price chart · daily · USD')
+  await expect(chart.locator('[data-expanded-chart-legend]')).toContainText('$')
+
+  await chart.locator('[data-compare-toggle]').click()
+  const compare = chart.locator('[data-currency-compare]')
+  await expect(compare).toBeVisible()
+  // The listing's line and the chosen currency's, from the same day.
+  await expect(compare.locator('[data-compare-line="KRW"]')).toBeAttached({ timeout: 15_000 })
+  await expect(compare.locator('[data-compare-line="USD"]')).toBeAttached({ timeout: 15_000 })
+  // A third currency adds its own line.
+  await compare.locator('[data-compare-currency="EUR"]').click()
+  await expect(compare.locator('[data-compare-line="EUR"]')).toBeAttached({ timeout: 15_000 })
+  await expect(compare.locator('[data-compare-currency="EUR"]')).toContainText(/[+−]?\d+\.\d%/)
+  await expect(compare.locator('[data-compare-note]')).toContainText('from the same day at 0%')
+  await capture(page, 'qak-1440-compare-currencies')
+
+  // Back to the price chart.
+  await chart.locator('[data-compare-toggle]').click()
+  await expect(compare).toHaveCount(0)
+  await expect(chart.locator('[data-expanded-chart-legend]')).toBeVisible()
 })

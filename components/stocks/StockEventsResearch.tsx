@@ -102,7 +102,7 @@ export default function StockEventsResearch({
   const facts = [
     earnings?.fiscalPeriod ? { label: 'Period', value: earnings.fiscalPeriod } : null,
     earnings?.epsEstimate === null || earnings?.epsEstimate === undefined ? null : { label: 'EPS estimate', value: formatNumber(earnings.epsEstimate) },
-    earnings?.revenueEstimate === null || earnings?.revenueEstimate === undefined ? null : { label: 'Revenue estimate', value: formatCompactMoney(earnings.revenueEstimate, data.currency) },
+    earnings?.revenueEstimate === null || earnings?.revenueEstimate === undefined ? null : { label: 'Revenue estimate', value: formatCompactMoney(earnings.revenueEstimate, data.listingCurrency) },
   ].filter((fact): fact is { label: string; value: string } => fact !== null)
   const days = nextDate ? daysBetween(today, nextDate.slice(0, 10)) : null
 
@@ -143,7 +143,8 @@ export default function StockEventsResearch({
     documents: filings.map((filing) => ({ date: filing.date, label: filing.label, url: filing.url })),
     closes,
     currency: data.currency,
-    compactMoney: (value) => formatCompactMoney(value, data.currency),
+    // Earnings figures carry no currency in the read model and are never converted: always the listing's.
+    compactMoney: (value) => formatCompactMoney(value, data.listingCurrency),
   })
 
   // The next results, small, at the top of the timeline's side column.
@@ -198,7 +199,7 @@ export default function StockEventsResearch({
 
         {!isFund ? (
           <ResearchChapter id="reported-against-estimate" label="Reported against estimate" band>
-            <EarningsAgainstEstimate rows={history} currency={data.currency} />
+            <EarningsAgainstEstimate rows={history} currency={data.listingCurrency} />
           </ResearchChapter>
         ) : null}
 

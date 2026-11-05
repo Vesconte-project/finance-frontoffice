@@ -18,26 +18,60 @@ These notes describe how the frontoffice consumes them; they are not contract tr
   null; an unavailable block (`symbol_absent`, `provisional_only`, `entity_tables_absent`, …)
   has no items.
 
-## Product rules (founder, 2026-10-20)
+## Product rules (founder, 2026-11-05)
 
-- The display currency lives only in the URL (`?currency=XXX`). No browser storage and no
-  account preference. Without it, or with the listing's own currency, nothing is converted.
-- The page stays in the listing's currency. A display currency adds:
-  - the header price's conversion beside the reported one ("₩75,000 ≈ $54.11"), from the
-    backend's conversion of the latest price;
-  - an explicit "Show in {CCY}" toggle under the Overview price chart. When on, the chart
-    draws each day's backend value, and a decomposition of the visible range follows:
-    the company's return in its listing currency, the currency effect
-    ((1 + r_ccy) / (1 + r_local) − 1) and the return in the display currency, all from
-    the same first and last days with a conversion. Days without one are left out of the
-    line and counted; nothing is filled in.
-- Technical indicators, signals, scorecards, financial statements and every other figure
-  on the ticker tabs stay in the listing's currency.
-- The header control ("Listings and currency") opens a dialog: "Listings we track" (each
-  other listing links to its own page, the current one is marked, the primary one badged),
-  then the display currencies `/v1/currencies` lists. The copy says a converted price is
-  not a listing traded in that currency. An unavailable block says so; an absent block
-  (older backend) hides the section.
+These replace the 2026-10-20 rules, which kept every tab in the listing's currency and
+put a separate "Show in {CCY}" toggle under the Overview chart. The founder clarified
+that the header choice is meant to change the ticker's data on every tab.
+
+- **One control.** The header's "Listings and currency" choice is the only one. Choosing a
+  currency shows the ticker page in it; choosing the listing's currency (or none) shows it
+  as reported. There is no second toggle on the page.
+- **It lives only in the URL** (`?currency=XXX`) and travels from tab to tab; a reload or a
+  shared link keeps it. Nothing is remembered: no browser storage, no account preference,
+  so a new visit starts in the listing's currency.
+- **Every amount the backend converts is shown converted**, at the rate of its own date;
+  ratios, percentages, scores and correlations do not change. An amount the backend
+  cannot convert (`unconvertedReason`, e.g. EPS estimates and actuals, which carry no
+  currency) stays as reported and is marked with its currency.
+- **Overview:**
+  - the price chart is drawn in the display currency (the backend's value of each day);
+  - candles are drawn from the converted bars (see Charts below);
+  - market value under the chart is the backend's conversion of the value the page shows;
+  - a chapter, "What the currency did", follows the chart, over the chart's range:
+    - the price in both currencies from the same start (100), with the gap between them
+      shaded as the currency's part;
+    - the split in words and figures: the company in its own currency, the currency
+      against the display currency ((1 + r_ccy) / (1 + r_local) − 1), and the two together;
+    - days without a conversion are left out of both lines and counted.
+- **Every tab** (Fundamentals, Financials, Valuation, Ownership & Capital, Events, Business):
+  - the page reads `?currency=` and asks each read in it: the summary
+    (`getStockResearchData` / `getStockResearchIdentity`), statements, dividends, buybacks,
+    and the daily closes (`getClosesIn`, only when the page's summary converted);
+  - **a read is shown in the currency whole or not at all** (`localizeRows`,
+    `localizeSummary`): if any of its amounts has no conversion (for example a won amount
+    before the first published rate), the read stays as reported, so a chart or a total
+    never mixes currencies. Rows that converted carry the display currency, so every label
+    follows its own data;
+  - when part of a tab stays in the listing currency, one line at the top says which
+    (`CurrencyNotice`);
+  - earnings estimates and actuals carry no currency and are never converted; the Events
+    tab formats them in the listing currency (`data.listingCurrency`);
+  - multiples, margins, growth, scores, signals and technical indicators do not change.
+- **Charts:**
+  - the Overview's candles and the expanded chart draw bars in the display currency (the
+    backend's `ohlc?currency=`, each price at its day's rate; a day without a converted close
+    is left out, an open/high/low without one is null and the bar is drawn neutral);
+  - moving averages and Bollinger come converted the same way
+    (`technical-series?currency=`, `convertedTechnicalSeries`); RSI and volume do not change;
+  - the Overview's technical summary keeps reading reported bars.
+- **Compare currencies** (expanded chart, `CurrencyCompare`; founder, 2026-11-05): the price in
+  up to four currencies at once, each line the change since the same first day of the chosen
+  range (`compareFrom`), so the gap between two lines is how those currencies moved against
+  each other:
+  - the listing's line is its reported closes; the others are the backend's conversion of
+    each day's close;
+  - days without a rate in any chosen currency are left out of all lines and counted.
 
 ## How the site uses it
 
@@ -50,10 +84,17 @@ These notes describe how the frontoffice consumes them; they are not contract tr
 | Server reads | `lib/display-currency-server.ts` (`resolveDisplayCurrency`, `fetchInDisplayCurrency`), used by `lib/ticker-data.ts` and `lib/finance.ts` (`getConvertedCloses`) |
 | Parsing and the decomposition | `lib/display-currency.ts` (pure, unit-tested in `tests/display-currency.test.ts`) |
 | Control and dialog | `components/stocks/DisplayCurrencySelect.tsx`, in the ticker chrome beside the watchlist button |
-| Chart toggle and decomposition | `ChartCurrencyView` in `components/stocks/StockOverviewClient.tsx` |
+| A read in the currency, whole or not at all | `localizeHolder`, `localizeRows`, `localizeSummary` in `lib/display-currency.ts`; `readInCurrency` in `lib/canonical-research.ts` |
+| Closes for a tab | `getClosesIn` in `lib/finance.ts` |
+| What stayed in the listing currency | `components/stocks/CurrencyNotice.tsx` |
+| Bars and indicators in the currency | `getConvertedOhlc` in `lib/finance.ts`; `convertedOhlcFromRows`, `convertedTechnicalSeries` in `lib/display-currency.ts`; `GET /api/stocks/{ticker}/technical-series?currency=` |
+| Compare currencies | `components/stocks/CurrencyCompare.tsx`, `lib/currency-compare.ts` |
+| Overview chart in the currency | `StockOverviewClient.tsx` (loads `history?currency=` when a currency is chosen) |
+| What the currency did | `components/stocks/CurrencyStory.tsx`, `indexedInBothCurrencies` and `currencyDecomposition` in `lib/display-currency.ts` |
 
 Nothing is converted in the browser or on the site's server: every converted number shown
-is a `converted.value` from the backend. A code not in the list, a list that cannot be
+is a `converted.value` from the backend. The only arithmetic is on those values: the
+range's returns and their split, and indexing both lines to 100. A code not in the list, a list that cannot be
 read, or a 422 shows the page without a conversion. The research tabs and the swipe between
 them carry `?currency=` so the header keeps its conversion.
 
@@ -80,6 +121,7 @@ excluded-day counts; no browser-side FX calculation or rate fill occurs.
 
 The latest product decision in this PR supersedes the original page-wide
 conversion proposal: research, statements and indicators remain native.
+(Itself superseded on 2026-11-05: see "Product rules" above.)
 No merge or deploy before the Vercel reopening (ENG-196). Backend #63 must be
 reviewed first; merging it requires regeneration and review of the reopening
 blocks currently pinned to backend `d0bffc1`. Francisco reviews this frontend.

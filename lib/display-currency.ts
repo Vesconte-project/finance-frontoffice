@@ -135,6 +135,15 @@ export function convertedValueOf(holder: unknown, field: string, target: string)
   return conversion && conversion.currency === target ? conversion : null
 }
 
+/**
+ * The backend's conversion of an amount that is not a price (a market value, a
+ * statement line, a dividend): no price basis is involved, so none is required.
+ */
+export function convertedAmountOf(holder: unknown, field: string, target: string): MoneyConversion | null {
+  const conversion = moneyEntryOf(holder, field)?.converted
+  return conversion && conversion.currency === target ? conversion : null
+}
+
 export function parseCurrenciesPayload(raw: unknown): CurrenciesPayload | null {
   const record = asRecord(raw)
   if (!record || !Array.isArray(record.currencies)) return null
@@ -321,5 +330,192 @@ export function currencyDecomposition(points: readonly ConvertedClose[]): { resu
       excludedDays,
     },
     excludedDays,
+  }
+}
+
+export type IndexedPoint = { date: string; value: number }
+
+/**
+ * The same days in both currencies, each line starting at 100 on the first day
+ * with a conversion: the gap between them is the currency's part of the return.
+ * Uses only the backend's reported and converted closes; days without a
+ * conversion are left out of both lines, so they always compare the same days.
+ */
+export function indexedInBothCurrencies(points: readonly ConvertedClose[]): { listing: IndexedPoint[]; display: IndexedPoint[] } {
+  const used = points.filter((point) => point.converted !== null && point.converted > 0 && point.close > 0)
+  if (used.length < 2) return { listing: [], display: [] }
+  const baseClose = used[0].close
+  const baseConverted = used[0].converted as number
+  return {
+    listing: used.map((point) => ({ date: point.date, value: (point.close / baseClose) * 100 })),
+    display: used.map((point) => ({ date: point.date, value: ((point.converted as number) / baseConverted) * 100 })),
+  }
+}
+
+/**
+ * A currency's English name for prose ("South Korean won", "US dollar", "euro"),
+ * or its code when the runtime has none. The unit is lower-cased; the place stays.
+ */
+export function currencyName(code: string): string {
+  try {
+    const name = new Intl.DisplayNames(['en'], { type: 'currency' }).of(code)
+    if (!name || name === code) return code
+    const words = name.split(' ')
+    words[words.length - 1] = words[words.length - 1].toLowerCase()
+    return words.join(' ')
+  } catch {
+    return code
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* A whole read in the display currency                               */
+/* ------------------------------------------------------------------ */
+
+type Holder = Record<string, unknown>
+
+/**
+ * One object's amounts in `target`: every field the backend annotated is
+ * replaced by its `converted.value`. An amount whose currency the backend does
+ * not know (`currency_unknown`, e.g. earnings estimates and actuals) is left as
+ * reported. Any other amount without a conversion into `target` makes the
+ * object unconvertible (`ok: false`), so a caller never mixes currencies.
+ * `converted` says whether any field was replaced.
+ */
+export function localizeHolder<T>(holder: T, target: string): { holder: T; ok: boolean; converted: boolean } {
+  const record = asRecord(holder)
+  const money = asRecord(record?.money)
+  if (!record || !money) return { holder, ok: true, converted: false }
+  const next: Holder = { ...record }
+  let converted = false
+  for (const [field, raw] of Object.entries(money)) {
+    const entry = parseMoneyEntry(raw)
+    if (!entry || entry.value === null || record[field] === null || record[field] === undefined) continue
+    if (entry.converted && entry.converted.currency === target) {
+      next[field] = entry.converted.value
+      converted = true
+      continue
+    }
+    if (entry.unconvertedReason === 'currency_unknown') continue
+    return { holder, ok: false, converted: false }
+  }
+  return { holder: next as T, ok: true, converted }
+}
+
+/**
+ * Every row of a read in `target`, or none: rows whose amounts were converted
+ * take `target` as their currency; rows without amounts (ratios, counts) stay as
+ * they are. If any row cannot be converted, the read is returned as reported
+ * and `converted` is false, so a chart or a total never mixes currencies.
+ */
+export function localizeRows<T>(rows: readonly T[], target: string, currencyField = 'currency'): { rows: T[]; converted: boolean } {
+  const next: T[] = []
+  let converted = false
+  for (const row of rows) {
+    const result = localizeHolder(row, target)
+    if (!result.ok) return { rows: [...rows], converted: false }
+    if (result.converted) {
+      converted = true
+      next.push({ ...(result.holder as Holder), [currencyField]: target } as T)
+    } else {
+      next.push(row)
+    }
+  }
+  return { rows: next, converted }
+}
+
+/**
+ * The ticker summary in `target`: the quote, market stats, fundamentals, profile
+ * and the latest fundamentals rows, all or none. Earnings estimates and actuals
+ * carry no currency and stay as reported (see `localizeHolder`).
+ */
+export function localizeSummary<S>(summary: S, target: string): { summary: S; converted: boolean } {
+  const record = asRecord(summary)
+  if (!record) return { summary, converted: false }
+  const next: Holder = { ...record }
+  let converted = false
+  for (const key of ['quote', 'marketStats', 'fundamentalsSummary', 'profile', 'nextEarnings']) {
+    if (!asRecord(record[key])) continue
+    const result = localizeHolder(record[key], target)
+    if (!result.ok) return { summary, converted: false }
+    if (result.converted) {
+      converted = true
+      next[key] = key === 'fundamentalsSummary' ? { ...(result.holder as Holder), currency: target } : result.holder
+    }
+  }
+  for (const key of ['latestFundamentals', 'earningsHistory']) {
+    if (!Array.isArray(record[key])) continue
+    const rows = record[key] as unknown[]
+    if (rows.some((row) => !localizeHolder(row, target).ok)) return { summary, converted: false }
+    const result = localizeRows(rows, target)
+    if (result.converted) {
+      converted = true
+      next[key] = result.rows
+    }
+  }
+  return { summary: (converted ? next : summary) as S, converted }
+}
+
+/**
+ * Daily bars in the display currency from the backend's `ohlc?currency=` rows:
+ * each price is its `converted.value` at that day's rate. A day without a
+ * converted close is left out; an open, high or low without one is null (the
+ * chart draws such a bar in the neutral colour, as for any bar without an open).
+ * Volume is a share count and stays as reported.
+ */
+export function convertedOhlcFromRows(rows: unknown, target: string): Array<{
+  price_basis: 'adjusted'
+  date: string
+  open: number | null
+  high: number | null
+  low: number | null
+  close: number
+  volume: number | null
+}> {
+  if (!Array.isArray(rows)) return []
+  const byDate = new Map<string, ReturnType<typeof convertedOhlcFromRows>[number]>()
+  for (const value of rows) {
+    const row = asRecord(value)
+    const date = text(row?.date)?.slice(0, 10) ?? null
+    if (!row || !date || row.price_basis !== 'adjusted') continue
+    const close = convertedValueOf(row, 'close', target)?.value ?? null
+    if (close === null || close <= 0) continue
+    const price = (field: string) => {
+      const converted = convertedValueOf(row, field, target)?.value ?? null
+      return converted !== null && converted > 0 ? converted : null
+    }
+    byDate.set(date, { price_basis: 'adjusted', date, open: price('open'), high: price('high'), low: price('low'), close, volume: finite(row.volume) })
+  }
+  return [...byDate.values()].sort((left, right) => left.date.localeCompare(right.date))
+}
+
+/**
+ * Indicator series from `technical-series?currency=` in the display currency:
+ * price-unit points (moving averages, Bollinger value/upper/lower) take the
+ * backend's conversion of each day; a value without one becomes null, a gap in
+ * the line. Index series (RSI, 0–100) do not depend on the currency and stay.
+ */
+export function convertedTechnicalSeries(payload: unknown, target: string): unknown {
+  const record = asRecord(payload)
+  if (!record || !Array.isArray(record.series)) return payload
+  return {
+    ...record,
+    series: record.series.map((value) => {
+      const series = asRecord(value)
+      if (!series || series.unit !== 'price' || !Array.isArray(series.points)) return value
+      return {
+        ...series,
+        points: series.points.map((raw) => {
+          const point = asRecord(raw)
+          if (!point) return raw
+          const next: Record<string, unknown> = { ...point }
+          for (const field of ['value', 'upper', 'lower']) {
+            if (point[field] === null || point[field] === undefined) continue
+            next[field] = convertedValueOf(point, field, target)?.value ?? null
+          }
+          return next
+        }),
+      }
+    }),
   }
 }
