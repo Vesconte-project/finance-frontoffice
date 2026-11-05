@@ -8,7 +8,6 @@
   --event-dividends: var(--up-ink, var(--up));
   --event-guidance: color-mix(in srgb, var(--text) 78%, var(--accent));
   --event-company: var(--network-node);
-  container: events-timeline / inline-size;
   display: grid;
   gap: 1.25rem;
   min-width: 0;
@@ -28,8 +27,9 @@
   min-width: 0;
 }
 
-/* Wide: the chart on the left, the next results and the chosen event in a column beside it. */
-@container events-timeline (width >= 54rem) {
+/* Wide: the chart on the left, the next results and the chosen event in a column beside it.
+   Queries the chapter's container: an element cannot query its own. */
+@container research-chapter (width >= 56rem) {
   .timeline {
     grid-template-columns: minmax(0, 1fr) 20rem;
     align-items: start;
