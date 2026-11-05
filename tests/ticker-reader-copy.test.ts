@@ -58,6 +58,7 @@ const TICKER_SURFACES = [
   ...walk('app/(app)/stocks/[ticker]', /\.tsx$/),
   // Shared components the ticker tabs render.
   'components/atlas/CompanyAtlasPlace.tsx',
+  'components/atlas/RelationshipOrbit.tsx',
   'components/calendar/EventCalendar.tsx',
   'components/charts/TemporalLineChart.tsx',
 ]
@@ -87,6 +88,7 @@ test('the scan covers every ticker tab and the shared research primitives', () =
     'app/(app)/stocks/[ticker]/page.tsx',
     'app/(app)/stocks/[ticker]/relationships/page.tsx',
     'components/atlas/CompanyAtlasPlace.tsx',
+    'components/atlas/RelationshipOrbit.tsx',
     'components/calendar/EventCalendar.tsx',
   ]) assert.ok(TICKER_SURFACES.includes(file), `${file} is not scanned`)
   // The scanner itself must see the words it is meant to forbid.

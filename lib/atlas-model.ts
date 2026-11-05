@@ -140,7 +140,10 @@ export type AtlasCompanyPanel = {
   /** Signed out: the zone's fixed leaders. Signed in: empty, the neighbours say more. */
   zoneLeaders: AtlasCompanyRef[]
   memberships: AtlasMembership[]
+  /** Signed out: the five strongest ties, at two decimals. Signed in: every tie. */
   neighbours: AtlasNeighbour[]
+  /** How many ties the company has, including those not sent to this reader. */
+  neighbourCount: number
   marketCap: number | null
   /** Signed in only: themes the thematic funds give it. */
   themes: AtlasThemeRef[]
@@ -505,6 +508,16 @@ export function parseCompanyPanel(value: unknown): AtlasCompanyPanel | null {
   const zoneId = text(raw?.zoneId)
   const asOf = text(raw?.asOf)
   if (!raw || !access || !symbol || !zoneId || !asOf) return null
+  const neighbours = list(raw.neighbours)
+    .map((entry) => {
+      const ref = parseRef(entry)
+      const item = record(entry)
+      const value = finite(item?.correlation)
+      const trend: AtlasTrend | null = item?.trend === 'stronger' || item?.trend === 'weaker' ? item.trend : null
+      return ref && value !== null ? { ...ref, zoneId: text(item?.zoneId), correlation: value, total: correlation(item?.total), trend } : null
+    })
+    .filter((item): item is AtlasNeighbour => item !== null)
+  const count = finite(raw.neighbourCount)
   return {
     asOf,
     access,
@@ -524,15 +537,8 @@ export function parseCompanyPanel(value: unknown): AtlasCompanyPanel | null {
         return id && share !== null ? { zoneId: id, label: text(item?.label), share } : null
       })
       .filter((item): item is AtlasMembership => item !== null),
-    neighbours: list(raw.neighbours)
-      .map((entry) => {
-        const ref = parseRef(entry)
-        const item = record(entry)
-        const value = finite(item?.correlation)
-        const trend: AtlasTrend | null = item?.trend === 'stronger' || item?.trend === 'weaker' ? item.trend : null
-        return ref && value !== null ? { ...ref, zoneId: text(item?.zoneId), correlation: value, total: correlation(item?.total), trend } : null
-      })
-      .filter((item): item is AtlasNeighbour => item !== null),
+    neighbours,
+    neighbourCount: count !== null && Number.isInteger(count) && count >= neighbours.length ? count : neighbours.length,
     marketCap: finite(raw.marketCap),
     themes: parseThemeRefs(raw.themes),
     fidelity: share01(raw.fidelity),

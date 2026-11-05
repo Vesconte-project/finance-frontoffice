@@ -148,6 +148,24 @@ test('panels read the signed-out and signed-in shapes', () => {
   assert.deepEqual(zone.members, [])
 })
 
+test('a signed-out company panel carries its five strongest ties and how many there are in all', () => {
+  const panel = parseCompanyPanel({
+    asOf: '2026-10-16', access: signedOutAccess, symbol: 'AAPL', zoneId: 'z1', zoneLabel: 'Software',
+    memberships: [{ zoneId: 'z1', label: 'Software', share: 0.47 }],
+    neighbours: [{ symbol: 'KO', name: 'Coca-Cola', zoneId: 'z1', correlation: 0.24 }],
+    neighbourCount: 15,
+  })
+  assert.ok(panel)
+  assert.equal(panel.neighbourCount, 15)
+  assert.equal(panel.neighbours.length, 1)
+  // A count that is missing, fractional or smaller than the ties sent falls back to the ties sent.
+  for (const neighbourCount of [undefined, 2.5, 0, 'many']) {
+    const fallback = parseCompanyPanel({ asOf: '2026-10-16', access: signedOutAccess, symbol: 'AAPL', zoneId: 'z1',
+      neighbours: [{ symbol: 'KO', correlation: 0.24 }], neighbourCount })
+    assert.equal(fallback?.neighbourCount, 1)
+  }
+})
+
 test('the overview path asks for one level and an area only when given one', () => {
   assert.equal(atlasOverviewPath(1), '/api/atlas?level=1')
   assert.equal(atlasOverviewPath(9), '/api/atlas?level=3')

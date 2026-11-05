@@ -10,34 +10,103 @@
   text-decoration: none;
 }
 
+/* Region colours: the atlas hues, as in RelationshipOrbit.module.css. */
+.shares li,
+.neighbours li {
+  --zone: hsl(var(--h, 210) 46% 48%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme='light']):not(.light)) .shares li,
+  :global(:root:not([data-theme='light']):not(.light)) .neighbours li {
+    --zone: hsl(var(--h, 210) 38% 62%);
+  }
+}
+
+:global(:root[data-theme='dark']) .shares li,
+:global(:root[data-theme='dark']) .neighbours li,
+:global(:root.dark) .shares li,
+:global(:root.dark) .neighbours li {
+  --zone: hsl(var(--h, 210) 38% 62%);
+}
+
+.swatch {
+  display: inline-block;
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--zone);
+}
+
 .shares,
 .neighbours {
   display: grid;
-  gap: 0.55rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.shares li,
+.shares {
+  gap: 0.6rem;
+}
+
+.shares li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(3rem, 5rem) 2.6rem;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.88rem;
+}
+
+.zoneName {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.45rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.neighbours {
+  border-top: 1px solid var(--line);
+}
+
 .neighbours li {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(4rem, 10rem) 3.2rem;
+  grid-template-columns: minmax(0, 1fr) minmax(4rem, 8rem) 3rem;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.9rem;
+  padding: 0.75rem 0.15rem;
+  border-bottom: 1px solid var(--line-soft);
+  animation: place-rise var(--motion-xslow, 420ms) var(--motion-ease-soft, ease-out) backwards;
+}
+
+.neighbours li:nth-child(2) { animation-delay: 40ms; }
+.neighbours li:nth-child(3) { animation-delay: 80ms; }
+.neighbours li:nth-child(4) { animation-delay: 120ms; }
+.neighbours li:nth-child(5) { animation-delay: 160ms; }
+.neighbours li:nth-child(n + 6) { animation-delay: 200ms; }
+
+@container (width >= 40rem) {
+  .neighbours li {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(5rem, 10rem) 3.2rem;
+  }
 }
 
 .neighbours a {
   display: flex;
   min-width: 0;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 0.55rem;
   color: var(--text);
   text-decoration: none;
 }
 
 .neighbours a b {
   flex: none;
-  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-family: var(--font-mono);
 }
 
 .neighbours a span {
@@ -47,8 +116,27 @@
   white-space: nowrap;
 }
 
-.neighbours a:hover b {
+.neighbours a:hover b,
+.neighbours a:focus-visible b {
   color: var(--accent);
+}
+
+.region {
+  display: none;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+@container (width >= 40rem) {
+  .region {
+    display: block;
+  }
 }
 
 .bar {
@@ -62,11 +150,13 @@
 .bar span {
   display: block;
   height: 100%;
-  background: var(--accent);
+  border-radius: inherit;
+  background: var(--zone);
 }
 
 .shares strong,
 .neighbours strong {
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
@@ -75,4 +165,88 @@
   margin: 0.9rem 0 0;
   color: var(--text-muted);
   font-size: 0.85rem;
+}
+
+/* ---- Locked: the rest of the list in silhouette, one solid offer over it ---- */
+
+.locked {
+  display: grid;
+  min-width: 0;
+}
+
+.locked > * {
+  grid-area: 1 / 1;
+}
+
+.silhouette {
+  display: grid;
+  pointer-events: none;
+  user-select: none;
+}
+
+.silhouette span {
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 1fr) 2.5rem;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.15rem 0.15rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.silhouette i {
+  display: block;
+  height: 0.55rem;
+  border-radius: 3px;
+  background: var(--line-soft);
+}
+
+.offer {
+  display: grid;
+  align-self: center;
+  justify-self: center;
+  width: min(100%, 30rem);
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  background: var(--surface);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.offerTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+.offerTitle svg {
+  flex: none;
+  color: var(--accent);
+}
+
+.offerText {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.offerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+@keyframes place-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .neighbours li {
+    animation: none;
+  }
 }

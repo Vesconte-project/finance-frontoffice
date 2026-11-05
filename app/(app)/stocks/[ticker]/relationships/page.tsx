@@ -7,7 +7,8 @@ import ResearchUnavailable from '@/components/stocks/ResearchUnavailable'
 import BeingBuilt from '@/components/stocks/research/BeingBuilt'
 import ResearchChapter from '@/components/stocks/research/ResearchChapter'
 import CompanyAtlasPlace from '@/components/atlas/CompanyAtlasPlace'
-import { getAtlasCompany } from '@/lib/atlas'
+import { getAtlasCompany, getAtlasOverview } from '@/lib/atlas'
+import { zoneHues } from '@/lib/atlas-view'
 import { getStockResearchIdentity } from '@/lib/stock-research'
 
 export const dynamic = 'force-dynamic'
@@ -23,9 +24,11 @@ export async function generateMetadata({ params }: { params: Promise<{ ticker: s
 export default async function RelationshipsPage({ params }: { params: Promise<{ ticker: string }> }) {
   const { ticker: rawTicker } = await params
   const ticker = rawTicker.toUpperCase()
-  const [researchResult, atlas] = await Promise.all([
+  const [researchResult, atlas, overview] = await Promise.all([
     getStockResearchIdentity(ticker).catch(() => null),
     getAtlasCompany(ticker),
+    // Only for the region colours, so the orbit matches the market atlas.
+    getAtlasOverview(0),
   ])
 
   if (!researchResult) return <ResearchUnavailable ticker={ticker} />
@@ -37,7 +40,7 @@ export default async function RelationshipsPage({ params }: { params: Promise<{ 
     <ResearchViewShell title="Relationships" showHeader={false}>
       <div data-relationship-page="">
         {atlas.status === 'ok' ? (
-          <CompanyAtlasPlace panel={atlas.data} />
+          <CompanyAtlasPlace panel={atlas.data} hues={overview.status === 'ok' ? Object.fromEntries(zoneHues(overview.data.zones)) : {}} />
         ) : atlas.status === 'denied' && atlas.reason === 'sign_in_required' ? (
           <ResearchChapter id="related-companies" label="Related companies">
             <p>

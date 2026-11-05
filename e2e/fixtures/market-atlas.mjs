@@ -146,25 +146,32 @@ export function atlasOverviewFixture({ signedIn, level, bbox }) {
 export function atlasCompanyFixture(symbol, signedIn) {
   const member = MEMBERS.find((item) => item.symbol === symbol)
   const zone = member && ZONES.find((item) => item.zoneId === member.zoneId)
+  if (!member) return { status: 404, body: { detail: `${symbol} is not on the atlas` } }
+  const others = MEMBERS.filter((item) => item.symbol !== symbol)
+  const next = ZONES[(ZONES.indexOf(zone) + 1) % 3]
   if (!signedIn) {
-    if (!member || member.level > 1) return { status: 403, body: { detail: 'sign_in_required' } }
+    // Rule 7: one company's zone, how its ties split and its five strongest ties at two decimals.
     return {
       status: 200,
       body: {
         asOf: AS_OF, access: SIGNED_OUT, symbol, name: member.name, sector: 'Fixture', industry: 'Fixture Industry', country: 'Testland',
         zoneId: zone.zoneId, zoneLabel: zone.label,
         zoneLeaders: MEMBERS.filter((item) => item.zoneId === zone.zoneId && item.level <= 1).slice(0, 4).map((item) => ({ symbol: item.symbol, name: item.name })),
+        memberships: [{ zoneId: zone.zoneId, label: zone.label, share: 0.85 }, { zoneId: next.zoneId, label: next.label, share: 0.15 }],
+        neighbours: others.slice(0, 5).map((item, rank) => ({
+          symbol: item.symbol, name: item.name, zoneId: item.zoneId, correlation: Number((0.62 - rank * 0.03).toFixed(2)),
+        })),
+        neighbourCount: Math.min(15, others.length),
       },
     }
   }
-  if (!member) return { status: 404, body: { detail: `${symbol} is not on the atlas` } }
-  const others = MEMBERS.filter((item) => item.symbol !== symbol)
   return {
     status: 200,
     body: {
       asOf: AS_OF, access: FREE, symbol, name: member.name, sector: 'Fixture', industry: 'Fixture Industry', country: 'Testland',
       zoneId: zone.zoneId, zoneLabel: zone.label, x: member.x, y: member.y, level: member.level, loner: symbol.endsWith('6'),
-      memberships: [{ zoneId: zone.zoneId, label: zone.label, share: 0.85 }, { zoneId: ZONES[(ZONES.indexOf(zone) + 1) % 3].zoneId, label: ZONES[(ZONES.indexOf(zone) + 1) % 3].label, share: 0.15 }],
+      memberships: [{ zoneId: zone.zoneId, label: zone.label, share: 0.85 }, { zoneId: next.zoneId, label: next.label, share: 0.15 }],
+      neighbourCount: Math.min(15, others.length),
       neighbours: others.slice(0, 15).map((item, rank) => ({
         symbol: item.symbol, name: item.name, zoneId: item.zoneId, correlation: Number((0.62 - rank * 0.03).toFixed(4)), total: Number((0.7 - rank * 0.025).toFixed(4)),
       })),

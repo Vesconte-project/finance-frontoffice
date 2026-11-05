@@ -14,7 +14,7 @@ The backend decides; the screen only draws what arrives and says what unlocks th
 | Regions | real centre, circle outline | real outline (line holding 80% of the region's weight) | same; Layers › Region size can weigh it by market value (`contourByValue`) |
 | Companies | levels 0–1, placed by region and size rank | every level, loaded by area as the reader zooms | same |
 | Ties | only how many between regions | the strongest-ties tree in each region and the bundles between regions | same; the selected company's strong ties the map placed far away as dashed red lines |
-| Panels | region name, count and four largest companies | every member; a company's regions, strongest ties (beyond market · total), "Map accuracy here", its themes | same, plus tie trends (↑ stronger / ↓ weaker) and "Then and now" |
+| Panels | region name, count and four largest companies; a company: its region, how its ties split between regions and its five strongest ties at two decimals, with how many more there are | every member; a company's regions, strongest ties (beyond market · total), "Map accuracy here", its themes | same, plus tie trends (↑ stronger / ↓ weaker) and "Then and now" |
 | Themes | — | menu, highlight, theme card | same |
 | Weeks, time bar, movement (6 mo / 1 yr), paths | locked (upsell) | locked (upsell) | yes |
 | Total co-movement lens, fidelity ring, influence, cohesion chart | locked (upsell) | locked, no data | yes |
@@ -67,7 +67,7 @@ The map keeps the screen: one row of controls (Browse, ?, Layers and "More", whi
 - `lib/atlas.ts`: server reads with the reader's session; refusals keep their reason.
 - `app/api/atlas/*`: local routes the browser calls for areas and panels.
 - `components/atlas/AtlasExplorer.tsx`: Canvas 2D map, pan/zoom by pointer, wheel, pinch and keyboard, the panel, and the Browse atlas list as the keyboard and screen-reader path.
-- `components/atlas/CompanyAtlasPlace.tsx`: the Relationships tab of a ticker.
+- `components/atlas/CompanyAtlasPlace.tsx`: the Relationships tab of a ticker. `RelationshipOrbit.tsx` draws the company's ties as an orbit (geometry in `lib/relationship-orbit.ts`): its regions as tinted sectors in the atlas's colours (`zoneHues` over the week's zones), each tie a shaded ball in its region, closer to the centre the stronger. Signed out, the five strongest are drawn and the rest share one hatched, locked sector placed from their count alone; opening it shows the free-account prompt. The list under it shows the same ties and the rest in silhouette under one offer.
 
 The calendar's company grouping uses each company's atlas region (signed in), and
 "Related to" uses a company's strongest ties. The homepage section "Behind one name"
