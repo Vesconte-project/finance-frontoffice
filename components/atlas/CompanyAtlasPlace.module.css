@@ -1,6 +1,61 @@
-.lead {
-  margin: 0 0 1rem;
-  font-size: 1.05rem;
+/* The company's own facts, as labelled values: its region first, in its colour, then the week. */
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0 0 1.25rem;
+}
+
+.fact {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: var(--surface);
+}
+
+.fact[data-own='true'] {
+  --zone: hsl(var(--h, 210) 46% 48%);
+  border-color: color-mix(in srgb, var(--zone) 45%, var(--line));
+  background: color-mix(in srgb, var(--zone) 8%, var(--surface));
+}
+
+.fact dt {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.fact dd {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.cardLead {
+  margin: 0 0 0.9rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.ownTag {
+  flex: none;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--zone) 16%, transparent);
+  color: var(--text);
+  font-size: 0.66rem;
+  font-style: normal;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .link {
@@ -12,21 +67,25 @@
 
 /* Region colours: the atlas hues, as in RelationshipOrbit.module.css. */
 .shares li,
-.neighbours li {
+.neighbours li,
+.fact[data-own='true'] {
   --zone: hsl(var(--h, 210) 46% 48%);
 }
 
 @media (prefers-color-scheme: dark) {
   :global(:root:not([data-theme='light']):not(.light)) .shares li,
-  :global(:root:not([data-theme='light']):not(.light)) .neighbours li {
+  :global(:root:not([data-theme='light']):not(.light)) .neighbours li,
+  :global(:root:not([data-theme='light']):not(.light)) .fact[data-own='true'] {
     --zone: hsl(var(--h, 210) 38% 62%);
   }
 }
 
 :global(:root[data-theme='dark']) .shares li,
 :global(:root[data-theme='dark']) .neighbours li,
+:global(:root[data-theme='dark']) .fact[data-own='true'],
 :global(:root.dark) .shares li,
-:global(:root.dark) .neighbours li {
+:global(:root.dark) .neighbours li,
+:global(:root.dark) .fact[data-own='true'] {
   --zone: hsl(var(--h, 210) 38% 62%);
 }
 
@@ -64,9 +123,17 @@
   min-width: 0;
   align-items: center;
   gap: 0.45rem;
+  white-space: nowrap;
+}
+
+.zoneName > span {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.shares li[data-own='true'] .zoneName > span {
+  font-weight: 600;
 }
 
 .neighbours {
