@@ -1,4 +1,5 @@
 import type { CanonicalAvailability } from '@/lib/canonical-research'
+import { isoCurrency } from '@/lib/display-currency'
 import styles from './CurrencyNotice.module.css'
 
 type Part = { label: string; read: (CanonicalAvailability & { rows?: unknown[] }) | null | undefined }
@@ -30,7 +31,7 @@ export default function CurrencyNotice({ display, listing, kept, summaryConverte
   /** Whether the page's prices and market values are in `display`. */
   summaryConverted: boolean
 }) {
-  if (!display || display === listing) return null
+  if (!display || display === (isoCurrency(listing) ?? listing)) return null
   const stays = summaryConverted ? kept : ['prices and market values', ...kept]
   if (!stays.length) return null
   const text = list(stays)

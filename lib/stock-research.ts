@@ -209,16 +209,20 @@ function splitProfileRows(rows: TickerFinancialRow[]): {
  * (`localizeSummary`); otherwise as reported. Earnings stay in the listing currency.
  */
 async function summaryIn(ticker: string, displayCurrency: string | null | undefined) {
-  if (!displayCurrency) return { summary: await getTickerPageSummary(ticker), converted: false }
+  if (!displayCurrency) {
+    const summary = await getTickerPageSummary(ticker)
+    return { summary, converted: false, listing: currencyOfListing(summary, ticker) }
+  }
   const raw = await getTickerPageSummary(ticker, displayCurrency)
-  const listing = raw.fundamentalsSummary?.currency || currencyForTicker(ticker)
-  if (isoCurrency(listing) === displayCurrency) return { summary: raw, converted: false }
-  return localizeSummary(raw, displayCurrency)
+  // Read before conversion: a converted summary's fundamentals carry the display currency.
+  const listing = currencyOfListing(raw, ticker)
+  if (listing === displayCurrency) return { summary: raw, converted: false, listing }
+  return { ...localizeSummary(raw, displayCurrency), listing }
 }
 
 export async function getStockResearchData(tickerRaw: string, displayCurrency: string | null = null): Promise<StockResearchData> {
   const ticker = tickerRaw.trim().toUpperCase()
-  const [{ summary, converted }, fundamentals] = await Promise.all([
+  const [{ summary, converted, listing: listingCurrency }, fundamentals] = await Promise.all([
     summaryIn(ticker, displayCurrency),
     getTickerFundamentals(ticker),
   ])
@@ -229,7 +233,6 @@ export async function getStockResearchData(tickerRaw: string, displayCurrency: s
     name,
     latestFundamentals: summary.latestFundamentals,
   }).kind
-  const listingCurrency = converted ? currencyOfListing(summary, ticker) : summary.fundamentalsSummary?.currency || currencyForTicker(ticker)
   const currency = converted && displayCurrency ? displayCurrency : listingCurrency
   const { profileFacts, identifiers } = splitProfileRows(fundamentals.profile)
   const hasProfileEvidence = Boolean(
@@ -262,17 +265,16 @@ export async function getStockResearchData(tickerRaw: string, displayCurrency: s
 
 export type StockResearchIdentity = Pick<StockResearchData, 'ticker' | 'name' | 'kind' | 'currency' | 'listingCurrency' | 'displayCurrency' | 'summary'>
 
-/** The listing's currency, read where conversion does not touch it: the asset block, else the symbol. */
+/** The listing's currency, from the unconverted summary: the asset block, then the fundamentals, else the symbol. */
 function currencyOfListing(summary: TickerPageSummary, ticker: string): string {
-  return summary.asset?.currency || currencyForTicker(ticker)
+  return isoCurrency(summary.asset?.currency) ?? isoCurrency(summary.fundamentalsSummary?.currency) ?? currencyForTicker(ticker)
 }
 
 export async function getStockResearchIdentity(tickerRaw: string, displayCurrency: string | null = null): Promise<StockResearchIdentity> {
   const ticker = tickerRaw.trim().toUpperCase()
-  const { summary, converted } = await summaryIn(ticker, displayCurrency)
+  const { summary, converted, listing: listingCurrency } = await summaryIn(ticker, displayCurrency)
   const name = summary.quote?.name?.trim() || ticker
   const kind = resolveStockAsset({ assetType: summary.asset?.assetType, ticker, name, latestFundamentals: summary.latestFundamentals }).kind
-  const listingCurrency = converted ? currencyOfListing(summary, ticker) : summary.fundamentalsSummary?.currency || currencyForTicker(ticker)
   return {
     ticker,
     summary,
