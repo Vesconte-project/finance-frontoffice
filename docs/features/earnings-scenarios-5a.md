@@ -57,3 +57,22 @@ Drafts target main directly. Rebase/retest after 4A/4B enter, preserving all opt
 summary fields and regenerating backend API/route inventories. SEC historical
 publication remains separate; no data cutoff or extra vendor activation is added.
 Product/visual/release acceptance remains with Francisco, including human Preview.
+
+Validation refreshed 2026-11-05 against main c319306e (including newer local-font
+and financial-flow work): npm run verify passed (two existing lint warnings),
+production build passed, canonical browser QA 2 passed, no failures/flaky/skips.
+Model inspected at 390/1366 widths; 35-year revenue inspected at the same widths.
+Browser covers ten viewport widths 320–1920, reduced motion, missing inputs,
+upstream refusal clearing the old grid, 30-year horizon and fiscal year 1991.
+Fixtures are fictitious and prove transport/rendering, not real source coverage.
+Impeccable detector reports one pre-existing financial-flow accent-border warning
+at Financials.module.css:335; this PR only adds the fiscal-year selector there.
+
+The universal history policy is maximum valid available source history. These
+changes implement it for the statement/metric/capital/price consumers described
+above; they do not claim every platform endpoint is already unlimited. Calendar
+event/disclosure aggregation still has existing per-response count limits.
+A source or tier can legitimately provide fewer years. Internal multi-page reads
+are latest/non-PIT, not one transaction or a generation-pinned snapshot across
+HTTP requests: repetition/overlap/refusal is detected, but concurrent source
+updates can still affect ordering. Review server pagination/cost before merge.
