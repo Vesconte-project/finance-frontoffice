@@ -89,6 +89,8 @@ type StockOverviewClientProps = {
   historicalData: PricePoint[]
   historicalChartState: HistoricalChartState
   ohlcData: OhlcPoint[]
+  /** The same bars in the display currency, for the charts only; null without one. */
+  displayBars?: OhlcPoint[] | null
   /** Formatted market cap, or null when the summary has none. */
   marketCap: string | null
   /**
@@ -478,6 +480,7 @@ export default function StockOverviewClient({
   historicalData,
   historicalChartState,
   ohlcData,
+  displayBars = null,
   marketCap,
   holdings,
   sectorWeights,
@@ -538,12 +541,17 @@ export default function StockOverviewClient({
   )
   const decomposition = useMemo(() => currencyDecomposition(convertedRange), [convertedRange])
 
-  const showCandles = chartKind === 'candles' && canExpandChart && !showConverted
+  // The charts draw bars in the display currency when the backend converted them; the technical summary never does.
+  const chartBars = displayCurrency && displayBars && displayBars.length >= 2 ? displayBars : ohlcData
+  const barsConverted = chartBars !== ohlcData
+  const chartCurrency = barsConverted && displayCurrency ? displayCurrency : currency
+  // Candles in the display currency need converted bars; without them the line stays.
+  const showCandles = chartKind === 'candles' && canExpandChart && (!showConverted || barsConverted)
   const heroPoints = useMemo<TemporalLinePoint[]>(
-    () => showConverted
+    () => showConverted && !showCandles
       ? convertedRange.flatMap((point) => (point.converted === null ? [] : [{ date: point.date, value: point.converted }]))
       : showCandles
-      ? filterChartData(ohlcData, heroTimeframe).map((bar) => ({
+      ? filterChartData(chartBars, heroTimeframe).map((bar) => ({
         date: bar.date,
         value: bar.close,
         open: bar.open,
@@ -551,11 +559,11 @@ export default function StockOverviewClient({
         low: bar.low,
       }))
       : filteredChartData.map((point) => ({ date: point.date, value: point.close })),
-    [showConverted, convertedRange, showCandles, ohlcData, heroTimeframe, filteredChartData],
+    [showConverted, convertedRange, showCandles, chartBars, heroTimeframe, filteredChartData],
   )
   // Candles exist only for the loaded OHLC window; say so when "ALL" reaches further back.
-  const candlesFrom = showCandles && heroTimeframe === 'ALL' && ohlcData[0] && chartHistory[0] && chartHistory[0].date < ohlcData[0].date
-    ? ohlcData[0].date
+  const candlesFrom = showCandles && heroTimeframe === 'ALL' && chartBars[0] && chartHistory[0] && chartHistory[0].date < chartBars[0].date
+    ? chartBars[0].date
     : null
   const technicalSummary = useMemo(
     () => buildTechnicalSummary(ohlcData, signalTimeframe),
@@ -800,7 +808,7 @@ export default function StockOverviewClient({
                   <button
                     type="button"
                     className={expandedChartStyles.heroToolButton}
-                    hidden={showConverted}
+                    hidden={showConverted && !barsConverted}
                     aria-pressed={showCandles}
                     aria-label={showCandles ? 'Show line' : 'Show candles'}
                     data-chart-kind-toggle=""
@@ -821,8 +829,11 @@ export default function StockOverviewClient({
                     open
                     onClose={() => setChartExpanded(false)}
                     ticker={ticker}
-                    currency={currency}
-                    bars={ohlcData}
+                    currency={chartCurrency}
+                    bars={chartBars}
+                    listingCurrency={isoCurrency(currency) ?? currency}
+                    listingBars={ohlcData}
+                    displayCurrency={barsConverted ? displayCurrency : null}
                     kind={chartKind}
                     onKindChange={setChartKind}
                     returnFocusRef={expandButtonRef}

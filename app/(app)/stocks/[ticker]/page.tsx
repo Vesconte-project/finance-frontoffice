@@ -17,6 +17,7 @@ import { currencyForTicker, formatCompactMoney } from '@/lib/currency'
 import { convertedAmountOf, isoCurrency, localizeSummary } from '@/lib/display-currency'
 import { resolveDisplayCurrency } from '@/lib/display-currency-server'
 import {
+  getConvertedOhlc,
   getOhlcData,
   getStockQuote,
   getTickerFundamentals,
@@ -366,6 +367,10 @@ export default async function TickerPage({
       ? convertedSummary?.fundamentalsSummary
       : null
   const marketCapConverted = displayCurrency && marketCapSource ? convertedAmountOf(marketCapSource, 'marketCap', displayCurrency) : null
+  // The charts' bars in the display currency (candles and the expanded chart); the technical summary keeps reported bars.
+  const displayBars = displayCurrency
+    ? await runWithBackendRequestLogContext(requestLogContext, () => getConvertedOhlc(ticker, displayCurrency)).catch(() => [])
+    : null
   // Amounts among the latest fundamentals (net cash) in the display currency when all of them convert.
   const localizedSummary = displayCurrency && convertedSummary ? localizeSummary(convertedSummary, displayCurrency) : null
   const amountRows = localizedSummary?.converted ? localizedSummary.summary.latestFundamentals : latestFundamentals
@@ -405,6 +410,7 @@ export default async function TickerPage({
         historicalData={historicalData}
         historicalChartState={historicalChartState}
         ohlcData={ohlcData}
+        displayBars={displayBars}
         marketCap={marketCapValue}
         holdings={holdings}
         sectorWeights={fundamentals?.sectorWeights ?? []}

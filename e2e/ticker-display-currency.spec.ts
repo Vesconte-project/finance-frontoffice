@@ -127,8 +127,8 @@ test('the chart in USD uses each day’s backend value, and “What the currency
   // The fixture publishes no KRW rate in June 2026, inside the default one-year range.
   await expect(story.locator('[data-decomposition-range]')).toContainText(/\d+ days without a USD rate are left out\./)
   await expect(story.locator('[data-decomposition-range]')).toContainText('not a listing traded in USD')
-  // Candles are only for the listing's own prices.
-  await expect(page.locator('[data-chart-kind-toggle]')).toBeHidden()
+  // Candles follow the currency too: the backend converts each day's bar.
+  await expect(page.locator('[data-chart-kind-toggle]')).toBeVisible()
   await capture(page, 'qak-1440-chart-usd')
 
   // The split holds: (1 + USD) = (1 + KRW)(1 + currency), within rounding of one decimal.
@@ -219,4 +219,30 @@ test('with reduced motion the dialog opens and closes without animation and keep
   await page.keyboard.press('Escape')
   await expect(dialog(page)).toBeHidden()
   await expect(control(page)).toBeFocused()
+})
+
+test('the expanded chart is in the chosen currency and compares several currencies from the same day', async ({ page }) => {
+  await page.goto('/stocks/QAK?currency=USD')
+  await page.locator('[data-expand-chart]').click()
+  const chart = page.getByRole('dialog')
+  await expect(chart).toContainText('Price chart · daily · USD')
+  await expect(chart.locator('[data-expanded-chart-legend]')).toContainText('$')
+
+  await chart.locator('[data-compare-toggle]').click()
+  const compare = chart.locator('[data-currency-compare]')
+  await expect(compare).toBeVisible()
+  // The listing's line and the chosen currency's, from the same day.
+  await expect(compare.locator('[data-compare-line="KRW"]')).toBeAttached({ timeout: 15_000 })
+  await expect(compare.locator('[data-compare-line="USD"]')).toBeAttached({ timeout: 15_000 })
+  // A third currency adds its own line.
+  await compare.locator('[data-compare-currency="EUR"]').click()
+  await expect(compare.locator('[data-compare-line="EUR"]')).toBeAttached({ timeout: 15_000 })
+  await expect(compare.locator('[data-compare-currency="EUR"]')).toContainText(/[+−]?\d+\.\d%/)
+  await expect(compare.locator('[data-compare-note]')).toContainText('from the same day at 0%')
+  await capture(page, 'qak-1440-compare-currencies')
+
+  // Back to the price chart.
+  await chart.locator('[data-compare-toggle]').click()
+  await expect(compare).toHaveCount(0)
+  await expect(chart.locator('[data-expanded-chart-legend]')).toBeVisible()
 })

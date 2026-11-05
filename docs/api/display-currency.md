@@ -36,8 +36,7 @@ that the header choice is meant to change the ticker's data on every tab.
   currency) stays as reported and is marked with its currency.
 - **Overview:**
   - the price chart is drawn in the display currency (the backend's value of each day);
-  - candles stay in the listing currency until the expanded chart converts OHLC, so the
-    candle toggle is hidden while a currency is chosen;
+  - candles are drawn from the converted bars (see Charts below);
   - market value under the chart is the backend's conversion of the value the page shows;
   - a chapter, "What the currency did", follows the chart, over the chart's range:
     - the price in both currencies from the same start (100), with the gap between them
@@ -59,7 +58,20 @@ that the header choice is meant to change the ticker's data on every tab.
   - earnings estimates and actuals carry no currency and are never converted; the Events
     tab formats them in the listing currency (`data.listingCurrency`);
   - multiples, margins, growth, scores, signals and technical indicators do not change.
-- The expanded chart's currency comparison is a third change.
+- **Charts:**
+  - the Overview's candles and the expanded chart draw bars in the display currency (the
+    backend's `ohlc?currency=`, each price at its day's rate; a day without a converted close
+    is left out, an open/high/low without one is null and the bar is drawn neutral);
+  - moving averages and Bollinger come converted the same way
+    (`technical-series?currency=`, `convertedTechnicalSeries`); RSI and volume do not change;
+  - the Overview's technical summary keeps reading reported bars.
+- **Compare currencies** (expanded chart, `CurrencyCompare`; founder, 2026-11-05): the price in
+  up to four currencies at once, each line the change since the same first day of the chosen
+  range (`compareFrom`), so the gap between two lines is how those currencies moved against
+  each other:
+  - the listing's line is its reported closes; the others are the backend's conversion of
+    each day's close;
+  - days without a rate in any chosen currency are left out of all lines and counted.
 
 ## How the site uses it
 
@@ -75,6 +87,8 @@ that the header choice is meant to change the ticker's data on every tab.
 | A read in the currency, whole or not at all | `localizeHolder`, `localizeRows`, `localizeSummary` in `lib/display-currency.ts`; `readInCurrency` in `lib/canonical-research.ts` |
 | Closes for a tab | `getClosesIn` in `lib/finance.ts` |
 | What stayed in the listing currency | `components/stocks/CurrencyNotice.tsx` |
+| Bars and indicators in the currency | `getConvertedOhlc` in `lib/finance.ts`; `convertedOhlcFromRows`, `convertedTechnicalSeries` in `lib/display-currency.ts`; `GET /api/stocks/{ticker}/technical-series?currency=` |
+| Compare currencies | `components/stocks/CurrencyCompare.tsx`, `lib/currency-compare.ts` |
 | Overview chart in the currency | `StockOverviewClient.tsx` (loads `history?currency=` when a currency is chosen) |
 | What the currency did | `components/stocks/CurrencyStory.tsx`, `indexedInBothCurrencies` and `currencyDecomposition` in `lib/display-currency.ts` |
 

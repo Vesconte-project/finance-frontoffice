@@ -455,3 +455,67 @@ export function localizeSummary<S>(summary: S, target: string): { summary: S; co
   }
   return { summary: (converted ? next : summary) as S, converted }
 }
+
+/**
+ * Daily bars in the display currency from the backend's `ohlc?currency=` rows:
+ * each price is its `converted.value` at that day's rate. A day without a
+ * converted close is left out; an open, high or low without one is null (the
+ * chart draws such a bar in the neutral colour, as for any bar without an open).
+ * Volume is a share count and stays as reported.
+ */
+export function convertedOhlcFromRows(rows: unknown, target: string): Array<{
+  price_basis: 'adjusted'
+  date: string
+  open: number | null
+  high: number | null
+  low: number | null
+  close: number
+  volume: number | null
+}> {
+  if (!Array.isArray(rows)) return []
+  const byDate = new Map<string, ReturnType<typeof convertedOhlcFromRows>[number]>()
+  for (const value of rows) {
+    const row = asRecord(value)
+    const date = text(row?.date)?.slice(0, 10) ?? null
+    if (!row || !date || row.price_basis !== 'adjusted') continue
+    const close = convertedValueOf(row, 'close', target)?.value ?? null
+    if (close === null || close <= 0) continue
+    const price = (field: string) => {
+      const converted = convertedValueOf(row, field, target)?.value ?? null
+      return converted !== null && converted > 0 ? converted : null
+    }
+    byDate.set(date, { price_basis: 'adjusted', date, open: price('open'), high: price('high'), low: price('low'), close, volume: finite(row.volume) })
+  }
+  return [...byDate.values()].sort((left, right) => left.date.localeCompare(right.date))
+}
+
+/**
+ * Indicator series from `technical-series?currency=` in the display currency:
+ * price-unit points (moving averages, Bollinger value/upper/lower) take the
+ * backend's conversion of each day; a value without one becomes null, a gap in
+ * the line. Index series (RSI, 0–100) do not depend on the currency and stay.
+ */
+export function convertedTechnicalSeries(payload: unknown, target: string): unknown {
+  const record = asRecord(payload)
+  if (!record || !Array.isArray(record.series)) return payload
+  return {
+    ...record,
+    series: record.series.map((value) => {
+      const series = asRecord(value)
+      if (!series || series.unit !== 'price' || !Array.isArray(series.points)) return value
+      return {
+        ...series,
+        points: series.points.map((raw) => {
+          const point = asRecord(raw)
+          if (!point) return raw
+          const next: Record<string, unknown> = { ...point }
+          for (const field of ['value', 'upper', 'lower']) {
+            if (point[field] === null || point[field] === undefined) continue
+            next[field] = convertedValueOf(point, field, target)?.value ?? null
+          }
+          return next
+        }),
+      }
+    }),
+  }
+}
