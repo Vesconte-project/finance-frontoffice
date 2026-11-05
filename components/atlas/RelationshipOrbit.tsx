@@ -1,6 +1,6 @@
 'use client'
 
-import { useId, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useId, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent } from 'react'
 import Link from 'next/link'
 import { Lock } from 'lucide-react'
 import ChartFrame, { ChartPlot } from '@/components/stocks/research/ChartFrame'
@@ -9,30 +9,31 @@ import Dialog from '@/components/ui/Dialog'
 import PromptPanel from '@/components/ui/PromptPanel'
 import { labelPosition } from '@/lib/chart-labels'
 import { COMPACT_BOX, WIDE_BOX, orbitGeometry, type OrbitGeometry, type OrbitNode } from '@/lib/relationship-orbit'
+import { OrbitReading, hueStyle, useOrbitFocus, zoneName, type OrbitCompany, type OrbitZone } from './OrbitFocus'
 import styles from './RelationshipOrbit.module.css'
 
-export type OrbitZone = { label: string; hue: number }
-export type OrbitCompany = { symbol: string; name: string | null; zoneId: string | null; correlation: number }
-
 type Props = {
-  symbol: string
-  zoneId: string
-  /** Every region named on the orbit, with its atlas colour. */
-  zones: Record<string, OrbitZone>
   /** Regions by the share of the company's ties, largest first. */
   zoneOrder: string[]
-  ties: OrbitCompany[]
   /** Ties that exist but need an account. */
   hidden: number
   signUpHref: string
   signInHref: string
 }
 
-const zoneName = (zones: Record<string, OrbitZone>, zoneId: string | null) =>
-  (zoneId && zones[zoneId]?.label.replace(/_/g, ' ')) || 'Another region'
-
-const hueStyle = (zones: Record<string, OrbitZone>, zoneId: string | null) =>
-  ({ '--h': zoneId ? zones[zoneId]?.hue ?? 210 : 210 }) as CSSProperties
+/** What the drawing parts read: the orbit's props and the shared focus. */
+type Shared = Props & {
+  symbol: string
+  zoneId: string
+  zones: Record<string, OrbitZone>
+  ties: OrbitCompany[]
+  active: string | null
+  /** A pointer enters a company: a mouse lights it; a touch waits for the tap. */
+  enter: (symbol: string, event: PointerEvent) => void
+  leave: (event: PointerEvent) => void
+  /** Keyboard focus lights a company directly. */
+  select: (symbol: string | null) => void
+}
 
 /**
  * A company's strongest ties drawn as an orbit around it, in the atlas's own
@@ -42,36 +43,60 @@ const hueStyle = (zones: Record<string, OrbitZone>, zoneId: string | null) =>
  * opening it explains what a free account shows.
  */
 export default function RelationshipOrbit(props: Props) {
-  const { symbol, zones, ties, hidden } = props
-  const [active, setActive] = useState<string | null>(null)
+  const { hidden } = props
+  const focus = useOrbitFocus()
+  const { symbol, zones, ties, active, setActive } = focus
   const [lockedOpen, setLockedOpen] = useState(false)
   const lockRef = useRef<HTMLButtonElement | null>(null)
   const createRef = useRef<HTMLAnchorElement | null>(null)
-  const id = useId()
+  // A pattern is referenced as url(#id): keep the id to characters that need no escaping.
+  const id = useId().replace(/[^a-zA-Z0-9_-]/g, '')
   const input = useMemo(() => ({
-    zoneId: props.zoneId,
+    zoneId: focus.zoneId,
     ties: ties.map((tie) => ({ symbol: tie.symbol, zoneId: tie.zoneId, correlation: tie.correlation })),
     hidden,
     zoneOrder: props.zoneOrder,
-  }), [props.zoneId, props.zoneOrder, ties, hidden])
+  }), [focus.zoneId, props.zoneOrder, ties, hidden])
   const wide = useMemo(() => orbitGeometry(input, WIDE_BOX), [input])
   const compact = useMemo(() => orbitGeometry(input, COMPACT_BOX), [input])
-  const bySymbol = useMemo(() => new Map(ties.map((tie) => [tie.symbol, tie])), [ties])
-  const reading = active ? bySymbol.get(active) ?? null : null
-  const description = `${symbol} at the centre, the ${ties.length} companies it moves most with around it, grouped by region, closer the stronger the tie.${hidden ? ` ${hidden} more need a free account.` : ''}`
+  const description = `${symbol} at the centre, the ${ties.length} companies it moves most with around it, grouped by region; the closer a company sits, the more it moves with ${symbol}, on a fixed scale from 0 to 1.${hidden ? ` ${hidden} more need a free account.` : ''}`
+
+  const shared: Shared = {
+    ...props,
+    symbol,
+    zoneId: focus.zoneId,
+    zones,
+    ties,
+    active,
+    enter: (target, event) => {
+      if (event.pointerType === 'mouse') setActive(target)
+    },
+    leave: (event) => {
+      if (event.pointerType === 'mouse') setActive(null)
+    },
+    select: setActive,
+  }
 
   const openLocked = (target: HTMLButtonElement) => {
     lockRef.current = target
     setLockedOpen(true)
   }
 
+  /** A tap on a company first reads it; a second tap, or a click, opens it. */
+  const open = (target: string, event: MouseEvent<HTMLAnchorElement>, touch: boolean) => {
+    if (touch && active !== target) {
+      event.preventDefault()
+      setActive(target)
+    }
+  }
+
   const plot = (geometry: OrbitGeometry, variant: 'wide' | 'compact') => (
     <ChartPlot
       box={geometry.box}
       variant={variant}
-      labels={<Labels geometry={geometry} props={props} active={active} setActive={setActive} onLocked={openLocked} />}
+      labels={<Labels geometry={geometry} shared={shared} onLocked={openLocked} onOpen={open} />}
     >
-      <Drawing geometry={geometry} props={props} active={active} setActive={setActive} patternId={`${id}-${variant}-hatch`} />
+      <Drawing geometry={geometry} shared={shared} patternId={`${id}-${variant}-hatch`} />
     </ChartPlot>
   )
 
@@ -81,19 +106,9 @@ export default function RelationshipOrbit(props: Props) {
         {plot(wide, 'wide')}
         {plot(compact, 'compact')}
       </ChartFrame>
-      <p className={styles.reading} aria-live="polite" data-orbit-reading="">
-        {reading ? (
-          <>
-            <i className={styles.swatch} style={hueStyle(zones, reading.zoneId)} aria-hidden="true" />
-            <b>{reading.symbol}</b>
-            {reading.name ? <span>{reading.name}</span> : null}
-            <span className={styles.readingZone}>{zoneName(zones, reading.zoneId)}</span>
-            <strong>{reading.correlation.toFixed(2)}</strong>
-          </>
-        ) : (
-          <span className={styles.readingHint}>Point at a company to read its tie with {symbol}.</span>
-        )}
-      </p>
+      <div className={styles.overlay}>
+        <OrbitReading variant="overlay" />
+      </div>
       {hidden > 0 ? (
         <Dialog
           open={lockedOpen}
@@ -131,12 +146,10 @@ export default function RelationshipOrbit(props: Props) {
 
 type PartProps = {
   geometry: OrbitGeometry
-  props: Props
-  active: string | null
-  setActive: (symbol: string | null) => void
+  shared: Shared
 }
 
-function Drawing({ geometry, props, active, setActive, patternId }: PartProps & { patternId: string }) {
+function Drawing({ geometry, shared, patternId }: PartProps & { patternId: string }) {
   const { centre, core } = geometry
   const origin = { transformOrigin: `${centre.x}px ${centre.y}px` } as CSSProperties
   return (
@@ -150,8 +163,17 @@ function Drawing({ geometry, props, active, setActive, patternId }: PartProps & 
         <circle key={ring.value} cx={centre.x} cy={centre.y} r={ring.radius} className={styles.ring} />
       ))}
       {geometry.sectors.map((sector, index) => (
-        <g key={sector.zoneId ?? 'locked'} className={sector.zoneId ? styles.zoned : styles.lockedSector} style={hueStyle(props.zones, sector.zoneId)}>
-          <path d={sector.path} className={styles.sector} fill={sector.zoneId ? undefined : `url(#${patternId})`} style={{ animationDelay: `${index * 60}ms` }} />
+        <g
+          key={sector.zoneId ?? 'locked'}
+          className={sector.zoneId ? styles.zoned : styles.lockedSector}
+          style={hueStyle(shared.zones, sector.zoneId)}
+          data-own={sector.zoneId === shared.zoneId ? 'true' : undefined}
+        >
+          <path
+            d={sector.path}
+            className={styles.sector}
+            style={{ animationDelay: `${index * 60}ms`, ...(sector.zoneId ? {} : { fill: `url(#${patternId})` }) }}
+          />
           <path d={sector.arc} className={styles.coast} />
         </g>
       ))}
@@ -162,7 +184,7 @@ function Drawing({ geometry, props, active, setActive, patternId }: PartProps & 
         </g>
       ))}
       {geometry.nodes.map((node, index) => (
-        <Tie key={node.symbol} node={node} index={index} origin={origin} props={props} active={active} setActive={setActive} />
+        <Tie key={node.symbol} node={node} index={index} origin={origin} shared={shared} />
       ))}
       <circle cx={centre.x} cy={centre.y} r={core + 10} className={styles.halo} style={origin} />
       <circle cx={centre.x} cy={centre.y} r={core} className={styles.core} />
@@ -171,15 +193,15 @@ function Drawing({ geometry, props, active, setActive, patternId }: PartProps & 
   )
 }
 
-function Tie({ node, index, origin, props, active, setActive }: { node: OrbitNode; index: number; origin: CSSProperties } & Omit<PartProps, 'geometry'>) {
-  const state = active === null ? undefined : active === node.symbol ? 'on' : 'off'
+function Tie({ node, index, origin, shared }: { node: OrbitNode; index: number; origin: CSSProperties; shared: Shared }) {
+  const state = shared.active === null ? undefined : shared.active === node.symbol ? 'on' : 'off'
   return (
     <g
       className={`${styles.tie} ${styles.zoned}`}
-      style={{ ...origin, ...hueStyle(props.zones, node.zoneId), '--i': index } as CSSProperties}
+      style={{ ...origin, ...hueStyle(shared.zones, node.zoneId), '--i': index } as CSSProperties}
       data-state={state}
-      onPointerEnter={() => setActive(node.symbol)}
-      onPointerLeave={() => setActive(null)}
+      onPointerEnter={(event) => shared.enter(node.symbol, event)}
+      onPointerLeave={shared.leave}
     >
       <line
         x1={node.from.x}
@@ -187,7 +209,7 @@ function Tie({ node, index, origin, props, active, setActive }: { node: OrbitNod
         x2={node.x}
         y2={node.y}
         className={styles.line}
-        style={{ strokeWidth: 1 + node.strength * 2.4, '--o': 0.35 + node.strength * 0.5 } as CSSProperties}
+        style={{ strokeWidth: 0.8 + node.strength * 2.6, '--o': 0.28 + node.strength * 0.6 } as CSSProperties}
       />
       <circle cx={node.x} cy={node.y + node.radius * 0.35} r={node.radius} className={styles.shadow} />
       <circle cx={node.x} cy={node.y} r={node.radius} className={styles.ball} />
@@ -196,11 +218,22 @@ function Tie({ node, index, origin, props, active, setActive }: { node: OrbitNod
   )
 }
 
-function Labels({ geometry, props, active, setActive, onLocked }: PartProps & { onLocked: (target: HTMLButtonElement) => void }) {
+/** A name above the orbit grows upwards and one below it downwards, so a second line never meets the coast. */
+function awayFrom(dy: number, radius: number): 'start' | 'middle' | 'end' {
+  if (dy < -radius * 0.5) return 'end'
+  if (dy > radius * 0.5) return 'start'
+  return 'middle'
+}
+
+function Labels({ geometry, shared, onLocked, onOpen }: PartProps & {
+  onLocked: (target: HTMLButtonElement) => void
+  onOpen: (symbol: string, event: MouseEvent<HTMLAnchorElement>, touch: boolean) => void
+}) {
   const { box, centre } = geometry
+  const touch = useRef(false)
   return (
     <>
-      {geometry.rings.map((item) => (
+      {geometry.rings.filter((item) => item.labelled).map((item) => (
         <span
           key={item.value}
           className={styles.ringLabel}
@@ -213,10 +246,15 @@ function Labels({ geometry, props, active, setActive, onLocked }: PartProps & { 
         <span
           key={sector.zoneId}
           className={styles.zoneLabel}
-          style={{ ...labelPosition(box, sector.label.x, sector.label.y, sector.label.anchor, 'middle'), ...hueStyle(props.zones, sector.zoneId) }}
+          data-own={sector.zoneId === shared.zoneId ? 'true' : undefined}
+          data-anchor={sector.label.anchor}
+          style={{ ...labelPosition(box, sector.label.x, sector.label.y, sector.label.anchor, awayFrom(sector.label.y - centre.y, geometry.outer)), ...hueStyle(shared.zones, sector.zoneId) }}
         >
-          <i className={styles.swatch} aria-hidden="true" />
-          {zoneName(props.zones, sector.zoneId)}
+          <span className={styles.zoneName}>
+            <i className={styles.swatch} aria-hidden="true" />
+            {zoneName(shared.zones, sector.zoneId)}
+          </span>
+          {sector.zoneId === shared.zoneId ? <span className={styles.ownTag}>{shared.symbol}&rsquo;s region</span> : null}
         </span>
       ) : (
         <button
@@ -228,11 +266,11 @@ function Labels({ geometry, props, active, setActive, onLocked }: PartProps & { 
           data-orbit-locked=""
         >
           <Lock size={14} strokeWidth={2.2} aria-hidden="true" />
-          <span>{props.hidden} more</span>
+          <span>{shared.hidden} more</span>
         </button>
       ))}
       {geometry.nodes.map((node) => {
-        const tie = props.ties.find((item) => item.symbol === node.symbol)
+        const tie = shared.ties.find((item) => item.symbol === node.symbol)
         const dx = Math.cos(node.angle)
         const dy = Math.sin(node.angle)
         const side = dx > 0.25 ? 'start' : dx < -0.25 ? 'end' : 'middle'
@@ -243,12 +281,15 @@ function Labels({ geometry, props, active, setActive, onLocked }: PartProps & { 
             href={`/stocks/${encodeURIComponent(node.symbol)}/relationships`}
             className={styles.node}
             style={labelPosition(box, node.x, node.y, 'middle', 'middle')}
-            data-state={active === null ? undefined : active === node.symbol ? 'on' : 'off'}
-            onPointerEnter={() => setActive(node.symbol)}
-            onPointerLeave={() => setActive(null)}
-            onFocus={() => setActive(node.symbol)}
-            onBlur={() => setActive(null)}
-            aria-label={`${node.symbol}${tie?.name ? `, ${tie.name}` : ''}: ${node.correlation.toFixed(2)}, ${zoneName(props.zones, node.zoneId)}`}
+            data-state={shared.active === null ? undefined : shared.active === node.symbol ? 'on' : 'off'}
+            onPointerDown={(event) => { touch.current = event.pointerType !== 'mouse' }}
+            onKeyDown={() => { touch.current = false }}
+            onPointerEnter={(event) => shared.enter(node.symbol, event)}
+            onPointerLeave={shared.leave}
+            onClick={(event) => onOpen(node.symbol, event, touch.current)}
+            onFocus={() => { if (!touch.current) shared.select(node.symbol) }}
+            onBlur={() => { if (!touch.current) shared.select(null) }}
+            aria-label={`${node.symbol}${tie?.name ? `, ${tie.name}` : ''}: ${node.correlation.toFixed(2)}, ${zoneName(shared.zones, node.zoneId)}`}
           >
             <span
               className={styles.ticker}
@@ -261,7 +302,7 @@ function Labels({ geometry, props, active, setActive, onLocked }: PartProps & { 
         )
       })}
       <span className={styles.centreLabel} style={labelPosition(box, centre.x, centre.y + geometry.core + 14, 'middle', 'start')}>
-        {props.symbol}
+        {shared.symbol}
       </span>
     </>
   )

@@ -38,13 +38,20 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await noHorizontalOverflow(page)
     if (capture) await page.screenshot({ path: `test-results/relationships-orbit-signed-out-${viewport.width}.png`, fullPage: true })
 
-    // A pointer on a company reads its tie.
+    // The company's own region and the week are labelled facts, not a sentence.
+    await expect(page.locator('[data-atlas-facts]')).toContainText('FXA1’s region')
+
+    // On a wide page a pointer on a company reads its tie in the side column, not under the orbit.
     if (viewport.width >= 900) {
+      const reading = page.locator('[data-orbit-reading][data-variant="aside"]')
+      await expect(reading).toContainText('Point at a company')
       const first = plot.getByRole('link').first()
       const symbol = (await first.textContent())?.trim() ?? ''
       await first.hover()
-      await expect(orbit.locator('[data-orbit-reading]')).toContainText(symbol)
-      await expect(orbit.locator('[data-orbit-reading]')).toContainText(/0\.\d\d/)
+      await expect(reading).toContainText(symbol)
+      await expect(reading).toContainText(/0\.\d\d/)
+      // The phone card is in the page but hidden while the side column sits beside the orbit.
+      await expect(page.locator('[data-orbit-reading][data-variant="overlay"]')).toBeHidden()
     }
 
     await plot.getByRole('button', { name: /10 more/ }).click()
@@ -67,4 +74,27 @@ test('reduced motion draws the orbit at rest', async ({ page }) => {
   await expect(orbit).toBeVisible()
   const animation = await orbit.locator('[data-chart-variant="wide"] svg path').first().evaluate((node) => getComputedStyle(node).animationName)
   expect(animation).toBe('none')
+})
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+
+  test('a tap reads a company over the orbit, a second tap opens it', async ({ page }) => {
+    await page.goto('/stocks/FXA1/relationships')
+    const plot = page.locator('[data-relationship-orbit] [data-chart-variant="compact"]')
+    const first = plot.getByRole('link').first()
+    const symbol = (await first.textContent())?.trim() ?? ''
+    await first.tap()
+    await expect(page).toHaveURL(/\/stocks\/FXA1\/relationships$/)
+    const reading = page.locator('[data-orbit-reading][data-variant="overlay"]')
+    await expect(reading).toBeVisible()
+    await expect(reading).toContainText(symbol)
+    await noHorizontalOverflow(page)
+    if (capture) await page.screenshot({ path: 'test-results/relationships-orbit-tap-390.png' })
+    await reading.getByRole('button', { name: 'Close the reading' }).tap()
+    await expect(reading).toHaveCount(0)
+    await first.tap()
+    await first.tap()
+    await expect(page).toHaveURL(new RegExp(`/stocks/${symbol}/relationships$`))
+  })
 })

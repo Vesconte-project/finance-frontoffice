@@ -4,7 +4,8 @@ import { Lock } from 'lucide-react'
 import ResearchChapter, { ChapterCard } from '@/components/stocks/research/ResearchChapter'
 import { buttonClass } from '@/components/ui/Button'
 import type { AtlasCompanyPanel } from '@/lib/atlas-model'
-import RelationshipOrbit, { type OrbitZone } from './RelationshipOrbit'
+import RelationshipOrbit from './RelationshipOrbit'
+import { OrbitFocusProvider, OrbitReading, type OrbitZone } from './OrbitFocus'
 import styles from './CompanyAtlasPlace.module.css'
 
 function formatWeek(iso: string): string {
@@ -31,7 +32,7 @@ export default function CompanyAtlasPlace({
   /** Atlas colour per region id, the same the market atlas gives it. */
   hues: Record<string, number>
 }) {
-  const region = panel.zoneLabel ? readable(panel.zoneLabel) : 'its region'
+  const region = readable(panel.zoneLabel ?? panel.zoneId)
   const ties = [...panel.neighbours].sort((a, b) => b.correlation - a.correlation || a.symbol.localeCompare(b.symbol))
   const hidden = Math.max(0, panel.neighbourCount - ties.length)
   const back = `/stocks/${encodeURIComponent(panel.symbol)}/relationships`
@@ -51,43 +52,55 @@ export default function CompanyAtlasPlace({
   const zoneOrder = panel.memberships.map((membership) => membership.zoneId)
   const swatch = (zoneId: string | null) => ({ '--h': zoneId ? zones[zoneId]?.hue ?? 210 : 210 }) as CSSProperties
 
+  const orbitTies = ties.map((tie) => ({ symbol: tie.symbol, name: tie.name, zoneId: tie.zoneId, correlation: tie.correlation }))
+  const drawn = ties.length > 0 || hidden > 0
+
   return (
     <>
-      <ResearchChapter
-        id="atlas-region"
-        label="Where it sits"
-        actions={<Link href="/markets/network" className={styles.link}>Open the atlas →</Link>}
-        aside={panel.memberships.length ? (
-          <ChapterCard title="Where its ties land" meta={`Week of ${formatWeek(panel.asOf)}`}>
-            <ul className={styles.shares} aria-label={`How ${panel.symbol}'s strongest ties split between regions`}>
-              {panel.memberships.map((membership) => (
-                <li key={membership.zoneId} style={swatch(membership.zoneId)}>
-                  <span className={styles.zoneName}><i className={styles.swatch} aria-hidden="true" />{readable(membership.label ?? membership.zoneId)}</span>
-                  <span className={styles.bar} aria-hidden="true"><span style={{ width: `${Math.round(membership.share * 100)}%` }} /></span>
-                  <strong>{Math.round(membership.share * 100)}%</strong>
-                </li>
-              ))}
-            </ul>
-            <p className={styles.note}>The share of its strongest ties, above the market average, that land in each region.</p>
-          </ChapterCard>
-        ) : undefined}
-      >
-        <p className={styles.lead}>
-          {panel.symbol} is in <b>{region}</b> on the atlas for the week of {formatWeek(panel.asOf)}.
-        </p>
-        {ties.length || hidden ? (
-          <RelationshipOrbit
-            symbol={panel.symbol}
-            zoneId={panel.zoneId}
-            zones={zones}
-            zoneOrder={zoneOrder}
-            ties={ties.map((tie) => ({ symbol: tie.symbol, name: tie.name, zoneId: tie.zoneId, correlation: tie.correlation }))}
-            hidden={hidden}
-            signUpHref={signUpHref}
-            signInHref={signInHref}
-          />
-        ) : null}
-      </ResearchChapter>
+      <OrbitFocusProvider symbol={panel.symbol} zoneId={panel.zoneId} zones={zones} ties={orbitTies}>
+        <ResearchChapter
+          id="atlas-region"
+          label="Where it sits"
+          actions={<Link href="/markets/network" className={styles.link}>Open the atlas →</Link>}
+          aside={panel.memberships.length || drawn ? (
+            <>
+              {panel.memberships.length ? (
+                <ChapterCard title="Where its ties land">
+                  <p className={styles.cardLead}>The regions of the companies {panel.symbol} moves with, by share of its strongest ties.</p>
+                  <ul className={styles.shares} aria-label={`How ${panel.symbol}'s strongest ties split between regions`}>
+                    {panel.memberships.map((membership) => (
+                      <li key={membership.zoneId} style={swatch(membership.zoneId)} data-own={membership.zoneId === panel.zoneId ? 'true' : undefined}>
+                        <span className={styles.zoneName}>
+                          <i className={styles.swatch} aria-hidden="true" />
+                          <span>{readable(membership.label ?? membership.zoneId)}</span>
+                          {membership.zoneId === panel.zoneId ? <em className={styles.ownTag}>{panel.symbol}&rsquo;s region</em> : null}
+                        </span>
+                        <span className={styles.bar} aria-hidden="true"><span style={{ width: `${Math.round(membership.share * 100)}%` }} /></span>
+                        <strong>{Math.round(membership.share * 100)}%</strong>
+                      </li>
+                    ))}
+                  </ul>
+                </ChapterCard>
+              ) : null}
+              {drawn ? <OrbitReading variant="aside" /> : null}
+            </>
+          ) : undefined}
+        >
+          <dl className={styles.facts} data-atlas-facts="">
+            <div className={styles.fact} style={swatch(panel.zoneId)} data-own="true">
+              <dt>{panel.symbol}&rsquo;s region</dt>
+              <dd><i className={styles.swatch} aria-hidden="true" />{region}</dd>
+            </div>
+            <div className={styles.fact}>
+              <dt>Atlas week</dt>
+              <dd>{formatWeek(panel.asOf)}</dd>
+            </div>
+          </dl>
+          {drawn ? (
+            <RelationshipOrbit zoneOrder={zoneOrder} hidden={hidden} signUpHref={signUpHref} signInHref={signInHref} />
+          ) : null}
+        </ResearchChapter>
+      </OrbitFocusProvider>
       <ResearchChapter id="related-companies" label="Moves most with" band>
         {ties.length ? (
           <ol className={styles.neighbours} aria-label={`Companies that move most with ${panel.symbol}`}>

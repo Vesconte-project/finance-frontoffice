@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { COMPACT_BOX, WIDE_BOX, centreOut, orbitDomain, orbitGeometry, type OrbitTie } from '../lib/relationship-orbit'
+import { COMPACT_BOX, ORBIT_RINGS, WIDE_BOX, centreOut, orbitGeometry, orbitReach, orbitStrength, type OrbitTie } from '../lib/relationship-orbit'
 
 const TIES: OrbitTie[] = [
   { symbol: 'KO', zoneId: 'soft', correlation: 0.24 },
@@ -16,12 +16,30 @@ const distance = (geometry: ReturnType<typeof orbitGeometry>, symbol: string) =>
   return Math.hypot(node.x - geometry.centre.x, node.y - geometry.centre.y)
 }
 
-test('the ring range is whole steps around the values, at least 0.1 wide and never below zero', () => {
-  assert.deepEqual(orbitDomain([0.24, 0.17]), { lo: 0.15, hi: 0.25, step: 0.05 })
-  assert.deepEqual(orbitDomain([0.62, 0.3]), { lo: 0.3, hi: 0.7, step: 0.1 })
-  assert.deepEqual(orbitDomain([0.25, 0.2]), { lo: 0.15, hi: 0.25, step: 0.05 })
-  assert.deepEqual(orbitDomain([0.04]), { lo: 0, hi: 0.1, step: 0.05 })
-  assert.deepEqual(orbitDomain([]), { lo: 0, hi: 0.1, step: 0.05 })
+test('distance and strength follow one fixed scale, so weak ties always read as weak', () => {
+  assert.equal(orbitReach(1), 0)
+  assert.equal(orbitReach(0), 1)
+  assert.equal(orbitReach(-0.2), 1)
+  assert.equal(orbitReach(Number.NaN), 1)
+  // The square root keeps weak ties apart: 0.15 and 0.25 differ by more than a tenth of the band.
+  assert.ok(orbitReach(0.15) - orbitReach(0.25) > 0.1)
+  assert.equal(orbitStrength(0.6), 1)
+  assert.equal(orbitStrength(0.3), 0.5)
+  assert.deepEqual([...ORBIT_RINGS], [0.5, 0.25, 0.1])
+})
+
+test('a company whose ties are all weak draws them far out, not next to it', () => {
+  const weak = TIES.map((tie) => ({ ...tie, correlation: tie.correlation / 2 }))
+  const strong = orbitGeometry({ zoneId: 'soft', ties: TIES, hidden: 0 }, WIDE_BOX)
+  const faint = orbitGeometry({ zoneId: 'soft', ties: weak, hidden: 0 }, WIDE_BOX)
+  for (const tie of TIES) assert.ok(distance(faint, tie.symbol) > distance(strong, tie.symbol), tie.symbol)
+  // The same correlation sits at the same distance whatever the company's other ties are.
+  const alone = orbitGeometry({ zoneId: 'soft', ties: [TIES[2]], hidden: 0 }, WIDE_BOX)
+  assert.ok(Math.abs(distance(alone, 'NBIX') - distance(strong, 'NBIX')) < 0.2)
+  // Rings are fixed and never stack: each further out than the last.
+  const radii = strong.rings.map((ring) => ring.radius)
+  assert.deepEqual(strong.rings.map((ring) => ring.value), [0.5, 0.25, 0.1])
+  assert.ok(radii[0] < radii[1] && radii[1] < radii[2])
 })
 
 test('stronger ties sit closer to the company, every tie inside its own region', () => {
@@ -55,10 +73,10 @@ test('hidden ties share one locked sector, outside the weakest visible tie, plac
   for (const ghost of geometry.ghosts) {
     assert.ok(Math.hypot(ghost.x - geometry.centre.x, ghost.y - geometry.centre.y) > weakest)
   }
-  // The ghosts do not depend on which ties are visible.
+  // Their directions do not depend on the visible ties' regions or values; only how far out they start.
   const other = orbitGeometry({ ...input, ties: TIES.map((tie) => ({ ...tie, correlation: tie.correlation + 0.3 })) }, WIDE_BOX)
-  const angles = (g: typeof geometry) => g.ghosts.map((ghost) => Math.atan2(ghost.y - g.centre.y, ghost.x - g.centre.x).toFixed(4))
-  assert.deepEqual(angles(other), angles(geometry))
+  const angles = (g: typeof geometry) => g.ghosts.map((ghost) => Math.atan2(ghost.y - g.centre.y, ghost.x - g.centre.x))
+  angles(other).forEach((angle, index) => assert.ok(Math.abs(angle - angles(geometry)[index]) < 1e-3))
 })
 
 test('a single region still gets a sector with room for its name', () => {

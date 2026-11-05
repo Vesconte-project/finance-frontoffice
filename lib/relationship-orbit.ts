@@ -34,7 +34,7 @@ export type OrbitGeometry = {
   nodes: OrbitNode[]
   ghosts: OrbitGhost[]
   /** Guide rings with the correlation each one marks. */
-  rings: Array<{ radius: number; value: number }>
+  rings: Array<{ radius: number; value: number; labelled: boolean }>
   /** Direction of the ring values: the gap before the company's own region, where no tie is drawn. */
   ringAngle: number
 }
@@ -59,7 +59,7 @@ export type OrbitNode = OrbitTie & {
   y: number
   /** Direction from the centre, in radians; the ticker is written beyond the ball along it. */
   angle: number
-  /** 0 for the weakest tie drawn, 1 for the strongest. */
+  /** How strong the tie is drawn, 0–1 on the fixed scale (`orbitStrength`). */
   strength: number
   radius: number
   /** Where the line from the centre starts, at the edge of the company's ball. */
@@ -114,25 +114,23 @@ function anchorFor(angle: number): 'start' | 'middle' | 'end' {
 }
 
 /**
- * The correlation range the rings span: whole steps around the values (0.05,
- * or 0.1 when they spread wider than 0.2), at least 0.1 wide, never below zero.
+ * How far from the company a tie sits, on one fixed scale for every company:
+ * 0 at a correlation of 1, 1 at 0. The square root gives the weak ties, where
+ * most of them are, more room, so 0.15 and 0.25 stay apart while a page whose
+ * ties are all weak still draws them all far out.
  */
-export function orbitDomain(values: readonly number[]): { lo: number; hi: number; step: number } {
-  const finite = values.filter((value) => Number.isFinite(value))
-  if (!finite.length) return { lo: 0, hi: 0.1, step: 0.05 }
-  const min = Math.min(...finite)
-  const max = Math.max(...finite)
-  const step = max - min > 0.2 ? 0.1 : 0.05
-  // A value on a step is its own ring; the tolerance keeps float noise from moving it to the next one.
-  let lo = Math.floor(min / step + 1e-6) * step
-  let hi = Math.ceil(max / step - 1e-6) * step
-  if (hi - lo < 0.1 - 1e-9) lo = hi - 0.1
-  if (lo < 0) {
-    lo = 0
-    hi = Math.max(hi, 0.1)
-  }
-  return { lo: Number(lo.toFixed(2)), hi: Number(hi.toFixed(2)), step }
+export function orbitReach(correlation: number): number {
+  const value = Number.isFinite(correlation) ? Math.max(0, Math.min(1, correlation)) : 0
+  return 1 - Math.sqrt(value)
 }
+
+/** How strong a tie is drawn (line width, opacity, ball size), on the same fixed scale: full from 0.6. */
+export function orbitStrength(correlation: number): number {
+  return Number.isFinite(correlation) ? Math.max(0, Math.min(1, correlation / 0.6)) : 0
+}
+
+/** The guide rings, the same on every page. */
+export const ORBIT_RINGS = [0.5, 0.25, 0.1] as const
 
 type Group = { zoneId: string | null; ties: OrbitTie[]; units: number; weight: number }
 
@@ -208,23 +206,20 @@ export function orbitGeometry(input: OrbitInput, box: PlotBox): OrbitGeometry {
   const outer = Math.min(box.width, box.height) / 2 - (compact ? 74 : 70)
   const core = compact ? 18 : 20
   const inner = core + (compact ? 26 : 34)
-  const values = input.ties.map((tie) => tie.correlation)
-  const domain = orbitDomain(values)
-  // The strongest tie sits near the band's inner edge and the weakest visible one further out;
-  // with hidden ties the visible ones stop at two thirds of the band, so the hidden ones sit outside them.
-  const near = inner + (outer - inner) * 0.12
-  const far = inner + (outer - inner) * (input.hidden > 0 ? 0.68 : 0.88)
-  const radiusOf = (value: number) => {
-    const t = domain.hi === domain.lo ? 0 : (domain.hi - value) / (domain.hi - domain.lo)
-    return near + Math.max(0, Math.min(1, t)) * (far - near)
-  }
+  // One fixed scale: the same distance always means the same correlation, on every page.
+  const near = inner + 6
+  const far = outer - 8
+  const radiusOf = (value: number) => near + orbitReach(value) * (far - near)
+  // Hidden ties are weaker than every visible one, so they sit outside the weakest visible tie.
+  const weakest = input.ties.length ? Math.max(...input.ties.map((tie) => radiusOf(tie.correlation))) : near
+  const ghostFrom = Math.min(weakest + 12, outer - 22)
+  const ghostTo = outer - 6
   const ordered = groups(input)
   const widths = spans(ordered.map((group) => group.weight))
   let cursor = TOP - (widths[0] ?? 0) / 2
   const sectors: OrbitSector[] = []
   const nodes: OrbitNode[] = []
   const ghosts: OrbitGhost[] = []
-  const valueRange = domain.hi - domain.lo || 1
   ordered.forEach((group, index) => {
     const start = cursor
     const end = cursor + (widths[index] ?? 0)
@@ -239,13 +234,13 @@ export function orbitGeometry(input: OrbitInput, box: PlotBox): OrbitGeometry {
       arc: arcPath(centre.x, centre.y, outer, start, end),
       label: { x: round(labelAt.x), y: round(labelAt.y), anchor: anchorFor(mid) },
       middle: (() => {
-        const at = point(centre.x, centre.y, group.ties.length ? (inner + outer) / 2 : far + (outer - far) * 0.5, mid)
+        const at = point(centre.x, centre.y, group.ties.length ? (inner + outer) / 2 : (ghostFrom + ghostTo) / 2, mid)
         return { x: round(at.x), y: round(at.y) }
       })(),
     })
     if (!group.ties.length) {
       for (let ghost = 0; ghost < group.units; ghost += 1) {
-        const spot = ghostSpot(ghost, group.units, start, end, far + 8, outer - 10)
+        const spot = ghostSpot(ghost, group.units, start, end, ghostFrom, ghostTo)
         const at = point(centre.x, centre.y, spot.radius, spot.angle)
         ghosts.push({ x: round(at.x), y: round(at.y), radius: compact ? 5 : 6 })
       }
@@ -258,7 +253,7 @@ export function orbitGeometry(input: OrbitInput, box: PlotBox): OrbitGeometry {
       const angle = start + (end - start) * ((slot + 0.5) / count)
       const radius = radiusOf(tie.correlation)
       const at = point(centre.x, centre.y, radius, angle)
-      const strength = Math.max(0, Math.min(1, (tie.correlation - domain.lo) / valueRange))
+      const strength = orbitStrength(tie.correlation)
       const ball = (compact ? 6 : 7) + strength * (compact ? 4 : 5)
       const from = point(centre.x, centre.y, core + 4, angle)
       nodes.push({
@@ -272,10 +267,8 @@ export function orbitGeometry(input: OrbitInput, box: PlotBox): OrbitGeometry {
       })
     })
   })
-  const rings: OrbitGeometry['rings'] = []
-  for (let value = domain.hi; value >= domain.lo - 1e-9; value -= domain.step) {
-    rings.push({ radius: round(radiusOf(value)), value: Number(value.toFixed(2)) })
-  }
+  // On a phone the rings sit close together: the middle one keeps its circle but not its number.
+  const rings = ORBIT_RINGS.map((value) => ({ radius: round(radiusOf(value)), value, labelled: !compact || value !== 0.25 }))
   const ringAngle = (sectors[0]?.start ?? TOP) - GAP / 2
   return { box, centre, core, inner, outer, sectors, nodes, ghosts, rings, ringAngle }
 }

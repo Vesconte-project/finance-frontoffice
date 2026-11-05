@@ -140,6 +140,10 @@ test('Relationships reads the weekly atlas: the company\'s region and the compan
   assert.match(page, /zoneHues/)
   assert.match(place, /<RelationshipOrbit/)
   assert.match(place, /neighbourCount/)
+  // The company's own region and the week are labelled facts; the reading of a tie sits beside the orbit.
+  assert.match(place, /data-atlas-facts/)
+  assert.match(place, /<OrbitReading variant="aside"/)
+  assert.match(orbit, /<OrbitReading variant="overlay"/)
   assert.match(orbit, /orbitGeometry/)
   assert.match(orbit, /<Dialog/)
   assert.match(orbit, /Create account/)

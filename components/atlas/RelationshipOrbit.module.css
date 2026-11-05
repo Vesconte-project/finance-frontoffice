@@ -9,14 +9,16 @@
 
 .zoned,
 .zoneLabel,
-.swatch {
+.swatch,
+.readingRegion {
   --zone: hsl(var(--h, 210) 46% 48%);
 }
 
 @media (prefers-color-scheme: dark) {
   :global(:root:not([data-theme='light']):not(.light)) .zoned,
   :global(:root:not([data-theme='light']):not(.light)) .zoneLabel,
-  :global(:root:not([data-theme='light']):not(.light)) .swatch {
+  :global(:root:not([data-theme='light']):not(.light)) .swatch,
+  :global(:root:not([data-theme='light']):not(.light)) .readingRegion {
     --zone: hsl(var(--h, 210) 38% 62%);
   }
 }
@@ -26,7 +28,9 @@
 :global(:root[data-theme='dark']) .swatch,
 :global(:root.dark) .zoned,
 :global(:root.dark) .zoneLabel,
-:global(:root.dark) .swatch {
+:global(:root.dark) .swatch,
+:global(:root[data-theme='dark']) .readingRegion,
+:global(:root.dark) .readingRegion {
   --zone: hsl(var(--h, 210) 38% 62%);
 }
 
@@ -53,8 +57,13 @@
   stroke-width: 1.5;
 }
 
+/* The company's own region: a firmer coastline, so it reads apart from the regions of its ties. */
+.zoned[data-own='true'] .coast {
+  stroke: var(--zone);
+  stroke-width: 2.5;
+}
+
 .lockedSector .sector {
-  fill-opacity: 1;
   stroke: var(--bg);
 }
 
@@ -171,16 +180,45 @@
 
 .zoneLabel {
   position: absolute;
-  display: inline-flex;
+  display: grid;
   max-width: 13rem;
-  align-items: center;
-  gap: 0.4rem;
+  gap: 0.15rem;
   color: var(--text-small);
   font-size: 0.66rem;
   font-weight: 600;
   letter-spacing: 0.12em;
   line-height: 1.25;
   text-transform: uppercase;
+}
+
+.zoneLabel[data-anchor='end'] {
+  justify-items: end;
+  text-align: right;
+}
+
+.zoneLabel[data-anchor='middle'] {
+  justify-items: center;
+  text-align: center;
+}
+
+.zoneName {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.zoneLabel[data-own='true'] {
+  color: var(--text);
+}
+
+.ownTag {
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--zone) 16%, transparent);
+  color: var(--text);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  text-transform: none;
 }
 
 .swatch {
@@ -282,40 +320,161 @@
   outline-offset: 2px;
 }
 
-.reading {
+/* ---------------------------------------------------------------- reading */
+
+.readingCard {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  background: var(--surface);
+}
+
+/* Beside the orbit only when the chapter puts the side column beside it; under that width the
+   reading is a card over the bottom of the orbit instead. */
+.readingCard[data-variant='aside'] {
+  display: none;
+}
+
+.overlay {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  display: grid;
+  justify-items: center;
+  pointer-events: none;
+}
+
+.overlay .readingCard {
+  width: min(100%, 24rem);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--text) 14%, transparent);
+  pointer-events: auto;
+  animation: orbit-card 220ms var(--motion-ease-soft, ease-out) backwards;
+}
+
+/* After the base rules above, so the wide layout wins over them. */
+@container research-chapter (width >= 56rem) {
+  .readingCard[data-variant='aside'] {
+    display: grid;
+  }
+
+  .overlay {
+    display: none;
+  }
+}
+
+.readingHead {
   display: flex;
-  min-height: 1.6rem;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem 0.6rem;
-  margin: 0.4rem 0 0;
-  font-size: 0.88rem;
+  gap: 0.5rem;
 }
 
-.reading b {
+.readingHead b {
   font-family: var(--font-mono);
+  font-size: 1rem;
 }
 
-.reading span {
+.readingClose {
+  display: inline-grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin: -0.5rem -0.6rem -0.5rem auto;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
   color: var(--text-muted);
+  cursor: pointer;
 }
 
-.reading strong {
-  margin-left: auto;
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
+.readingClose:focus-visible {
+  outline: 2px solid var(--accent);
 }
 
-.readingZone {
+.readingName {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.readingRegion {
+  margin: 0;
+  color: var(--text);
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
-.reading .readingHint {
+.readingRegion span {
+  margin-left: 0.35rem;
   color: var(--text-muted);
-  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.readingValue {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.75rem;
+  margin-top: 0.15rem;
+}
+
+.readingValue strong {
+  grid-row: span 2;
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.readingScale {
+  display: block;
+  height: 0.4rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--line) 60%, transparent);
+}
+
+.readingScale span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.readingEnds {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+}
+
+.readingLink {
+  justify-self: start;
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.readingHint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+@keyframes orbit-card {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
 }
 
 @keyframes orbit-fade {
@@ -346,5 +505,9 @@
   .tie,
   .ticker {
     transition: none;
+  }
+
+  .overlay .readingCard {
+    animation: none;
   }
 }
