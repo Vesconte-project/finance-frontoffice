@@ -1,12 +1,12 @@
 import Link from 'next/link'
 import ResearchViewShell, { ResearchAdPlacement } from '@/components/stocks/ResearchViewShell'
-import type { CanonicalEvent, DisclosurePayload, EventCalendarPayload } from '@/lib/canonical-research'
+import type { CanonicalEvent, CorporateActionsPayload, DisclosurePayload, EventCalendarPayload } from '@/lib/canonical-research'
 import { eventCategory, readableTitle } from '@/lib/calendar-model'
 import { normalizeEarningsHistory, selectNextResearchEvent } from '@/lib/event-research'
 import { buildEventMarkers } from '@/lib/event-markers'
 import type { TimelineClose, TimelineEvent } from '@/lib/event-timeline'
 import { daysBetween } from '@/lib/event-timeline'
-import { earningsChart } from '@/lib/earnings-chart'
+import { eventDetails } from '@/lib/event-details'
 import { describeFiling } from '@/lib/filing-labels'
 import { formatCompactMoney } from '@/lib/currency'
 import BeingBuilt from '@/components/stocks/research/BeingBuilt'
@@ -64,30 +64,6 @@ function collapseEvents(rows: CanonicalEvent[]): CalendarEntry[] {
   })
 }
 
-/** The last quarters' EPS, reported against estimate, small: beside the next date. */
-function RecentQuarters({ data }: { data: StockResearchIdentity }) {
-  const { rows } = normalizeEarningsHistory(data.summary.earningsHistory)
-  const chart = earningsChart(rows, 'eps', { width: 240, height: 90 }, 8)
-  const drawn = chart.quarters.filter((quarter) => quarter.actualY !== null || quarter.estimateY !== null)
-  if (drawn.length < 2) return null
-  return (
-    <figure className={styles.recent} aria-label={`Earnings per share against the estimate, last ${chart.quarters.length} quarters`}>
-      <svg viewBox={`0 0 ${chart.width} ${chart.height}`} aria-hidden="true" focusable="false">
-        {chart.quarters.map((quarter) => (
-          <g key={quarter.key} data-direction={quarter.direction ?? undefined} className={styles.recentQuarter}>
-            {quarter.actualY !== null && quarter.estimateY !== null ? (
-              <line x1={quarter.x} x2={quarter.x} y1={quarter.estimateY} y2={quarter.actualY} />
-            ) : null}
-            {quarter.estimateY !== null ? <circle cx={quarter.x} cy={quarter.estimateY} r={4.5} data-mark="estimate" /> : null}
-            {quarter.actualY !== null ? <circle cx={quarter.x} cy={quarter.actualY} r={5} data-mark="actual" /> : null}
-          </g>
-        ))}
-      </svg>
-      <figcaption>EPS against the estimate, last {chart.quarters.length} quarters</figcaption>
-    </figure>
-  )
-}
-
 function timelineEvent(row: CanonicalEvent, key: string): TimelineEvent | null {
   if (!row.occursAt || !/^\d{4}-\d{2}-\d{2}/.test(row.occursAt) || !row.title?.trim()) return null
   const category = row.domain === 'guidance' ? 'guidance' : eventCategory(row.domain, row.eventType, row.title)
@@ -103,11 +79,14 @@ export default function StockEventsResearch({
   data,
   events,
   disclosures,
+  actions,
   closes,
 }: {
   data: StockResearchIdentity
   events: EventCalendarPayload | null
   disclosures: DisclosurePayload | null
+  /** Dividends and splits with their amounts and dates, for the chosen event's detail. */
+  actions: CorporateActionsPayload | null
   /** Reported daily closes, oldest first; empty when prices are unavailable. */
   closes: TimelineClose[]
 }) {
@@ -151,65 +130,80 @@ export default function StockEventsResearch({
     }))
 
   const history = normalizeEarningsHistory(data.summary.earningsHistory).rows
+  const details = eventDetails([...past, ...scheduled], {
+    today,
+    earnings: history,
+    next: !isFund && nextDate ? {
+      date: nextDate.slice(0, 10),
+      fiscalPeriod: earnings?.fiscalPeriod ?? null,
+      epsEstimate: earnings?.epsEstimate ?? null,
+      revenueEstimate: earnings?.revenueEstimate ?? null,
+    } : null,
+    actions: actions?.available !== false ? actions?.rows ?? [] : [],
+    documents: filings.map((filing) => ({ date: filing.date, label: filing.label, url: filing.url })),
+    closes,
+    currency: data.currency,
+    compactMoney: (value) => formatCompactMoney(value, data.currency),
+  })
+
+  // The next results, small, at the top of the timeline's side column.
+  const nextCard = (
+    <section id="next-event" className={styles.next} aria-labelledby="next-event-label" data-next-event={nextDate && days !== null ? '' : undefined}>
+      <h3 id="next-event-label" className={styles.nextLabel}>{isFund ? 'Next fund event' : 'Next earnings'}</h3>
+      {nextDate && days !== null ? (
+        <>
+          <div className={styles.nextWhen}>
+            <time className={styles.date} dateTime={nextDate.slice(0, 10)}>{formatDate(nextDate)}</time>
+            <span className={styles.countdown}>{days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`}</span>
+          </div>
+          <p className={styles.weekday}>
+            {formatDay(nextDate)}
+            {next?.movedFrom ? <span className={styles.moved}> · moved from {formatDate(next.movedFrom)}</span> : null}
+          </p>
+          {facts.length ? (
+            <dl className={styles.facts}>
+              {facts.map((fact) => (
+                <div key={fact.label}>
+                  <dt>{fact.label}</dt>
+                  <dd>{fact.value}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : isFund && next ? <p className={styles.weekday}>{readableTitle(next.row.title)}</p> : null}
+        </>
+      ) : (
+        <BeingBuilt size="inline">The date of {data.ticker}’s next {isFund ? 'fund event' : 'results'} is being added.</BeingBuilt>
+      )}
+    </section>
+  )
 
   return (
     // No page header: the tab above already says Events.
     <ResearchViewShell title={isFund ? 'Fund Events' : 'Earnings & Events'} showHeader={false}>
       <div className={styles.page} data-events-research="">
-        <ResearchChapter id="next-event" label={isFund ? 'Next fund event' : 'Next earnings'}>
-          {nextDate && days !== null ? (
-            <div className={styles.next} data-next-event="">
-              <div className={styles.countdown} aria-hidden="true">
-                <strong>{days}</strong>
-                <span>{days === 1 ? 'day' : 'days'}</span>
-              </div>
-              <div className={styles.when}>
-                <p className={styles.date}>
-                  <time dateTime={nextDate.slice(0, 10)}>{formatDate(nextDate)}</time>
-                </p>
-                <p className={styles.weekday}>
-                  {formatDay(nextDate)} · {days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`}
-                  {next?.movedFrom ? <span className={styles.moved}> · moved from {formatDate(next.movedFrom)}</span> : null}
-                </p>
-                {facts.length ? (
-                  <dl className={styles.facts}>
-                    {facts.map((fact) => (
-                      <div key={fact.label}>
-                        <dt>{fact.label}</dt>
-                        <dd>{fact.value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                ) : isFund && next ? <p className={styles.weekday}>{readableTitle(next.row.title)}</p> : null}
-              </div>
-              {!isFund ? <RecentQuarters data={data} /> : null}
-            </div>
-          ) : (
-            <BeingBuilt size="inline">The date of {data.ticker}’s next {isFund ? 'fund event' : 'results'} is being added.</BeingBuilt>
-          )}
-        </ResearchChapter>
-
         <ResearchChapter
           id="timeline"
           label="Events on the price"
-          band
           actions={<Link href="/calendar" className={styles.action}>Open the full calendar →</Link>}
         >
           {past.length || scheduled.length ? (
-            <EventTimeline ticker={data.ticker} closes={closes} past={past} upcoming={scheduled} today={today} />
+            <EventTimeline ticker={data.ticker} closes={closes} past={past} upcoming={scheduled} today={today} details={details} side={nextCard} />
           ) : (
-            <BeingBuilt size="chart">{data.ticker}’s results, dividends and company events are being added.</BeingBuilt>
+            <div className={styles.withoutTimeline}>
+              {nextCard}
+              <BeingBuilt size="chart">{data.ticker}’s results, dividends and company events are being added.</BeingBuilt>
+            </div>
           )}
         </ResearchChapter>
 
         {!isFund ? (
-          <ResearchChapter id="reported-against-estimate" label="Reported against estimate">
+          <ResearchChapter id="reported-against-estimate" label="Reported against estimate" band>
             <EarningsAgainstEstimate rows={history} currency={data.currency} />
           </ResearchChapter>
         ) : null}
 
         {filings.length > 0 ? (
-          <ResearchChapter id="documents" label="Filings and documents" band={!isFund}>
+          <ResearchChapter id="documents" label="Filings and documents" band={isFund}>
             <FilingsList filings={filings} />
           </ResearchChapter>
         ) : null}

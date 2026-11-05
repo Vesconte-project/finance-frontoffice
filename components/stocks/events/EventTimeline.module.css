@@ -8,9 +8,39 @@
   --event-dividends: var(--up-ink, var(--up));
   --event-guidance: color-mix(in srgb, var(--text) 78%, var(--accent));
   --event-company: var(--network-node);
+  container: events-timeline / inline-size;
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.main {
   display: grid;
   gap: 1rem;
   min-width: 0;
+}
+
+/* Narrow: the chosen event right under the chart, then the next results. */
+.side {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 1rem;
+  min-width: 0;
+}
+
+/* Wide: the chart on the left, the next results and the chosen event in a column beside it. */
+@container events-timeline (width >= 54rem) {
+  .timeline {
+    grid-template-columns: minmax(0, 1fr) 20rem;
+    align-items: start;
+    column-gap: 2rem;
+  }
+
+  .side {
+    position: sticky;
+    top: calc(var(--ticker-header-offset, 72px) + 1rem);
+    flex-direction: column;
+  }
 }
 
 .controls {
@@ -203,7 +233,8 @@
   font-weight: 600;
 }
 
-.readingHead time {
+.readingDate {
+  color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: 0.8rem;
 }
@@ -220,20 +251,31 @@
 .readingTitle {
   margin: 0;
   color: var(--text);
-  font-size: 1rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
-.readingMove,
-.readingNote {
-  margin: 0;
+.readingMove {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
+  align-items: baseline;
+  column-gap: 0.5rem;
+  margin: 0.25rem 0 0;
   color: var(--text-muted);
   font-size: 0.85rem;
 }
 
 .readingMove strong {
-  margin: 0 0.4rem;
   font-family: var(--font-mono);
+  font-size: 1.15rem;
   font-variant-numeric: tabular-nums;
+}
+
+.readingMove small {
+  grid-column: 1 / -1;
+  font-size: 0.72rem;
 }
 
 .readingMove strong[data-tone='up'] {
@@ -242,6 +284,61 @@
 
 .readingMove strong[data-tone='down'] {
   color: var(--down);
+}
+
+.readingNote {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  gap: 0.6rem 1rem;
+  margin: 0.35rem 0 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.facts div {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.facts dt {
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.facts dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.documents {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.documents a {
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.documents a:hover {
+  text-decoration: underline;
 }
 
 .empty {

@@ -1,6 +1,6 @@
 import StockEventsResearch from '@/components/stocks/StockEventsResearch'
 import ResearchUnavailable from '@/components/stocks/ResearchUnavailable'
-import { getTickerDisclosures, getTickerEvents } from '@/lib/canonical-research'
+import { getTickerCorporateActions, getTickerDisclosures, getTickerEvents } from '@/lib/canonical-research'
 import { getOhlcData } from '@/lib/finance'
 import { getStockResearchIdentity } from '@/lib/stock-research'
 
@@ -20,7 +20,7 @@ export default async function EventsPage({ params }: { params: Promise<{ ticker:
   const end = new Date(today)
   end.setUTCFullYear(end.getUTCFullYear() + 1)
 
-  const [data, events, disclosures, ohlc] = await Promise.all([
+  const [data, events, disclosures, actions, ohlc] = await Promise.all([
     getStockResearchIdentity(ticker).catch(() => null),
     getTickerEvents(ticker, {
       startDate: isoDate(start),
@@ -29,10 +29,12 @@ export default async function EventsPage({ params }: { params: Promise<{ ticker:
       limit: 200,
     }).catch(() => null),
     getTickerDisclosures(ticker, { latestOnly: true, limit: 100 }).catch(() => null),
+    // Amounts and dates of dividends and splits, for the chosen event's detail.
+    getTickerCorporateActions(ticker, { limit: 200 }).catch(() => null),
     // Prices only draw the line under the events; without them the events still show.
     getOhlcData(ticker.toUpperCase(), TIMELINE_DAYS).catch(() => null),
   ])
   if (!data) return <ResearchUnavailable ticker={ticker.toUpperCase()} />
   const closes = (ohlc?.rows ?? []).map((row) => ({ date: row.date.slice(0, 10), close: row.close }))
-  return <StockEventsResearch data={data} events={events} disclosures={disclosures} closes={closes} />
+  return <StockEventsResearch data={data} events={events} disclosures={disclosures} actions={actions} closes={closes} />
 }

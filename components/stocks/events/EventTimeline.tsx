@@ -1,10 +1,11 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import ChartFrame, { ChartPlot } from '@/components/stocks/research/ChartFrame'
 import FilterChip from '@/components/ui/FilterChip'
 import SegmentedControl from '@/components/ui/SegmentedControl'
 import { labelPosition } from '@/lib/chart-labels'
+import type { EventDetail } from '@/lib/event-details'
 import { EVENT_CATEGORY_LABEL, type EventMarkerCategory } from '@/lib/event-markers'
 import {
   TIMELINE_RANGES,
@@ -18,7 +19,7 @@ import {
 } from '@/lib/event-timeline'
 import styles from './EventTimeline.module.css'
 
-const WIDE = { width: 1000, height: 360 }
+const WIDE = { width: 1000, height: 330 }
 const COMPACT = { width: 600, height: 460 }
 /** Two markers closer than this many CSS pixels stack instead of overlapping. */
 const MARKER_GAP_PX = 22
@@ -56,12 +57,18 @@ export default function EventTimeline({
   past,
   upcoming,
   today,
+  details,
+  side,
 }: {
   ticker: string
   closes: TimelineClose[]
   past: TimelineEvent[]
   upcoming: TimelineEvent[]
   today: string
+  /** What each event can say beyond its title, keyed by event id. */
+  details: Record<string, EventDetail>
+  /** Shown at the top of the side column: the next results. */
+  side?: ReactNode
 }) {
   const [range, setRange] = useState<TimelineRange>('2Y')
   const [shown, setShown] = useState<EventMarkerCategory | 'all'>('all')
@@ -109,29 +116,34 @@ export default function EventTimeline({
 
   return (
     <div className={styles.timeline} data-event-timeline="">
-      <div className={styles.controls}>
-        <div className={styles.chips} role="group" aria-label="Kinds of event shown">
-          <FilterChip label="All" active={shown === 'all'} onClick={() => setShown('all')} trailing={<span className={styles.count}>{counts.total}</span>} />
-          {CATEGORIES.filter((category) => counts.byCategory.get(category)).map((category) => (
-            <FilterChip
-              key={category}
-              label={EVENT_CATEGORY_LABEL[category]}
-              active={shown === category}
-              onClick={() => setShown(shown === category ? 'all' : category)}
-              leading={<i className={styles.dot} data-category={category} aria-hidden="true" />}
-              trailing={<span className={styles.count}>{counts.byCategory.get(category)}</span>}
-            />
-          ))}
+      <div className={styles.main}>
+        <div className={styles.controls}>
+          <div className={styles.chips} role="group" aria-label="Kinds of event shown">
+            <FilterChip label="All" active={shown === 'all'} onClick={() => setShown('all')} trailing={<span className={styles.count}>{counts.total}</span>} />
+            {CATEGORIES.filter((category) => counts.byCategory.get(category)).map((category) => (
+              <FilterChip
+                key={category}
+                label={EVENT_CATEGORY_LABEL[category]}
+                active={shown === category}
+                onClick={() => setShown(shown === category ? 'all' : category)}
+                leading={<i className={styles.dot} data-category={category} aria-hidden="true" />}
+                trailing={<span className={styles.count}>{counts.byCategory.get(category)}</span>}
+              />
+            ))}
+          </div>
+          <SegmentedControl options={TIMELINE_RANGES} value={range} onChange={setRange} ariaLabel="Time shown" analyticsId="events-timeline-range" />
         </div>
-        <SegmentedControl options={TIMELINE_RANGES} value={range} onChange={setRange} ariaLabel="Time shown" analyticsId="events-timeline-range" />
+        <ChartFrame ariaLabel={`${ticker}'s price with its events, ${range === '1Y' ? 'over the last year' : `over the last ${range.slice(0, -1)} years`}, and what is scheduled`}>
+          {plot(wide, 'wide')}
+          {plot(compact, 'compact')}
+        </ChartFrame>
       </div>
-      <ChartFrame ariaLabel={`${ticker}'s price with its events, ${range === '1Y' ? 'over the last year' : `over the last ${range.slice(0, -1)} years`}, and what is scheduled`}>
-        {plot(wide, 'wide')}
-        {plot(compact, 'compact')}
-      </ChartFrame>
-      {selected ? <Reading event={selected} /> : (
-        <p className={styles.empty}>No {shown === 'all' ? '' : `${EVENT_CATEGORY_LABEL[shown].toLowerCase()} `}events in this window.</p>
-      )}
+      <aside className={styles.side} aria-label="Next results and the chosen event">
+        {side}
+        {selected ? <Reading event={selected} detail={details[selected.id]} /> : (
+          <p className={styles.empty}>No {shown === 'all' ? '' : `${EVENT_CATEGORY_LABEL[shown].toLowerCase()} `}events in this window.</p>
+        )}
+      </aside>
     </div>
   )
 }
@@ -208,27 +220,46 @@ function Labels({ geometry, selectedId, onSelect }: { geometry: TimelineGeometry
   )
 }
 
-function Reading({ event }: { event: PlacedEvent }) {
+function Reading({ event, detail }: { event: PlacedEvent; detail?: EventDetail }) {
   return (
     <div className={styles.reading} data-category={event.category} data-timeline-reading="" aria-live="polite">
       <div className={styles.readingHead}>
         <i className={styles.dot} data-category={event.category} aria-hidden="true" />
         <span className={styles.readingKind}>{EVENT_CATEGORY_LABEL[event.category]}</span>
-        <time dateTime={event.date}>{formatDate(event.date, true)}</time>
         {event.upcoming && event.daysAway !== null ? <span className={styles.badge}>Scheduled · {inDays(event.daysAway)}</span> : null}
       </div>
       <p className={styles.readingTitle}>{event.title}</p>
+      <time className={styles.readingDate} dateTime={event.date}>{formatDate(event.date, true)}</time>
       {!event.upcoming ? (
         event.nextSession === null ? (
           <p className={styles.readingNote}>No next-session close yet.</p>
         ) : (
           <p className={styles.readingMove}>
-            Next session <strong data-tone={event.nextSession >= 0 ? 'up' : 'down'}>{formatMove(event.nextSession)}</strong>
-            <span>close against the event day&rsquo;s close</span>
+            <span>Next session</span>
+            <strong data-tone={event.nextSession >= 0 ? 'up' : 'down'}>{formatMove(event.nextSession)}</strong>
+            <small>its close against the event day&rsquo;s close</small>
           </p>
         )
+      ) : null}
+      {detail?.facts.length ? (
+        <dl className={styles.facts} data-timeline-facts="">
+          {detail.facts.map((fact) => (
+            <div key={fact.label}>
+              <dt>{fact.label}</dt>
+              <dd>{fact.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+      {detail?.documents.length ? (
+        <ul className={styles.documents}>
+          {detail.documents.map((document) => (
+            <li key={document.url}>
+              <a href={document.url} target="_blank" rel="noreferrer">{document.label} ↗</a>
+            </li>
+          ))}
+        </ul>
       ) : null}
     </div>
   )
 }
-
