@@ -1,0 +1,350 @@
+/* A company's relationship orbit, in the atlas's language: tinted regions with
+   paper borders and a coastline, shaded balls in the region's colour, names in
+   spaced capitals. Region colours use the atlas hues (zoneColor in atlas-canvas). */
+
+.orbit {
+  position: relative;
+  min-width: 0;
+}
+
+.zoned,
+.zoneLabel,
+.swatch {
+  --zone: hsl(var(--h, 210) 46% 48%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme='light']):not(.light)) .zoned,
+  :global(:root:not([data-theme='light']):not(.light)) .zoneLabel,
+  :global(:root:not([data-theme='light']):not(.light)) .swatch {
+    --zone: hsl(var(--h, 210) 38% 62%);
+  }
+}
+
+:global(:root[data-theme='dark']) .zoned,
+:global(:root[data-theme='dark']) .zoneLabel,
+:global(:root[data-theme='dark']) .swatch,
+:global(:root.dark) .zoned,
+:global(:root.dark) .zoneLabel,
+:global(:root.dark) .swatch {
+  --zone: hsl(var(--h, 210) 38% 62%);
+}
+
+/* ---------------------------------------------------------------- drawing */
+
+.ring {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1;
+  stroke-dasharray: 2 5;
+  opacity: 0.8;
+}
+
+.sector {
+  fill: color-mix(in srgb, var(--zone) 11%, transparent);
+  stroke: var(--bg);
+  stroke-width: 3;
+  animation: orbit-fade 520ms var(--motion-ease-soft, ease-out) backwards;
+}
+
+.coast {
+  fill: none;
+  stroke: color-mix(in srgb, var(--zone) 55%, transparent);
+  stroke-width: 1.5;
+}
+
+.lockedSector .sector {
+  fill-opacity: 1;
+  stroke: var(--bg);
+}
+
+.lockedSector .coast {
+  stroke: var(--line);
+  stroke-dasharray: 4 4;
+}
+
+.hatch {
+  stroke: color-mix(in srgb, var(--network-node) 30%, transparent);
+  stroke-width: 1.5;
+}
+
+.tie,
+.ghost {
+  transform-box: view-box;
+  animation: orbit-out 640ms var(--motion-ease-soft, ease-out) backwards;
+  animation-delay: calc(120ms + var(--i, 0) * 45ms);
+}
+
+.tie {
+  cursor: pointer;
+}
+
+.line {
+  stroke: var(--zone);
+  stroke-linecap: round;
+  opacity: var(--o, 0.6);
+  transition: opacity var(--motion-normal, 180ms) ease, stroke var(--motion-normal, 180ms) ease;
+}
+
+.shadow {
+  fill: color-mix(in srgb, var(--text) 16%, transparent);
+  filter: blur(2px);
+}
+
+.ball {
+  fill: var(--zone);
+  stroke: var(--bg);
+  stroke-width: 1.5;
+  transition: fill var(--motion-normal, 180ms) ease;
+}
+
+.shine {
+  fill: #fff;
+  opacity: 0.32;
+  pointer-events: none;
+}
+
+.tie[data-state='off'] {
+  opacity: 0.32;
+}
+
+.tie[data-state='on'] .line {
+  stroke: var(--accent);
+  opacity: 1;
+}
+
+.tie[data-state='on'] .ball {
+  fill: var(--accent);
+}
+
+.tie,
+.tie[data-state] {
+  transition: opacity var(--motion-normal, 180ms) ease;
+}
+
+.ghostLine {
+  stroke: var(--network-node);
+  stroke-width: 1;
+  stroke-dasharray: 3 5;
+  opacity: 0.35;
+}
+
+.ghostBall {
+  fill: var(--network-node);
+  opacity: 0.5;
+  filter: blur(1.4px);
+}
+
+.halo {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  opacity: 0.35;
+  transform-box: view-box;
+  animation: orbit-halo 3.2s ease-in-out infinite;
+}
+
+.core {
+  fill: var(--accent);
+  stroke: var(--bg);
+  stroke-width: 2;
+}
+
+/* ---------------------------------------------------------------- labels */
+
+.ringLabel {
+  position: absolute;
+  padding: 0 0.25rem;
+  background: var(--bg);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+[data-band='true'] .ringLabel {
+  background: var(--surface-soft);
+}
+
+.zoneLabel {
+  position: absolute;
+  display: inline-flex;
+  max-width: 13rem;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-small);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.swatch {
+  display: inline-block;
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--zone);
+}
+
+.node {
+  position: absolute;
+  display: block;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  color: var(--text);
+  pointer-events: auto;
+  text-decoration: none;
+  outline: none;
+}
+
+.node:focus-visible {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+}
+
+.ticker {
+  position: absolute;
+  top: calc(50% + var(--dy, 0px));
+  left: calc(50% + var(--dx, 0px));
+  padding: 0.05rem 0.25rem;
+  border-radius: 0.3rem;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  transform: translate(-50%, -50%);
+  transition: color var(--motion-fast, 120ms) ease, opacity var(--motion-normal, 180ms) ease;
+  white-space: nowrap;
+}
+
+.ticker[data-side='start'] {
+  transform: translate(0, -50%);
+}
+
+.ticker[data-side='end'] {
+  transform: translate(-100%, -50%);
+}
+
+.node[data-state='on'] .ticker {
+  color: var(--accent);
+}
+
+.node[data-state='off'] .ticker {
+  opacity: 0.45;
+}
+
+.centreLabel {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.lockButton {
+  position: absolute;
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--text) 10%, transparent);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  pointer-events: auto;
+  white-space: nowrap;
+  transition: border-color var(--motion-fast, 120ms) ease, color var(--motion-fast, 120ms) ease;
+}
+
+.lockButton svg {
+  color: var(--accent);
+}
+
+.lockButton:hover {
+  border-color: var(--accent);
+}
+
+.lockButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.reading {
+  display: flex;
+  min-height: 1.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.6rem;
+  margin: 0.4rem 0 0;
+  font-size: 0.88rem;
+}
+
+.reading b {
+  font-family: var(--font-mono);
+}
+
+.reading span {
+  color: var(--text-muted);
+}
+
+.reading strong {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.readingZone {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.reading .readingHint {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+@keyframes orbit-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes orbit-out {
+  from { opacity: 0; transform: scale(0.15); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes orbit-halo {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50% { opacity: 0.1; transform: scale(1.18); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sector,
+  .tie,
+  .ghost,
+  .halo {
+    animation: none;
+  }
+
+  .line,
+  .ball,
+  .tie,
+  .ticker {
+    transition: none;
+  }
+}

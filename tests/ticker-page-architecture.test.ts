@@ -133,6 +133,16 @@ test('Relationships reads the weekly atlas: the company\'s region and the compan
   // Global rules (Spec PRD-78): chapters, no internal language, no dashes for missing values.
   assert.match(place, /<ResearchChapter/)
   assert.match(place, /id="related-companies"/)
+  // The ties are drawn as an orbit in the atlas's region colours; ties that need an account are shown locked,
+  // never placed by region or strength, and opening them invites the reader to create an account.
+  const orbit = readRepoFile('components/atlas/RelationshipOrbit.tsx')
+  assert.match(page, /getAtlasOverview\(0\)/)
+  assert.match(page, /zoneHues/)
+  assert.match(place, /<RelationshipOrbit/)
+  assert.match(place, /neighbourCount/)
+  assert.match(orbit, /orbitGeometry/)
+  assert.match(orbit, /<Dialog/)
+  assert.match(orbit, /Create account/)
   assert.doesNotMatch(page, /relationship endpoint|How to read relationships|Coverage:|methodology#relationships|getViewerUserId/)
   assert.doesNotMatch(place, /'—'/)
   assert.match(readRepoFile('components/stocks/StockMethodologyResearch.tsx'), /id="relationships"/)

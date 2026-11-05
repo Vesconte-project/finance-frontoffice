@@ -142,12 +142,15 @@ test('the map controls read, filter and find, and keep to what a signed-out read
   expect(errors).toEqual([])
 })
 
-test('the local atlas routes keep the backend refusal for hidden companies and history', async ({ request }) => {
-  const hidden = await request.get('/api/atlas/companies/FXA6')
+test('the local atlas routes keep the backend answers: one company signed out, refusals for the rest', async ({ request }) => {
+  // A company off the signed-out map still answers for itself: five ties at most, never positions.
+  const small = await request.get('/api/atlas/companies/FXA6')
+  expect(small.status()).toBe(200)
+  const panel = await small.json()
+  expect(panel.neighbours.length).toBeLessThanOrEqual(5)
+  expect(panel.x).toBeUndefined()
   const unknown = await request.get('/api/atlas/companies/ZZZZ')
-  expect(hidden.status()).toBe(403)
-  expect(await hidden.json()).toEqual({ detail: 'sign_in_required' })
-  expect(await unknown.json()).toEqual(await hidden.json())
+  expect(unknown.status()).toBe(404)
   expect((await request.get('/api/atlas?level=3')).status()).toBe(403)
   expect((await request.get('/api/atlas?level=1&bbox=0,0,1,1')).status()).toBe(403)
   expect((await request.get('/api/atlas?level=x')).status()).toBe(400)
