@@ -50,7 +50,8 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
       await first.hover()
       await expect(reading).toContainText(symbol)
       await expect(reading).toContainText(/0\.\d\d/)
-      await expect(page.locator('[data-orbit-reading][data-variant="overlay"]')).toHaveCount(0)
+      // The phone card is in the page but hidden while the side column sits beside the orbit.
+      await expect(page.locator('[data-orbit-reading][data-variant="overlay"]')).toBeHidden()
     }
 
     await plot.getByRole('button', { name: /10 more/ }).click()
