@@ -66,3 +66,8 @@ Earlier validation/parent statements above describe the pre-rebase delivery.
 Refreshed complete-suite and frontend results are recorded with the new PR heads.
 No 5A scenario code or branch is changed; its rebase waits for 4B to merge.
 This work performs no merge, deployment, migration, production read or refresh.
+
+Validation refreshed 06 November: npm run verify and production build passed. Canonical browser QA: 5 passed, 0 skipped/flaky, running analyst-consensus and ownership scenarios together. Mobile/laptop screenshots inspected; both chapters render correctly.
+The two invalidated local runs affected only data-ops/feature-store and were
+repeated after restoring committed sources and locking managed worktrees.
+No production DB or provider request; opt-in DB suites remain skipped.
