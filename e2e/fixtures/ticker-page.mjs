@@ -108,8 +108,18 @@ export function tickerSummaryFixture(ticker) {
   const fixture = FIXTURE_TICKERS[ticker]
   const asOf = new Date(LAST_DATE).toISOString()
   const asOfDate = asOf.slice(0, 10)
+  const observedAt = new Date().toISOString()
+  const analystConsensus = ticker === 'QAS' ? {
+    version:'analyst_consensus.v1',symbol:ticker,source:'yahoo_finance',observedAt,providerAsOf:null,
+    currency:'USD',targets:{low:300,median:400,mean:410,high:480},analystOpinionCount:12,
+    recommendation:'buy',referencePrice:{value:320,currency:'USD',asOf:observedAt},medianUpside:.25,
+  } : ticker === 'QAM' ? {
+    version:'analyst_consensus.v1',symbol:ticker,source:'yahoo_finance',observedAt,providerAsOf:null,
+    currency:'EUR',targets:{low:75,median:null,mean:100,high:120},analystOpinionCount:null,
+    recommendation:null,referencePrice:null,medianUpside:null,
+  } : null
   return {
-    ticker,
+    ticker, analystConsensus,
     asset: { assetType: 'equity', currency: fixtureCurrency(ticker), exchange: fixture.exchange ?? 'NASDAQ', exchangeMic: null, region: fixture.currency === 'KRW' ? 'KR' : 'US' },
     quote: {
       price_basis: 'raw',

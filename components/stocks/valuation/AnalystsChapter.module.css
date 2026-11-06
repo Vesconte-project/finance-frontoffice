@@ -1,0 +1,20 @@
+.range { margin: 0; min-width: 0; }
+.range figcaption { font-weight: 600; color: var(--text); }
+.range svg { display: block; width: 100%; height: auto; overflow: visible; }
+.baseline { stroke: var(--line-strong); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.band { stroke: var(--color-accent); stroke-width: 4; vector-effect: non-scaling-stroke; }
+.bound { stroke: var(--color-accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.median { fill: var(--color-accent); stroke: var(--surface); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.priceMark { fill: var(--text); }
+.targetValues { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 0; }
+.targetValues > div { min-width: 0; }
+.targetValues > div:nth-child(2) { text-align: center; }
+.targetValues > div:last-child { text-align: right; }
+.targetValues dt { color: var(--text-small); font-size: 0.8125rem; }
+.targetValues dd { margin: 0.25rem 0 0; font-variant-numeric: tabular-nums; font-size: clamp(1rem, 1.2vw, 1.25rem); font-weight: 600; overflow-wrap: anywhere; }
+.distance, .priceNote, .count, .source { margin: 0.75rem 0 0; font-size: 0.8125rem; line-height: 1.5; color: var(--text-small); }
+.recommendation { margin: 0; font-weight: 600; color: var(--text); font-size: 1.25rem; }
+.count { margin-bottom: 1rem; }
+.source { margin-top: 1.5rem; }
+
+.detailNote { margin: 1rem 0 0; font-size: 0.8125rem; line-height: 1.6; color: var(--text-small); }

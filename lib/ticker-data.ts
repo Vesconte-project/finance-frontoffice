@@ -1,4 +1,5 @@
 import { cache } from 'react'
+import type { AnalystConsensus } from './analyst-consensus'
 import { BackendDataError, fetchBackendJson } from './backend'
 import { fetchInDisplayCurrency } from './display-currency-server'
 
@@ -114,6 +115,7 @@ export type EarningsHistoryRow = {
 
 export type TickerPageSummary = {
   ticker: string
+  analystConsensus?: AnalystConsensus | null
   asset?: {
     /** `ticker_registry.instrument_type`: equity, adr, etf, country_fund, index_proxy or unknown. */
     assetType?: string | null

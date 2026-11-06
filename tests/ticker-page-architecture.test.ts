@@ -351,7 +351,7 @@ test('Fundamentals and Financials follow the accepted ticker Spec (PRD-78, phase
   assert.doesNotMatch(reading, /\.value\s*[-/]\s*[\w.]+\.value|growth\s*=/i)
 })
 
-test('Valuation follows the accepted ticker Spec (PRD-78, phase 4): reported multiples, the rest being built', () => {
+test('Valuation preserves chapter order and uses owned current analyst consensus', () => {
   const valuation = readRepoFile('components/stocks/StockValuationResearch.tsx')
   const multiples = readRepoFile('components/stocks/valuation/MultiplesChapter.tsx')
   const assumes = readRepoFile('components/stocks/valuation/PriceAssumesChapter.tsx')
@@ -359,14 +359,17 @@ test('Valuation follows the accepted ticker Spec (PRD-78, phase 4): reported mul
   const page = readRepoFile('app/(app)/stocks/[ticker]/valuation/page.tsx')
 
   // Chapters in the Spec's order.
-  const order = ['<MultiplesChapter', 'id="peers"', '<PriceAssumesChapter', 'id="analysts"'].map((token) => valuation.indexOf(token))
+  const analysts = readRepoFile('components/stocks/valuation/AnalystsChapter.tsx')
+  const order = ['<MultiplesChapter', 'id="peers"', '<PriceAssumesChapter', '<AnalystsChapter'].map((token) => valuation.indexOf(token))
   assert.ok(order.every((index) => index > 0), 'every Valuation chapter is rendered')
   assert.deepEqual([...order].sort((a, b) => a - b), order)
   assert.match(multiples, /label="Multiples, last 10 years"/)
   assert.match(multiples, /title="All four"/)
   assert.match(assumes, /label="What the price assumes"/)
   assert.match(valuation, /label="Against its peers"/)
-  assert.match(valuation, /label="What analysts expect"/)
+  assert.match(analysts, /label="What analysts expect"/)
+  assert.match(analysts, /id="analysts"/)
+  assert.match(analysts, /data.summary.analystConsensus/)
   // The four multiples of "All four", from market metrics.
   for (const metric of ['trailing_pe', 'price_to_sales', 'price_to_free_cash_flow', 'enterprise_value_to_ebitda']) assert.match(reading, new RegExp(metric))
   assert.doesNotMatch(reading, /price_to_book/)
