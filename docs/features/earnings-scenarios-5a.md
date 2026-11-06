@@ -110,3 +110,26 @@ an exact UTC EPS capture day; frontend adds no price fallback or tolerance.
 Local fixtures do not prove live coverage or source conventions. Remain draft
 until server review. No production request, backfill, merge, flag, migration
 or provider collection; no CI follow-up polling.
+
+
+## Server review follow-up — 2026-11-06
+
+Server approved the 5A design and strict date gate. Temporary request failures
+now show “Couldn't load the scenario, try again” and a retry action, preserving
+the assumptions and clearing the old result. Being built remains for missing
+inputs. Both numeric and HTTP-date Retry-After values are honored with the
+existing parser: retries stay disabled until the deadline, editing assumptions
+cannot send a request early, and expiry alone causes no automatic retry loop.
+Timers and pending fetches are cancelled on edits/unmount.
+
+Removing the 11-annual-period cap and using “available history” prepares long
+history; today's source has at most five annual periods, with no current memory
+impact. Memory must be measured again when SEC history or ENG-264 is introduced.
+
+Regression: e2e/earnings-scenario.spec.ts covers temporary 429 and 502, numeric
+and HTTP-date Retry-After, manual recovery, editing during the pause, preserved
+assumptions, and absence of Being built when current inputs exist.
+
+Follow-up validation: full npm run verify passed (80 TAP units, 0 failed;
+2 existing lint warnings), production build passed, canonical production browser
+4 passed / 0 failed / 0 skipped / 0 flaky. Mechanical UI detector: no findings.
