@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {collectHistoryPages,collectPricePages} from '../lib/full-history'
+import { localizeRows } from '../lib/display-currency'
 
 test('full history traverses server pages without treating a tier cap as completion',async()=>{
  const pages=[{available:true,rows:[{year:1990}],count:1},{available:true,rows:[{year:2026}],count:1},{available:true,rows:[],count:0}]
@@ -26,4 +27,20 @@ test('overlapping pages are refused instead of silently mixing a changing public
  await assert.rejects(collectHistoryPages(async p=>({available:true,rows:p===0?[1,2]:[2,3],count:2})),/overlap/)
  const out=await collectHistoryPages(async p=>({available:true,rows:p===0?[1]:[2],count:1,truncated:p===0}))
  assert.equal(out.truncated,false);assert.deepEqual(out.rows,[1,2])
+})
+
+
+test('a missing conversion on a later history page keeps the whole series as reported', async () => {
+ const row = (year: number, converted: number | null) => ({
+  year, lineItemId: 'revenue', value: 1000, currency: 'KRW',
+  money: {value: {value: 1000, currency: 'KRW', sourceCurrency: 'KRW', date: `${year}-12-31`,
+   converted: converted === null ? null : {value: converted, currency: 'USD', rate: .001, rateDate: `${year}-12-31`},
+   unconvertedReason: converted === null ? 'no_rate' : null}},
+ })
+ const payload = await collectHistoryPages(async page => ({
+  available: true, count: 1, rows: [row(2025 - page, page === 0 ? 1 : null)], truncated: page === 0,
+ }))
+ const localized = localizeRows(payload.rows, 'USD')
+ assert.equal(localized.converted, false)
+ assert.deepEqual(localized.rows.map(r => [r.value, r.currency]), [[1000, 'KRW'], [1000, 'KRW']])
 })
