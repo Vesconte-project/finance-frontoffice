@@ -114,6 +114,9 @@ export type EarningsHistoryRow = {
 }
 
 export type TickerPageSummary = {
+  /** Optional aggregate snapshot from the existing summary; validate before rendering. */
+  ownershipSnapshot?: unknown
+
   ticker: string
   analystConsensus?: AnalystConsensus | null
   asset?: {

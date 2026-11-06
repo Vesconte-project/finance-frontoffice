@@ -9,6 +9,7 @@ import ReportedBars from '@/components/stocks/research/ReportedBars'
 import type { BuybackSummary, PricePeriod } from '@/lib/capital-reading'
 import { formatCompactMoney } from '@/lib/currency'
 import { currentResearchSnapshot } from '@/lib/research-evidence'
+import { parseOwnershipSnapshot } from '@/lib/ownership-snapshot'
 import { tickerMarketCap } from '@/lib/ticker-page-stats'
 import type { StockResearchData } from '@/lib/stock-research'
 import styles from './StockOwnershipResearch.module.css'
@@ -150,6 +151,8 @@ type OwnershipProps = {
 function EquityOwnership({ data, annual, buybackYears, mixedCurrencies, sharesBought, sharesToday, sharesTodayAsOf, priceByYear, priceByQuarter }: OwnershipProps) {
   const snapshot = currentResearchSnapshot(data)
   const currency = snapshot.currency || data.currency
+  const ownership = parseOwnershipSnapshot(data.summary.ownershipSnapshot, data.ticker)
+  const percent = new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 1 })
   return (
     <>
       <ResearchChapter
@@ -157,7 +160,21 @@ function EquityOwnership({ data, annual, buybackYears, mixedCurrencies, sharesBo
         label="Who owns the shares"
         aside={<BeingBuilt label="Largest holders">The largest holders in each group, their stakes and how they changed in a year are being added.</BeingBuilt>}
       >
-        <BeingBuilt size="chart">How the shares split between funds, pensions, insiders and individual investors is being added.</BeingBuilt>
+        {ownership && (ownership.institutionsFraction !== null || ownership.insidersFraction !== null) ? (
+          <div data-ownership-snapshot="">
+            <dl className={styles.ownershipReadings}>
+              <div data-ownership-reading="institutions">
+                <dt>Held by institutions</dt>
+                <dd>{ownership.institutionsFraction === null ? <BeingBuiltBadge /> : percent.format(ownership.institutionsFraction)}</dd>
+              </div>
+              <div data-ownership-reading="insiders">
+                <dt>Held by insiders</dt>
+                <dd>{ownership.insidersFraction === null ? <BeingBuiltBadge /> : percent.format(ownership.insidersFraction)}</dd>
+              </div>
+            </dl>
+            <p className={styles.note}>Yahoo Finance · Captured {formatDay(ownership.observedAt)}</p>
+          </div>
+        ) : <BeingBuilt size="chart">How the shares split between funds, pensions, insiders and individual investors is being added.</BeingBuilt>}
       </ResearchChapter>
 
       <ResearchChapter
