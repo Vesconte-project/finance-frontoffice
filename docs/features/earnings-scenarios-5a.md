@@ -53,7 +53,7 @@ No live data, production DB, collection, migration, deploy or merge in this work
 Source EPS currency/share-class/split convention, current coverage and actual
 query plans remain for the server to review with counts before release.
 
-Drafts target main directly. Rebase/retest after 4A/4B enter, preserving all optional
+Drafts target main directly. Rebased and retested after 4A/4B entered, preserving all optional
 summary fields and regenerating backend API/route inventories. SEC historical
 publication remains separate; no data cutoff or extra vendor activation is added.
 Product/visual/release acceptance remains with Francisco, including human Preview.
@@ -76,3 +76,37 @@ A source or tier can legitimately provide fewer years. Internal multi-page reads
 are latest/non-PIT, not one transaction or a generation-pinned snapshot across
 HTTP requests: repetition/overlap/refusal is detected, but concurrent source
 updates can still affect ordering. Review server pagination/cost before merge.
+
+
+## Rebase after deployed 4A/4B — 2026-11-06
+
+Replayed directly onto main e34352ac7fb8fee5f1a83fb75caf3977a94ddeb1.
+The summary type and fixture preserve analystConsensus and ownershipSnapshot
+alongside earningsModelInputs, and the real AnalystsChapter stays wired.
+Backend companion contract is 2026-11-06.2.
+
+Full `npm run verify` passed: lint 0 errors / 2 existing warnings, strict
+typecheck passed, 80 TAP test units passed / 0 failed / 0 skipped across
+the five configured test runners (59 + 1 + 14 + 4 + 2).
+Production `npm run build` passed. Canonical production-browser QA passed:
+18 passed / 0 failed / 0 skipped / 0 flaky, including runtime, scenario,
+analysts, ownership, display currency and capital inputs. The scenario
+checks 30-year present value, missing inputs/refusal clearing, 35 annual
+observations and the 1991 fiscal selector, 10 widths and reduced motion.
+Scenario screenshots inspected at 390/1366 and revenue at 1366.
+
+Conflicts resolved in app/(app)/stocks/[ticker]/financials/page.tsx,
+components/stocks/StockFundamentalsResearch.tsx,
+components/stocks/StockValuationResearch.tsx, e2e/fixtures/ticker-page.mjs,
+lib/canonical-research.ts, lib/finance.ts, lib/ticker-data.ts, package.json
+and tests/display-currency.test.ts. Financials keeps CurrencyNotice; revenue
+keeps the rows' currency; the package runner retains every main test and adds
+the scenario/history tests. Historical rows are collected before localization
+so one missing conversion on a later page keeps the entire series reported.
+Converted OHLC also follows all available pages instead of a ten-year window.
+The prior/following-price-day refusal test in feature-store still requires
+an exact UTC EPS capture day; frontend adds no price fallback or tolerance.
+
+Local fixtures do not prove live coverage or source conventions. Remain draft
+until server review. No production request, backfill, merge, flag, migration
+or provider collection; no CI follow-up polling.
