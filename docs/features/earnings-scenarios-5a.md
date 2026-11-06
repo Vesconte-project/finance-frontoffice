@@ -133,3 +133,32 @@ assumptions, and absence of Being built when current inputs exist.
 Follow-up validation: full npm run verify passed (80 TAP units, 0 failed;
 2 existing lint warnings), production build passed, canonical production browser
 4 passed / 0 failed / 0 skipped / 0 flaky. Mechanical UI detector: no findings.
+
+## Browser CI follow-up — 2026-11-06
+
+The ready candidate passed verify/build but the full browser suite exposed two
+old expectations missed by the earlier focused runs: expanded history still
+expected no ALL option, and the QAS ten-year financial fixture still expected a
+five-option fiscal-year radio group. Update those checks to the approved full
+history and native select, retaining the radio path for the four-year fixture.
+
+The neutral-colour check failed after switching from the compact layout back to
+the wide layout and changing the year. All seven colour tests passed in isolated
+production-browser reproduction. The check now retries the actual SVG paint,
+with the same per-channel tolerance and pending-state assertion, rather than
+sampling it just once immediately after the DOM attribute changes. No application
+code, palette, timeouts for the whole test/suite, or fixture data changed.
+
+Validation after this repair: full npm run verify passed (80 TAP units, no
+failures; two existing lint warnings); production build passed. All seven
+colour tests passed in the isolated reproduction. Canonical production-browser
+coverage was completed in two local blocks with the same 10-minute global
+limit and one worker: the first had 199 passes, no test failures, and hit the
+global time limit before the last cases; the second had 29 passes,
+23 intentional skips, zero failures/flaky tests. Combined by test ID,
+all 277 cases are accounted for: **226 passed, 51 intentional skips,
+0 failed, 0 unresolved**. Live/credential-dependent cases remain disabled;
+no production or live-provider test was enabled. The live valuation heading
+assertion is also aligned with “Multiples over time”, without running it live.
+This is completed local test coverage in two blocks, not a claim that the
+first full-suite command passed. The CI workflow/global limits are unchanged.

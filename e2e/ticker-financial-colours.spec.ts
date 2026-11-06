@@ -112,7 +112,11 @@ for (const theme of ['light', 'dark'] as const) {
     await years.getByRole('radio', { name: '2023', exact: true }).click()
     const gross = '[data-flow-variant="wide"] [data-flow-shape="grossProfit"]'
     await expect(page.locator(gross)).toHaveAttribute('data-pending', 'true')
-    sameColour(await paint(page, gross), neutral)
+    // The pending attribute can arrive before SVG paint settles after returning
+    // from the compact layout. Poll the actual colour with the same tolerance.
+    await expect(async () => {
+      sameColour(await paint(page, gross), neutral)
+    }).toPass({ timeout: 5000 })
     await page.goto('/stocks/QAL/financials')
     await expect(page.locator('[data-sales-flow]')).toHaveCount(0)
   })

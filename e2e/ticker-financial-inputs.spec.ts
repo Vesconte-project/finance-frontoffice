@@ -53,7 +53,12 @@ test('wide cost and tax ribbons stay separate from continuing result bands', asy
   await page.setViewportSize({width:1440, height:900})
   for (const [ticker, year] of [['QAS', '2025'], ['QAM', '2023'], ['QAM', '2024']]) {
     await page.goto(`/stocks/${ticker}/financials`)
-    await page.getByRole('radiogroup', {name:'Fiscal year'}).getByRole('radio', {name:year, exact:true}).click()
+    if (ticker === 'QAS') {
+      // All ten reported years are available, so this surface uses a select.
+      await page.getByRole('combobox', {name:'Fiscal year', exact:true}).selectOption(year)
+    } else {
+      await page.getByRole('radiogroup', {name:'Fiscal year'}).getByRole('radio', {name:year, exact:true}).click()
+    }
     const wide = page.locator('[data-flow-variant="wide"]')
     await expect(wide).toBeVisible()
     const overlaps = await wide.locator('svg').evaluate(svg => {
