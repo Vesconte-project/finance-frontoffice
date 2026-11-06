@@ -131,6 +131,12 @@ export function tickerSummaryFixture(ticker) {
       marketCapText: fixture.marketCapText,
       asOf,
     },
+    ownershipSnapshot: ['QAS', 'QAM', 'QAK'].includes(ticker) ? {
+      symbol: ticker, source: 'yahoo_finance', unit: 'fraction', providerAsOf: null,
+      observedAt: new Date(Date.now() - (ticker === 'QAK' ? 15 * DAY_MS : 60_000)).toISOString(),
+      institutionsFraction: ticker === 'QAM' ? null : .9,
+      insidersFraction: ticker === 'QAM' ? 0 : .2,
+    } : null,
     marketStats: null,
     coverage: {
       ticker,
