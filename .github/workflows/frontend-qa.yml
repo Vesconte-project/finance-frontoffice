@@ -72,7 +72,15 @@ jobs:
         # Includes fresh apt packages/fonts: runner mirror latency can exceed 3m
         # before the browser download starts. Keep this bounded and browser QA mandatory.
         timeout-minutes: 10
-        run: npx playwright install --with-deps chromium
+        run: |
+          # The runner's Azure apt mirror stalled font downloads in two runs.
+          # Use the official Ubuntu archive; keep apt signature checks intact.
+          if [[ -f /etc/apt/apt-mirrors.txt ]]; then
+            sudo sed -i \
+              's|https\?://azure\.archive\.ubuntu\.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' \
+              /etc/apt/apt-mirrors.txt
+          fi
+          npx playwright install --with-deps chromium
 
       - name: Check browser runtime and interface
         if: steps.route.outputs.browser == 'true'
