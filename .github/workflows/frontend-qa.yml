@@ -69,7 +69,9 @@ jobs:
 
       - name: Install Chromium
         if: steps.route.outputs.browser == 'true'
-        timeout-minutes: 3
+        # Includes fresh apt packages/fonts: runner mirror latency can exceed 3m
+        # before the browser download starts. Keep this bounded and browser QA mandatory.
+        timeout-minutes: 10
         run: npx playwright install --with-deps chromium
 
       - name: Check browser runtime and interface
