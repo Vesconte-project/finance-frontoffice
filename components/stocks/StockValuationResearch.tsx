@@ -39,7 +39,7 @@ export default function StockValuationResearch({
                 {data.ticker}’s P/E against expected growth over three years, beside its peers and their trend, is being added.
               </BeingBuilt>
             </ResearchChapter>
-            <PriceAssumesChapter ticker={data.ticker} />
+            <PriceAssumesChapter ticker={data.ticker} inputs={data.summary.asset?.assetType === 'equity' ? data.summary.earningsModelInputs : null} />
             <AnalystsChapter data={data} />
           </>
         )}

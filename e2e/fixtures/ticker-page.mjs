@@ -8,6 +8,7 @@
  */
 
 const FIXTURE_TICKERS = {
+  QA30: {name:'Qa Thirty Five Years Inc.',price:40,change:0,changePercent:0,marketCapText:'$1B'},
   QAS: { name: 'Qa Short Inc.', price: 341.07, change: 2.41, changePercent: 0.71, marketCapText: '$4.98T' },
   QAM: { name: 'Quality Assurance Micro Devices, Inc.', price: 630.63, change: -4.12, changePercent: -0.65, marketCapText: '$1.03T' },
   QAL: {
@@ -31,6 +32,15 @@ const FIXTURE_TICKERS = {
   },
 }
 
+// A coherent current snapshot for the long-history/model fixture only.
+function modelCaptureTime() {
+  const day = new Date()
+  day.setUTCDate(day.getUTCDate()-1)
+  while ([0,6].includes(day.getUTCDay())) day.setUTCDate(day.getUTCDate()-1)
+  day.setUTCHours(22,0,0,0)
+  return day
+}
+
 /** The listing currency of a fixture ticker. */
 export function fixtureCurrency(ticker) {
   return FIXTURE_TICKERS[ticker]?.currency ?? 'USD'
@@ -46,10 +56,10 @@ export function isFixtureTicker(ticker) {
 /** Deterministic weekday closes ending at the fixture's quoted price. */
 function closes(ticker, periodDays) {
   const { price } = FIXTURE_TICKERS[ticker]
-  const days = Math.max(30, Math.min(Number(periodDays) || 365, 3650))
+  const days = Math.max(30, Number(periodDays) || (ticker==='QA30'?13_000:3650))
   const rows = []
   for (let offset = days; offset >= 0; offset -= 1) {
-    const time = LAST_DATE - offset * DAY_MS
+    const time = (ticker === 'QA30' ? modelCaptureTime().getTime() : LAST_DATE) - offset * DAY_MS
     const weekday = new Date(time).getUTCDay()
     if (weekday === 0 || weekday === 6) continue
     const wave = Math.sin(offset / 9) * 0.04 + Math.sin(offset / 37) * 0.07
@@ -106,7 +116,7 @@ export function tickerTechnicalSeriesFixture(ticker, { ready = false } = {}) {
 
 export function tickerSummaryFixture(ticker) {
   const fixture = FIXTURE_TICKERS[ticker]
-  const asOf = new Date(LAST_DATE).toISOString()
+  const asOf = (ticker==='QA30'?modelCaptureTime():new Date(LAST_DATE)).toISOString()
   const asOfDate = asOf.slice(0, 10)
   const observedAt = new Date().toISOString()
   const analystConsensus = ticker === 'QAS' ? {
@@ -137,6 +147,11 @@ export function tickerSummaryFixture(ticker) {
       institutionsFraction: ticker === 'QAM' ? null : .9,
       insidersFraction: ticker === 'QAM' ? 0 : .2,
     } : null,
+    earningsModelInputs: ticker==='QA30'?{
+      version:'earnings_model_inputs.v1',symbol:ticker,source:'yahoo_finance',currency:'USD',eps:2,
+      epsBasis:'provider_trailing_eps',observedAt:modelCaptureTime().toISOString(),
+      price:fixture.price,priceDate:modelCaptureTime().toISOString().slice(0,10),priceBasis:'raw',
+    }:null,
     marketStats: null,
     coverage: {
       ticker,
@@ -296,6 +311,8 @@ const STATEMENT_FIXTURES = {
     return { year, revenue, gross_profit: revenue * 0.38, operating_income: revenue * 0.12, net_income: revenue * 0.09 }
   }),
 }
+
+STATEMENT_FIXTURES.QA30 = Array.from({length:35},(_,i)=>({...STATEMENT_FIXTURES.QAS[i%10],year:1991+i}))
 
 const LINE_LABELS = {
   cost_of_revenue: 'Cost Of Revenue', operating_expenses: 'Operating Expenses', income_tax_expense: 'Income Tax Expense',

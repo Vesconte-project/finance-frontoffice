@@ -30,7 +30,7 @@ test('repurchase cash never creates bought back counts or employee issuance',asy
   await expect(page.getByRole('figure',{name:'Annual cash spent on buybacks',exact:true})).toBeVisible()
   await expect(page.locator('#buybacks')).toContainText('$20B')
   await expect(page.locator('[data-share-row="issued"] [data-being-built-badge]')).toBeVisible()
-  await expect(page.locator('[data-share-row="start"] [data-being-built-badge]')).toBeVisible()
+  await expect(page.locator('[data-share-row="start"]')).toContainText('Shares in 2022')
   await expect(page.getByRole('figure',{name:'Annual shares outstanding',exact:true})).toBeVisible()
   for (const [width,height] of [[320,568],[390,844],[768,1024],[1366,768],[1440,900],[1920,1080]]) {
     await page.setViewportSize({width,height});await overflow(page);await capture(page,info,`ownership-${width}`)

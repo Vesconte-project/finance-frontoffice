@@ -363,7 +363,7 @@ test('Valuation preserves chapter order and uses owned current analyst consensus
   const order = ['<MultiplesChapter', 'id="peers"', '<PriceAssumesChapter', '<AnalystsChapter'].map((token) => valuation.indexOf(token))
   assert.ok(order.every((index) => index > 0), 'every Valuation chapter is rendered')
   assert.deepEqual([...order].sort((a, b) => a - b), order)
-  assert.match(multiples, /label="Multiples, last 10 years"/)
+  assert.match(multiples, /label="Multiples over time"/)
   assert.match(multiples, /title="All four"/)
   assert.match(assumes, /label="What the price assumes"/)
   assert.match(valuation, /label="Against its peers"/)
@@ -402,13 +402,13 @@ test('Business and Ownership & Capital follow the accepted ticker Spec (PRD-78, 
   const chapters = ['id="who-owns"', 'id="insiders"', '<BuybacksChapter', '<PricePaysForChapter', '<PriceHistoryChapter'].map((token) => ownership.indexOf(token))
   assert.ok(chapters.every((index) => index > 0))
   assert.deepEqual([...chapters].sort((a, b) => a - b), chapters)
-  assert.match(ownership, /`Buybacks since \$\{SINCE_YEAR\}`/)
+  assert.match(ownership, /label="Buybacks over time"/)
   assert.match(ownershipPage, /getTickerEquityCapitalEvents/)
   assert.match(ownershipPage, /buybackExecutions/)
   // Years add up the reported executions and value them at today's price
   // (decision 4), every year from 2016; never across currencies.
   assert.match(capital, /export function buybackSummary/)
-  assert.match(ownershipPage, /buybackSummary\(buybacks, [^)]*fromYear: SINCE_YEAR/)
+  assert.match(ownershipPage, /buybackSummary\(buybacks, [^)]*fromYear: firstBuybackYear/)
   assert.match(ownershipPage, /singleCurrency/)
   // Founder, 2026-10-05: no snapshot strip (it repeated the market cap), no
   // list of each buyback, one legend; the share balance shows what is reported.

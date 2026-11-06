@@ -117,6 +117,7 @@ export type TickerPageSummary = {
   /** Optional aggregate snapshot from the existing summary; validate before rendering. */
   ownershipSnapshot?: unknown
 
+  earningsModelInputs?: unknown
   ticker: string
   analystConsensus?: AnalystConsensus | null
   asset?: {

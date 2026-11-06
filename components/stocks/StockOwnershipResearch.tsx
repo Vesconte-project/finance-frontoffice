@@ -14,7 +14,6 @@ import { tickerMarketCap } from '@/lib/ticker-page-stats'
 import type { StockResearchData } from '@/lib/stock-research'
 import styles from './StockOwnershipResearch.module.css'
 
-const SINCE_YEAR = 2016
 
 const shareCount = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 })
 const dayFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
@@ -25,20 +24,20 @@ function formatDay(value: string): string {
 }
 
 /**
- * Shares in 2016 → bought back → issued to staff → shares today (Spec PRD-78).
+ * First reported shares → bought back → issued to staff → shares today (Spec PRD-78).
  * What is reported shows: the shares bought back (a sum of reported counts)
- * and today's count. The 2016 count, the shares issued to staff and the rings
+ * and today's count. The starting count, the shares issued to staff and the rings
  * with each share's larger stake come from the backend (ENG-167).
  */
 function ShareBalanceCard({ bought, today, todayAsOf, history = [] }: { bought: number | null; today: number | null; todayAsOf: string | null; history?: ReportedPoint[] }) {
   const rows = [
-    { key: 'start', label: `Shares in ${SINCE_YEAR}`, value: history.find(point=>point.year===SINCE_YEAR) ? shareCount.format(history.find(point=>point.year===SINCE_YEAR)!.value) : null as string | null },
+    { key: 'start', label: history.length ? `Shares in ${history[0].year}` : 'Shares at the start', value: history.length ? shareCount.format(history[0].value) : null as string | null },
     { key: 'bought', label: 'Bought back', value: bought === null ? null : `−${shareCount.format(bought)}` },
     { key: 'issued', label: 'Issued to staff', value: null },
     { key: 'today', label: 'Shares today', value: today === null ? null : shareCount.format(today) },
   ]
   return (
-    <ChapterCard title={`Shares, ${SINCE_YEAR} → today`} meta={todayAsOf && today !== null ? `as of ${formatDay(todayAsOf)}` : undefined}>
+    <ChapterCard title={'Shares over time'} meta={todayAsOf && today !== null ? `as of ${formatDay(todayAsOf)}` : undefined}>
       <dl className={styles.shareBalance} data-share-balance="">
         {rows.map((row) => (
           <div key={row.key} data-share-row={row.key}>
@@ -53,9 +52,9 @@ function ShareBalanceCard({ bought, today, todayAsOf, history = [] }: { bought: 
 }
 
 /**
- * Buybacks since 2016: what was spent each year against what those shares are
+ * Buybacks over the available history: what was spent each year against what those shares are
  * worth at today's price, from the reported executions (sums and one
- * multiplication, Spec decision 4). Every year since 2016 keeps its place; a
+ * multiplication, Spec decision 4). Every available year keeps its place; a
  * year with nothing reported stays empty.
  */
 function BuybacksChapter({
@@ -89,7 +88,7 @@ function BuybacksChapter({
   return (
     <ResearchChapter
       id="buybacks"
-      label={`Buybacks since ${SINCE_YEAR}`}
+      label="Buybacks over time"
       lead={summary ? (
         <LeadStat
           value={formatCompactMoney(summary.spent, currency)}
@@ -108,7 +107,7 @@ function BuybacksChapter({
         <BeingBuilt size="inline">
           {mixedCurrencies
             ? 'Buybacks reported in more than one currency are being added together.'
-            : `What the company has spent on buybacks since ${SINCE_YEAR}, and what those shares are worth today, is being added.`}
+            : `What the company has spent on buybacks over the available history, and what those shares are worth today, is being added.`}
         </BeingBuilt>
       )}
       aside={<ShareBalanceCard bought={sharesBought} today={sharesToday} todayAsOf={sharesTodayAsOf} />}

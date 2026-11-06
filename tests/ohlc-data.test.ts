@@ -74,7 +74,7 @@ test('coverage without prices can represent true empty OHLC data', () => {
 test('stock OHLC uses request-local memoization rather than a shared viewer cache', () => {
   const source = readRepoFile('lib/finance.ts')
 
-  assert.equal(STOCK_OHLC_CACHE_KEY, 'stock-ohlc-cache-adjusted-fx-v4')
+  assert.equal(STOCK_OHLC_CACHE_KEY, 'stock-ohlc-cache-adjusted-fx-v5-full-history')
   assert.match(source, /cache } from .react./)
   assert.doesNotMatch(source, /unstable_cache/)
   assert.doesNotMatch(source, /stock-ohlc-cache-v1/)

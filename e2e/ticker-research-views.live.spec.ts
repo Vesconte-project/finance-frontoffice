@@ -114,7 +114,7 @@ test.describe('ticker research views Phase 2 slice', () => {
     await expect(reducedPulse.locator('i').first()).toHaveCSS('animation-name', 'none')
     await capture(page, testInfo, 'ticker-research-node-loading-mobile-reduced')
     await expectNoHorizontalOverflow(page)
-    await expect(page.getByRole('heading', { name: 'Multiples, last 10 years', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Multiples over time', exact: true })).toBeVisible()
   })
 
   test('Fundamentals reads as four chapters in the Spec order', async ({ page }, testInfo) => {

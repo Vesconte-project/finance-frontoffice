@@ -12,7 +12,7 @@ const dayFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numer
 /**
  * Multiples: the reported history of the chosen multiple, with its highest
  * point and today's value written on the line. The usual range, the median,
- * ten years of history and the sector come from the backend (ENG-89, ENG-91)
+ * history and the sector come from the backend (ENG-89, ENG-91)
  * and are being built.
  */
 export default function MultiplesChapter({
@@ -30,7 +30,7 @@ export default function MultiplesChapter({
   return (
     <ResearchChapter
       id="multiples"
-      label="Multiples, last 10 years"
+      label="Multiples over time"
       lead={latest ? (
         <>
           <LeadStat value={formatMultiple(latest.value)} context={`${chosen.label} today · as of ${dayFormat.format(Date.parse(`${latest.date}T00:00:00Z`))}`} />
@@ -40,7 +40,7 @@ export default function MultiplesChapter({
         <BeingBuilt size="inline">{chosen.label} today, its usual range and its median are being added.</BeingBuilt>
       )}
       aside={(
-        <ChapterCard title="All four" meta="10-yr range">
+        <ChapterCard title="All four" meta="Available history">
           <ul className={styles.multipleList} aria-label="Valuation multiples">
             {VALUATION_MULTIPLES.map((multiple) => {
               const today = series[multiple.key].at(-1) ?? null
@@ -68,7 +68,7 @@ export default function MultiplesChapter({
             })}
           </ul>
           <p className={styles.cardNote}>
-            <BeingBuiltBadge /> Each multiple’s ten-year range, usual band, median and sector are being added.
+            <BeingBuiltBadge /> Each multiple’s historical range, usual band, median and sector are being added.
           </p>
         </ChapterCard>
       )}
@@ -81,12 +81,12 @@ export default function MultiplesChapter({
             ariaLabel={`${chosen.full} for ${ticker}, ${points[0].date} to ${points.at(-1)!.date}, with the highest point and today’s value written on the line`}
           />
           <p className={styles.chartNote}>
-            <BeingBuiltBadge /> Ten years of history, the usual band and the median line are being added.
+            <BeingBuiltBadge /> The usual band and median line are being added.
           </p>
         </>
       ) : (
         <BeingBuilt size="chart">
-          {chosen.full} for {ticker} over ten years, with its usual band, median and peak, is being added.
+          {chosen.full} for {ticker} over the available history, with its usual band, median and peak, is being added.
         </BeingBuilt>
       )}
     </ResearchChapter>

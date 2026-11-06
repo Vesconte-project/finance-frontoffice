@@ -67,6 +67,13 @@ function send(response, status, payload) {
  * names a display currency (`?currency=`), as finance-backend does.
  */
 function sendTickerRead(response, url, kind, ticker, payload) {
+  if (payload && Array.isArray(payload.rows) && ['financial-statements','market-metrics','equity-capital-events','corporate-actions'].includes(kind)) {
+    const page=Number(url.searchParams.get('page')||0)
+    const limit=Math.min(500,Number(url.searchParams.get('limit')||500))
+    const rows=payload.rows.slice(page*limit,(page+1)*limit)
+    payload={...payload,rows,count:rows.length,...(kind==='financial-statements'?{truncated:(page+1)*limit<payload.rows.length}:{})}
+  }
+
   const target = url.searchParams.get('currency')
   if (target === null) {
     send(response, 200, payload)
@@ -163,6 +170,27 @@ const server = createServer((request, response) => {
     return
   }
 
+  const scenarioRoute=path.match(/^\/v1\/tickers\/([^/]+)\/valuation-scenario$/)
+  if (scenarioRoute && isFixtureTicker(decodeURIComponent(scenarioRoute[1]))) {
+    const ticker=decodeURIComponent(scenarioRoute[1])
+    if (url.searchParams.get('exitPe')==='99') return send(response,503,{available:false})
+    const growth=Number(url.searchParams.get('growthPercent'))
+    const pe=Number(url.searchParams.get('exitPe'))
+    const rate=Number(url.searchParams.get('requiredReturnPercent'))
+    const years=Number(url.searchParams.get('years'))
+    const inputs=tickerSummaryFixture(ticker).earningsModelInputs
+    if(!inputs) return send(response,200,{available:false})
+    // Synthetic backend model response, never used in product calculations.
+    const value=(g,p)=>inputs.eps*(1+g/100)**years*p/(1+rate/100)**years
+    const growthAxis=[growth-4,growth-2,growth,growth+2,growth+4]
+    const exitPeAxis=[pe-4,pe-2,pe,pe+2,pe+4]
+    return send(response,200,{available:true,ticker,methodologyVersion:'terminal_earnings_scenario.v1',
+      assumptions:{growthPercent:growth,exitPe:pe,requiredReturnPercent:rate,years},inputs,
+      projectedPrice:inputs.eps*(1+growth/100)**years*pe,presentValue:value(growth,pe),differenceFraction:value(growth,pe)/inputs.price-1,
+      growthAxis,exitPeAxis,grid:growthAxis.map(g=>exitPeAxis.map(p=>({value:value(g,p),differenceFraction:value(g,p)/inputs.price-1}))),
+      methodLine:'Project trailing EPS at your growth rate, multiply by future P/E, then discount at your required return. Dividends are excluded.'})
+  }
+
   const statementsRoute = path.match(/^\/v1\/tickers\/([^/]+)\/financial-statements$/)
   if (statementsRoute && isFixtureTicker(decodeURIComponent(statementsRoute[1]))) {
     const ticker = decodeURIComponent(statementsRoute[1])
@@ -214,7 +242,18 @@ const server = createServer((request, response) => {
     if (tickerRoute[2] === 'summary') sendTickerRead(response, url, 'summary', ticker, tickerSummaryFixture(ticker))
     else if (tickerRoute[2] === 'technical-series') sendTickerRead(response, url, 'technical-series', ticker, tickerTechnicalSeriesFixture(ticker))
     else if (tickerRoute[2] === 'ohlc') sendTickerRead(response, url, 'ohlc', ticker, tickerOhlcFixture(ticker, periodDays))
-    else sendTickerRead(response, url, 'history', ticker, tickerHistoryFixture(ticker, periodDays))
+    else if (ticker === 'QA30') {
+      const end = url.searchParams.get('endDate') || '9999-12-31'
+      const all = tickerHistoryFixture(ticker, periodDays).filter(row => row.date <= end)
+      const weekly = all.filter((_, i) => i % 5 === 0)
+      const page = weekly.slice(-600)
+      if (weekly.length > 600) {
+        const date = new Date(`${page[0].date}T00:00:00Z`)
+        date.setUTCDate(date.getUTCDate() - 1)
+        response.setHeader('Link', `</v1/tickers/${ticker}/history?endDate=${date.toISOString().slice(0,10)}>; rel="next"`)
+      }
+      sendTickerRead(response, url, 'history', ticker, page)
+    } else sendTickerRead(response, url, 'history', ticker, tickerHistoryFixture(ticker, periodDays))
     return
   }
 

@@ -93,7 +93,7 @@
 
 .assumptions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
   gap: 1.25rem 2rem;
   padding: 1.25rem;
   border: 1px dashed var(--line-strong);
@@ -151,3 +151,17 @@
   line-height: 1.45;
   color: var(--text-body);
 }
+
+.scenarioInput { min-width: 0; width: 5rem; min-height: 44px; padding: 0.4rem; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--text); font: inherit; font-size: 1rem; }
+.scenarioInput:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.scenarioPrompt { color: var(--text-body); line-height: 1.5; max-width: 55ch; }
+.scenarioGridWrap { max-width: 100%; overflow-x: auto; }
+.scenarioGrid { width: 100%; border-collapse: collapse; font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+.scenarioGrid th, .scenarioGrid td { padding: 0.5rem 0.125rem; text-align: end; white-space: nowrap; }
+.scenarioGrid th { color: var(--text-body); font-weight: 500; }
+.scenarioGrid td[data-tone='up'] { color: var(--up-ink, var(--up)); }
+.scenarioGrid td[data-tone='down'] { color: var(--down-ink, var(--down)); }
+
+.retryButton { width: auto; padding-inline: 1rem; font-size: 1rem; }
+.retryButton:disabled { cursor: not-allowed; opacity: 0.55; }
+.retryButton:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }

@@ -14,7 +14,7 @@ export default function StockFinancialsResearch({
   data: StockResearchIdentity
   /** Reported annual income measures, oldest first. */
   series: IncomeSeries
-  /** Fiscal years with a reported result, newest first (at most five). */
+  /** Fiscal years with a reported result, newest first. */
   years: number[]
 }) {
   return (

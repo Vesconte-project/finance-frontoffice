@@ -380,7 +380,7 @@ export default function SalesFlowChapter({
   series,
   currency,
 }: {
-  /** Fiscal years with a reported result, newest first (at most five). */
+  /** Fiscal years with a reported result, newest first. */
   years: number[]
   series: IncomeSeries
   currency: string
@@ -428,13 +428,19 @@ export default function SalesFlowChapter({
       label="Where each dollar of sales goes"
       actions={(
         <>
-          <SegmentedControl
+          {yearOptions.length > 5 ? (
+            <label className={styles.yearChoice}>Fiscal year
+              <select aria-label="Fiscal year" value={String(year)} onChange={event=>setYear(Number(event.target.value))}>
+                {yearOptions.map(option=><option key={option} value={option}>{option}</option>)}
+              </select>
+            </label>
+          ) : <SegmentedControl
             options={yearOptions}
             value={String(year)}
             onChange={(next) => setYear(Number(next))}
             ariaLabel="Fiscal year"
             analyticsId="ticker_financials_year"
-          />
+          />}
           <SegmentedControl
             options={[AMOUNT, SHARE] as const}
             value={unit}

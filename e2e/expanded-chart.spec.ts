@@ -112,9 +112,9 @@ test('expanded chart reads, draws and explains what is missing', async ({ page }
   await expect(canvas).toBeFocused()
   await expect(dialog.locator('[data-expanded-chart-legend]')).toContainText('C $341.07')
 
-  // The fixture loads the full ten-year window, so "All" would overstate it.
+  // The loader now exhausts all available history; explicit zooms remain.
   await expect(dialog.getByRole('radio', { name: '10Y' })).toHaveCount(1)
-  await expect(dialog.getByRole('radio', { name: 'ALL' })).toHaveCount(0)
+  await expect(dialog.getByRole('radio', { name: 'ALL', exact: true })).toBeVisible()
 
   // Keyboard zoom changes the announced range.
   const summary = dialog.locator('#expanded-chart-summary')
