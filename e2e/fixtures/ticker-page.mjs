@@ -8,6 +8,8 @@
  */
 
 const FIXTURE_TICKERS = {
+  QAHIST: {name:'Qa Full Price History Inc.',price:42,change:0,changePercent:0,marketCapText:'$1B'},
+  QANEW: {name:'Qa Newly Listed Inc.',price:42,change:0,changePercent:0,marketCapText:'$1B'},
   QA30: {name:'Qa Thirty Five Years Inc.',price:40,change:0,changePercent:0,marketCapText:'$1B'},
   QAS: { name: 'Qa Short Inc.', price: 341.07, change: 2.41, changePercent: 0.71, marketCapText: '$4.98T' },
   QAM: { name: 'Quality Assurance Micro Devices, Inc.', price: 630.63, change: -4.12, changePercent: -0.65, marketCapText: '$1.03T' },
@@ -56,10 +58,11 @@ export function isFixtureTicker(ticker) {
 /** Deterministic weekday closes ending at the fixture's quoted price. */
 function closes(ticker, periodDays) {
   const { price } = FIXTURE_TICKERS[ticker]
-  const days = Math.max(30, Number(periodDays) || (ticker==='QA30'?13_000:3650))
+  const requestedDays = Math.max(30, Number(periodDays) || (ticker==='QA30'?13_000:ticker==='QAHIST'?Math.floor((modelCaptureTime().getTime()-Date.UTC(2000,0,3))/DAY_MS):3650))
+  const days = ticker === 'QANEW' ? Math.min(requestedDays, 120) : requestedDays
   const rows = []
   for (let offset = days; offset >= 0; offset -= 1) {
-    const time = (ticker === 'QA30' ? modelCaptureTime().getTime() : LAST_DATE) - offset * DAY_MS
+    const time = (['QA30', 'QANEW', 'QAHIST'].includes(ticker) ? modelCaptureTime().getTime() : LAST_DATE) - offset * DAY_MS
     const weekday = new Date(time).getUTCDay()
     if (weekday === 0 || weekday === 6) continue
     const wave = Math.sin(offset / 9) * 0.04 + Math.sin(offset / 37) * 0.07
@@ -92,13 +95,14 @@ export function tickerOhlcFixture(ticker, periodDays) {
  */
 export function tickerPricePageFixture(ticker, resource, periodDays, endDate = '9999-12-31') {
   const rows = resource === 'ohlc' ? tickerOhlcFixture(ticker, periodDays) : tickerHistoryFixture(ticker, periodDays)
+  if (Number(periodDays) > 0 && Number(periodDays) <= 365) return { rows: [...rows].reverse(), nextEnd: null, resolution: 'daily' }
   const weekly = rows.filter((_, i) => (rows.length - 1 - i) % 5 === 0).slice(-1800)
     .filter(row => row.date <= endDate)
   const page = weekly.slice(-600)
   const nextEnd = weekly.length > 600
     ? new Date(Date.parse(`${page[0].date}T00:00:00Z`) - DAY_MS).toISOString().slice(0, 10)
     : null
-  return { rows: page, nextEnd }
+  return { rows: page, nextEnd, resolution: 'weekly' }
 }
 
 /** Invented technical values; stale is the default browser-fixture state. */

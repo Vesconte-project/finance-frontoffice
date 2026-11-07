@@ -1,4 +1,4 @@
-import type { OhlcPoint } from './ohlc-data'
+import type { MarketResolution, OhlcPoint } from './ohlc-data'
 
 /*
  * Pure geometry and range logic for the expanded ticker chart.
@@ -10,6 +10,28 @@ import type { OhlcPoint } from './ohlc-data'
  */
 
 export type ExpandedChartRange = '1M' | '3M' | 'YTD' | '1Y' | '5Y' | '10Y' | 'ALL'
+
+/** Short ranges use daily bars only when the backend explicitly confirms them. */
+export function barsForRange<T>(
+  range: string,
+  full: readonly T[],
+  recent: readonly T[],
+  recentResolution: MarketResolution,
+): readonly T[] {
+  return ['1M', '3M', 'YTD', '1Y'].includes(range) && recentResolution === 'daily' && recent.length > 0
+    ? recent : full
+}
+
+/** A failed conversion in either resolution keeps both charts in the listing currency. */
+export function chartCurrencySeries<T>(
+  full: readonly T[],
+  recent: readonly T[],
+  convertedFull: readonly T[] | null,
+  convertedRecent: readonly T[] | null,
+): { full: readonly T[]; recent: readonly T[]; converted: boolean } {
+  const converted = Boolean(convertedFull && convertedFull.length >= 2 && convertedRecent && convertedRecent.length >= 2)
+  return { full: converted ? convertedFull! : full, recent: converted ? convertedRecent! : recent, converted }
+}
 
 /** Ranges that need intraday bars, which the backend does not supply (ENG-153). */
 export const INTRADAY_RANGES = ['1D', '5D'] as const
@@ -70,7 +92,10 @@ export function viewForRange(bars: readonly OhlcPoint[], range: ExpandedChartRan
   const n = bars.length
   const start = rangeStartIndex(bars, range)
   const span = Math.max(1, n - start)
-  return clampView({ from: start - 0.5, to: n - 0.5 + Math.max(2, span * 0.04) }, n)
+  // clampView allows at most n + 40 bars; excess right padding would crop
+  // the oldest rows in ALL when a long history exceeds a thousand points.
+  const rightPadding = Math.min(39, Math.max(2, span * 0.04))
+  return clampView({ from: start - 0.5, to: n - 0.5 + rightPadding }, n)
 }
 
 /** Keeps the view between MIN_VISIBLE_BARS and all bars, with a small margin past either end. */

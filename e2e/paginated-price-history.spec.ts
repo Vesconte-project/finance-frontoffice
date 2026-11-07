@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { annotateFixture } from './fixtures/display-currency.mjs'
 import { tickerPricePageFixture } from './fixtures/ticker-page.mjs'
 
 const dateLabel = (date: string) => new Intl.DateTimeFormat('en-US', {
@@ -29,8 +30,11 @@ for (const currency of [null, 'EUR']) {
     const dialog = page.getByRole('dialog', { name: 'QA30' })
     await expect(dialog).toBeVisible()
     await dialog.getByRole('radio', { name: 'ALL', exact: true }).click()
+    const firstDate = currency
+      ? annotateFixture('ohlc', [...oldest.rows, ...middle.rows, ...newest.rows], { listingCurrency: 'USD', target: currency }).find((row: { money?: { close?: { converted?: unknown } } }) => row.money?.close?.converted)?.date
+      : oldest.rows[0].date
     await expect(dialog.locator('#expanded-chart-summary')).toContainText(
-      `From ${dateLabel(oldest.rows[0].date)} to ${dateLabel(newest.rows.at(-1)!.date)}:`,
+      `From ${dateLabel(firstDate!)} to ${dateLabel(newest.rows.at(-1)!.date)}:`,
     )
     await expect(dialog.locator('[data-expanded-chart-legend]')).toContainText(dateLabel(newest.rows.at(-1)!.date))
   })

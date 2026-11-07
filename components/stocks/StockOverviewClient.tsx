@@ -8,8 +8,10 @@ import { Suspense, use, useEffect, useMemo, useRef, useState } from 'react'
 import { ChartCandlestick, ChartLine, Maximize2 } from 'lucide-react'
 import SegmentedControl from '@/components/ui/SegmentedControl'
 import TemporalLineChart, { type TemporalLinePoint } from '@/components/charts/TemporalLineChart'
-import { ADJUSTED_PRICE_LABEL, ADJUSTED_CHART_VERSION, normalizeAdjustedHistory } from '@/lib/price-basis'
-import type { OhlcPoint, PricePoint } from '@/lib/finance'
+import { ADJUSTED_PRICE_LABEL, ADJUSTED_CHART_VERSION } from '@/lib/price-basis'
+import { barsForRange, chartCurrencySeries } from '@/lib/expanded-chart'
+import type { MarketResolution } from '@/lib/ohlc-data'
+import type { OhlcPoint } from '@/lib/finance'
 import type { Scorecard } from '@/lib/scorecard-types'
 import {
   buildTechnicalSummary,
@@ -43,7 +45,6 @@ const ExpandedChartDialog = dynamic(() => import('./ExpandedChartDialog'), { ssr
 
 type ChartTimeframe = '1D' | '5D' | '1M' | '3M' | 'YTD' | '1Y' | '5Y' | '10Y' | 'ALL'
 type HistoricalChartState = 'loaded' | 'empty' | 'error'
-type FullHistoryState = 'idle' | 'loading' | 'loaded' | 'error'
 
 type OverviewStat = {
   label: string
@@ -86,9 +87,12 @@ type StockOverviewClientProps = {
   currency: string
   /** From the registry's instrument type (Spec "Instrument type as the single source V1"). */
   isFund: boolean
-  historicalData: PricePoint[]
   historicalChartState: HistoricalChartState
   ohlcData: OhlcPoint[]
+  dailyOhlcData: OhlcPoint[]
+  dailyResolution: MarketResolution
+  fullResolution: MarketResolution
+  dailyDisplayBars: OhlcPoint[] | null
   /** The same bars in the display currency, for the charts only; null without one. */
   displayBars?: OhlcPoint[] | null
   /** Formatted market cap, or null when the summary has none. */
@@ -168,19 +172,19 @@ function startDateForHeroTimeframe(timeframe: ChartTimeframe, latestDate: Date):
   return latestDate.getTime() - 3650 * 24 * 60 * 60 * 1000
 }
 
-function filterChartData<T extends { date: string }>(data: T[], timeframe: ChartTimeframe): T[] {
-  if (timeframe === 'ALL') return data
-  if (data.length <= 2) return data
+function filterChartData<T extends { date: string }>(data: readonly T[], timeframe: ChartTimeframe): T[] {
+  if (timeframe === 'ALL') return [...data]
+  if (data.length <= 2) return [...data]
   if (timeframe === '1D') return data.slice(-2)
   if (timeframe === '5D') return data.slice(-5)
 
   const latest = data[data.length - 1]
-  if (!latest) return data
+  if (!latest) return [...data]
   const start = startDateForHeroTimeframe(timeframe, new Date(`${latest.date}T00:00:00Z`))
-  if (start === null) return data
+  if (start === null) return [...data]
 
   const filtered = data.filter((point) => parseChartDate(point.date) >= start)
-  return filtered.length >= 2 ? filtered : data
+  return filtered.length >= 2 ? filtered : [...data]
 }
 
 function gaugeArcPath(cx: number, cy: number, r: number, startDeg: number, endDeg: number): string {
@@ -477,9 +481,12 @@ export default function StockOverviewClient({
   ticker,
   currency,
   isFund,
-  historicalData,
   historicalChartState,
   ohlcData,
+  dailyOhlcData,
+  dailyResolution,
+  fullResolution,
+  dailyDisplayBars,
   displayBars = null,
   marketCap,
   holdings,
@@ -494,9 +501,6 @@ export default function StockOverviewClient({
   displayCurrency = null,
 }: StockOverviewClientProps) {
   const [heroTimeframe, setHeroTimeframe] = useState<ChartTimeframe>('1Y')
-  const [fullHistoricalData, setFullHistoricalData] = useState<PricePoint[] | null>(null)
-  const [fullHistoryState, setFullHistoryState] = useState<FullHistoryState>('idle')
-  const fullHistoryRequested = useRef(false)
   const [signalTimeframe, setSignalTimeframe] = useState<TechnicalTimeframe>('1D')
   const [selectedAxis, setSelectedAxis] = useState<ScorecardAxis['key'] | null>(null)
   const [chartExpanded, setChartExpanded] = useState(false)
@@ -509,13 +513,6 @@ export default function StockOverviewClient({
   const canExpandChart = historicalChartState === 'loaded' && ohlcData.length >= 2
   const scorecardMessage = scorecardReadinessMessage(scorecard)
 
-  const chartHistory = (heroTimeframe === '10Y' || heroTimeframe === 'ALL') && fullHistoricalData
-    ? fullHistoricalData
-    : historicalData
-  const filteredChartData = useMemo(
-    () => filterChartData(chartHistory, heroTimeframe),
-    [chartHistory, heroTimeframe],
-  )
   // The chart in the display currency: chosen once, in the header, for the whole page.
   const [convertedSeries, setConvertedSeries] = useState<ConvertedClose[] | null>(null)
   const [convertedState, setConvertedState] = useState<'loading' | 'loaded' | 'error'>('loading')
@@ -541,30 +538,23 @@ export default function StockOverviewClient({
   )
   const decomposition = useMemo(() => currencyDecomposition(convertedRange), [convertedRange])
 
-  // The charts draw bars in the display currency when the backend converted them; the technical summary never does.
-  const chartBars = displayCurrency && displayBars && displayBars.length >= 2 ? displayBars : ohlcData
-  const barsConverted = chartBars !== ohlcData
-  const chartCurrency = barsConverted && displayCurrency ? displayCurrency : currency
-  // Candles in the display currency need converted bars; without them the line stays.
-  const showCandles = chartKind === 'candles' && canExpandChart && (!showConverted || barsConverted)
-  const heroPoints = useMemo<TemporalLinePoint[]>(
-    () => showConverted && !showCandles
-      ? convertedRange.flatMap((point) => (point.converted === null ? [] : [{ date: point.date, value: point.converted }]))
-      : showCandles
-      ? filterChartData(chartBars, heroTimeframe).map((bar) => ({
-        date: bar.date,
-        value: bar.close,
-        open: bar.open,
-        high: bar.high,
-        low: bar.low,
-      }))
-      : filteredChartData.map((point) => ({ date: point.date, value: point.close })),
-    [showConverted, convertedRange, showCandles, chartBars, heroTimeframe, filteredChartData],
+  // Use one currency for both resolutions, including after a failed conversion.
+  const { full: fullChartBars, recent: recentChartBars, converted: barsConverted } = chartCurrencySeries(
+    ohlcData, dailyOhlcData,
+    displayCurrency && convertedState !== 'error' ? displayBars : null,
+    displayCurrency && convertedState !== 'error' ? dailyDisplayBars : null,
   )
-  // Candles exist only for the loaded OHLC window; say so when "ALL" reaches further back.
-  const candlesFrom = showCandles && heroTimeframe === 'ALL' && chartBars[0] && chartHistory[0] && chartHistory[0].date < chartBars[0].date
-    ? chartBars[0].date
-    : null
+  const chartBars = barsForRange(heroTimeframe, fullChartBars, recentChartBars, dailyResolution)
+  const chartCurrency = barsConverted && displayCurrency ? displayCurrency : currency
+  const showCandles = chartKind === 'candles' && canExpandChart
+  const heroPoints = useMemo<TemporalLinePoint[]>(
+    () => filterChartData(chartBars, heroTimeframe).map((bar) => ({
+      date: bar.date,
+      value: bar.close,
+      ...(showCandles ? { open: bar.open, high: bar.high, low: bar.low } : {}),
+    })),
+    [showCandles, chartBars, heroTimeframe],
+  )
   const technicalSummary = useMemo(
     () => buildTechnicalSummary(ohlcData, signalTimeframe),
     [ohlcData, signalTimeframe]
@@ -581,42 +571,8 @@ export default function StockOverviewClient({
   const selectedAxisData = selectedAxis ? scorecard.axes.find((axis) => axis.key === selectedAxis) ?? null : null
   const toggleAxis = (key: ScorecardAxis['key']) => setSelectedAxis((current) => (current === key ? null : key))
 
-  const selectHeroTimeframe = (timeframe: ChartTimeframe) => {
-    const needsFullHistory = timeframe === '10Y' || timeframe === 'ALL'
-    if (!needsFullHistory) {
-      setHeroTimeframe(timeframe)
-      return
-    }
-
-    if (fullHistoricalData) {
-      setHeroTimeframe(timeframe)
-      return
-    }
-    if (fullHistoryRequested.current) {
-      setHeroTimeframe(fullHistoryState === 'error' ? '5Y' : timeframe)
-      return
-    }
-
-    fullHistoryRequested.current = true
-    setHeroTimeframe(timeframe)
-    setFullHistoryState('loading')
-
-    void browserRead(`/api/stocks/${encodeURIComponent(ticker)}/history?price_basis=${ADJUSTED_CHART_VERSION}`, { cache: 'no-store' })
-      .then(async (response) => {
-        const payload: unknown = await response.json().catch(() => null)
-        if (!response.ok || !Array.isArray(payload)) throw new Error('Full history request failed.')
-
-        const points = normalizeAdjustedHistory(payload)
-        if (points.length < 2) throw new Error('Full history is empty.')
-
-        setFullHistoricalData(points)
-        setFullHistoryState('loaded')
-      })
-      .catch(() => {
-        setFullHistoryState('error')
-        setHeroTimeframe((current) => current === '10Y' || current === 'ALL' ? '5Y' : current)
-      })
-  }
+  // Full history and daily bars are already loaded; range changes are local.
+  const selectHeroTimeframe = (timeframe: ChartTimeframe) => setHeroTimeframe(timeframe)
 
   const researchVerdicts = [
     {
@@ -783,14 +739,14 @@ export default function StockOverviewClient({
           <div className={styles.heroChartColumn}>
             <h2 className="sr-only">Quick Read</h2>
             <p className={styles.chartStatus}>{ADJUSTED_PRICE_LABEL}</p>
-            <div className={styles.heroChartWrap} aria-busy={fullHistoryState === 'loading'}>
+            <div className={styles.heroChartWrap}>
               <HeroPriceChart
                 points={heroPoints}
                 mode={showCandles ? 'candles' : 'line'}
                 onMeasureActiveChange={setHeroMeasuring}
                 reservedCorner={canExpandChart ? HERO_TOOLS_CORNER : undefined}
-                state={showConverted ? 'loaded' : fullHistoryState === 'error' ? 'error' : historicalChartState}
-                currency={showConverted && displayCurrency ? displayCurrency : currency}
+                state={historicalChartState}
+                currency={chartCurrency}
               />
               {canExpandChart ? (
                 <div className={expandedChartStyles.heroTools} hidden={heroMeasuring}>
@@ -808,7 +764,6 @@ export default function StockOverviewClient({
                   <button
                     type="button"
                     className={expandedChartStyles.heroToolButton}
-                    hidden={showConverted && !barsConverted}
                     aria-pressed={showCandles}
                     aria-label={showCandles ? 'Show line' : 'Show candles'}
                     data-chart-kind-toggle=""
@@ -818,11 +773,6 @@ export default function StockOverviewClient({
                   </button>
                 </div>
               ) : null}
-              {candlesFrom ? (
-                <p className={styles.chartStatus} role="status" data-candles-from="">
-                  Candles from {new Date(`${candlesFrom}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}.
-                </p>
-              ) : null}
               {chartExpanded ? (
                 <Suspense fallback={null}>
                   <ExpandedChartDialog
@@ -830,7 +780,11 @@ export default function StockOverviewClient({
                     onClose={() => setChartExpanded(false)}
                     ticker={ticker}
                     currency={chartCurrency}
-                    bars={chartBars}
+                    bars={fullChartBars}
+                    dailyBars={recentChartBars}
+                    dailyResolution={dailyResolution}
+                    fullResolution={fullResolution}
+                    dailyListingBars={dailyOhlcData}
                     listingCurrency={isoCurrency(currency) ?? currency}
                     listingBars={ohlcData}
                     displayCurrency={barsConverted ? displayCurrency : null}
@@ -840,10 +794,7 @@ export default function StockOverviewClient({
                   />
                 </Suspense>
               ) : null}
-              {fullHistoryState === 'loading' ? <span className="sr-only" role="status">Loading full price history.</span> : null}
-              {fullHistoryState === 'error' ? (
-                <p className={styles.chartStatus} role="status">Historical price data could not be loaded. Showing the longest available range.</p>
-              ) : null}
+
             </div>
             <div className={styles.chartFooter} data-chart-footer="">
               {referenceFacts.length > 0 ? (
@@ -864,7 +815,7 @@ export default function StockOverviewClient({
                 />
               </div>
             </div>
-            {displayCurrency && convertedState === 'error' ? (
+            {displayCurrency && (convertedState === 'error' || !barsConverted) ? (
               <p className={styles.chartStatus} role="status" data-chart-currency-error="">
                 The price in {displayCurrency} could not be loaded. The chart stays in {isoCurrency(currency) ?? currency}.
               </p>

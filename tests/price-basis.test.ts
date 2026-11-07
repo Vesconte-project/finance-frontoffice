@@ -30,8 +30,8 @@ test('the canvas checks readiness at draw time and quote change stays on the raw
 
 test('full history changes cache identity and refuses an old raw cache response', () => {
   const source=fs.readFileSync('components/stocks/StockOverviewClient.tsx','utf8')
-  assert.match(source,/history\?price_basis=\$\{ADJUSTED_CHART_VERSION\}/)
-  assert.match(source,/normalizeAdjustedHistory\(payload\)/)
+  assert.match(source,/history\?\$\{DISPLAY_CURRENCY_PARAM\}=.*price_basis=\$\{ADJUSTED_CHART_VERSION\}/)
+  assert.match(fs.readFileSync('lib/finance.ts','utf8'), /normalizeOhlcPayload\(series.rows/)
   assert.throws(() => normalizeAdjustedHistory([{date:'2026-01-05',close:200}]))
 })
 
