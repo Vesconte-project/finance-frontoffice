@@ -1,4 +1,4 @@
-import type { OhlcPoint } from './ohlc-data'
+import type { MarketResolution, OhlcPoint } from './ohlc-data'
 
 /*
  * Pure geometry and range logic for the expanded ticker chart.
@@ -10,6 +10,28 @@ import type { OhlcPoint } from './ohlc-data'
  */
 
 export type ExpandedChartRange = '1M' | '3M' | 'YTD' | '1Y' | '5Y' | '10Y' | 'ALL'
+
+/** Short ranges use daily bars only when the backend explicitly confirms them. */
+export function barsForRange<T>(
+  range: string,
+  full: readonly T[],
+  recent: readonly T[],
+  recentResolution: MarketResolution,
+): readonly T[] {
+  return ['1M', '3M', 'YTD', '1Y'].includes(range) && recentResolution === 'daily' && recent.length > 0
+    ? recent : full
+}
+
+/** A failed conversion in either resolution keeps both charts in the listing currency. */
+export function chartCurrencySeries<T>(
+  full: readonly T[],
+  recent: readonly T[],
+  convertedFull: readonly T[] | null,
+  convertedRecent: readonly T[] | null,
+): { full: readonly T[]; recent: readonly T[]; converted: boolean } {
+  const converted = Boolean(convertedFull && convertedFull.length >= 2 && convertedRecent && convertedRecent.length >= 2)
+  return { full: converted ? convertedFull! : full, recent: converted ? convertedRecent! : recent, converted }
+}
 
 /** Ranges that need intraday bars, which the backend does not supply (ENG-153). */
 export const INTRADAY_RANGES = ['1D', '5D'] as const

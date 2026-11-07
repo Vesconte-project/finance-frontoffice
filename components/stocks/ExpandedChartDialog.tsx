@@ -1,5 +1,7 @@
 'use client'
 
+import type { MarketResolution } from '@/lib/ohlc-data'
+
 import { browserRead } from '@/lib/read-client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
@@ -13,6 +15,7 @@ import { BeingBuiltBadge } from '@/components/stocks/research/BeingBuilt'
 import {
   INTRADAY_RANGES,
   availableRanges,
+  barsForRange,
   panView,
   rangeStartIndex,
   summarizeVisible,
@@ -59,6 +62,8 @@ const DRAWING_HELP: Record<DrawingTool, Status> = {
   trend: { kind: 'info', title: 'Trend line', body: 'Pick two points to draw a line between them.' },
 }
 
+const EMPTY_BARS: readonly OhlcPoint[] = []
+
 const DATE_FORMAT = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 const VOLUME_FORMAT = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 })
 
@@ -73,6 +78,10 @@ export type ExpandedChartDialogProps = {
   /** The currency `bars` are in: the display currency when they were converted. */
   currency: string
   bars: readonly OhlcPoint[]
+  dailyBars?: readonly OhlcPoint[]
+  dailyListingBars?: readonly OhlcPoint[]
+  dailyResolution?: MarketResolution
+  fullResolution?: MarketResolution
   /** The listing's currency and its reported bars, for comparing currencies. */
   listingCurrency?: string
   listingBars?: readonly OhlcPoint[]
@@ -92,12 +101,16 @@ export type ExpandedChartDialogProps = {
  * series draw only when the backend marks their adjusted basis ready.
  * Missing/stale indicators and intraday ranges remain explicit unavailable states.
  */
-export default function ExpandedChartDialog({ open, onClose, ticker, currency, bars, listingCurrency, listingBars, displayCurrency = null, kind, onKindChange, returnFocusRef }: ExpandedChartDialogProps) {
+export default function ExpandedChartDialog({ open, onClose, ticker, currency, bars: fullBars, dailyBars = EMPTY_BARS, dailyListingBars, dailyResolution = null, fullResolution = null, listingCurrency, listingBars, displayCurrency = null, kind, onKindChange, returnFocusRef }: ExpandedChartDialogProps) {
+  const [range, setRange] = useState<ExpandedChartRange>('1Y')
+  const bars = useMemo(() => barsForRange(range, fullBars, dailyBars, dailyResolution), [range, fullBars, dailyBars, dailyResolution])
+  const resolution = bars === dailyBars ? dailyResolution : fullResolution
   const [events, setEvents] = useState<readonly EventMarker[] | null>([])
   const [eventsLoading, setEventsLoading] = useState(true)
-  const ranges = useMemo(() => availableRanges(bars), [bars])
+  const ranges = useMemo(() => availableRanges(fullBars), [fullBars])
+  // Coverage describes the complete converted history, independently of the selected resolution.
   const missingConversions = useMemo(() => displayCurrency && listingBars
-    ? missingPriceConversions(listingBars, bars) : [], [displayCurrency, listingBars, bars])
+    ? missingPriceConversions(listingBars, fullBars) : [], [displayCurrency, listingBars, fullBars])
   const [overlayPayload, setOverlayPayload] = useState<TechnicalChartPayload | null>(null)
   const [selectedIndicators, setSelectedIndicators] = useState<string[]>([])
   useEffect(() => {
@@ -116,7 +129,6 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
   }, [ticker, displayCurrency])
   const readyOverlays = readyAdjustedOverlays(overlayPayload, bars)
 
-  const [range, setRange] = useState<ExpandedChartRange>('1Y')
   const [viewRequest, setViewRequest] = useState(() => ({ view: viewForRange(bars, '1Y'), id: 0 }))
   const [measure, setMeasure] = useState<ChartMeasure | null>(null)
   const [measuring, setMeasuring] = useState(false)
@@ -134,7 +146,7 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
   // Comparing the price in several currencies replaces the price chart while on.
   const [comparing, setComparing] = useState(false)
   const compareListing = listingCurrency ?? currency
-  const compareBars = listingBars ?? bars
+  const compareBars = barsForRange(range, listingBars ?? fullBars, dailyListingBars ?? [], dailyResolution)
   const compareCloses = useMemo(() => compareBars.map((item) => ({ date: item.date, value: item.close })), [compareBars])
   const compareStart = compareBars[rangeStartIndex(compareBars, range)]?.date ?? compareBars[0]?.date ?? ''
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null)
@@ -182,8 +194,15 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
 
   const requestRange = useCallback((next: ExpandedChartRange) => {
     setRange(next)
-    setViewRequest((current) => ({ view: viewForRange(bars, next), id: current.id + 1 }))
-  }, [bars])
+    const nextBars = barsForRange(next, fullBars, dailyBars, dailyResolution)
+    setViewRequest((current) => ({ view: viewForRange(nextBars, next), id: current.id + 1 }))
+    // These interactions store bar indices; a resolution change gives them new meanings.
+    setInspected(null)
+    setMeasure(null)
+    setPending(null)
+    setDrawings([])
+    setSelectedEvent(null)
+  }, [fullBars, dailyBars, dailyResolution])
 
   useEffect(() => () => {
     if (summaryTimer.current !== null) window.clearTimeout(summaryTimer.current)
@@ -289,7 +308,7 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
         <header className={styles.header}>
           <h2 id="expanded-chart-title" className={styles.title}>{ticker}</h2>
           <p className={styles.subtitle}>
-            {comparing ? 'Compared across currencies · daily · change since the start of the range' : `Price chart · daily · ${currency} · ${ADJUSTED_PRICE_LABEL}`}
+            {comparing ? 'Compared across currencies · change since the start of the range' : `Price chart${resolution ? ` · ${resolution}` : ''} · ${currency} · ${ADJUSTED_PRICE_LABEL}`}
           </p>
           {missingConversions.length > 0 ? (
             <p className={styles.subtitle} role="status" data-conversion-coverage="">
@@ -314,7 +333,10 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
           </p>
         ) : null}
 
-        <div ref={chartAreaRef} className={styles.chartArea} data-expanded-chart-canvas="">
+        <div ref={chartAreaRef} className={styles.chartArea} data-expanded-chart-canvas=""
+          data-price-resolution={resolution ?? 'unknown'}
+          data-price-dates={bars.map(bar => bar.date).join(',')}
+          data-visible-price-count={bars.length - rangeStartIndex(bars, range)}>
           {comparing ? (
             <CurrencyCompare
               ticker={ticker}
@@ -414,7 +436,7 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
               options={ranges}
               value={range}
               onChange={requestRange}
-              ariaLabel="Daily range"
+              ariaLabel="Chart range"
               analyticsId="ticker_expanded_chart_range"
             />
           </div>

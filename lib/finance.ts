@@ -4,6 +4,8 @@ import { normalizeAdjustedHistory } from './price-basis'
 import { BackendDataError, fetchBackendJson, fetchBackendResponse } from './backend'
 import {
   normalizeOhlcPayload,
+  STOCK_DAILY_OHLC_CACHE_KEY,
+  type MarketResolution,
   type OhlcLoadResult,
 } from './ohlc-data'
 import { getCachedTickerSummary } from './ticker-data'
@@ -516,15 +518,20 @@ async function loadQuote(tickerRaw: string): Promise<StockQuote | null> {
   }
 }
 
-async function allPriceRows(ticker: string, resource: 'history' | 'ohlc', days: number, currency?: string): Promise<unknown[]> {
+// Request-scoped memoization: period and currency are separate cache arguments.
+// In particular the daily currency request supplies both reported and converted bars.
+const allPriceSeries = cache(async (ticker: string, resource: 'history' | 'ohlc', days: number, currency?: string) => {
   let requestedStart: string | null = null
-  return collectPricePages(async (endDate) => {
+  const resolutions: MarketResolution[] = []
+  const rows = await collectPricePages(async (endDate) => {
     const query = new URLSearchParams({ period_days: String(days >= BACKEND_HISTORY_PERIOD_DAYS_MAX ? 0 : days) })
     if (currency) query.set('currency', currency)
     if (endDate) query.set('endDate', endDate)
     if (requestedStart) query.set('startDate', requestedStart)
     const response = await fetchBackendResponse(`/v1/tickers/${encodeURIComponent(ticker)}/${resource}?${query}`, { context: `backend.tickers.${resource}` })
     if (!response.ok) throw new BackendDataError(`backend.tickers.${resource}`, 'History unavailable', response.status)
+    const header = response.headers.get('x-market-resolution')
+    resolutions.push(header === 'daily' || header === 'weekly' ? header : null)
     const rows: unknown = await response.json()
     if (!Array.isArray(rows)) throw new Error('price_history_page_invalid')
     const link = response.headers.get('link')
@@ -541,6 +548,13 @@ async function allPriceRows(ticker: string, resource: 'history' | 'ohlc', days: 
     }
     return { rows, nextEnd }
   })
+  // A missing/unknown header or mixed page resolutions must never claim daily data.
+  const resolution = resolutions.every(value => value === resolutions[0]) ? resolutions[0] : null
+  return { rows, resolution }
+})
+
+async function allPriceRows(ticker: string, resource: 'history' | 'ohlc', days: number, currency?: string): Promise<unknown[]> {
+  return (await allPriceSeries(ticker, resource, days, currency)).rows
 }
 
 async function loadHistorical(tickerRaw: string, periodDays: number): Promise<PricePoint[]> {
@@ -555,14 +569,19 @@ async function loadHistorical(tickerRaw: string, periodDays: number): Promise<Pr
 async function loadOhlc(
   tickerRaw: string,
   periodDays: number,
-  coverageExpectsPrices: boolean
+  coverageExpectsPrices: boolean,
+  requestCurrency?: string
 ): Promise<OhlcLoadResult> {
   const ticker = normalizeTicker(tickerRaw)
   const safeDays = Number.isFinite(periodDays) && periodDays > 0
     ? Math.max(30, Math.min(periodDays, BACKEND_HISTORY_PERIOD_DAYS_MAX))
     : 0
-  const payload = await allPriceRows(ticker, 'ohlc', safeDays)
-  return normalizeOhlcPayload(payload, { coverageExpectsPrices })
+  const series = await allPriceSeries(ticker, 'ohlc', safeDays, requestCurrency)
+  return {
+    ...normalizeOhlcPayload(series.rows, { coverageExpectsPrices }),
+    ...(safeDays === 365 ? { cacheKey: STOCK_DAILY_OHLC_CACHE_KEY } : {}),
+    resolution: series.resolution,
+  }
 }
 
 async function loadTickerFundamentals(tickerRaw: string): Promise<TickerFundamentals> {
@@ -596,8 +615,9 @@ export const getHistoricalData = cache(async (ticker: string, periodDays: number
 export const getOhlcData = cache(async (
     ticker: string,
     periodDays: number = 0,
-    coverageExpectsPrices: boolean = false
-  ): Promise<OhlcLoadResult> => loadOhlc(ticker, periodDays, coverageExpectsPrices))
+    coverageExpectsPrices: boolean = false,
+    requestCurrency?: string
+  ): Promise<OhlcLoadResult> => loadOhlc(ticker, periodDays, coverageExpectsPrices, requestCurrency))
 
 export const getTickerFundamentals = cache(async (ticker: string): Promise<TickerFundamentals> => loadTickerFundamentals(ticker))
 
@@ -636,15 +656,15 @@ export async function getClosesIn(ticker: string, periodDays: number, currency: 
 }
 
 /**
- * All available daily bars in the display currency (the backend's conversion of
+ * Available bars for the requested window in the display currency (the backend's conversion of
  * each price at its day's rate), for the charts only: candles and the expanded
  * chart. Days without a converted close are left out. Empty when the currency
  * is no longer listed. The technical summary keeps reading reported bars.
  */
-export const getConvertedOhlc = cache(async (tickerRaw: string, currency: string): Promise<ConvertedBar[]> => {
+export const getConvertedOhlc = cache(async (tickerRaw: string, currency: string, periodDays = 0): Promise<ConvertedBar[]> => {
   const ticker = normalizeTicker(tickerRaw)
   try {
-    const payload = await allPriceRows(ticker, 'ohlc', 0, currency)
+    const payload = await allPriceRows(ticker, 'ohlc', periodDays, currency)
     return convertedOhlcFromRows(payload, currency)
   } catch (error) {
     if (error instanceof BackendDataError && error.status === 422) return []

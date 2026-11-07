@@ -1,5 +1,8 @@
 export const STOCK_OHLC_CACHE_KEY = 'stock-ohlc-cache-adjusted-fx-v5-full-history'
 
+export const STOCK_DAILY_OHLC_CACHE_KEY = 'stock-ohlc-cache-adjusted-fx-v6-last-year'
+export type MarketResolution = 'daily' | 'weekly' | null
+
 export type OhlcPoint = {
   price_basis: 'adjusted'
   date: string
@@ -21,7 +24,8 @@ export type OhlcLoadResult = {
   status: OhlcResultStatus
   rows: OhlcPoint[]
   reason: string
-  cacheKey: typeof STOCK_OHLC_CACHE_KEY
+  cacheKey: typeof STOCK_OHLC_CACHE_KEY | typeof STOCK_DAILY_OHLC_CACHE_KEY
+  resolution?: MarketResolution
   backendStatus: number | null
   rawRows: number | null
   validRows: number

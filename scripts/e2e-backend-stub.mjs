@@ -242,14 +242,18 @@ const server = createServer((request, response) => {
     const periodDays = url.searchParams.get('period_days')
     if (tickerRoute[2] === 'summary') sendTickerRead(response, url, 'summary', ticker, tickerSummaryFixture(ticker))
     else if (tickerRoute[2] === 'technical-series') sendTickerRead(response, url, 'technical-series', ticker, tickerTechnicalSeriesFixture(ticker))
-    else if (ticker === 'QA30') {
+    else if (['QA30', 'QANEW', 'QAHIST'].includes(ticker)) {
       const resource = tickerRoute[2]
       const page = tickerPricePageFixture(ticker, resource, periodDays, url.searchParams.get('endDate') || undefined)
+      response.setHeader('x-market-resolution', page.resolution)
       if (page.nextEnd) {
         response.setHeader('Link', `</v1/tickers/${ticker}/${resource}?endDate=${page.nextEnd}>; rel="next"`)
       }
       sendTickerRead(response, url, resource, ticker, page.rows)
-    } else if (tickerRoute[2] === 'ohlc') sendTickerRead(response, url, 'ohlc', ticker, tickerOhlcFixture(ticker, periodDays))
+    } else if (tickerRoute[2] === 'ohlc') {
+      response.setHeader('x-market-resolution', Number(periodDays) > 0 && Number(periodDays) <= 365 ? 'daily' : 'weekly')
+      sendTickerRead(response, url, 'ohlc', ticker, tickerOhlcFixture(ticker, periodDays))
+    }
     else sendTickerRead(response, url, 'history', ticker, tickerHistoryFixture(ticker, periodDays))
     return
   }

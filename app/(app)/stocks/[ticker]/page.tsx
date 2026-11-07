@@ -28,6 +28,7 @@ import {
   ohlcMalformedResult,
   OhlcPayloadError,
   STOCK_OHLC_CACHE_KEY,
+  STOCK_DAILY_OHLC_CACHE_KEY,
   type OhlcLoadResult,
 } from '@/lib/ohlc-data'
 import { getAtlasCompany } from '@/lib/atlas'
@@ -137,15 +138,17 @@ function coverageExpectsPrices(coverage: SymbolCoverageRow): boolean {
 
 async function loadStockOhlcDataset(
   context: BackendRequestLogContext,
-  coverage: SymbolCoverageRow
+  coverage: SymbolCoverageRow,
+  periodDays = 0,
+  requestCurrency?: string
 ): Promise<OhlcLoadResult> {
   const expectsPrices = coverageExpectsPrices(coverage)
 
   try {
-    return await getOhlcData(context.ticker, 0, expectsPrices)
+    return await getOhlcData(context.ticker, periodDays, expectsPrices, requestCurrency)
   } catch (error) {
     const details = backendErrorDetails(error)
-    const result =
+    const unavailable =
       error instanceof OhlcPayloadError
         ? error.result
         : error instanceof BackendDataError && error.status === 200
@@ -158,9 +161,14 @@ async function loadStockOhlcDataset(
             backendStatus: error instanceof BackendDataError ? error.status : null,
           })
 
+    const result: OhlcLoadResult = {
+      ...unavailable,
+      cacheKey: periodDays === 365 ? STOCK_DAILY_OHLC_CACHE_KEY : STOCK_OHLC_CACHE_KEY,
+      resolution: null,
+    }
     const logLevel = expectsPrices ? 'warn' : 'error'
     logStockPageEvent(logLevel, 'ohlc dataset unavailable', context, {
-      endpoint: `/tickers/${context.ticker}/ohlc?period_days=0`,
+      endpoint: `/tickers/${context.ticker}/ohlc?period_days=${periodDays}`,
       coverageHasPrices: coverage.hasPrices,
       coveragePriceRows: coverage.priceRows,
       coverageFirstPriceDate: coverage.firstPriceDate,
@@ -170,7 +178,7 @@ async function loadStockOhlcDataset(
       ohlcRawRows: result.rawRows,
       ohlcValidRows: result.validRows,
       cacheKey: result.cacheKey,
-      expectedCacheKey: STOCK_OHLC_CACHE_KEY,
+      expectedCacheKey: result.cacheKey,
       backendStatus: result.backendStatus,
       error: details.message,
       aborted: details.aborted,
@@ -268,11 +276,12 @@ export default async function TickerPage({
       return income.available ? annualSeries(income.rows, 'revenue') : null
     })
   )
-  const [ohlcResult, fundamentals] = await runWithBackendRequestLogContext(
+  const [ohlcResult, dailyOhlcResult, fundamentals] = await runWithBackendRequestLogContext(
     requestLogContext,
     () =>
       Promise.all([
         loadStockOhlcDataset(requestLogContext, tickerSummary.coverage),
+        loadStockOhlcDataset(requestLogContext, tickerSummary.coverage, 365, displayCurrency ?? undefined),
         loadOptionalStockDataset<TickerFundamentals | null>(
           requestLogContext,
           `/tickers/${ticker}/profile`,
@@ -290,7 +299,6 @@ export default async function TickerPage({
     ohlcCacheKey: ohlcResult.cacheKey,
     scorecardReadiness: scorecard.readiness,
   })
-  const historicalData = ohlcData.map((point) => ({ date: point.date, close: point.close, price_basis: point.price_basis }))
   const historicalChartState =
     ohlcResult.status === 'loaded'
       ? 'loaded'
@@ -368,9 +376,12 @@ export default async function TickerPage({
       : null
   const marketCapConverted = displayCurrency && marketCapSource ? convertedAmountOf(marketCapSource, 'marketCap', displayCurrency) : null
   // The charts' bars in the display currency (candles and the expanded chart); the technical summary keeps reported bars.
-  const displayBars = displayCurrency
-    ? await runWithBackendRequestLogContext(requestLogContext, () => getConvertedOhlc(ticker, displayCurrency)).catch(() => [])
-    : null
+  const [displayBars, dailyDisplayBars] = displayCurrency
+    ? await runWithBackendRequestLogContext(requestLogContext, () => Promise.all([
+        getConvertedOhlc(ticker, displayCurrency).catch(() => []),
+        getConvertedOhlc(ticker, displayCurrency, 365).catch(() => []),
+      ]))
+    : [null, null]
   // Amounts among the latest fundamentals (net cash) in the display currency when all of them convert.
   const localizedSummary = displayCurrency && convertedSummary ? localizeSummary(convertedSummary, displayCurrency) : null
   const amountRows = localizedSummary?.converted ? localizedSummary.summary.latestFundamentals : latestFundamentals
@@ -407,9 +418,12 @@ export default async function TickerPage({
         ticker={ticker}
         currency={currency}
         isFund={isEtf}
-        historicalData={historicalData}
         historicalChartState={historicalChartState}
         ohlcData={ohlcData}
+        dailyOhlcData={dailyOhlcResult.rows}
+        dailyResolution={dailyOhlcResult.resolution ?? null}
+        fullResolution={ohlcResult.resolution ?? null}
+        dailyDisplayBars={dailyDisplayBars}
         displayBars={displayBars}
         marketCap={marketCapValue}
         holdings={holdings}
