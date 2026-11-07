@@ -13,6 +13,7 @@ import {
   currencyDecomposition,
   displayCurrencyCode,
   isListedCurrency,
+  missingPriceConversions,
   isoCurrency,
   parseConvertedCloses,
   parseCurrenciesPayload,
@@ -20,6 +21,14 @@ import {
   parseTrackedListings,
   withDisplayCurrency,
 } from '../lib/display-currency'
+
+test('currency coverage counts unavailable prefix and internal sessions without filling them', () => {
+  const reported = ['1991-01-04','2010-01-01','2026-06-05','2026-11-06'].map(date => ({ date }))
+  const converted = [reported[1], reported[3]]
+  assert.deepEqual(missingPriceConversions(reported, converted), ['1991-01-04','2026-06-05'])
+  assert.deepEqual(missingPriceConversions(reported, reported), [])
+  assert.deepEqual(missingPriceConversions(reported, []), reported.map(point => point.date))
+})
 
 const converted = (value: number, original: number, currency = 'KRW') => ({
   price_basis: 'adjusted',

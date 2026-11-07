@@ -6,17 +6,19 @@ import { tickerHistoryFixture, tickerOhlcFixture, tickerSummaryFixture, tickerTe
 import { collectPricePages } from '../.test-build/lib/full-history.js'
 
 for (const resource of ['history', 'ohlc']) {
-  test(`${resource} browser stub serves exactly three adjacent backward weekly pages`, async () => {
+  test(`${resource} browser stub preserves 1991 across all backward weekly pages`, async () => {
     const pages = []
     const rows = await collectPricePages(async end => {
       const page = tickerPricePageFixture('QA30', resource, 0, end || undefined)
       pages.push(page)
       return page
     })
-    assert.deepEqual(pages.map(page => page.rows.length), [600, 600, 600])
-    assert.equal(pages[2].nextEnd, null)
-    assert.equal(rows.length, 1800)
-    assert.equal(rows[0].date, pages[2].rows[0].date)
+    const daily = tickerHistoryFixture('QA30', 0)
+    assert.equal(pages.length, Math.ceil(Math.ceil(daily.length / 5) / 600))
+    assert.equal(pages.at(-1).nextEnd, null)
+    assert.equal(rows.length, Math.ceil(daily.length / 5))
+    assert.equal(rows[0].date.slice(0, 4), '1991')
+    assert.equal(rows[0].date, pages.at(-1).rows[0].date)
     assert.equal(rows.at(-1).date, tickerHistoryFixture('QA30', 0).at(-1).date)
     for (let i = 1; i < rows.length; i++) {
       const days = (Date.parse(rows[i].date) - Date.parse(rows[i - 1].date)) / 86400000

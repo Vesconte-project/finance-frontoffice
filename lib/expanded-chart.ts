@@ -92,10 +92,10 @@ export function viewForRange(bars: readonly OhlcPoint[], range: ExpandedChartRan
   const n = bars.length
   const start = rangeStartIndex(bars, range)
   const span = Math.max(1, n - start)
-  // clampView allows at most n + 40 bars; excess right padding would crop
-  // the oldest rows in ALL when a long history exceeds a thousand points.
-  const rightPadding = Math.min(39, Math.max(2, span * 0.04))
-  return clampView({ from: start - 0.5, to: n - 0.5 + rightPadding }, n)
+  // clampView caps the span at n + 40. A larger right margin would be
+  // recentered by the clamp and move the oldest bars out of ALL's viewport.
+  const rightMargin = Math.min(40, Math.max(2, span * 0.04))
+  return clampView({ from: start - 0.5, to: n - 0.5 + rightMargin }, n)
 }
 
 /** Keeps the view between MIN_VISIBLE_BARS and all bars, with a small margin past either end. */

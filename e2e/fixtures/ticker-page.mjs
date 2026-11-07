@@ -89,14 +89,14 @@ export function tickerOhlcFixture(ticker, periodDays) {
   }))
 }
 
-/** Three contiguous backward pages, matching the backend's weekly/600 contract.
- * The full fixture remains longer than 30 years. Anchor weeks at the latest
+/** Contiguous backward pages, matching the backend's weekly/600 contract.
+ * Preserve the entire fixture, including 1991. Anchor weeks at the latest
  * close so the final row is also the latest quoted session.
  */
 export function tickerPricePageFixture(ticker, resource, periodDays, endDate = '9999-12-31') {
   const rows = resource === 'ohlc' ? tickerOhlcFixture(ticker, periodDays) : tickerHistoryFixture(ticker, periodDays)
   if (Number(periodDays) > 0 && Number(periodDays) <= 365) return { rows: [...rows].reverse(), nextEnd: null, resolution: 'daily' }
-  const weekly = rows.filter((_, i) => (rows.length - 1 - i) % 5 === 0).slice(-1800)
+  const weekly = rows.filter((_, i) => (rows.length - 1 - i) % 5 === 0)
     .filter(row => row.date <= endDate)
   const page = weekly.slice(-600)
   const nextEnd = weekly.length > 600

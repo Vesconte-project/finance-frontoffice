@@ -255,6 +255,12 @@ export type ConvertedClose = {
   converted: number | null
 }
 
+/** Compare session identities, never infer or fill a missing currency value. */
+export function missingPriceConversions(reported: readonly { date: string }[], converted: readonly { date: string }[]): string[] {
+  const convertedDates = new Set(converted.map(point => point.date))
+  return reported.filter(point => !convertedDates.has(point.date)).map(point => point.date)
+}
+
 /**
  * Daily closes from the backend's `history?currency=XXX` rows. The reported
  * close stays as it is; `converted` is the backend's value for that day, or

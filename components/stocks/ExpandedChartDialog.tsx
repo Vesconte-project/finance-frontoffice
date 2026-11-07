@@ -25,7 +25,7 @@ import {
 } from '@/lib/expanded-chart'
 import { ADJUSTED_PRICE_LABEL, readyAdjustedOverlays, type TechnicalChartPayload } from '@/lib/price-basis'
 import type { OhlcPoint } from '@/lib/ohlc-data'
-import { DISPLAY_CURRENCY_PARAM } from '@/lib/display-currency'
+import { DISPLAY_CURRENCY_PARAM, missingPriceConversions } from '@/lib/display-currency'
 import CurrencyCompare from './CurrencyCompare'
 import { cn } from '@/lib/utils'
 import ExpandedPriceCanvas, {
@@ -108,6 +108,9 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
   const [events, setEvents] = useState<readonly EventMarker[] | null>([])
   const [eventsLoading, setEventsLoading] = useState(true)
   const ranges = useMemo(() => availableRanges(fullBars), [fullBars])
+  // Coverage describes the complete converted history, independently of the selected resolution.
+  const missingConversions = useMemo(() => displayCurrency && listingBars
+    ? missingPriceConversions(listingBars, fullBars) : [], [displayCurrency, listingBars, fullBars])
   const [overlayPayload, setOverlayPayload] = useState<TechnicalChartPayload | null>(null)
   const [selectedIndicators, setSelectedIndicators] = useState<string[]>([])
   useEffect(() => {
@@ -307,6 +310,12 @@ export default function ExpandedChartDialog({ open, onClose, ticker, currency, b
           <p className={styles.subtitle}>
             {comparing ? 'Compared across currencies · change since the start of the range' : `Price chart${resolution ? ` · ${resolution}` : ''} · ${currency} · ${ADJUSTED_PRICE_LABEL}`}
           </p>
+          {missingConversions.length > 0 ? (
+            <p className={styles.subtitle} role="status" data-conversion-coverage="">
+              Full history is incomplete in {currency}: {missingConversions.length} sessions have no currency conversion.
+              {' '}The chart shows only converted sessions. Reported history in {listingCurrency} starts {formatDate(listingBars![0].date)}.
+            </p>
+          ) : null}
         </header>
 
         {comparing ? null : measurement ? (
