@@ -43,7 +43,10 @@ for (const theme of ['light', 'dark'] as const) {
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 900 })
       const wide = width === 1440
-      const variant = `[data-flow-variant="${wide ? 'wide' : 'narrow'}"]`
+      // React can retain a second copy in a hidden streaming segment (S:1).
+      // Scope every assertion and interaction to the single visible layout.
+      const variant = `[data-flow-variant="${wide ? 'wide' : 'narrow'}"]:visible`
+      await expect(page.locator(variant)).toHaveCount(1)
       await expect(page.locator(variant)).toBeVisible()
       const property = wide ? 'fill' : 'backgroundColor'
       for (const [id, expected] of [['sales', palette.sales], ['costOfSales', cost], ['taxes', cost], ['netIncome', palette.profit]] as const) {
@@ -95,22 +98,22 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goto('/stocks/QAM/financials')
     const years = page.getByRole('radiogroup', { name: 'Fiscal year' })
     await years.getByRole('radio', { name: '2024', exact: true }).click()
-    const net = '[data-flow-variant="wide"] [data-flow-shape="netIncome"]'
+    const net = '[data-flow-variant="wide"]:visible [data-flow-shape="netIncome"]'
     await expect(page.locator(net)).toHaveAttribute('data-negative', 'true')
     sameColour(await paint(page, net), palette.down)
     sameColour(await paint(page, '[data-flow-history="netIncome"] [data-chart-variant]:visible rect[data-highlighted="true"]'), palette.down)
-    const tax = '[data-flow-variant="wide"] [data-flow-shape="taxes"]'
+    const tax = '[data-flow-variant="wide"]:visible [data-flow-shape="taxes"]'
     await expect(page.locator(tax)).toHaveAttribute('data-pending', 'true')
     const neutral = palette.surface.map((value, index) => value * .55 + palette.bg[index] * .45)
     sameColour(await paint(page, tax), neutral)
     await page.screenshot({ path: info.outputPath(`financials-loss-${theme}.png`), fullPage: true })
     await page.setViewportSize({ width: 390, height: 844 })
-    sameColour(await paint(page, '[data-flow-variant="narrow"] [data-flow-amount="netIncome"]', 'backgroundColor'), palette.down)
-    sameColour(await paint(page, '[data-flow-variant="narrow"] path[data-flow-role="profit"]', 'stroke'), palette.down)
+    sameColour(await paint(page, '[data-flow-variant="narrow"]:visible [data-flow-amount="netIncome"]', 'backgroundColor'), palette.down)
+    sameColour(await paint(page, '[data-flow-variant="narrow"]:visible path[data-flow-role="profit"]', 'stroke'), palette.down)
     await page.screenshot({ path: info.outputPath(`financials-loss-compact-${theme}.png`), fullPage: true })
     await page.setViewportSize({ width: 1440, height: 900 })
     await years.getByRole('radio', { name: '2023', exact: true }).click()
-    const gross = '[data-flow-variant="wide"] [data-flow-shape="grossProfit"]'
+    const gross = '[data-flow-variant="wide"]:visible [data-flow-shape="grossProfit"]'
     await expect(page.locator(gross)).toHaveAttribute('data-pending', 'true')
     // The pending attribute can arrive before SVG paint settles after returning
     // from the compact layout. Poll the actual colour with the same tolerance.
