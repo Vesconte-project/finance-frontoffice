@@ -70,7 +70,10 @@ export function viewForRange(bars: readonly OhlcPoint[], range: ExpandedChartRan
   const n = bars.length
   const start = rangeStartIndex(bars, range)
   const span = Math.max(1, n - start)
-  return clampView({ from: start - 0.5, to: n - 0.5 + Math.max(2, span * 0.04) }, n)
+  // clampView caps the span at n + 40. A larger right margin would be
+  // recentered by the clamp and move the oldest bars out of ALL's viewport.
+  const rightMargin = Math.min(40, Math.max(2, span * 0.04))
+  return clampView({ from: start - 0.5, to: n - 0.5 + rightMargin }, n)
 }
 
 /** Keeps the view between MIN_VISIBLE_BARS and all bars, with a small margin past either end. */

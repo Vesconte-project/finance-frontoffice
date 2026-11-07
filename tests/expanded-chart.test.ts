@@ -67,6 +67,18 @@ test('a range view shows its bars and leaves room for the last price', () => {
   assert.ok(view.to > bars.length - 0.5)
 })
 
+test('ALL includes both endpoints of long histories after clamping the viewport', () => {
+  for (const days of [13_000, 25_000]) {
+    const bars = weekdayBars(days)
+    const view = viewForRange(bars, 'ALL')
+    const summary = summarizeVisible(bars, view)!
+    assert.equal(summary.firstDate, bars[0].date)
+    assert.equal(summary.lastDate, bars.at(-1)!.date)
+    assert.ok(view.from <= 0)
+    assert.ok(view.to >= bars.length - 1)
+  }
+})
+
 test('clampView keeps a minimum span and stays near the data', () => {
   const tiny = clampView({ from: 100, to: 101 }, 500)
   assert.ok(tiny.to - tiny.from >= MIN_VISIBLE_BARS)
