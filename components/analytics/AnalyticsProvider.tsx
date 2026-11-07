@@ -4,6 +4,12 @@ import { useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { useReportWebVitals } from 'next/web-vitals'
 import { consumeNavigationType, trackEvent } from '@/lib/analytics'
+import { createWebVitalsReporter } from '@/lib/web-vitals-report'
+
+const reportWebVital = createWebVitalsReporter(
+  (event, properties) => trackEvent(event, properties),
+  () => window.location.pathname,
+)
 
 /**
  * Records a committed page view on first paint and on every client navigation,
@@ -46,17 +52,8 @@ export default function AnalyticsProvider() {
     })
   }, [pathname])
 
-  useReportWebVitals((metric) => {
-    // CLS is unitless; every other metric is milliseconds. Rounding keeps the
-    // log line small without losing anything actionable.
-    const value = metric.name === 'CLS' ? Math.round(metric.value * 1000) / 1000 : Math.round(metric.value)
-    trackEvent('web_vitals', {
-      metric: metric.name,
-      value,
-      rating: 'rating' in metric ? String(metric.rating) : null,
-      path: pathname,
-    })
-  })
+  // Stable identity: an inline callback would register another listener per render.
+  useReportWebVitals(reportWebVital)
 
   return null
 }
