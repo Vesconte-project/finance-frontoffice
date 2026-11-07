@@ -174,7 +174,7 @@ test('the tabs read their amounts in the display currency; indicators and signal
   assert.doesNotMatch(readFileSync('app/(app)/stocks/[ticker]/signals/page.tsx', 'utf8'), /display-currency|displayCurrency/)
   const overview = readFileSync('app/(app)/stocks/[ticker]/page.tsx', 'utf8')
   // The bars that feed the technical summary are read as reported.
-  assert.match(overview, /getOhlcData\(context\.ticker, 0, expectsPrices\)/)
+  assert.match(overview, /getOhlcData\(context\.ticker, periodDays, expectsPrices, requestCurrency\)/)
 })
 
 
