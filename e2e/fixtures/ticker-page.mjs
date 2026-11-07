@@ -86,6 +86,21 @@ export function tickerOhlcFixture(ticker, periodDays) {
   }))
 }
 
+/** Contiguous backward pages, matching the backend's weekly/600 contract.
+ * Preserve the entire fixture, including 1991. Anchor weeks at the latest
+ * close so the final row is also the latest quoted session.
+ */
+export function tickerPricePageFixture(ticker, resource, periodDays, endDate = '9999-12-31') {
+  const rows = resource === 'ohlc' ? tickerOhlcFixture(ticker, periodDays) : tickerHistoryFixture(ticker, periodDays)
+  const weekly = rows.filter((_, i) => (rows.length - 1 - i) % 5 === 0)
+    .filter(row => row.date <= endDate)
+  const page = weekly.slice(-600)
+  const nextEnd = weekly.length > 600
+    ? new Date(Date.parse(`${page[0].date}T00:00:00Z`) - DAY_MS).toISOString().slice(0, 10)
+    : null
+  return { rows: page, nextEnd }
+}
+
 /** Invented technical values; stale is the default browser-fixture state. */
 export function tickerTechnicalSeriesFixture(ticker, { ready = false } = {}) {
   const rows = closes(ticker, 3650)
