@@ -1,3 +1,5 @@
+import { orderedPriceRows } from './full-history'
+
 /**
  * Display currency for the ticker pages. The page always reads in the
  * listing's own currency; a display currency chosen in the URL
@@ -260,7 +262,7 @@ export type ConvertedClose = {
  */
 export function convertedClosesFromHistory(rows: unknown, target: string): ConvertedClose[] {
   if (!Array.isArray(rows)) return []
-  const byDate = new Map<string, ConvertedClose>()
+  const points: ConvertedClose[] = []
   for (const value of rows) {
     const row = asRecord(value)
     const date = text(row?.date)?.slice(0, 10) ?? null
@@ -268,9 +270,9 @@ export function convertedClosesFromHistory(rows: unknown, target: string): Conve
     if (!row || !date || close === null || close <= 0) continue
     if (row.price_basis !== 'adjusted') throw new Error('adjusted_price_input_invalid')
     const conversion = convertedValueOf(row, 'close', target)
-    byDate.set(date, { date, close, price_basis: 'adjusted', converted: conversion && conversion.value > 0 ? conversion.value : null })
+    points.push({ date, close, price_basis: 'adjusted', converted: conversion && conversion.value > 0 ? conversion.value : null })
   }
-  return [...byDate.values()].sort((left, right) => left.date.localeCompare(right.date))
+  return orderedPriceRows(points)
 }
 
 /** Parses the local route's `/api/stocks/{ticker}/history?currency=` answer. */
@@ -473,7 +475,7 @@ export function convertedOhlcFromRows(rows: unknown, target: string): Array<{
   volume: number | null
 }> {
   if (!Array.isArray(rows)) return []
-  const byDate = new Map<string, ReturnType<typeof convertedOhlcFromRows>[number]>()
+  const points: ReturnType<typeof convertedOhlcFromRows> = []
   for (const value of rows) {
     const row = asRecord(value)
     const date = text(row?.date)?.slice(0, 10) ?? null
@@ -484,9 +486,9 @@ export function convertedOhlcFromRows(rows: unknown, target: string): Array<{
       const converted = convertedValueOf(row, field, target)?.value ?? null
       return converted !== null && converted > 0 ? converted : null
     }
-    byDate.set(date, { price_basis: 'adjusted', date, open: price('open'), high: price('high'), low: price('low'), close, volume: finite(row.volume) })
+    points.push({ price_basis: 'adjusted', date, open: price('open'), high: price('high'), low: price('low'), close, volume: finite(row.volume) })
   }
-  return [...byDate.values()].sort((left, right) => left.date.localeCompare(right.date))
+  return orderedPriceRows(points)
 }
 
 /**
