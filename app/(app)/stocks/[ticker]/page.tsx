@@ -317,17 +317,25 @@ export default async function TickerPage({
   // Reported annual revenue for the Fundamentals card: the same series the
   // Fundamentals tab draws (Spec PRD-78, "Os mesmos números em todas as tabs").
   // Not awaited; the card waits for it on its own.
+  // The atlas panel depends on nothing above: start it now, not after the prices (ENG-272).
+  const atlasCompanyPromise = runWithBackendRequestLogContext(requestLogContext, () => getAtlasCompany(ticker))
+    .catch(() => ({ status: 'unavailable' as const }))
+  // The complete history walks its pages one after another (~2.8 s measured on 08/11). The page
+  // renders with the last year and streams the complete history to the chart when it arrives.
+  const fullOhlcPromise: Promise<OhlcLoadResult> = runWithBackendRequestLogContext(requestLogContext,
+    () => loadStockOhlcDataset(requestLogContext, tickerSummary.coverage))
+    .catch((error: unknown) => ohlcBackendFailureResult({
+      reason: error instanceof Error ? error.message : 'complete history unavailable', backendStatus: null }))
   const revenuePromise = runWithBackendRequestLogContext(requestLogContext, () =>
     loadOptionalStockDataset<ReportedPoint[] | null>(requestLogContext, `/tickers/${ticker}/financial-statements`, null, async () => {
       const income = await getTickerFinancialStatements(ticker, { statementType: 'income_statement', periodType: 'annual', limit: 500, displayCurrency })
       return income.available ? annualSeries(income.rows, 'revenue') : null
     })
   )
-  const [ohlcResult, dailyOhlcResult, fundamentals] = await runWithBackendRequestLogContext(
+  const [dailyOhlcResult, fundamentals] = await runWithBackendRequestLogContext(
     requestLogContext,
     () =>
       Promise.all([
-        loadStockOhlcDataset(requestLogContext, tickerSummary.coverage),
         loadStockOhlcDataset(requestLogContext, tickerSummary.coverage, 365, displayCurrency ?? undefined),
         loadOptionalStockDataset<TickerFundamentals | null>(
           requestLogContext,
@@ -338,24 +346,26 @@ export default async function TickerPage({
       ])
   )
 
-  const ohlcData = ohlcResult.rows
   logStockPageEvent('info', 'render data ready', requestLogContext, {
-    hasOhlc: ohlcData.length > 0,
-    ohlcStatus: ohlcResult.status,
-    ohlcReason: ohlcResult.reason,
-    ohlcCacheKey: ohlcResult.cacheKey,
+    hasOhlc: dailyOhlcResult.rows.length > 0,
+    ohlcStatus: dailyOhlcResult.status,
+    ohlcReason: dailyOhlcResult.reason,
+    ohlcCacheKey: dailyOhlcResult.cacheKey,
     scorecardReadiness: scorecard.readiness,
   })
+  // The first paint's chart state comes from the last year; the client upgrades it with the
+  // complete history when that arrives.
   const historicalChartState =
-    ohlcResult.status === 'loaded'
+    dailyOhlcResult.status === 'loaded'
       ? 'loaded'
-      : ohlcResult.status === 'empty'
+      : dailyOhlcResult.status === 'empty'
         ? 'empty'
         : 'error'
 
-  // Related companies are the company's strongest ties on the weekly atlas. Signed out,
-  // the atlas sends no ties at all, so the section invites the reader to an account.
-  const atlasCompany = await runWithBackendRequestLogContext(requestLogContext, () => getAtlasCompany(ticker))
+  // Related companies are the company's strongest ties on the weekly atlas, with each one's last
+  // daily move served in the same panel (ENG-272): no quote per related company, so no company
+  // budget spent on names the reader did not open, and no extra stage after the atlas.
+  const atlasCompany = await atlasCompanyPromise
   if (atlasCompany.status === 'unavailable') {
     logStockPageEvent('error', 'atlas company panel unavailable', requestLogContext, {
       endpoint: `/v1/atlas/companies/${ticker}`,
@@ -367,12 +377,12 @@ export default async function TickerPage({
   const relationshipsGate = atlasCompany.status === 'denied' && atlasCompany.reason === 'sign_in_required' ? 'signedOut' : null
   const relatedAssetsPromise = runWithBackendRequestLogContext(requestLogContext, () => {
       const neighbours = atlasCompany.status === 'ok' ? atlasCompany.data.neighbours.slice(0, 6).sort((a, b) => Math.abs(b.correlation ?? 0) - Math.abs(a.correlation ?? 0)).slice(0, 5) : []
-      return Promise.all(neighbours.map((item) => getStockQuote(item.symbol).catch(() => null).then((quote) => ({
+      return Promise.resolve(neighbours.map((item) => ({
         symbol: item.symbol,
-        name: item.name ?? quote?.name ?? null,
-        changePercent: quote?.changePercent ?? null,
+        name: item.name ?? null,
+        changePercent: item.changePercent,
         strength: item.correlation,
-      }))))
+      })))
     })
     .catch((error) => {
       const details = backendErrorDetails(error)
@@ -466,10 +476,9 @@ export default async function TickerPage({
         currency={currency}
         isFund={isEtf}
         historicalChartState={historicalChartState}
-        ohlcData={ohlcData}
+        fullOhlc={fullOhlcPromise}
         dailyOhlcData={dailyOhlcResult.rows}
         dailyResolution={dailyOhlcResult.resolution ?? null}
-        fullResolution={ohlcResult.resolution ?? null}
         dailyDisplayBars={dailyDisplayBars}
         displayBars={displayBars}
         marketCap={marketCapValue}

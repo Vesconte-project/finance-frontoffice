@@ -140,7 +140,7 @@ test('panels read the signed-out and signed-in shapes', () => {
     neighbours: [{ symbol: 'NVDA', name: 'NVIDIA', zoneId: 'z1', correlation: 0.61 }, { symbol: 'X', correlation: 'high' }],
   })
   assert.ok(inside)
-  assert.deepEqual(inside.neighbours, [{ symbol: 'NVDA', name: 'NVIDIA', zoneId: 'z1', correlation: 0.61, total: null, trend: null }])
+  assert.deepEqual(inside.neighbours, [{ symbol: 'NVDA', name: 'NVIDIA', zoneId: 'z1', correlation: 0.61, total: null, trend: null, changePercent: null }])
   assert.equal(inside.memberships.length, 2)
 
   const zone = parseZonePanel({ asOf: '2026-10-16', access: signedOutAccess, zoneId: 'residual-a', label: 'Semis', memberCount: 40, leaders: [{ symbol: 'NVDA', name: null }] })
@@ -395,4 +395,19 @@ test('zone colours depend on the zone id only, so they hold from week to week', 
   const second = zoneHues([{ zoneId: 'a' }, { zoneId: 'b' }] as never)
   assert.deepEqual([...first.entries()].sort(), [...second.entries()].sort())
   assert.notEqual(first.get('a'), first.get('b'))
+})
+
+test('a related company carries its last daily move from the panel itself (ENG-272)', () => {
+  const panel = parseCompanyPanel({
+    asOf: '2026-11-06', symbol: 'PFE', zoneId: 'z1',
+    access: signedOutAccess,
+    neighbours: [
+      { symbol: 'LLY', name: 'Eli Lilly', zoneId: 'z1', correlation: 0.52, changePercent: 1.25 },
+      { symbol: 'MRK', name: 'Merck', zoneId: 'z1', correlation: 0.48, changePercent: null },
+      { symbol: 'AMGN', name: 'Amgen', zoneId: 'z1', correlation: 0.41, changePercent: 'n/a' },
+    ],
+    neighbourCount: 3,
+  })
+  assert.ok(panel)
+  assert.deepEqual(panel.neighbours.map((n) => [n.symbol, n.changePercent]), [['LLY', 1.25], ['MRK', null], ['AMGN', null]])
 })

@@ -10,7 +10,7 @@ import SegmentedControl from '@/components/ui/SegmentedControl'
 import TemporalLineChart, { type TemporalLinePoint } from '@/components/charts/TemporalLineChart'
 import { ADJUSTED_PRICE_LABEL, ADJUSTED_CHART_VERSION } from '@/lib/price-basis'
 import { barsForRange, chartCurrencySeries } from '@/lib/expanded-chart'
-import type { MarketResolution } from '@/lib/ohlc-data'
+import type { MarketResolution, OhlcLoadResult } from '@/lib/ohlc-data'
 import type { OhlcPoint } from '@/lib/finance'
 import type { Scorecard } from '@/lib/scorecard-types'
 import {
@@ -87,11 +87,15 @@ type StockOverviewClientProps = {
   currency: string
   /** From the registry's instrument type (Spec "Instrument type as the single source V1"). */
   isFund: boolean
+  /** The first paint's chart state, from the last year. */
   historicalChartState: HistoricalChartState
-  ohlcData: OhlcPoint[]
+  /**
+   * The complete history, streamed (ENG-272): it walks its pages one after another, so the page
+   * renders with the last year and upgrades the chart and the technical read when it arrives.
+   */
+  fullOhlc: Promise<Pick<OhlcLoadResult, 'rows' | 'status' | 'resolution'>>
   dailyOhlcData: OhlcPoint[]
   dailyResolution: MarketResolution
-  fullResolution: MarketResolution
   dailyDisplayBars: OhlcPoint[] | null
   /** The same bars in the display currency, for the charts only; null without one. */
   displayBars?: OhlcPoint[] | null
@@ -481,11 +485,10 @@ export default function StockOverviewClient({
   ticker,
   currency,
   isFund,
-  historicalChartState,
-  ohlcData,
+  historicalChartState: firstChartState,
+  fullOhlc,
   dailyOhlcData,
   dailyResolution,
-  fullResolution,
   dailyDisplayBars,
   displayBars = null,
   marketCap,
@@ -500,6 +503,17 @@ export default function StockOverviewClient({
   netCash,
   displayCurrency = null,
 }: StockOverviewClientProps) {
+  // Until the complete history arrives, the last year stands in for it everywhere.
+  const [fullHistory, setFullHistory] = useState<Pick<OhlcLoadResult, 'rows' | 'status' | 'resolution'> | null>(null)
+  useEffect(() => {
+    let active = true
+    fullOhlc.then((result) => { if (active) setFullHistory(result) }, () => {})
+    return () => { active = false }
+  }, [fullOhlc])
+  const fullLoaded = fullHistory?.status === 'loaded' && fullHistory.rows.length > 0
+  const ohlcData = fullLoaded ? fullHistory.rows : dailyOhlcData
+  const fullResolution: MarketResolution = fullLoaded ? fullHistory.resolution ?? null : dailyResolution
+  const historicalChartState: HistoricalChartState = fullLoaded ? 'loaded' : firstChartState
   const [heroTimeframe, setHeroTimeframe] = useState<ChartTimeframe>('1Y')
   const [signalTimeframe, setSignalTimeframe] = useState<TechnicalTimeframe>('1D')
   const [selectedAxis, setSelectedAxis] = useState<ScorecardAxis['key'] | null>(null)
