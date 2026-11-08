@@ -1,10 +1,11 @@
 import 'server-only'
 
 import { getViewerAccess } from './billing'
-import { getPickRanking, normalizePickRanking, type PickFilters, type PickItem } from './picks'
+import { getPickRanking, getPickRankingSummary, normalizePickRanking } from './picks'
 import { platformAccess, platformEnabled } from './platform-server'
 import { PlatformError } from './platform-client'
-import { cutToTier, tierFor, type PickTier } from './picks-access-rules'
+import { tierFor } from './picks-access-rules'
+import { resolvePicksFor, type VisiblePicks } from './picks-resolution'
 import type { PickReadingKey } from './picks-content'
 
 /**
@@ -22,25 +23,7 @@ import type { PickReadingKey } from './picks-content'
 
 export type { PickTier } from './picks-access-rules'
 export { PICK_VISIBLE_LIMITS } from './picks-access-rules'
-
-export type VisiblePicks =
-  | { status: 'locked'; reading: PickReadingKey; tier: 'anonymous' | 'free' }
-  | {
-      status: 'ok'
-      reading: PickReadingKey
-      tier: PickTier
-      asOf: string | null
-      filters: PickFilters
-      /** Already cut to the tier. There is no longer list behind this one. */
-      items: PickItem[]
-      lockedCount: number
-      totalRanked: number
-    }
-  | {
-      status: 'unavailable'
-      reading: PickReadingKey
-      tier: PickTier
-    }
+export type { VisiblePicks } from './picks-resolution'
 
 /**
  * Resolve one ranking for the current viewer.
@@ -69,33 +52,5 @@ export async function resolveVisiblePicks(reading: PickReadingKey, options: { pu
     }
   }
   const viewer = await getViewerAccess(options)
-  const tier = tierFor(viewer)
-
-  let ranking: Awaited<ReturnType<typeof getPickRanking>> = null
-  try {
-    ranking = await getPickRanking(reading)
-  } catch (error) {
-    // Logged rather than swallowed: an unavailable ranking is a backend problem the
-    // page cannot describe, and the reader only sees "temporarily unavailable".
-    console.error('[picks] ranking unavailable', {
-      reading,
-      message: error instanceof Error ? error.message : String(error),
-    })
-    return { status: 'unavailable', reading, tier }
-  }
-
-  if (!ranking) return { status: 'unavailable', reading, tier }
-
-  const cut = cutToTier(ranking.items, tier)
-
-  return {
-    status: 'ok',
-    reading,
-    tier,
-    asOf: ranking.asOf,
-    filters: ranking.filters,
-    items: cut.items,
-    lockedCount: cut.lockedCount,
-    totalRanked: cut.totalRanked,
-  }
+  return resolvePicksFor(reading, tierFor(viewer), { ranking: getPickRanking, summary: getPickRankingSummary })
 }

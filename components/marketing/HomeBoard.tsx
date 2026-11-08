@@ -1,7 +1,10 @@
 import 'server-only'
 
 import Link from 'next/link'
-import { resolveVisiblePicks, type VisiblePicks } from '@/lib/picks-access'
+import { getViewerAccess } from '@/lib/billing'
+import { getPickRanking, getPickRankingSummary } from '@/lib/picks'
+import { tierFor } from '@/lib/picks-access-rules'
+import { loadHomeBoardFor, type HomeBoardData, type VisiblePicks } from '@/lib/picks-resolution'
 import {
   PICK_READING_CONTENT,
   PICK_READING_KEYS,
@@ -13,16 +16,15 @@ import {
 } from '@/lib/picks-content'
 import styles from './HomeBoard.module.css'
 
-export type HomeBoardData = Record<PickReadingKey, VisiblePicks>
+export type { HomeBoardData } from '@/lib/picks-resolution'
 
+/**
+ * The homepage is a public, anonymous page: its tier never comes from a session. At most one
+ * name-free summary read serves the three columns; hidden rankings are never read (ENG-268).
+ */
 export async function loadHomeBoardData(): Promise<HomeBoardData> {
-  const [longTerm, income, shortTerm] = await Promise.all([
-    resolveVisiblePicks('longTerm', { publicPage: true }),
-    resolveVisiblePicks('income', { publicPage: true }),
-    resolveVisiblePicks('shortTerm', { publicPage: true }),
-  ])
-
-  return { longTerm, income, shortTerm }
+  const viewer = await getViewerAccess({ publicPage: true })
+  return loadHomeBoardFor(tierFor(viewer), { ranking: getPickRanking, summary: getPickRankingSummary })
 }
 
 export function homeBoardHasData(data: HomeBoardData): boolean {

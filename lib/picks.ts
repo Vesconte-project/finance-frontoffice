@@ -163,6 +163,30 @@ async function loadPickRanking(reading: PickReadingKey): Promise<PickRanking | n
   return normalizePickRanking(payload, reading)
 }
 
+/** How many companies each reading ranks, without any name (ENG-268). */
+export type PickRankingSummary = { asOf: string | null; ranked: Partial<Record<PickReadingKey, number>> }
+
+export function normalizePickRankingSummary(raw: unknown): PickRankingSummary | null {
+  const record = asRecord(raw)
+  const readings = asRecord(record?.readings)
+  if (!record || !readings) return null
+  const ranked: Partial<Record<PickReadingKey, number>> = {}
+  for (const [key, value] of Object.entries(readings)) {
+    const count = readFiniteNumber(asRecord(value) ?? {}, 'ranked')
+    if (count !== null && count >= 0 && Number.isInteger(count)) ranked[key as PickReadingKey] = count
+  }
+  return { asOf: readString(record, 'asOf'), ranked }
+}
+
+/**
+ * The counts a reader who may not see the order is shown. One read serves every reading, names
+ * no company and so never spends the reader's company budget; the backend caches it for every
+ * anonymous visitor. Request-local memoization shares it between the board's columns.
+ */
+export const getPickRankingSummary = cache(async (): Promise<PickRankingSummary | null> =>
+  normalizePickRankingSummary(await fetchBackendJson<unknown>('/v1/screener/rankings/summary',
+    { context: 'backend.screener.rankings.summary' })))
+
 /** Request-local memoization; upstream admission remains per viewer. */
 export const getPickRanking = cache(async (reading: PickReadingKey): Promise<PickRanking | null> => loadPickRanking(reading))
 

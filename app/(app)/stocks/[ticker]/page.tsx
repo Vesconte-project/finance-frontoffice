@@ -2,6 +2,10 @@ import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import Badge from '@/components/ui/Badge'
 import EmptyState from '@/components/ui/EmptyState'
+import Link from 'next/link'
+import { buttonClass } from '@/components/ui/Button'
+import { marketLimitWait } from '@/lib/market-limit'
+import { loadStockSummaryState } from '@/lib/stock-summary-state'
 import RetryButton from '@/components/ui/RetryButton'
 import TrackEventOnMount from '@/components/analytics/TrackEventOnMount'
 import StockOverviewClient from '@/components/stocks/StockOverviewClient'
@@ -205,6 +209,13 @@ export async function generateMetadata({
   }
 }
 
+/** Only consulted after a 429, to offer what helps this viewer; any failure reads as signed out. */
+async function viewerIsSignedIn(): Promise<boolean> {
+  if (!process.env.CLERK_SECRET_KEY || !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) return false
+  const { auth } = await import('@clerk/nextjs/server')
+  return Boolean((await auth()).userId)
+}
+
 export default async function TickerPage({
   params,
   searchParams,
@@ -236,18 +247,53 @@ export default async function TickerPage({
   const screenerTag =
     sourceContext === 'screener' && screenerSignal ? `From Signals: ${screenerSignal}` : null
 
-  let tickerSummary: Awaited<ReturnType<typeof getTickerPageSummary>>
+  const summaryState = await loadStockSummaryState(
+    () => runWithBackendRequestLogContext(requestLogContext, () => getTickerPageSummary(ticker)),
+    viewerIsSignedIn,
+  )
 
-  try {
-    tickerSummary = await runWithBackendRequestLogContext(requestLogContext, () => getTickerPageSummary(ticker))
-  } catch (error) {
+  if (summaryState.status !== 'ok') {
+    const error = summaryState.status === 'error' ? summaryState.error : null
     const details = backendErrorDetails(error)
     logStockPageEvent('error', 'required summary unavailable', requestLogContext, {
       endpoint: `/tickers/${ticker}/summary`,
-      error: details.message,
+      error: summaryState.status === 'limit' ? 'market limit reached (429)' : details.message,
       aborted: details.aborted,
       timeout: details.timeout,
     })
+    if (summaryState.status === 'limit') {
+      // A reached limit, not a fault: no retry button, which would only spend the wait.
+      const wait = marketLimitWait(summaryState.notice)
+      return (
+        <div className="space-y-4">
+          {summaryState.signedIn ? (
+            <EmptyState
+              title="You have reached your plan's limit for company pages"
+              description={`You can open more company pages ${wait}.`}
+              action={
+                <Link prefetch={false} href="/pricing" className={buttonClass({ variant: 'secondary' })}
+                  data-analytics-id="market_limit_plans">
+                  See plans
+                </Link>
+              }
+              analyticsId="market_limit_reached_signed_in"
+            />
+          ) : (
+            <EmptyState
+              title="You have reached the limit for browsing without an account"
+              description={`Create a free account to keep reading, or come back ${wait}.`}
+              action={
+                <Link prefetch={false} href={`/sign-up?redirect_url=${encodeURIComponent(`/stocks/${ticker}`)}`}
+                  className={buttonClass({ variant: 'primary' })} data-analytics-id="market_limit_sign_up">
+                  Create a free account
+                </Link>
+              }
+              analyticsId="market_limit_reached"
+            />
+          )}
+        </div>
+      )
+    }
     return (
       <div className="space-y-4">
         <EmptyState
@@ -258,6 +304,7 @@ export default async function TickerPage({
       </div>
     )
   }
+  const tickerSummary = summaryState.summary
 
   // The listing's currency, as the header shows it.
   const currency = tickerSummary.asset?.currency ?? tickerSummary.fundamentalsSummary?.currency ?? currencyForTicker(ticker)
