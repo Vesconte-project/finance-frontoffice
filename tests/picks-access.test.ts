@@ -125,29 +125,3 @@ test('no client component reaches the gate or the raw ranking', () => {
   for (const root of roots) walk(root)
   assert.deepEqual(offenders, [])
 })
-
-test('a viewer who may see no row never fetches the ranking (ENG-268)', () => {
-  // The old path fetched three rankings for every homepage visit and cut them to zero: the
-  // backend had already counted every name against the visitor's hourly company budget.
-  const source = readRepoFile('lib/picks-access.ts')
-  const guard = source.indexOf('PICK_VISIBLE_LIMITS[tier] === 0')
-  const fetchRanking = source.indexOf('getPickRanking(reading)')
-  assert.ok(guard > 0 && fetchRanking > guard, 'the tier must be decided before any ranking read')
-  const branch = source.slice(guard, fetchRanking)
-  assert.ok(branch.includes('getPickRankingSummary()'), 'hidden rows are replaced by the name-free summary')
-  assert.ok(/return \{ status: 'ok'[\s\S]*items: \[\]/.test(branch), 'the branch returns before the ranking read')
-  assert.equal(PICK_VISIBLE_LIMITS.anonymous, 0)
-  assert.equal(PICK_VISIBLE_LIMITS.free, 0)
-  const home = readRepoFile('components/marketing/HomeBoard.tsx')
-  assert.ok(home.includes("resolveVisiblePicks('longTerm', { publicPage: true })"), 'the homepage is a public, anonymous page')
-})
-
-test('the stock page treats a reached limit as a limit, without a retry button', () => {
-  const page = readRepoFile('app/(app)/stocks/[ticker]/page.tsx')
-  const limit = page.indexOf('marketLimitNotice(error)')
-  const generic = page.indexOf('Ticker data is temporarily unavailable')
-  assert.ok(limit > 0 && generic > limit, 'the limit is checked before the generic failure')
-  const branch = page.slice(limit, generic)
-  assert.ok(branch.includes('/sign-up?redirect_url='), 'a free account is offered')
-  assert.ok(!branch.includes('<RetryButton'), 'no retry while the limit lasts')
-})

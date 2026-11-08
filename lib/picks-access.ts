@@ -1,10 +1,11 @@
 import 'server-only'
 
 import { getViewerAccess } from './billing'
-import { getPickRanking, getPickRankingSummary, normalizePickRanking, type PickFilters, type PickItem } from './picks'
+import { getPickRanking, getPickRankingSummary, normalizePickRanking } from './picks'
 import { platformAccess, platformEnabled } from './platform-server'
 import { PlatformError } from './platform-client'
-import { PICK_VISIBLE_LIMITS, cutToTier, tierFor, type PickTier } from './picks-access-rules'
+import { tierFor } from './picks-access-rules'
+import { resolvePicksFor, type VisiblePicks } from './picks-resolution'
 import type { PickReadingKey } from './picks-content'
 
 /**
@@ -20,30 +21,9 @@ import type { PickReadingKey } from './picks-content'
  * payload either way. The cut happens here, before anything is passed to a component.
  */
 
-const DEFAULT_FILTERS: PickFilters = { minCoverage: 0, eligibility: null, includeNonCompanies: false,
-  nonCompanyRule: null, sector: null }
-
 export type { PickTier } from './picks-access-rules'
 export { PICK_VISIBLE_LIMITS } from './picks-access-rules'
-
-export type VisiblePicks =
-  | { status: 'locked'; reading: PickReadingKey; tier: 'anonymous' | 'free' }
-  | {
-      status: 'ok'
-      reading: PickReadingKey
-      tier: PickTier
-      asOf: string | null
-      filters: PickFilters
-      /** Already cut to the tier. There is no longer list behind this one. */
-      items: PickItem[]
-      lockedCount: number
-      totalRanked: number
-    }
-  | {
-      status: 'unavailable'
-      reading: PickReadingKey
-      tier: PickTier
-    }
+export type { VisiblePicks } from './picks-resolution'
 
 /**
  * Resolve one ranking for the current viewer.
@@ -72,52 +52,5 @@ export async function resolveVisiblePicks(reading: PickReadingKey, options: { pu
     }
   }
   const viewer = await getViewerAccess(options)
-  const tier = tierFor(viewer)
-
-  // Never fetch rows the viewer may not see (ENG-268). Anonymous and free readers get the count
-  // from a summary that names no company: fetching the ranking only to cut it to zero spent their
-  // whole hourly company budget on names they were never shown.
-  if (PICK_VISIBLE_LIMITS[tier] === 0) {
-    try {
-      const summary = await getPickRankingSummary()
-      const totalRanked = summary?.ranked[reading]
-      if (!summary || totalRanked === undefined) return { status: 'unavailable', reading, tier }
-      return { status: 'ok', reading, tier, asOf: summary.asOf, filters: DEFAULT_FILTERS,
-        items: [], lockedCount: totalRanked, totalRanked }
-    } catch (error) {
-      console.error('[picks] ranking summary unavailable', {
-        reading,
-        message: error instanceof Error ? error.message : String(error),
-      })
-      return { status: 'unavailable', reading, tier }
-    }
-  }
-
-  let ranking: Awaited<ReturnType<typeof getPickRanking>> = null
-  try {
-    ranking = await getPickRanking(reading)
-  } catch (error) {
-    // Logged rather than swallowed: an unavailable ranking is a backend problem the
-    // page cannot describe, and the reader only sees "temporarily unavailable".
-    console.error('[picks] ranking unavailable', {
-      reading,
-      message: error instanceof Error ? error.message : String(error),
-    })
-    return { status: 'unavailable', reading, tier }
-  }
-
-  if (!ranking) return { status: 'unavailable', reading, tier }
-
-  const cut = cutToTier(ranking.items, tier)
-
-  return {
-    status: 'ok',
-    reading,
-    tier,
-    asOf: ranking.asOf,
-    filters: ranking.filters,
-    items: cut.items,
-    lockedCount: cut.lockedCount,
-    totalRanked: cut.totalRanked,
-  }
+  return resolvePicksFor(reading, tierFor(viewer), { ranking: getPickRanking, summary: getPickRankingSummary })
 }
