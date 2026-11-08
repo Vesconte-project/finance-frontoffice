@@ -1,10 +1,10 @@
 import 'server-only'
 
 import { getViewerAccess } from './billing'
-import { getPickRanking, normalizePickRanking, type PickFilters, type PickItem } from './picks'
+import { getPickRanking, getPickRankingSummary, normalizePickRanking, type PickFilters, type PickItem } from './picks'
 import { platformAccess, platformEnabled } from './platform-server'
 import { PlatformError } from './platform-client'
-import { cutToTier, tierFor, type PickTier } from './picks-access-rules'
+import { PICK_VISIBLE_LIMITS, cutToTier, tierFor, type PickTier } from './picks-access-rules'
 import type { PickReadingKey } from './picks-content'
 
 /**
@@ -19,6 +19,9 @@ import type { PickReadingKey } from './picks-content'
  * twenty-five to a component that maps only ten, both fail — the data is in the
  * payload either way. The cut happens here, before anything is passed to a component.
  */
+
+const DEFAULT_FILTERS: PickFilters = { minCoverage: 0, eligibility: null, includeNonCompanies: false,
+  nonCompanyRule: null, sector: null }
 
 export type { PickTier } from './picks-access-rules'
 export { PICK_VISIBLE_LIMITS } from './picks-access-rules'
@@ -70,6 +73,25 @@ export async function resolveVisiblePicks(reading: PickReadingKey, options: { pu
   }
   const viewer = await getViewerAccess(options)
   const tier = tierFor(viewer)
+
+  // Never fetch rows the viewer may not see (ENG-268). Anonymous and free readers get the count
+  // from a summary that names no company: fetching the ranking only to cut it to zero spent their
+  // whole hourly company budget on names they were never shown.
+  if (PICK_VISIBLE_LIMITS[tier] === 0) {
+    try {
+      const summary = await getPickRankingSummary()
+      const totalRanked = summary?.ranked[reading]
+      if (!summary || totalRanked === undefined) return { status: 'unavailable', reading, tier }
+      return { status: 'ok', reading, tier, asOf: summary.asOf, filters: DEFAULT_FILTERS,
+        items: [], lockedCount: totalRanked, totalRanked }
+    } catch (error) {
+      console.error('[picks] ranking summary unavailable', {
+        reading,
+        message: error instanceof Error ? error.message : String(error),
+      })
+      return { status: 'unavailable', reading, tier }
+    }
+  }
 
   let ranking: Awaited<ReturnType<typeof getPickRanking>> = null
   try {

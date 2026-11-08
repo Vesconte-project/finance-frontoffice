@@ -2,6 +2,9 @@ import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import Badge from '@/components/ui/Badge'
 import EmptyState from '@/components/ui/EmptyState'
+import Link from 'next/link'
+import { buttonClass } from '@/components/ui/Button'
+import { marketLimitNotice, marketLimitWait } from '@/lib/market-limit'
 import RetryButton from '@/components/ui/RetryButton'
 import TrackEventOnMount from '@/components/analytics/TrackEventOnMount'
 import StockOverviewClient from '@/components/stocks/StockOverviewClient'
@@ -248,6 +251,25 @@ export default async function TickerPage({
       aborted: details.aborted,
       timeout: details.timeout,
     })
+    const limit = marketLimitNotice(error)
+    if (limit) {
+      // A reached limit, not a fault: no retry button, which would only spend the wait.
+      return (
+        <div className="space-y-4">
+          <EmptyState
+            title="You have reached the limit for browsing without an account"
+            description={`Create a free account to keep reading, or come back ${marketLimitWait(limit)}.`}
+            action={
+              <Link prefetch={false} href={`/sign-up?redirect_url=${encodeURIComponent(`/stocks/${ticker}`)}`}
+                className={buttonClass({ variant: 'primary' })} data-analytics-id="market_limit_sign_up">
+                Create a free account
+              </Link>
+            }
+            analyticsId="market_limit_reached"
+          />
+        </div>
+      )
+    }
     return (
       <div className="space-y-4">
         <EmptyState
