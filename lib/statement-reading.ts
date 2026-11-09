@@ -28,8 +28,10 @@ export type ReportedPoint = {
   currency: string | null
 }
 
+type DetailRatioKey = `${'researchAndDevelopment' | 'sga' | 'interestExpense' | 'nonOperatingInterestExpense'}${'Share' | 'Growth'}`
+
 type CoreMeasureKey = 'revenue' | 'grossProfit' | 'operatingIncome' | 'netIncome'
-export type MeasureKey = CoreMeasureKey | 'costOfSales' | 'operatingCosts' | 'incomeTax' | 'researchAndDevelopment' | 'sga' | 'interestExpense' | 'nonOperatingInterestExpense' | 'revenueGrowth' | 'netIncomeGrowth' | 'revenueShare' | 'grossProfitShare' | 'operatingIncomeShare' | 'netIncomeShare' | 'costOfSalesShare' | 'operatingCostsShare' | 'incomeTaxShare' | 'grossProfitGrowth' | 'operatingIncomeGrowth' | 'costOfSalesGrowth' | 'operatingCostsGrowth' | 'incomeTaxGrowth'
+export type MeasureKey = CoreMeasureKey | DetailRatioKey | 'generalAndAdministrative' | 'sellingAndMarketing' | 'interestIncome' | 'netInterestIncome' | 'costOfSales' | 'operatingCosts' | 'incomeTax' | 'researchAndDevelopment' | 'sga' | 'interestExpense' | 'nonOperatingInterestExpense' | 'revenueGrowth' | 'netIncomeGrowth' | 'revenueShare' | 'grossProfitShare' | 'operatingIncomeShare' | 'netIncomeShare' | 'costOfSalesShare' | 'operatingCostsShare' | 'incomeTaxShare' | 'grossProfitGrowth' | 'operatingIncomeGrowth' | 'costOfSalesGrowth' | 'operatingCostsGrowth' | 'incomeTaxGrowth'
 
 type MeasureMatcher = {
   /** Exact `lineItemId` spellings, tried first (the vocabulary is undocumented, ENG-87). */
@@ -40,6 +42,18 @@ type MeasureMatcher = {
 }
 
 const MEASURES: Record<MeasureKey, MeasureMatcher> = {
+  generalAndAdministrative: { prefer: /^general_and_administrative$/, accept: /^general_and_administrative$/, reject: /(?!) / },
+  sellingAndMarketing: { prefer: /^selling_and_marketing$/, accept: /^selling_and_marketing$/, reject: /(?!) / },
+  interestIncome: { prefer: /^interest_income$/, accept: /^interest_income$/, reject: /(?!) / },
+  netInterestIncome: { prefer: /^net_interest_income$/, accept: /^net_interest_income$/, reject: /(?!) / },
+  researchAndDevelopmentShare: { prefer: /^research_and_development_share_of_revenue$/, accept: /^research_and_development_share_of_revenue$/, reject: /(?!) / },
+  researchAndDevelopmentGrowth: { prefer: /^research_and_development_growth_yoy$/, accept: /^research_and_development_growth_yoy$/, reject: /(?!) / },
+  sgaShare: { prefer: /^selling_general_and_administrative_share_of_revenue$/, accept: /^selling_general_and_administrative_share_of_revenue$/, reject: /(?!) / },
+  sgaGrowth: { prefer: /^selling_general_and_administrative_growth_yoy$/, accept: /^selling_general_and_administrative_growth_yoy$/, reject: /(?!) / },
+  interestExpenseShare: { prefer: /^interest_expense_share_of_revenue$/, accept: /^interest_expense_share_of_revenue$/, reject: /(?!) / },
+  interestExpenseGrowth: { prefer: /^interest_expense_growth_yoy$/, accept: /^interest_expense_growth_yoy$/, reject: /(?!) / },
+  nonOperatingInterestExpenseShare: { prefer: /^non_operating_interest_expense_share_of_revenue$/, accept: /^non_operating_interest_expense_share_of_revenue$/, reject: /(?!) / },
+  nonOperatingInterestExpenseGrowth: { prefer: /^non_operating_interest_expense_growth_yoy$/, accept: /^non_operating_interest_expense_growth_yoy$/, reject: /(?!) / },
   grossProfitGrowth: { prefer: /^gross_profit_growth_yoy$/, accept: /^gross_profit_growth_yoy$/, reject: /(?!) / },
   operatingIncomeGrowth: { prefer: /^operating_income_growth_yoy$/, accept: /^operating_income_growth_yoy$/, reject: /(?!) / },
   costOfSalesGrowth: { prefer: /^cost_of_revenue_growth_yoy$/, accept: /^cost_of_revenue_growth_yoy$/, reject: /(?!) / },
@@ -155,6 +169,18 @@ export function incomeSeries(rows: readonly StatementRowLike[]): IncomeSeries {
     incomeTax: annualSeries(rows, 'incomeTax'),
     researchAndDevelopment: annualSeries(rows, 'researchAndDevelopment'),
     sga: annualSeries(rows, 'sga'),
+    generalAndAdministrative: annualSeries(rows, 'generalAndAdministrative'),
+    sellingAndMarketing: annualSeries(rows, 'sellingAndMarketing'),
+    interestIncome: annualSeries(rows, 'interestIncome'),
+    netInterestIncome: annualSeries(rows, 'netInterestIncome'),
+    researchAndDevelopmentShare: annualSeries(rows, 'researchAndDevelopmentShare'),
+    researchAndDevelopmentGrowth: annualSeries(rows, 'researchAndDevelopmentGrowth'),
+    sgaShare: annualSeries(rows, 'sgaShare'),
+    sgaGrowth: annualSeries(rows, 'sgaGrowth'),
+    interestExpenseShare: annualSeries(rows, 'interestExpenseShare'),
+    interestExpenseGrowth: annualSeries(rows, 'interestExpenseGrowth'),
+    nonOperatingInterestExpenseShare: annualSeries(rows, 'nonOperatingInterestExpenseShare'),
+    nonOperatingInterestExpenseGrowth: annualSeries(rows, 'nonOperatingInterestExpenseGrowth'),
     interestExpense: annualSeries(rows, 'interestExpense'),
     nonOperatingInterestExpense: annualSeries(rows, 'nonOperatingInterestExpense'),
     revenueGrowth: annualSeries(rows, 'revenueGrowth'),

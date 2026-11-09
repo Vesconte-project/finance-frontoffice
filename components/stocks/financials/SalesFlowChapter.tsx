@@ -22,6 +22,7 @@ import {
   type WideNode,
 } from '@/lib/sales-flow'
 import { formatFraction, largestAnnualChanges, shortYear, valueInPeriod, valueInYear, type IncomeSeries, type MeasureKey } from '@/lib/statement-reading'
+import { STATEMENT_DETAILS, statementDetailLines, type StatementDetailId } from '@/lib/financial-statement-details'
 import styles from './Financials.module.css'
 
 const SERIES_OF: Partial<Record<FlowNodeId, MeasureKey>> = {
@@ -79,12 +80,14 @@ function NodeText({
   unit,
   currency,
   chevron = false,
+  detailAvailable = false,
 }: {
   id: FlowNodeId
   value: number | null
   unit: Unit
   currency: string
   chevron?: boolean
+  detailAvailable?: boolean
 }) {
   const reported = isReportedNode(id)
   return (
@@ -93,7 +96,7 @@ function NodeText({
         {NODE_LABEL[id]}
         {chevron ? <span aria-hidden="true" className={styles.chevron}>›</span> : null}
       </span>
-      {reported && value !== null ? (
+      {detailAvailable ? <span className={styles.detailHint}>View reported items</span> : reported && value !== null ? (
         <span className={styles.nodeValue} data-tone={value < 0 ? 'down' : undefined}>
           {unit === SHARE ? formatFraction(value) : formatChartMoney(value, currency)}
         </span>
@@ -103,7 +106,8 @@ function NodeText({
   )
 }
 
-function accessibleName(id: FlowNodeId, value: number | null, unit: Unit, currency: string): string {
+function accessibleName(id: FlowNodeId, value: number | null, unit: Unit, currency: string, detailAvailable = false): string {
+  if (detailAvailable) return `${NODE_LABEL[id]}, view reported items`
   if (!isReportedNode(id)) return `${NODE_LABEL[id]}, being built`
   if (value === null) return `${NODE_LABEL[id]}, being built`
   return `${NODE_LABEL[id]}, ${unit === SHARE ? formatFraction(value) : formatCompactMoney(value, currency)}`
@@ -114,12 +118,14 @@ function WideFlow({
   unit,
   currency,
   selected,
+  detailAvailable,
   onSelect,
 }: {
   values: FlowValues
   unit: Unit
   currency: string
   selected: FlowNodeId
+  detailAvailable: Partial<Record<FlowNodeId, boolean>>
   onSelect: (id: FlowNodeId) => void
 }) {
   const flow = wideFlow(values)
@@ -182,11 +188,11 @@ function WideFlow({
               data-side={node.labelSide}
               data-flow-node={node.id}
               aria-pressed={selected === node.id}
-              aria-label={accessibleName(node.id, value, unit, currency)}
+              aria-label={accessibleName(node.id, value, unit, currency, detailAvailable[node.id])}
               style={position}
               onClick={() => onSelect(node.id)}
             >
-              <NodeText id={node.id} value={value} unit={unit} currency={currency} />
+              <NodeText id={node.id} value={value} unit={unit} currency={currency} detailAvailable={detailAvailable[node.id]} />
             </button>
           )
         })}
@@ -200,12 +206,14 @@ function NarrowFlow({
   unit,
   currency,
   selected,
+  detailAvailable,
   onSelect,
 }: {
   values: FlowValues
   unit: Unit
   currency: string
   selected: FlowNodeId
+  detailAvailable: Partial<Record<FlowNodeId, boolean>>
   onSelect: (id: FlowNodeId) => void
 }) {
   const openId = narrowGroupOf(selected) ?? 'netIncome'
@@ -294,15 +302,50 @@ function NarrowFlow({
             data-flow-node={child}
             data-pending="true"
             aria-pressed={selected === child}
-            aria-label={accessibleName(child, null, unit, currency)}
+            aria-label={accessibleName(child, null, unit, currency, detailAvailable[child])}
             onClick={() => onSelect(child)}
           >
-            <NodeText id={child} value={null} unit={unit} currency={currency} />
+            <NodeText id={child} value={null} unit={unit} currency={currency} detailAvailable={detailAvailable[child]} />
           </button>
         ))}
       </div>
     </div>
   )
+}
+
+function StatementDetailCard({ id, year, series, unit }: {
+  id: StatementDetailId
+  year: number
+  series: IncomeSeries
+  unit: Unit
+}) {
+  const anchor = valueInYear(series.revenue, year)
+  const rows = statementDetailLines(series, id, anchor)
+  const available = rows.some(row => unit === AMOUNT ? row.amount : row.sharePoint)
+  const title = STATEMENT_DETAILS[id].title
+  if (!available) {
+    return <BeingBuilt label={title}>{title} for FY{year} {unit === SHARE ? 'as a share of sales ' : ''}is being added.</BeingBuilt>
+  }
+  return <ChapterCard title={title} meta={anchor ? `Year ended ${anchor.periodEnd}` : `FY${year}`}>
+    <div data-statement-detail={id}>
+      <p className={styles.cardNote}>Reported separately. These lines can overlap.</p>
+      <dl className={styles.detailList}>
+        {rows.map(row => {
+          const point = unit === SHARE ? row.sharePoint : row.amount
+          return <div key={row.key} data-detail-line={row.key}>
+            <dt>{row.label}</dt>
+            <dd>
+              {point ? <strong data-detail-value="" data-tone={point.value < 0 ? 'down' : undefined}>{unit === SHARE ? formatFraction(point.value) : formatCompactMoney(point.value, row.amount!.currency!)}</strong> : <BeingBuiltBadge />}
+              {row.amount && (row.growthPoint || (unit === AMOUNT && row.sharePoint)) ? <span className={styles.detailNote}>
+                {unit === AMOUNT && row.sharePoint ? <span>{formatFraction(row.sharePoint.value)} of sales</span> : null}
+                {row.growthPoint ? <span>{formatFraction(row.growthPoint.value)} against the year before</span> : null}
+              </span> : null}
+            </dd>
+          </div>
+        })}
+      </dl>
+    </div>
+  </ChapterCard>
 }
 
 function NodeCard({
@@ -311,13 +354,18 @@ function NodeCard({
   years,
   series,
   currency,
+  unit,
+  onSelect,
 }: {
   id: FlowNodeId
   year: number
   years: number[]
   series: IncomeSeries
   currency: string
+  unit: Unit
+  onSelect: (id: FlowNodeId) => void
 }) {
+  if (id === 'operatingCostsParts' || id === 'taxesParts') return <StatementDetailCard id={id} year={year} series={series} unit={unit} />
   const key = SERIES_OF[id]
   if (!key) {
     return <BeingBuilt label={NODE_LABEL[id]}>{PENDING_SENTENCE[id]}</BeingBuilt>
@@ -349,6 +397,7 @@ function NodeCard({
           {growth ? <span>{formatFraction(growth.value)} against the year before. </span> : <BeingBuiltBadge />}
           {share ? <span>{formatFraction(share.value)} of sales.</span> : <BeingBuiltBadge />}
         </p>
+        {id === 'taxes' ? <button type="button" className={styles.detailButton} onClick={() => onSelect('taxesParts')}>View interest and income tax</button> : null}
         {history.length > 0 ? (
           <div className={styles.history} data-flow-history={id}>
             <ReportedBars
@@ -421,6 +470,9 @@ export default function SalesFlowChapter({
   const netMargin = anchor ? valueInPeriod(series.netIncomeShare, anchor.periodEnd) : null
   const yearOptions = [...years].sort((left, right) => left - right).map(String)
   const perUnit = formatChartMoney(1, flowCurrency)
+  const detailAvailable = Object.fromEntries((['operatingCostsParts', 'taxesParts'] as const).map(id => [id,
+    statementDetailLines(series, id, anchor).some(row => unit === AMOUNT ? row.amount : row.sharePoint),
+  ]))
 
   return (
     <ResearchChapter
@@ -456,7 +508,7 @@ export default function SalesFlowChapter({
       )}
       aside={(
         <>
-          <NodeCard id={selected} year={year} years={years} series={series} currency={flowCurrency} />
+          <NodeCard id={selected} year={year} years={years} series={series} currency={flowCurrency} unit={unit} onSelect={setSelected} />
           {changes.length === 4 ? <ChapterCard title="Biggest changes" meta="Year-on-year">
             <dl className={styles.changesList}>
               {changes.map((change) => <div key={change.measure}>
@@ -477,8 +529,8 @@ export default function SalesFlowChapter({
         </span>
       </div>
       <div className={styles.flow} data-sales-flow="" role="group" aria-label={`Where each dollar of sales went in FY${year}`}>
-        <WideFlow values={values} unit={unit} currency={flowCurrency} selected={selected} onSelect={setSelected} />
-        <NarrowFlow values={values} unit={unit} currency={flowCurrency} selected={selected} onSelect={setSelected} />
+        <WideFlow values={values} unit={unit} currency={flowCurrency} selected={selected} detailAvailable={detailAvailable} onSelect={setSelected} />
+        <NarrowFlow values={values} unit={unit} currency={flowCurrency} selected={selected} detailAvailable={detailAvailable} onSelect={setSelected} />
       </div>
       {Object.values(values).some((value) => value !== null && value < 0) ? (
         <p className={styles.flowNote}>Sizes compare absolute amounts. Negative amounts are shown in red.</p>
