@@ -1,7 +1,122 @@
-.frame { max-width: 48rem; }
-.legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; margin: 0 0 1.25rem; font-size: 0.875rem; color: var(--text-small); }
-.cash { fill: color-mix(in srgb, var(--text) 62%, transparent); }
-.debt { fill: color-mix(in srgb, var(--down) 65%, transparent); }
-.net { stroke: var(--text); stroke-width: 2; }
-.dot { fill: var(--text); }
-.zero { stroke: var(--line-strong); stroke-width: 1; }
+.frame {
+  --cash-mark: var(--chapter-measure, var(--up));
+  --debt-mark: color-mix(in srgb, var(--down) 90%, var(--bg));
+  display: grid;
+  gap: 1.25rem;
+  max-width: 48rem;
+}
+
+/* The key: the year it reads, then each mark with that year's amount. */
+.key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  min-width: 0;
+}
+
+.keyList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.75rem;
+  margin: 0;
+  min-width: 0;
+}
+
+.keyList > div {
+  display: grid;
+  gap: 0.125rem;
+}
+
+.keyList dt {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-small);
+}
+
+.keyList dd {
+  margin: 0;
+  padding-left: 1.125rem;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.0625rem;
+  color: var(--text);
+}
+
+.keyList dd[data-tone='down'] {
+  color: var(--down);
+}
+
+.swatch {
+  flex: none;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 2px;
+}
+
+.swatch[data-mark='cash'] {
+  background: var(--cash-mark);
+}
+
+.swatch[data-mark='debt'] {
+  background: var(--debt-mark);
+}
+
+/* The net cash mark is the line with its dot, as drawn. */
+.swatch[data-mark='net'] {
+  height: 2px;
+  border-radius: 0;
+  background: var(--text);
+  box-shadow: 0 0 0 0 transparent;
+  position: relative;
+}
+
+.swatch[data-mark='net']::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border-radius: 50%;
+  background: var(--text);
+  transform: translate(-50%, -50%);
+}
+
+/* Earlier years are softened so the latest, which the key reads, stands out. */
+.cash {
+  fill: color-mix(in srgb, var(--cash-mark) 40%, transparent);
+}
+
+.debt {
+  fill: color-mix(in srgb, var(--debt-mark) 45%, transparent);
+}
+
+.year[data-latest='true'] .cash {
+  fill: var(--cash-mark);
+}
+
+.year[data-latest='true'] .debt {
+  fill: var(--debt-mark);
+}
+
+.net {
+  stroke: var(--text);
+  stroke-width: 2;
+}
+
+.dot {
+  fill: var(--text);
+  stroke: var(--bg);
+  stroke-width: 2;
+}
+
+.zero {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}

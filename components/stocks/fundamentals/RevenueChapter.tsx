@@ -3,10 +3,11 @@
 import { useState } from 'react'
 import BeingBuilt, { BeingBuiltBadge } from '@/components/stocks/research/BeingBuilt'
 import ReportedBars from '@/components/stocks/research/ReportedBars'
-import ResearchChapter, { ChapterCard } from '@/components/stocks/research/ResearchChapter'
+import ResearchChapter, { ChapterCard, MetaChip } from '@/components/stocks/research/ResearchChapter'
 import SegmentedControl from '@/components/ui/SegmentedControl'
 import { formatChartMoney, formatCompactMoney } from '@/lib/currency'
 import { formatFraction, type ReportedPoint } from '@/lib/statement-reading'
+import { FUNDAMENTALS_MEASURES } from './measures'
 import styles from './Fundamentals.module.css'
 
 /** "$B", "€B", "B kr": the unit the bars are written in, for the toggle. */
@@ -39,6 +40,7 @@ export default function RevenueChapter({
     <ResearchChapter
       id="revenue"
       label="Revenue"
+      measure={FUNDAMENTALS_MEASURES.revenue}
       lead={(
         <BeingBuilt size="inline">Revenue growth a year over the available history is being added.</BeingBuilt>
       )}
@@ -46,10 +48,10 @@ export default function RevenueChapter({
         <SegmentedControl options={options} value={view} onChange={setView} ariaLabel="Revenue in" analyticsId="ticker_revenue_unit" />
       ) : null}
       aside={latest ? (
-        <ChapterCard title={`FY${latest.year}`} meta="Revenue">
+        <ChapterCard title="Latest year" meta={<MetaChip>{`FY${latest.year}`}</MetaChip>}>
           <p className={styles.cardFigure} data-card-figure="">
             <strong>{formatCompactMoney(latest.value, latest.currency ?? currency)}</strong>
-            <span>reported for the year</span>
+            <span>revenue reported for the year</span>
           </p>
           <BeingBuilt label="By business" size="inline">
             Each business’s sales, how they changed on the year before and how the mix moved are being added.
@@ -65,12 +67,13 @@ export default function RevenueChapter({
         <>
           <ReportedBars
             ariaLabel={`Reported revenue by fiscal year, ${shown[0].year} to ${shown.at(-1)!.year}`}
-            bars={shown.map((point) => ({
+            bars={shown.map((point, index) => ({
               key: point.periodEnd,
               value: point.value,
               valueLabel: formatChartMoney(point.value, point.currency ?? currency),
               axisLabel: String(point.year),
               axisShort: `'${String(point.year).slice(-2)}`,
+              highlighted: index === shown.length - 1,
             }))}
           />
           <p className={styles.chartNote}>

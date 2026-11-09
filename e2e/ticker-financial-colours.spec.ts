@@ -124,16 +124,24 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(page.locator('[data-sales-flow]')).toHaveCount(0)
   })
 
-  test(`${theme}: Fundamentals retains the original neutral reported bars`, async ({ page }) => {
+  test(`${theme}: Fundamentals bars take their chapter's measure colour`, async ({ page }) => {
     const palette = palettes[theme]
     await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' })
     await page.goto('/stocks/QAS/fundamentals')
-    const revenue = page.getByRole('figure', { name: /^Reported revenue by fiscal year/ })
-    await expect(revenue).toBeVisible()
-    const bar = revenue.locator('[data-chart-variant]:visible rect').first()
-    const colour = await paint(page, 'figure[aria-label^="Reported revenue by fiscal year"] [data-chart-variant]:visible rect')
-    sameColour(colour, palette.text)
-    expect(colour[3]).toBe(158)
-    expect(await bar.evaluate(element => getComputedStyle(element).getPropertyValue('--reported-bar-fill'))).toBe('')
+    const revenue = 'figure[aria-label^="Reported revenue by fiscal year"] [data-chart-variant]:visible rect'
+    await expect(page.locator(revenue).first()).toBeVisible()
+    // Earlier years: the measure softened; the latest year: the measure in full.
+    const earlier = await paint(page, revenue)
+    sameColour(earlier, palette.sales)
+    expect(Math.abs(earlier[3] - 102)).toBeLessThanOrEqual(2)
+    const latest = await page.locator(revenue).last().evaluate((element) => {
+      const context = document.createElement('canvas').getContext('2d')!
+      context.fillStyle = getComputedStyle(element).fill
+      context.fillRect(0, 0, 1, 1)
+      return Array.from(context.getImageData(0, 0, 1, 1).data)
+    })
+    sameColour(latest, palette.sales)
+    expect(latest[3]).toBe(255)
+    sameColour(await paint(page, '#operating-margin [data-chart-variant]:visible rect[data-highlighted="true"]'), palette.profit)
   })
 }

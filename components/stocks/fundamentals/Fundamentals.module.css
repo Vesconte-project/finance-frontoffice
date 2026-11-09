@@ -7,6 +7,13 @@
   min-width: 0;
 }
 
+/* Bars take their chapter's measure colour: the latest year in full, earlier
+   years softened. Losses keep the down role from ReportedBars. */
+.chapters [data-measure='true'] {
+  --reported-bar-fill: color-mix(in srgb, var(--chapter-measure) 40%, transparent);
+  --reported-bar-highlight-fill: var(--chapter-measure);
+}
+
 /* A reported figure in a detail card: the number, then what it is. */
 .cardFigure {
   display: grid;
