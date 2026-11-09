@@ -69,49 +69,37 @@ export default function ResearchChapter({
 }
 
 /**
- * A short fact about a figure, written as a chip rather than inside a sentence:
- * "As of Jul 31, 2026", "FY2026", "Ex-dividend Sep 10, 2026".
- */
-export function MetaChip({ term, children }: { term?: string; children: ReactNode }) {
-  return (
-    <span className={styles.chip} data-meta-chip>
-      {term ? <span className={styles.chipTerm}>{term}</span> : null}
-      <span className={styles.chipValue}>{children}</span>
-    </span>
-  )
-}
-
-/**
- * The chapter's large number. `label` names it above the value, `context` says
- * what it is in a few words beside it, and `asOf` carries its date as a chip.
+ * The chapter's large number. `label` names it above the value at reading size,
+ * so the number's meaning is read with it; `context` finishes the sentence.
  */
 export function LeadStat({
   value,
   context,
   tone,
   label,
-  asOf,
 }: {
   value: ReactNode
   context?: ReactNode
   tone?: 'up' | 'down'
   label?: string
-  asOf?: ReactNode
 }) {
   return (
     <div className={styles.lead} data-lead-stat>
-      {label || asOf ? (
-        <p className={styles.leadMeta}>
-          {label ? <span className={styles.leadLabel}>{label}</span> : null}
-          {asOf}
-        </p>
-      ) : null}
+      {label ? <p className={styles.leadLabel}>{label}</p> : null}
       <p className={styles.leadLine}>
         <span className={styles.leadValue} data-tone={tone}>{value}</span>
         {context ? <span className={styles.leadContext}>{context}</span> : null}
       </p>
     </div>
   )
+}
+
+/**
+ * The quiet line at the foot of a chapter: when its figures were measured and
+ * how its chart is drawn. It is there to answer a doubt, not to be read first.
+ */
+export function ChapterNote({ children }: { children: ReactNode }) {
+  return <p className={styles.note} data-chapter-note>{children}</p>
 }
 
 /** A detail card for the chapter's side column. */

@@ -7,7 +7,7 @@ import RevenueChapter from '@/components/stocks/fundamentals/RevenueChapter'
 import styles from '@/components/stocks/fundamentals/Fundamentals.module.css'
 import BeingBuilt, { BeingBuiltBadge } from '@/components/stocks/research/BeingBuilt'
 import ReportedBars from '@/components/stocks/research/ReportedBars'
-import ResearchChapter, { ChapterCard, LeadStat, MetaChip } from '@/components/stocks/research/ResearchChapter'
+import ResearchChapter, { ChapterCard, ChapterNote, LeadStat } from '@/components/stocks/research/ResearchChapter'
 import { formatChartMoney, formatCompactMoney, formatMoney } from '@/lib/currency'
 import {
   formatFraction,
@@ -27,9 +27,10 @@ function formatDay(value: string): string {
   return Number.isFinite(parsed) ? dateFormat.format(parsed) : value
 }
 
-/** −$15.91B rather than $-15.91B: the sign belongs ahead of the currency. */
-function signedCompactMoney(value: number, currency: string): string {
-  return value < 0 ? `−${formatCompactMoney(-value, currency)}` : formatCompactMoney(value, currency)
+/** "As of Sep 30, 2025. " once per chapter, however many figures share the date. */
+function asOfNote(dates: ReadonlyArray<string | null | undefined>): string {
+  const days = [...new Set(dates.filter((date): date is string => Boolean(date)).map(formatDay))]
+  return days.length ? `Latest figures as of ${days.join(' and ')}. ` : ''
 }
 
 function OperatingMarginChapter({ data, sinceYear, history }: { data: StockResearchData; sinceYear: number | null; history: ReportedPoint[] }) {
@@ -47,10 +48,9 @@ function OperatingMarginChapter({ data, sinceYear, history }: { data: StockResea
       measure={FUNDAMENTALS_MEASURES.margin}
       lead={operating !== null ? (
         <LeadStat
-          label="Latest"
-          asOf={operatingDate ? <MetaChip term="As of">{formatDay(operatingDate)}</MetaChip> : null}
+          label={`Out of every ${perUnit} of sales`}
           value={`${Math.round(operating)}¢`}
-          context={`operating profit for each ${perUnit} of sales`}
+          context="is left as operating profit"
           tone={operating < 0 ? 'down' : undefined}
         />
       ) : (
@@ -62,20 +62,19 @@ function OperatingMarginChapter({ data, sinceYear, history }: { data: StockResea
         </BeingBuilt>
       )}
     >
-      {history.length > 0 ? <>
-        <ReportedBars ariaLabel="Annual operating margin" bars={history.map((point, index) => ({
+      {history.length > 0 ? <div className={styles.chartPanel}>
+        <ReportedBars slim ariaLabel="Annual operating margin" bars={history.map((point, index) => ({
           key: point.periodEnd, value: point.value, valueLabel: formatFraction(point.value),
           axisLabel: String(point.year), axisShort: shortYear(point.year), highlighted: index === history.length - 1,
         }))} />
         <p className={styles.chartNote}><BeingBuiltBadge /> The sector comparison is being added.</p>
-      </> : <BeingBuilt size="chart">The operating margin and sector comparison are being added.</BeingBuilt>}
+      </div> : <BeingBuilt size="chart">The operating margin and sector comparison are being added.</BeingBuilt>}
       {/* Spec PRD-78: the net margin is the chapter's footer. */}
       {net !== null ? (
         <p className={styles.chapterFooter} data-net-margin="">
           <span>Net margin</span>
           <strong>{`${Math.round(net)}¢`}</strong>
-          <span>net profit for each {perUnit} of sales</span>
-          {netDate ? <MetaChip term="As of">{formatDay(netDate)}</MetaChip> : null}
+          <span>of every {perUnit} of sales is left after all costs and tax</span>
         </p>
       ) : (
         <p className={styles.chapterFooter} data-net-margin="">
@@ -84,6 +83,7 @@ function OperatingMarginChapter({ data, sinceYear, history }: { data: StockResea
           <span>Net profit for each {perUnit} of sales is being added.</span>
         </p>
       )}
+      <ChapterNote>{asOfNote([operatingDate, netDate])}Bars show each fiscal year.</ChapterNote>
     </ResearchChapter>
   )
 }
@@ -100,10 +100,9 @@ function CashAndDebtChapter({ data, history }: { data: StockResearchData; histor
       measure={FUNDAMENTALS_MEASURES.cash}
       lead={netCash !== null ? (
         <LeadStat
-          label="Net cash"
-          asOf={netCashDate ? <MetaChip term="As of">{formatDay(netCashDate)}</MetaChip> : null}
-          value={signedCompactMoney(netCash, netCashCurrency)}
-          context={netCash < 0 ? 'more debt than cash' : 'cash left after all debt'}
+          label={netCash < 0 ? 'Net debt' : 'Net cash'}
+          value={formatCompactMoney(Math.abs(netCash), netCashCurrency)}
+          context={netCash < 0 ? 'more debt than cash on hand' : 'more cash than debt: it could repay all of it'}
           tone={netCash < 0 ? 'down' : undefined}
         />
       ) : (
@@ -115,7 +114,8 @@ function CashAndDebtChapter({ data, history }: { data: StockResearchData; histor
         </BeingBuilt>
       )}
     >
-      {history.length ? <CashDebtChart points={history} /> : <BeingBuilt size="chart">Cash above and debt below the zero line, with the net cash line, is being added.</BeingBuilt>}
+      {history.length ? <div className={styles.chartPanel}><CashDebtChart points={history} /></div> : <BeingBuilt size="chart">Cash and debt for each year, side by side, are being added.</BeingBuilt>}
+      <ChapterNote>{asOfNote([netCashDate])}{history.length ? 'Yearly rows are at each fiscal year end.' : ''}</ChapterNote>
     </ResearchChapter>
   )
 }
@@ -154,9 +154,8 @@ function DividendsChapter({
         <>
           <LeadStat
             label="Latest dividend"
-            asOf={<MetaChip term="Ex-dividend">{formatDay(latest.exDate)}</MetaChip>}
             value={formatMoney(latest.amount, latest.currency ?? currency)}
-            context="per share"
+            context="paid for each share"
           />
           <p className={styles.leadNote}><BeingBuiltBadge /> How many years in a row it has risen is being added.</p>
         </>
@@ -164,12 +163,13 @@ function DividendsChapter({
       aside={(
         <>
           {lastAnnual ? (
-            <ChapterCard title="Total dividends paid" meta={<MetaChip>{`FY${lastAnnual.year}`}</MetaChip>}>
+            <ChapterCard title="Total dividends paid" meta={`FY${lastAnnual.year}`}>
               <p className={styles.cardFigure} data-card-figure="">
                 <strong>{formatCompactMoney(lastAnnual.value, lastAnnual.currency!)}</strong>
-                <span>paid to shareholders in the year ended {formatDay(lastAnnual.periodEnd)}</span>
+                <span>paid to shareholders that year</span>
               </p>
               <ReportedBars
+                slim
                 ariaLabel="Total annual dividends paid"
                 bars={annualPayments.map((point, index) => ({
                   key: point.periodEnd,
@@ -188,7 +188,8 @@ function DividendsChapter({
       )}
     >
       {latest ? (
-        <ReportedBars
+        <div className={styles.chartPanel}><ReportedBars
+          slim
           ariaLabel={`Dividends per share${dividends?.adjusted ? ', adjusted for splits' : ''}, by ex-dividend date, ${formatDay(payments[0].exDate)} to ${formatDay(latest.exDate)}`}
           values={{ wide: 'ends', compact: 'ends' }}
           maxAxis={{ wide: 10, compact: 5 }}
@@ -203,10 +204,11 @@ function DividendsChapter({
               highlighted: index === payments.length - 1,
             }
           })}
-        />
+        /></div>
       ) : (
         <BeingBuilt size="chart">Ten years of dividends per share is being added.</BeingBuilt>
       )}
+      {latest ? <ChapterNote>Latest ex-dividend date {formatDay(latest.exDate)}. Bars show each payment per share.</ChapterNote> : null}
     </ResearchChapter>
   )
 }

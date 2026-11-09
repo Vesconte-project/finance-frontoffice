@@ -128,12 +128,12 @@ for (const theme of ['light', 'dark'] as const) {
     const palette = palettes[theme]
     await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' })
     await page.goto('/stocks/QAS/fundamentals')
-    const revenue = 'figure[aria-label^="Reported revenue by fiscal year"] [data-chart-variant]:visible rect'
+    const revenue = 'figure[aria-label^="Reported revenue by fiscal year"] [data-chart-variant]:visible path'
     await expect(page.locator(revenue).first()).toBeVisible()
-    // Earlier years: the measure softened; the latest year: the measure in full.
+    // Earlier years are an opaque, quieter tint; the latest year carries the measure in full.
     const earlier = await paint(page, revenue)
-    sameColour(earlier, palette.sales)
-    expect(Math.abs(earlier[3] - 102)).toBeLessThanOrEqual(2)
+    expect(earlier[3]).toBe(255)
+    expect(earlier.slice(0, 3)).not.toEqual([...palette.sales])
     const latest = await page.locator(revenue).last().evaluate((element) => {
       const context = document.createElement('canvas').getContext('2d')!
       context.fillStyle = getComputedStyle(element).fill
@@ -142,6 +142,6 @@ for (const theme of ['light', 'dark'] as const) {
     })
     sameColour(latest, palette.sales)
     expect(latest[3]).toBe(255)
-    sameColour(await paint(page, '#operating-margin [data-chart-variant]:visible rect[data-highlighted="true"]'), palette.profit)
+    sameColour(await paint(page, '#operating-margin [data-chart-variant]:visible path[data-highlighted="true"]'), palette.profit)
   })
 }

@@ -17,6 +17,17 @@ export type ReportedBar = {
 
 const WIDE: PlotBox = { width: 600, height: 250 }
 const COMPACT: PlotBox = { width: 320, height: 230 }
+/** The slim drawing is wider than tall, to fill a chart panel without towering. */
+const SLIM_WIDE: PlotBox = { width: 600, height: 205 }
+
+/** A bar with its data end rounded and its baseline end square. */
+function barPath(x: number, y: number, width: number, height: number, negative: boolean): string {
+  const r = Math.min(3, width / 2, height)
+  if (r <= 0) return `M${x},${y}h${width}v${height}h${-width}Z`
+  return negative
+    ? `M${x},${y}h${width}v${height - r}q0,${r} ${-r},${r}h${-(width - 2 * r)}q${-r},0 ${-r},${-r}Z`
+    : `M${x},${y + height}v${-(height - r)}q0,${-r} ${r},${-r}h${width - 2 * r}q${r},0 ${r},${r}v${height - r}Z`
+}
 
 function Plot({
   bars,
@@ -24,14 +35,17 @@ function Plot({
   variant,
   values,
   maxAxis,
+  slim,
 }: {
   bars: readonly ReportedBar[]
   box: PlotBox
   variant: 'wide' | 'compact'
   values: 'all' | 'ends'
   maxAxis: number
+  slim: boolean
 }) {
-  const layout = barLayout(bars.map((bar) => bar.value), box, { maxBar: variant === 'wide' ? 64 : 40 })
+  const maxBar = slim ? (variant === 'wide' ? 34 : 22) : variant === 'wide' ? 64 : 40
+  const layout = barLayout(bars.map((bar) => bar.value), box, { maxBar, fill: slim ? 0.5 : 0.62 })
   const picked = bars.flatMap((bar, index) => (bar.highlighted ? [index] : []))
   const written = labelledIndexes(bars.length, values, picked)
   const named = bars.map((bar) => (variant === 'wide' ? bar.axisLabel : bar.axisShort ?? bar.axisLabel) ?? null)
@@ -77,17 +91,15 @@ function Plot({
       <line className={styles.zero} x1={0} x2={box.width} y1={layout.zeroY} y2={layout.zeroY} />
       {bars.map((bar, index) => {
         const geometry = layout.bars[index]
-        return (
-          <rect
-            key={bar.key}
-            className={styles.bar}
-            data-highlighted={bar.highlighted ? 'true' : undefined}
-            data-negative={geometry.negative ? 'true' : undefined}
-            x={geometry.x}
-            y={geometry.y}
-            width={geometry.width}
-            height={Math.max(geometry.height, 0.5)}
-          />
+        const shared = {
+          className: styles.bar,
+          'data-highlighted': bar.highlighted ? 'true' : undefined,
+          'data-negative': geometry.negative ? 'true' : undefined,
+        }
+        return slim ? (
+          <path key={bar.key} {...shared} d={barPath(geometry.x, geometry.y, geometry.width, Math.max(geometry.height, 0.5), geometry.negative)} />
+        ) : (
+          <rect key={bar.key} {...shared} x={geometry.x} y={geometry.y} width={geometry.width} height={Math.max(geometry.height, 0.5)} />
         )
       })}
     </ChartPlot>
@@ -104,16 +116,19 @@ export default function ReportedBars({
   ariaLabel,
   values = { wide: 'all', compact: 'ends' },
   maxAxis = { wide: 10, compact: 5 },
+  slim = false,
 }: {
   bars: readonly ReportedBar[]
   ariaLabel: string
   values?: { wide: 'all' | 'ends'; compact: 'all' | 'ends' }
   maxAxis?: { wide: number; compact: number }
+  /** Narrower bars with a rounded data end. */
+  slim?: boolean
 }) {
   return (
     <ChartFrame ariaLabel={ariaLabel} className={styles.frame}>
-      <Plot bars={bars} box={WIDE} variant="wide" values={values.wide} maxAxis={maxAxis.wide} />
-      <Plot bars={bars} box={COMPACT} variant="compact" values={values.compact} maxAxis={maxAxis.compact} />
+      <Plot bars={bars} box={slim ? SLIM_WIDE : WIDE} variant="wide" values={values.wide} maxAxis={maxAxis.wide} slim={slim} />
+      <Plot bars={bars} box={COMPACT} variant="compact" values={values.compact} maxAxis={maxAxis.compact} slim={slim} />
     </ChartFrame>
   )
 }
