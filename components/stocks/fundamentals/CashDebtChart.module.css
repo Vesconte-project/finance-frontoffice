@@ -1,7 +1,197 @@
-.frame { max-width: 48rem; }
-.legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; margin: 0 0 1.25rem; font-size: 0.875rem; color: var(--text-small); }
-.cash { fill: color-mix(in srgb, var(--text) 62%, transparent); }
-.debt { fill: color-mix(in srgb, var(--down) 65%, transparent); }
-.net { stroke: var(--text); stroke-width: 2; }
-.dot { fill: var(--text); }
-.zero { stroke: var(--line-strong); stroke-width: 1; }
+.frame {
+  --cash-mark: var(--chapter-measure, var(--up));
+  --debt-mark: color-mix(in srgb, var(--down) 90%, var(--bg));
+  container: cash-debt / inline-size;
+  margin: 0;
+  min-width: 0;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+/* Column heads name the marks: debt to the left of the centre line, cash to
+   its right. */
+.table th,
+.table td {
+  padding: 0;
+}
+
+.table thead th {
+  padding-bottom: 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-small);
+}
+
+.yearHead {
+  width: 2.625rem;
+}
+
+.debtHead {
+  padding-right: 0.75rem !important;
+  text-align: right;
+}
+
+.cashHead {
+  padding-left: 0.75rem !important;
+  text-align: left;
+}
+
+.netHead {
+  width: 4.25rem;
+  text-align: right;
+}
+
+.debtHead::after,
+.cashHead::before {
+  content: '';
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 2px;
+  vertical-align: 0.05em;
+}
+
+.debtHead::after {
+  margin-left: 0.4375rem;
+  background: var(--debt-mark);
+}
+
+.cashHead::before {
+  margin-right: 0.4375rem;
+  background: var(--cash-mark);
+}
+
+.table tbody tr + tr th,
+.table tbody tr + tr td {
+  border-top: 1px solid var(--line-soft);
+}
+
+.year {
+  padding-block: 0.75rem !important;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  text-align: left;
+  color: var(--text-muted);
+}
+
+.debt,
+.cash {
+  padding-block: 0.75rem !important;
+}
+
+.debt > *,
+.cash > * {
+  vertical-align: middle;
+}
+
+.debt {
+  padding-right: 2px !important;
+  text-align: right;
+}
+
+/* The centre line both bars grow from. */
+.cash {
+  padding-left: 2px !important;
+  border-left: 1px solid var(--line-strong);
+  text-align: left;
+}
+
+.bar {
+  display: inline-block;
+  width: calc(var(--share) * (100% - 3rem));
+  min-width: 2px;
+  height: 0.875rem;
+}
+
+.debt .bar {
+  border-radius: 3px 0 0 3px;
+  background: color-mix(in oklab, var(--debt-mark) 38%, color-mix(in srgb, var(--text) 24%, var(--surface)));
+}
+
+.cash .bar {
+  border-radius: 0 3px 3px 0;
+  background: color-mix(in oklab, var(--cash-mark) 38%, color-mix(in srgb, var(--text) 24%, var(--surface)));
+}
+
+.amount {
+  display: inline-block;
+  padding-inline: 0.3125rem;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8125rem;
+  color: var(--text-body);
+  white-space: nowrap;
+}
+
+.net {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.875rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.net[data-tone='down'] {
+  color: var(--down);
+}
+
+.net[data-tone='up'] {
+  color: var(--up-ink, var(--up));
+}
+
+/* The latest year, on top: full colour and full ink. */
+tr[data-latest='true'] .year {
+  font-weight: 500;
+  color: var(--text);
+}
+
+tr[data-latest='true'] .amount {
+  color: var(--text);
+  font-weight: 500;
+}
+
+tr[data-latest='true'] .debt .bar {
+  background: var(--debt-mark);
+}
+
+tr[data-latest='true'] .cash .bar {
+  background: var(--cash-mark);
+}
+
+tr[data-latest='true'] .net {
+  font-weight: 500;
+}
+
+@container cash-debt (width >= 32rem) {
+  .bar {
+    width: calc(var(--share) * (100% - 4rem));
+    height: 1.125rem;
+  }
+
+  .amount {
+    padding-inline: 0.5rem;
+  }
+
+  .yearHead {
+    width: 4rem;
+  }
+
+  .netHead {
+    width: 7rem;
+  }
+
+  .amount,
+  .year {
+    font-size: 0.875rem;
+  }
+
+  .net {
+    font-size: 0.9375rem;
+  }
+}
