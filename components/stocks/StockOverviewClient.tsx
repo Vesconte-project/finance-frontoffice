@@ -10,6 +10,7 @@ import SegmentedControl from '@/components/ui/SegmentedControl'
 import TemporalLineChart, { type TemporalLinePoint } from '@/components/charts/TemporalLineChart'
 import { ADJUSTED_PRICE_LABEL, ADJUSTED_CHART_VERSION } from '@/lib/price-basis'
 import { barsForRange, chartCurrencySeries } from '@/lib/expanded-chart'
+import { canExpandHistory, conversionNotice, fullHistoryState, longRangeNotice, technicalBaseNotice, type ConversionState } from '@/lib/stock-history-state'
 import type { MarketResolution, OhlcLoadResult } from '@/lib/ohlc-data'
 import type { OhlcPoint } from '@/lib/finance'
 import type { Scorecard } from '@/lib/scorecard-types'
@@ -96,9 +97,11 @@ type StockOverviewClientProps = {
   fullOhlc: Promise<Pick<OhlcLoadResult, 'rows' | 'status' | 'resolution'>>
   dailyOhlcData: OhlcPoint[]
   dailyResolution: MarketResolution
-  dailyDisplayBars: OhlcPoint[] | null
-  /** The same bars in the display currency, for the charts only; null without one. */
-  displayBars?: OhlcPoint[] | null
+  /**
+   * The bars in the display currency, for the charts only, streamed like the complete history:
+   * null without a display currency; resolves to null when the conversion failed.
+   */
+  displayOhlc: Promise<{ full: OhlcPoint[]; daily: OhlcPoint[] } | null> | null
   /** Formatted market cap, or null when the summary has none. */
   marketCap: string | null
   /**
@@ -489,8 +492,7 @@ export default function StockOverviewClient({
   fullOhlc,
   dailyOhlcData,
   dailyResolution,
-  dailyDisplayBars,
-  displayBars = null,
+  displayOhlc,
   marketCap,
   holdings,
   sectorWeights,
@@ -503,17 +505,31 @@ export default function StockOverviewClient({
   netCash,
   displayCurrency = null,
 }: StockOverviewClientProps) {
-  // Until the complete history arrives, the last year stands in for it everywhere.
+  // Until the complete history arrives, the chart draws the last year and says so on long ranges;
+  // a failed or pending history is never presented as loaded (ENG-272 review).
   const [fullHistory, setFullHistory] = useState<Pick<OhlcLoadResult, 'rows' | 'status' | 'resolution'> | null>(null)
+  const [fullFailed, setFullFailed] = useState(false)
   useEffect(() => {
     let active = true
-    fullOhlc.then((result) => { if (active) setFullHistory(result) }, () => {})
+    fullOhlc.then((result) => { if (active) setFullHistory(result) }, () => { if (active) setFullFailed(true) })
     return () => { active = false }
   }, [fullOhlc])
-  const fullLoaded = fullHistory?.status === 'loaded' && fullHistory.rows.length > 0
+  const fullState = fullHistoryState(fullHistory, fullFailed)
+  const fullLoaded = fullState === 'loaded' && fullHistory !== null
+  // Reported prices only: the technical read never uses the display-currency bars.
   const ohlcData = fullLoaded ? fullHistory.rows : dailyOhlcData
   const fullResolution: MarketResolution = fullLoaded ? fullHistory.resolution ?? null : dailyResolution
-  const historicalChartState: HistoricalChartState = fullLoaded ? 'loaded' : firstChartState
+  const historicalChartState: HistoricalChartState = firstChartState
+  // The display-currency bars: undefined while loading, null when the conversion failed.
+  const [displaySeries, setDisplaySeries] = useState<{ full: OhlcPoint[]; daily: OhlcPoint[] } | null | undefined>(undefined)
+  useEffect(() => {
+    if (!displayOhlc) return
+    let active = true
+    displayOhlc.then((series) => { if (active) setDisplaySeries(series) }, () => { if (active) setDisplaySeries(null) })
+    return () => { active = false }
+  }, [displayOhlc])
+  const displayBars = displaySeries?.full ?? null
+  const dailyDisplayBars = displaySeries?.daily ?? null
   const [heroTimeframe, setHeroTimeframe] = useState<ChartTimeframe>('1Y')
   const [signalTimeframe, setSignalTimeframe] = useState<TechnicalTimeframe>('1D')
   const [selectedAxis, setSelectedAxis] = useState<ScorecardAxis['key'] | null>(null)
@@ -523,8 +539,8 @@ export default function StockOverviewClient({
   // The corner buttons step aside while a measurement is on the chart.
   const [heroMeasuring, setHeroMeasuring] = useState(false)
   const expandButtonRef = useRef<HTMLButtonElement>(null)
-  // Never offer an empty expanded chart: it opens only over loaded backend OHLC.
-  const canExpandChart = historicalChartState === 'loaded' && ohlcData.length >= 2
+  // The expanded chart offers ALL: it opens only over the loaded complete history.
+  const canExpandChart = historicalChartState === 'loaded' && canExpandHistory(fullState, ohlcData.length)
   const scorecardMessage = scorecardReadinessMessage(scorecard)
 
   // The chart in the display currency: chosen once, in the header, for the whole page.
@@ -560,6 +576,14 @@ export default function StockOverviewClient({
   )
   const chartBars = barsForRange(heroTimeframe, fullChartBars, recentChartBars, dailyResolution)
   const chartCurrency = barsConverted && displayCurrency ? displayCurrency : currency
+  const chartConversion: ConversionState = !displayCurrency
+    ? 'none'
+    : convertedState === 'error' || displaySeries === null ? 'error'
+      : barsConverted ? 'loaded'
+        : displaySeries === undefined ? 'loading' : 'error'
+  const currencyNotice = conversionNotice(chartConversion, displayCurrency, isoCurrency(currency) ?? currency)
+  const historyNotice = historicalChartState === 'loaded' ? longRangeNotice(fullState, heroTimeframe) : null
+  const technicalNotice = technicalBaseNotice(fullState, signalTimeframe)
   const showCandles = chartKind === 'candles' && canExpandChart
   const heroPoints = useMemo<TemporalLinePoint[]>(
     () => filterChartData(chartBars, heroTimeframe).map((bar) => ({
@@ -653,6 +677,7 @@ export default function StockOverviewClient({
               </div>
             ))}
           </dl>
+          {technicalNotice ? <p className={styles.chartStatus} role="status" data-technical-base="">{technicalNotice}</p> : null}
           <Link prefetch={false} href={`/stocks/${ticker}/signals`} className={styles.inlineArrow}>Indicator details →</Link>
         </ChapterCard>
       )}
@@ -829,9 +854,13 @@ export default function StockOverviewClient({
                 />
               </div>
             </div>
-            {displayCurrency && (convertedState === 'error' || !barsConverted) ? (
-              <p className={styles.chartStatus} role="status" data-chart-currency-error="">
-                The price in {displayCurrency} could not be loaded. The chart stays in {isoCurrency(currency) ?? currency}.
+            {historyNotice ? (
+              <p className={styles.chartStatus} role="status" data-full-history={fullState}>{historyNotice}</p>
+            ) : null}
+            {currencyNotice ? (
+              <p className={styles.chartStatus} role="status"
+                {...(chartConversion === 'error' ? { 'data-chart-currency-error': '' } : { 'data-chart-currency-loading': '' })}>
+                {currencyNotice}
               </p>
             ) : null}
           </div>

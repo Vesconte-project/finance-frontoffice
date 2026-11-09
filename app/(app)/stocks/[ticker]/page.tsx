@@ -336,7 +336,9 @@ export default async function TickerPage({
     requestLogContext,
     () =>
       Promise.all([
-        loadStockOhlcDataset(requestLogContext, tickerSummary.coverage, 365, displayCurrency ?? undefined),
+        // Reported prices: the first paint's chart and the technical read. The display-currency
+        // bars are a separate, streamed read below (ENG-272 review).
+        loadStockOhlcDataset(requestLogContext, tickerSummary.coverage, 365),
         loadOptionalStockDataset<TickerFundamentals | null>(
           requestLogContext,
           `/tickers/${ticker}/profile`,
@@ -432,13 +434,15 @@ export default async function TickerPage({
       ? convertedSummary?.fundamentalsSummary
       : null
   const marketCapConverted = displayCurrency && marketCapSource ? convertedAmountOf(marketCapSource, 'marketCap', displayCurrency) : null
-  // The charts' bars in the display currency (candles and the expanded chart); the technical summary keeps reported bars.
-  const [displayBars, dailyDisplayBars] = displayCurrency
-    ? await runWithBackendRequestLogContext(requestLogContext, () => Promise.all([
-        getConvertedOhlc(ticker, displayCurrency).catch(() => []),
-        getConvertedOhlc(ticker, displayCurrency, 365).catch(() => []),
-      ]))
-    : [null, null]
+  // The charts' bars in the display currency (candles and the expanded chart), streamed: the page
+  // does not wait for the conversion. The technical summary keeps reported bars. A failed
+  // conversion resolves to null, which the chart shows as an error, never as converted.
+  const displayOhlcPromise = displayCurrency
+    ? runWithBackendRequestLogContext(requestLogContext, () => Promise.all([
+        getConvertedOhlc(ticker, displayCurrency),
+        getConvertedOhlc(ticker, displayCurrency, 365),
+      ])).then(([full, daily]) => ({ full, daily }), () => null)
+    : null
   // Amounts among the latest fundamentals (net cash) in the display currency when all of them convert.
   const localizedSummary = displayCurrency && convertedSummary ? localizeSummary(convertedSummary, displayCurrency) : null
   const amountRows = localizedSummary?.converted ? localizedSummary.summary.latestFundamentals : latestFundamentals
@@ -479,8 +483,7 @@ export default async function TickerPage({
         fullOhlc={fullOhlcPromise}
         dailyOhlcData={dailyOhlcResult.rows}
         dailyResolution={dailyOhlcResult.resolution ?? null}
-        dailyDisplayBars={dailyDisplayBars}
-        displayBars={displayBars}
+        displayOhlc={displayOhlcPromise}
         marketCap={marketCapValue}
         holdings={holdings}
         sectorWeights={fundamentals?.sectorWeights ?? []}
