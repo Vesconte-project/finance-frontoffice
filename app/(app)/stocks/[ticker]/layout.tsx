@@ -1,3 +1,4 @@
+import StockLifecycleContent from '@/components/stocks/StockLifecycleContent'
 import StockTabsAuto from '@/components/stocks/StockTabsAuto'
 import TickerTabSwipe from '@/components/stocks/TickerTabSwipe'
 import TickerUniverse from '@/components/stocks/TickerUniverse'
@@ -16,7 +17,7 @@ export default function StockTickerLayout({ children, params }: StockTickerLayou
     <div className={styles.page} data-stock-ticker-layout="">
       <TickerUniverse />
       <StockTabsAuto chromeData={chromeData} />
-      <div className={styles.content} data-arrival-part="content">{children}</div>
+      <div className={styles.content} data-arrival-part="content"><StockLifecycleContent params={params}>{children}</StockLifecycleContent></div>
       <TickerTabSwipe />
     </div>
   )

@@ -113,7 +113,7 @@ export type EarningsHistoryRow = {
   revenueSurprisePct: number | null
 }
 
-export type TickerPageSummary = {
+export type TickerPageSummary = Partial<import('./listing-lifecycle').Lifecycle> & {
   /** Optional aggregate snapshot from the existing summary; validate before rendering. */
   ownershipSnapshot?: unknown
 

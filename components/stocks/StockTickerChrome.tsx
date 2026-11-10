@@ -88,7 +88,7 @@ export default function StockTickerChrome({
   const resolved = use(data)
   const requestedCurrency = useDisplayCurrencyParam()
   // The listing's own currency is no conversion.
-  const displayCurrency = requestedCurrency && requestedCurrency !== isoCurrency(resolved.currency) ? requestedCurrency : null
+  const displayCurrency = resolved.price !== null && requestedCurrency && requestedCurrency !== isoCurrency(resolved.currency) ? requestedCurrency : null
   const converted = useConvertedPrice(resolved.ticker, displayCurrency)
 
   return (
@@ -106,11 +106,13 @@ export default function StockTickerChrome({
           converted={converted}
           actions={(
             <>
-              <DisplayCurrencySelect
-                ticker={resolved.ticker}
-                listingCurrency={resolved.currency}
-                listings={resolved.listings}
-              />
+              {resolved.price === null ? null : (
+                <DisplayCurrencySelect
+                  ticker={resolved.ticker}
+                  listingCurrency={resolved.currency}
+                  listings={resolved.listings}
+                />
+              )}
               <WatchlistButton
                 ticker={resolved.ticker}
                 initialInWatchlist={resolved.watchlist.initialInWatchlist}

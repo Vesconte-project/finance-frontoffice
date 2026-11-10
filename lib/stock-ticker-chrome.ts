@@ -1,4 +1,5 @@
 import 'server-only'
+import { lifecycleView } from '@/lib/listing-lifecycle'
 
 import { getViewerUserId } from '@/lib/auth'
 import { currencyForTicker } from '@/lib/currency'
@@ -49,15 +50,16 @@ export async function getStockTickerChromeData(tickerRaw: string): Promise<Stock
         latestFundamentals: summary.latestFundamentals,
       }).badge
     : 'Equity'
+  const current = lifecycleView(summary).state === 'available'
   return {
     ticker,
     displayName,
     assetBadgeLabel: badge,
     currency: summary?.asset?.currency ?? summary?.fundamentalsSummary?.currency ?? currencyForTicker(ticker),
     exchange: summary?.asset?.exchange ?? null,
-    price: quote?.price ?? summary?.marketStats?.lastPrice ?? null,
-    dailyMoveAmount: quote?.change ?? null,
-    dailyMovePercent: quote?.changePercent ?? null,
+    price: current ? quote?.price ?? summary?.marketStats?.lastPrice ?? null : null,
+    dailyMoveAmount: current ? quote?.change ?? null : null,
+    dailyMovePercent: current ? quote?.changePercent ?? null : null,
     identityColor: tickerIdentityColor(ticker),
     listings: parseTrackedListings(summary?.listings),
     watchlist: {
