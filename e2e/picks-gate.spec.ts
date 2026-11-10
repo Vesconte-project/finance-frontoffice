@@ -74,6 +74,7 @@ test('the weekly ranking is public and never mislabels the market as a sector', 
   }
 })
 
+// QAS has an explicit active lifecycle; unmodelled summaries remain unavailable.
 test('a company standing is free to an anonymous reader', async ({ page }) => {
   const response = await page.goto('/stocks/QAS/rankings')
   expect(response?.status()).toBe(200)

@@ -3,7 +3,8 @@ import { expect, test, type Page } from '@playwright/test'
 /**
  * A sideways swipe over a ticker page moves between research tabs in the order
  * of the tab bar (TickerTabSwipe). Touch is driven through CDP, because
- * Playwright's touchscreen only taps.
+ * Playwright's touchscreen only taps. QAS supplies an active lifecycle summary;
+ * an unmodelled ticker must not be treated as active just to render rankings.
  */
 
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
