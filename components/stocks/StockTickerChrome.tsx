@@ -6,7 +6,6 @@ import StockResearchNav from '@/components/stocks/StockResearchNav'
 import StockTickerIdentity, { type ConvertedPrice } from '@/components/stocks/StockTickerIdentity'
 import WatchlistButton from '@/components/WatchlistButton'
 import { useDisplayCurrencyParam } from '@/hooks/useDisplayCurrency'
-import { assetMetadataParts } from '@/lib/asset-metadata'
 import { formatMoney } from '@/lib/currency'
 import { isoCurrency } from '@/lib/display-currency'
 import type { StockTickerChromeData } from '@/lib/stock-ticker-chrome'
@@ -87,7 +86,6 @@ export default function StockTickerChrome({
   isOverview: boolean
 }) {
   const resolved = use(data)
-  const metadata = assetMetadataParts(resolved.assetBadgeLabel, resolved.exchange, resolved.currency)
   const requestedCurrency = useDisplayCurrencyParam()
   // The listing's own currency is no conversion.
   const displayCurrency = requestedCurrency && requestedCurrency !== isoCurrency(resolved.currency) ? requestedCurrency : null
@@ -105,18 +103,14 @@ export default function StockTickerChrome({
           dailyMovePercent={resolved.dailyMovePercent}
           identityColor={resolved.identityColor}
           nameAsHeading={isOverview}
-          metadata={metadata}
           converted={converted}
-          currencyControl={(
-            <DisplayCurrencySelect
-              ticker={resolved.ticker}
-              displayName={resolved.displayName}
-              listingCurrency={resolved.currency}
-              listings={resolved.listings}
-            />
-          )}
           actions={(
             <>
+              <DisplayCurrencySelect
+                ticker={resolved.ticker}
+                listingCurrency={resolved.currency}
+                listings={resolved.listings}
+              />
               <WatchlistButton
                 ticker={resolved.ticker}
                 initialInWatchlist={resolved.watchlist.initialInWatchlist}
