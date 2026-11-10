@@ -51,22 +51,19 @@ test('the control lists the listings we track, each other one linking to its pag
   const panel = dialog(page)
   await expect(panel).toBeVisible()
 
+  // The listings are the page's segmented control; the current one is chosen.
   const listings = panel.locator('[data-tracked-listings="available"]')
-  await expect(listings.getByRole('heading', { name: 'Listings we track' })).toBeVisible()
-  const current = listings.locator('[aria-current="page"]')
-  await expect(current).toContainText('QAK')
-  await expect(current).toContainText('Primary')
-  await expect(current).toContainText('This page')
-  await expect(current).toContainText('XKRX')
-  await expect(current).toContainText('South Korea')
-  const other = listings.getByRole('link', { name: /QAKY/ })
-  await expect(other).toHaveAttribute('href', '/stocks/QAKY')
-  await expect(other).toContainText('USD')
-  await expect(other).not.toContainText('Primary')
+  const listingSwitch = listings.getByRole('radiogroup', { name: 'Listings we track' })
+  await expect(listingSwitch.getByRole('radio', { name: 'QAK · KRW' })).toHaveAttribute('aria-checked', 'true')
+  await expect(listingSwitch.getByRole('radio', { name: 'QAKY · USD' })).toHaveAttribute('aria-checked', 'false')
+  // Where the current listing trades is said in the traded-price row.
+  const current = panel.locator('[data-currency-option=""] [data-listing-current="QAK"]')
+  await expect(current).toContainText('KSC · South Korea')
+  await expect(current).not.toContainText('XKRX')
   await expect(panel).not.toContainText(/all exchanges/i)
 
   const currencies = panel.locator('[data-display-currencies]')
-  await expect(currencies).toContainText('It is not a listing traded in that currency.')
+  await expect(panel).toContainText('not a traded listing')
   // The listing's own currency is the default and is not offered twice.
   await expect(currencies.locator('[data-currency-option]')).toHaveText([/KRW/, /USD/, /EUR/])
   await expect(currencies.locator('[data-currency-option=""]')).toHaveAttribute('aria-current', 'true')
@@ -76,6 +73,13 @@ test('the control lists the listings we track, each other one linking to its pag
   await page.keyboard.press('Escape')
   await expect(panel).toBeHidden()
   await expect(control(page)).toBeFocused()
+})
+
+test('choosing another listing in the switch opens its page', async ({ page }) => {
+  await page.goto('/stocks/QAK')
+  await control(page).click()
+  await dialog(page).getByRole('radio', { name: 'QAKY · USD' }).click()
+  await expect(page).toHaveURL(/\/stocks\/QAKY$/)
 })
 
 test('choosing USD in the header converts the ticker page; there is no second toggle', async ({ page }) => {
@@ -195,7 +199,9 @@ test.describe('phone', () => {
     const panelBox = await panel.boundingBox()
     expect(panelBox?.x ?? -1).toBeGreaterThanOrEqual(0)
     expect((panelBox?.x ?? 0) + (panelBox?.width ?? 0)).toBeLessThanOrEqual(375)
-    const rows = panel.locator('a[data-currency-option], a[data-listing]')
+    // The listing switch is the shared segmented control, whose touch target
+    // reaches past its 32px pill (SegmentedControl.module.css); rows are 44px.
+    const rows = panel.locator('a[data-currency-option]')
     for (const row of await rows.all()) {
       expect((await row.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44)
     }

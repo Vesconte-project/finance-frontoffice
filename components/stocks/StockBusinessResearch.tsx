@@ -4,6 +4,8 @@ import ResearchChapter, { ChapterCard } from '@/components/stocks/research/Resea
 import type { TickerFinancialRow } from '@/lib/finance'
 import type { StockResearchData } from '@/lib/stock-research'
 import { descriptionSourceLabel } from '@/lib/research-provenance'
+import { assetMetadataParts } from '@/lib/asset-metadata'
+import { resolveStockAsset } from '@/lib/stock-asset-kind'
 import styles from './ResearchViews.module.css'
 import business from './StockBusinessResearch.module.css'
 
@@ -21,6 +23,30 @@ function FactValue({ label, value }: { label: string; value: string }) {
   const website = /website|homepage|url/i.test(label) ? safeWebsite(value) : null
   if (!website) return value
   return <a href={website} target="_blank" rel="noreferrer">{value}</a>
+}
+
+/**
+ * The listing's type and exchange. They used to sit in the ticker hero beside
+ * the price; the founder moved them here (2026-11-10) so the hero keeps only
+ * what is read first.
+ */
+function listingFacts(data: StockResearchData): TickerFinancialRow[] {
+  const asset = data.summary.asset
+  const { kind, exchange } = assetMetadataParts(
+    resolveStockAsset({
+      assetType: asset?.assetType,
+      ticker: data.ticker,
+      name: data.name,
+      latestFundamentals: data.summary.latestFundamentals ?? [],
+    }).badge,
+    asset?.exchange ?? null,
+    '',
+  )
+  const reported = new Set(data.profileFacts.map((row) => row.label.trim().toLowerCase()))
+  const rows: TickerFinancialRow[] = []
+  if (!reported.has('type') && !reported.has('asset type')) rows.push({ label: 'Type', value: kind })
+  if (exchange && !reported.has('exchange')) rows.push({ label: 'Exchange', value: exchange })
+  return rows
 }
 
 function Facts({ rows }: { rows: TickerFinancialRow[] }) {
@@ -63,7 +89,7 @@ function BusinessDescription({ data }: { data: StockResearchData }) {
 }
 
 function CompanyBusiness({ data }: { data: StockResearchData }) {
-  const facts = [...data.profileFacts, ...data.identifiers]
+  const facts = [...listingFacts(data), ...data.profileFacts, ...data.identifiers]
   return (
     <>
       <ResearchChapter
@@ -100,7 +126,7 @@ function FundBusiness({ data }: { data: StockResearchData }) {
   const holdings = data.fundamentals.holdings
   const sectors = data.fundamentals.sectorWeights
   const terms = [...data.fundamentals.distributions, ...data.fundamentals.risk]
-  const facts = [...data.profileFacts, ...data.identifiers]
+  const facts = [...listingFacts(data), ...data.profileFacts, ...data.identifiers]
   return (
     <>
       <ResearchChapter
