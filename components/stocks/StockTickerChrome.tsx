@@ -90,7 +90,7 @@ export default function StockTickerChrome({
   const metadata = assetMetadataParts(resolved.assetBadgeLabel, resolved.exchange, resolved.currency)
   const requestedCurrency = useDisplayCurrencyParam()
   // The listing's own currency is no conversion.
-  const displayCurrency = requestedCurrency && requestedCurrency !== isoCurrency(resolved.currency) ? requestedCurrency : null
+  const displayCurrency = resolved.price !== null && requestedCurrency && requestedCurrency !== isoCurrency(resolved.currency) ? requestedCurrency : null
   const converted = useConvertedPrice(resolved.ticker, displayCurrency)
 
   return (
@@ -107,7 +107,7 @@ export default function StockTickerChrome({
           nameAsHeading={isOverview}
           metadata={metadata}
           converted={converted}
-          currencyControl={(
+          currencyControl={resolved.price === null ? null : (
             <DisplayCurrencySelect
               ticker={resolved.ticker}
               displayName={resolved.displayName}

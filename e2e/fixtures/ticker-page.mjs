@@ -8,6 +8,7 @@
  */
 
 const FIXTURE_TICKERS = {
+  QASUSP: { name: 'Qa Suspended Company', price: 42, change: 0, changePercent: 0, marketCapText: '$1B' },
   QAHIST: {name:'Qa Full Price History Inc.',price:42,change:0,changePercent:0,marketCapText:'$1B'},
   QANEW: {name:'Qa Newly Listed Inc.',price:42,change:0,changePercent:0,marketCapText:'$1B'},
   QA30: {name:'Qa Thirty Five Years Inc.',price:40,change:0,changePercent:0,marketCapText:'$1B'},
@@ -149,6 +150,11 @@ export function tickerSummaryFixture(ticker) {
   } : null
   return {
     ticker, analystConsensus,
+    lifecycle_state: ticker === 'QASUSP' ? 'suspended' : 'active',
+    suspension_reason: ticker === 'QASUSP' ? 'invalid_source_data' : null,
+    suspended_at: ticker === 'QASUSP' ? '2026-09-23T12:00:00Z' : null,
+    review_by: ticker === 'QASUSP' ? '2026-11-12T12:00:00Z' : null,
+    lifecycle_revision: 'synthetic-lifecycle-revision',
     asset: { assetType: 'equity', currency: fixtureCurrency(ticker), exchange: fixture.exchange ?? 'NASDAQ', exchangeMic: null, region: fixture.currency === 'KRW' ? 'KR' : 'US' },
     quote: {
       price_basis: 'raw',
