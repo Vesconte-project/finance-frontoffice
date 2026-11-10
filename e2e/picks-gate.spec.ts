@@ -75,11 +75,11 @@ test('the weekly ranking is public and never mislabels the market as a sector', 
 })
 
 test('a company standing is free to an anonymous reader', async ({ page }) => {
-  const response = await page.goto('/stocks/AAPL/rankings')
+  const response = await page.goto('/stocks/QAS/rankings')
   expect(response?.status()).toBe(200)
   const view = page.locator('[data-ticker-rankings]')
   await expect(view).toBeVisible()
-  await expect(view.getByRole('heading', { name: 'Where AAPL stands' })).toBeVisible()
+  await expect(view.getByRole('heading', { name: 'Where QAS stands' })).toBeVisible()
   await expect(view.locator('[data-reading]')).toHaveCount(3)
   await expect(view.locator('[data-reading="longTerm"]')).toContainText(/Top \d+%|Bottom \d+%/)
   await expect(page.locator('[data-pick-disclosure]')).toContainText('not personal advice')
