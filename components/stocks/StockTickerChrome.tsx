@@ -5,6 +5,7 @@ import DisplayCurrencySelect from '@/components/stocks/DisplayCurrencySelect'
 import StockResearchNav from '@/components/stocks/StockResearchNav'
 import StockTickerIdentity, { type ConvertedPrice } from '@/components/stocks/StockTickerIdentity'
 import WatchlistButton from '@/components/WatchlistButton'
+import StockDataExportButton from '@/components/stocks/StockDataExportButton'
 import { useDisplayCurrencyParam } from '@/hooks/useDisplayCurrency'
 import { formatMoney } from '@/lib/currency'
 import { isoCurrency } from '@/lib/display-currency'
@@ -113,6 +114,7 @@ export default function StockTickerChrome({
                   listings={resolved.listings}
                 />
               )}
+              <StockDataExportButton key={resolved.ticker} ticker={resolved.ticker} signedIn={resolved.watchlist.signedIn} />
               <WatchlistButton
                 ticker={resolved.ticker}
                 initialInWatchlist={resolved.watchlist.initialInWatchlist}
