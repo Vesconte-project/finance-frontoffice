@@ -123,6 +123,8 @@ export type AtlasNeighbour = AtlasCompanyRef & {
   total: number | null
   /** Pro only: the last six months against the six before, when the change is beyond the noise. */
   trend: AtlasTrend | null
+  /** The related company's last daily move, served with the panel (ENG-272); null when absent. */
+  changePercent: number | null
 }
 export type AtlasThemeRef = { themeId: string; label: string }
 export type AtlasMembership = { zoneId: string; label: string | null; share: number }
@@ -514,7 +516,7 @@ export function parseCompanyPanel(value: unknown): AtlasCompanyPanel | null {
       const item = record(entry)
       const value = finite(item?.correlation)
       const trend: AtlasTrend | null = item?.trend === 'stronger' || item?.trend === 'weaker' ? item.trend : null
-      return ref && value !== null ? { ...ref, zoneId: text(item?.zoneId), correlation: value, total: correlation(item?.total), trend } : null
+      return ref && value !== null ? { ...ref, zoneId: text(item?.zoneId), correlation: value, total: correlation(item?.total), trend, changePercent: finite(item?.changePercent) } : null
     })
     .filter((item): item is AtlasNeighbour => item !== null)
   const count = finite(raw.neighbourCount)

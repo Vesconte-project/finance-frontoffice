@@ -12,6 +12,10 @@ const FIXTURE_TICKERS = {
   QAHIST: {name:'Qa Full Price History Inc.',price:42,change:0,changePercent:0,marketCapText:'$1B'},
   QANEW: {name:'Qa Newly Listed Inc.',price:42,change:0,changePercent:0,marketCapText:'$1B'},
   QA30: {name:'Qa Thirty Five Years Inc.',price:40,change:0,changePercent:0,marketCapText:'$1B'},
+  // ENG-272: the complete history streams after the page. QASLOW's arrives late, QAFAIL's never.
+  QASLOW: {name:'Qa Slow History Inc.',price:42,change:0,changePercent:0,marketCapText:'$1B'},
+  QARECOVER: {name:'Qa Recovered History Inc.',price:42,change:0,changePercent:0,marketCapText:'$1B'},
+  QAFAIL: {name:'Qa Failed History Inc.',price:42,change:0,changePercent:0,marketCapText:'$1B'},
   QAS: { name: 'Qa Short Inc.', price: 341.07, change: 2.41, changePercent: 0.71, marketCapText: '$4.98T' },
   QAM: { name: 'Quality Assurance Micro Devices, Inc.', price: 630.63, change: -4.12, changePercent: -0.65, marketCapText: '$1.03T' },
   QAL: {
