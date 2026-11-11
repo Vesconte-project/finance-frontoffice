@@ -507,27 +507,39 @@ export default function StockOverviewClient({
 }: StockOverviewClientProps) {
   // Until the complete history arrives, the chart draws the last year and says so on long ranges;
   // a failed or pending history is never presented as loaded (ENG-272 review).
-  const [fullHistory, setFullHistory] = useState<Pick<OhlcLoadResult, 'rows' | 'status' | 'resolution'> | null>(null)
-  const [fullFailed, setFullFailed] = useState(false)
+  type FullHistory = Pick<OhlcLoadResult, 'rows' | 'status' | 'resolution'>
+  const [historyResult, setHistoryResult] = useState<{ source: typeof fullOhlc; value: FullHistory | null; failed: boolean } | null>(null)
   useEffect(() => {
     let active = true
-    fullOhlc.then((result) => { if (active) setFullHistory(result) }, () => { if (active) setFullFailed(true) })
+    fullOhlc.then(
+      (value) => { if (active) setHistoryResult({ source: fullOhlc, value, failed: false }) },
+      () => { if (active) setHistoryResult({ source: fullOhlc, value: null, failed: true }) },
+    )
     return () => { active = false }
   }, [fullOhlc])
-  const fullState = fullHistoryState(fullHistory, fullFailed)
+  // A refreshed server render supplies a new promise. Its predecessor's data/error must not
+  // masquerade as the new request while the new history is still pending.
+  const currentHistory = historyResult?.source === fullOhlc ? historyResult : null
+  const fullHistory = currentHistory?.value ?? null
+  const fullState = fullHistoryState(fullHistory, currentHistory?.failed ?? false)
   const fullLoaded = fullState === 'loaded' && fullHistory !== null
   // Reported prices only: the technical read never uses the display-currency bars.
   const ohlcData = fullLoaded ? fullHistory.rows : dailyOhlcData
   const fullResolution: MarketResolution = fullLoaded ? fullHistory.resolution ?? null : dailyResolution
-  const historicalChartState: HistoricalChartState = firstChartState
+  const historicalChartState: HistoricalChartState = fullLoaded ? 'loaded' : firstChartState
   // The display-currency bars: undefined while loading, null when the conversion failed.
-  const [displaySeries, setDisplaySeries] = useState<{ full: OhlcPoint[]; daily: OhlcPoint[] } | null | undefined>(undefined)
+  type DisplaySeries = { full: OhlcPoint[]; daily: OhlcPoint[] }
+  const [displayResult, setDisplayResult] = useState<{ source: typeof displayOhlc; value: DisplaySeries | null } | null>(null)
   useEffect(() => {
     if (!displayOhlc) return
     let active = true
-    displayOhlc.then((series) => { if (active) setDisplaySeries(series) }, () => { if (active) setDisplaySeries(null) })
+    displayOhlc.then(
+      (value) => { if (active) setDisplayResult({ source: displayOhlc, value }) },
+      () => { if (active) setDisplayResult({ source: displayOhlc, value: null }) },
+    )
     return () => { active = false }
   }, [displayOhlc])
+  const displaySeries = displayResult?.source === displayOhlc ? displayResult?.value : undefined
   const displayBars = displaySeries?.full ?? null
   const dailyDisplayBars = displaySeries?.daily ?? null
   const [heroTimeframe, setHeroTimeframe] = useState<ChartTimeframe>('1Y')

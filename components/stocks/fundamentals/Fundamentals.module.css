@@ -7,6 +7,55 @@
   min-width: 0;
 }
 
+/* Emphasis: the latest year carries the chapter's measure colour in full.
+   Earlier years are a light tint of it mixed into a mid grey, not into the
+   page, so they never turn muddy on the dark background. */
+.chapters [data-measure='true'] {
+  --measure-quiet: color-mix(in oklab, var(--chapter-measure) 38%, color-mix(in srgb, var(--text) 24%, var(--surface)));
+  --reported-bar-fill: var(--measure-quiet);
+  --reported-bar-highlight-fill: var(--chapter-measure);
+}
+
+/* Chapters are separated by a hairline instead of alternating bands. */
+.chapters > [data-measure='true'] {
+  background: none !important;
+  box-shadow: none !important;
+  clip-path: none !important;
+}
+
+.chapters > [data-measure='true'] + [data-measure='true'] {
+  border-top: 1px solid var(--line-soft);
+}
+
+/* The chart's panel: a solid surface that spans the chapter's main column,
+   so the chart has a place of its own and the column has no empty half. */
+.chartPanel {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding: clamp(1rem, 0.75rem + 1.5cqi, 1.75rem);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+/* The panel's signature: a lit top edge in the chapter's colour, fading
+   from the left. Pure colour on a hairline, never a tinted area. */
+.chartPanel::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, var(--chapter-measure, var(--line-strong)), color-mix(in srgb, var(--chapter-measure, var(--line-strong)) 35%, transparent) 45%, transparent 85%);
+  pointer-events: none;
+}
+
+.chartPanel [data-chart-frame] {
+  max-width: none;
+}
+
 /* A reported figure in a detail card: the number, then what it is. */
 .cardFigure {
   display: grid;

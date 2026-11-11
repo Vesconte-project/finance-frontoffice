@@ -3,15 +3,24 @@
 import { useState } from 'react'
 import BeingBuilt, { BeingBuiltBadge } from '@/components/stocks/research/BeingBuilt'
 import ReportedBars from '@/components/stocks/research/ReportedBars'
-import ResearchChapter, { ChapterCard } from '@/components/stocks/research/ResearchChapter'
+import ResearchChapter, { LeadStat } from '@/components/stocks/research/ResearchChapter'
 import SegmentedControl from '@/components/ui/SegmentedControl'
 import { formatChartMoney, formatCompactMoney } from '@/lib/currency'
 import { formatFraction, type ReportedPoint } from '@/lib/statement-reading'
+import { FUNDAMENTALS_MEASURES } from './measures'
 import styles from './Fundamentals.module.css'
 
 /** "$B", "€B", "B kr": the unit the bars are written in, for the toggle. */
 function billionsUnit(currency: string): string {
   return formatChartMoney(1e9, currency).replace('1', '')
+}
+
+/** "this year", "last year", or "in fiscal 2022" for an older latest year. */
+function relativeYear(fiscalYear: number): string {
+  const current = new Date().getUTCFullYear()
+  if (fiscalYear >= current) return 'this year'
+  if (fiscalYear === current - 1) return 'last year'
+  return `in fiscal ${fiscalYear}`
 }
 
 /**
@@ -39,51 +48,50 @@ export default function RevenueChapter({
     <ResearchChapter
       id="revenue"
       label="Revenue"
-      lead={(
-        <BeingBuilt size="inline">Revenue growth a year over the available history is being added.</BeingBuilt>
-      )}
+      measure={FUNDAMENTALS_MEASURES.revenue}
+      lead={latest ? (
+        <LeadStat
+          value={formatCompactMoney(latest.value, latest.currency ?? currency)}
+          context={`in sales ${relativeYear(latest.year)}`}
+        />
+      ) : null}
       actions={shown.length > 0 ? (
         <SegmentedControl options={options} value={view} onChange={setView} ariaLabel="Revenue in" analyticsId="ticker_revenue_unit" />
       ) : null}
-      aside={latest ? (
-        <ChapterCard title={`FY${latest.year}`} meta="Revenue">
-          <p className={styles.cardFigure} data-card-figure="">
-            <strong>{formatCompactMoney(latest.value, latest.currency ?? currency)}</strong>
-            <span>reported for the year</span>
-          </p>
-          <BeingBuilt label="By business" size="inline">
-            Each business’s sales, how they changed on the year before and how the mix moved are being added.
-          </BeingBuilt>
-        </ChapterCard>
-      ) : (
-        <BeingBuilt label="This year by business">Each business’s sales this year, and how they changed, are being added.</BeingBuilt>
+      aside={(
+        <BeingBuilt label="By business">
+          Each business’s sales, how they changed on the year before and how the mix moved are being added.
+        </BeingBuilt>
       )}
     >
       {shown.length === 0 ? (
         <BeingBuilt size="chart">Ten years of revenue, split by business, is being added.</BeingBuilt>
       ) : view === amount ? (
-        <>
+        <div className={styles.chartPanel}>
           <ReportedBars
+            slim
             ariaLabel={`Reported revenue by fiscal year, ${shown[0].year} to ${shown.at(-1)!.year}`}
-            bars={shown.map((point) => ({
+            bars={shown.map((point, index) => ({
               key: point.periodEnd,
               value: point.value,
               valueLabel: formatChartMoney(point.value, point.currency ?? currency),
               axisLabel: String(point.year),
               axisShort: `'${String(point.year).slice(-2)}`,
+              highlighted: index === shown.length - 1,
             }))}
           />
           <p className={styles.chartNote}>
             <BeingBuiltBadge />{' '}
-            {shown.length < 10 ? 'Earlier years and the split by business are being added.' : 'The split by business is being added.'}
+            {shown.length < 10 ? 'Growth, earlier years and the split by business are being added.' : 'Growth and the split by business are being added.'}
           </p>
-        </>
+        </div>
       ) : (
-        growth.length > 0 ? <ReportedBars
+        growth.length > 0 ? <div className={styles.chartPanel}><ReportedBars
+          slim
           ariaLabel="Annual revenue growth against the year before"
           bars={growth.map((point) => ({ key: point.periodEnd, value: point.value,
             valueLabel: formatFraction(point.value), axisLabel: String(point.year), axisShort: `'${String(point.year).slice(-2)}` }))}
-        /> : <BeingBuilt size="chart">Each year’s revenue growth against the year before is being added.</BeingBuilt>
+        /></div> : <BeingBuilt size="chart">Each year’s revenue growth against the year before is being added.</BeingBuilt>
       )}
     </ResearchChapter>
   )

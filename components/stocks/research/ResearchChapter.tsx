@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import styles from './ResearchChapter.module.css'
 
 /**
@@ -18,6 +18,7 @@ export default function ResearchChapter({
   aside,
   band = false,
   actions,
+  measure,
   children,
 }: {
   /** Anchor for the chapter; also names its heading. */
@@ -31,6 +32,12 @@ export default function ResearchChapter({
   band?: boolean
   /** Chapter-level controls, such as a period or unit selector. */
   actions?: ReactNode
+  /**
+   * The colour of what the chapter measures (a CSS colour, usually a theme
+   * role). It marks the heading and is exposed to the chapter's charts as
+   * `--chapter-measure`, so a measure keeps one colour across the page.
+   */
+  measure?: string
   children: ReactNode
 }) {
   const headingId = `${id}-label`
@@ -40,6 +47,8 @@ export default function ResearchChapter({
       className={styles.chapter}
       data-research-chapter={id}
       data-band={band ? 'true' : undefined}
+      data-measure={measure ? 'true' : undefined}
+      style={measure ? ({ '--chapter-measure': measure } as CSSProperties) : undefined}
       aria-labelledby={headingId}
     >
       <div className={styles.frame}>
@@ -59,14 +68,38 @@ export default function ResearchChapter({
   )
 }
 
-/** The chapter's large number and the short line that says what it is. */
-export function LeadStat({ value, context, tone }: { value: ReactNode; context?: ReactNode; tone?: 'up' | 'down' }) {
+/**
+ * The chapter's large number. `label` names it above the value at reading size,
+ * so the number's meaning is read with it; `context` finishes the sentence.
+ */
+export function LeadStat({
+  value,
+  context,
+  tone,
+  label,
+}: {
+  value: ReactNode
+  context?: ReactNode
+  tone?: 'up' | 'down'
+  label?: string
+}) {
   return (
-    <p className={styles.lead} data-lead-stat>
-      <span className={styles.leadValue} data-tone={tone}>{value}</span>
-      {context ? <span className={styles.leadContext}>{context}</span> : null}
-    </p>
+    <div className={styles.lead} data-lead-stat>
+      {label ? <p className={styles.leadLabel}>{label}</p> : null}
+      <p className={styles.leadLine}>
+        <span className={styles.leadValue} data-tone={tone}>{value}</span>
+        {context ? <span className={styles.leadContext}>{context}</span> : null}
+      </p>
+    </div>
   )
+}
+
+/**
+ * The quiet line at the foot of a chapter: when its figures were measured and
+ * how its chart is drawn. It is there to answer a doubt, not to be read first.
+ */
+export function ChapterNote({ children }: { children: ReactNode }) {
+  return <p className={styles.note} data-chapter-note>{children}</p>
 }
 
 /** A detail card for the chapter's side column. */

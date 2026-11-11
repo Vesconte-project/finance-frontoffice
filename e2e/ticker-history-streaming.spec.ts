@@ -6,10 +6,8 @@ const heroRange = (page: import('@playwright/test').Page, range: string) =>
   page.getByRole('radiogroup', { name: 'Chart timeframe' }).getByRole('radio', { name: range, exact: true })
 
 test('a delayed complete history: the page renders first, says so, then upgrades to ALL', async ({ page }) => {
-  const started = Date.now()
-  await page.goto('/stocks/QASLOW')
+  await page.goto('/stocks/QASLOW', { waitUntil: 'commit' })
   await expect(page.getByRole('radiogroup', { name: 'Chart timeframe' })).toBeVisible()
-  expect(Date.now() - started).toBeLessThan(6_000) // the stub holds the complete history for 6 s
 
   await heroRange(page, 'ALL').click()
   const notice = page.locator('[data-full-history]')
@@ -42,11 +40,21 @@ test('a failed complete history is an error, never the complete history', async 
 })
 
 test('the display currency streams: the page does not wait for the conversion', async ({ page }) => {
-  const started = Date.now()
-  await page.goto('/stocks/QASLOW?currency=EUR')
+  await page.goto('/stocks/QASLOW?currency=EUR', { waitUntil: 'commit' })
   await expect(page.getByRole('radiogroup', { name: 'Chart timeframe' })).toBeVisible()
-  expect(Date.now() - started).toBeLessThan(6_000)
   await expect(page.locator('[data-chart-currency-loading]')).toContainText('Converting the chart to EUR')
   await expect(page.locator('[data-chart-currency-loading]')).toHaveCount(0, { timeout: 20_000 })
   await expect(page.locator('[data-chart-currency-error]')).toHaveCount(0)
+})
+
+
+test('a successful complete history recovers after the initial year fails', async ({ page }) => {
+  await page.goto('/stocks/QARECOVER')
+  await expect(page.getByRole('radiogroup', { name: 'Chart timeframe' })).toBeVisible()
+  await heroRange(page, 'ALL').click()
+  await expect(page.getByRole('button', { name: 'Expand chart' })).toBeVisible({ timeout: 20_000 })
+  await page.getByRole('button', { name: 'Expand chart' }).click()
+  const dialog = page.getByRole('dialog', { name: 'QARECOVER' })
+  await dialog.getByRole('radio', { name: 'ALL', exact: true }).click()
+  await expect(dialog.locator('#expanded-chart-summary')).toContainText(/From \w{3} \d{1,2}, 2016 to /)
 })

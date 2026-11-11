@@ -167,6 +167,7 @@ test('authenticated analytics use /v1 and fail open only for frontend telemetry'
 test('failed watchlist read renders an explicit unavailable state, without guessing membership', async () => {
   const c = setup({ reject: 503 })
   const chrome = load('lib/stock-ticker-chrome.ts', { 'server-only': {},
+    '@/lib/listing-lifecycle': load('lib/listing-lifecycle.ts', {}),
     '@/lib/auth': { getViewerUserId: async () => 'user_synthetic001' },
     '@/lib/currency': { currencyForTicker: () => 'USD' },
     '@/lib/display-currency': { parseTrackedListings: () => null },

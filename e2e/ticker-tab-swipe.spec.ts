@@ -3,7 +3,8 @@ import { expect, test, type Page } from '@playwright/test'
 /**
  * A sideways swipe over a ticker page moves between research tabs in the order
  * of the tab bar (TickerTabSwipe). Touch is driven through CDP, because
- * Playwright's touchscreen only taps.
+ * Playwright's touchscreen only taps. QAS supplies an active lifecycle summary;
+ * an unmodelled ticker must not be treated as active just to render rankings.
  */
 
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
@@ -25,30 +26,30 @@ async function swipeReady(page: Page) {
 }
 
 async function headingCentre(page: Page) {
-  const box = await page.getByRole('heading', { name: 'Where AAPL stands' }).boundingBox()
+  const box = await page.getByRole('heading', { name: 'Where QAS stands' }).boundingBox()
   if (!box) throw new Error('heading not laid out')
   return { x: 195, y: box.y + box.height / 2 }
 }
 
 test('swiping left opens the next tab, swiping right the previous one', async ({ page }) => {
-  await page.goto('/stocks/AAPL/rankings')
+  await page.goto('/stocks/QAS/rankings')
   await page.waitForLoadState('networkidle')
   await swipeReady(page)
 
   const start = await headingCentre(page)
   await swipe(page, { x: 320, y: start.y }, { x: 80, y: start.y + 8 })
-  await expect(page).toHaveURL(/\/stocks\/AAPL\/events$/)
+  await expect(page).toHaveURL(/\/stocks\/QAS\/events$/)
 
-  await page.goto('/stocks/AAPL/rankings')
+  await page.goto('/stocks/QAS/rankings')
   await page.waitForLoadState('networkidle')
   await swipeReady(page)
   const again = await headingCentre(page)
   await swipe(page, { x: 70, y: again.y }, { x: 320, y: again.y })
-  await expect(page).toHaveURL(/\/stocks\/AAPL\/signals$/)
+  await expect(page).toHaveURL(/\/stocks\/QAS\/signals$/)
 })
 
 test('a vertical or short gesture never changes the tab', async ({ page }) => {
-  await page.goto('/stocks/AAPL/rankings')
+  await page.goto('/stocks/QAS/rankings')
   await page.waitForLoadState('networkidle')
   await swipeReady(page)
   const start = await headingCentre(page)
@@ -56,7 +57,7 @@ test('a vertical or short gesture never changes the tab', async ({ page }) => {
   await swipe(page, { x: 200, y: start.y + 200 }, { x: 150, y: start.y })
   await swipe(page, { x: 220, y: start.y }, { x: 180, y: start.y })
   await page.waitForTimeout(600)
-  await expect(page).toHaveURL(/\/stocks\/AAPL\/rankings$/)
+  await expect(page).toHaveURL(/\/stocks\/QAS\/rankings$/)
   // The content is back in place after an abandoned swipe.
   const transform = await page.locator('[data-stock-ticker-layout] [data-arrival-part="content"]').evaluate((el) => el.style.transform)
   expect(transform).toBe('')

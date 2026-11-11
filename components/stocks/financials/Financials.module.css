@@ -431,3 +431,16 @@
 .yearChoice { display: flex; align-items: center; gap: 0.5rem; color: var(--text-body); font-size: 0.875rem; }
 .yearChoice select { min-height: 44px; background: var(--surface); color: var(--text); border: 1px solid var(--line-strong); border-radius: 6px; padding: 0.5rem; font: inherit; font-size: 1rem; }
 .yearChoice select:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+/* Reported detail lines share the existing side-card hierarchy. */
+.detailHint { font-size: 0.8125rem; line-height: 1.45; color: var(--text-body); }
+.detailList { display: grid; gap: 1rem; margin: 1rem 0 0; }
+.detailList > div { display: grid; gap: 0.25rem; min-width: 0; }
+.detailList dt { color: var(--text-body); line-height: 1.4; overflow-wrap: anywhere; }
+.detailList dd { display: grid; gap: 0.25rem; margin: 0; font-variant-numeric: tabular-nums; }
+.detailList strong { color: var(--text); font-weight: 500; }
+.detailList strong[data-tone='down'] { color: var(--down); }
+.detailNote { display: grid; gap: 0.125rem; color: var(--text-small); font-size: 0.8125rem; line-height: 1.45; }
+
+.detailButton { min-height: 44px; padding: 0.5rem 0; border: 0; background: transparent; color: var(--text); font: inherit; text-align: start; text-decoration: underline; text-underline-offset: 0.2em; cursor: pointer; }
+.detailButton:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }

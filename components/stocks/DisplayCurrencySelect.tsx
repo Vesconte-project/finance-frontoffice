@@ -2,8 +2,10 @@
 
 import { useId, useRef, useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { Check, Info } from 'lucide-react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Dialog from '@/components/ui/Dialog'
+import SegmentedControl from '@/components/ui/SegmentedControl'
 import { useDisplayCurrencies, useDisplayCurrencyParam } from '@/hooks/useDisplayCurrency'
 import { isoCurrency, withDisplayCurrency, type TrackedListing, type TrackedListings } from '@/lib/display-currency'
 import { exchangeDisplayName } from '@/lib/exchange-names'
@@ -30,70 +32,60 @@ function nameOf(names: Intl.DisplayNames | null, code: string | null): string | 
   }
 }
 
-function ListingLine({ listing }: { listing: TrackedListing }) {
+function placeOf(listing: TrackedListing): string {
   const exchange = exchangeDisplayName(listing.exchange) ?? listing.exchange
-  const place = [exchange, listing.exchangeMic && listing.exchangeMic !== exchange ? listing.exchangeMic : null, nameOf(regionNames, listing.country) ?? listing.country]
-    .filter(Boolean)
-    .join(' · ')
-  return (
-    <>
-      <span className={styles.listingHead}>
-        <span className={styles.symbol}>{listing.symbol}</span>
-        {listing.isPrimary ? <span className={styles.badge} data-listing-primary="">Primary</span> : null}
-        {listing.isCurrent ? <span className={styles.badge} data-listing-current="">This page</span> : null}
-        <span className={styles.listingCurrency}>{listing.currency ?? 'Currency not recorded'}</span>
-      </span>
-      <span className={styles.place}>{place || 'Exchange not recorded'}</span>
-    </>
-  )
+  return [exchange, nameOf(regionNames, listing.country) ?? listing.country].filter(Boolean).join(' · ') || 'Exchange not recorded'
 }
 
-function ListingsSection({ ticker, displayName, listings, onNavigate }: {
+function listingOption(listing: TrackedListing): string {
+  return listing.currency ? `${listing.symbol} · ${listing.currency}` : listing.symbol
+}
+
+/**
+ * The listings we track, as the page's segmented control (the same one that
+ * switches Revenue between an amount and % growth): choosing another listing
+ * opens its page. Where the current one trades is said in the traded-price
+ * row below, beside its currency.
+ */
+function ListingSwitch({ ticker, listings, onNavigate }: {
   ticker: string
-  displayName: string
   listings: TrackedListings
   onNavigate: () => void
 }) {
-  const headingId = useId()
-  const onlyOne = listings.available && listings.items.length === 1 && listings.items[0].isCurrent
+  const router = useRouter()
+  if (!listings.available || listings.items.length === 0) {
+    return <p className={styles.note} data-tracked-listings="unavailable" data-tracked-listings-empty="">We can’t show the listings we track for {ticker} right now.</p>
+  }
+  const current = listings.items.find((listing) => listing.isCurrent) ?? null
+  const options = listings.items.map(listingOption)
+  if (listings.items.length < 2) return null
   return (
-    <section className={styles.section} aria-labelledby={headingId} data-tracked-listings={listings.available ? 'available' : 'unavailable'}>
-      <h3 id={headingId} className={styles.sectionTitle}>Listings we track</h3>
-      {listings.available && listings.items.length > 0 ? (
-        <>
-          <p className={styles.note}>Each listing trades on its own exchange, in its own currency.</p>
-          <ul className={styles.list}>
-            {listings.items.map((listing) => (
-              <li key={listing.symbol}>
-                {listing.isCurrent ? (
-                  <div className={styles.row} aria-current="page" data-listing={listing.symbol}>
-                    <ListingLine listing={listing} />
-                  </div>
-                ) : (
-                  <Link
-                    prefetch={false}
-                    href={`/stocks/${encodeURIComponent(listing.symbol)}`}
-                    className={styles.row}
-                    data-listing={listing.symbol}
-                    onClick={onNavigate}
-                  >
-                    <ListingLine listing={listing} />
-                  </Link>
-                )}
-              </li>
-            ))}
-          </ul>
-          {onlyOne ? <p className={styles.note}>This is the only listing of {displayName} we track.</p> : null}
-        </>
-      ) : (
-        <p className={styles.note} data-tracked-listings-empty="">We can’t show the listings we track for {ticker} right now.</p>
-      )}
-    </section>
+    <div className={styles.listings} data-tracked-listings="available">
+      <SegmentedControl
+        options={options}
+        value={current ? listingOption(current) : ''}
+        onChange={(option) => {
+          const listing = listings.items[options.indexOf(option)]
+          if (!listing || listing.isCurrent) return
+          onNavigate()
+          router.push(`/stocks/${encodeURIComponent(listing.symbol)}`)
+        }}
+        ariaLabel="Listings we track"
+        analyticsId="ticker_listing"
+        fill
+      />
+    </div>
   )
 }
 
 /**
- * The ticker header's listings-and-currency control: one button that opens a
+ * The ticker header's listings-and-currency control. It speaks the ticker
+ * page's segmented-control language (the 1D…ALL range): a capsule track whose
+ * chosen option is one solid pill. A traded price — the listing's own
+ * currency — fills with the accent; a converted one fills with ink and reads
+ * "≈", so the colour tells real from converted without a sentence.
+ *
+ * One button opens a
  * dialog with the listings of the same company we track (each other listing
  * links to its own page) and the currencies the page can be shown in. The
  * currencies are only those `/v1/currencies` lists; choosing one changes the
@@ -103,12 +95,10 @@ function ListingsSection({ ticker, displayName, listings, onNavigate }: {
  */
 export default function DisplayCurrencySelect({
   ticker,
-  displayName,
   listingCurrency,
   listings,
 }: {
   ticker: string
-  displayName: string
   listingCurrency: string | null
   listings: TrackedListings | null
 }) {
@@ -119,8 +109,7 @@ export default function DisplayCurrencySelect({
   const currencies = useDisplayCurrencies(open)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const titleId = useId()
-  const descriptionId = useId()
-  const currencyHeadingId = useId()
+  const footnoteId = useId()
 
   const listing = isoCurrency(listingCurrency)
   const listingLabel = listing ?? listingCurrency ?? 'Listing'
@@ -133,6 +122,7 @@ export default function DisplayCurrencySelect({
   const unavailable = currencies.status === 'error' || (currencies.status === 'ready' && !available)
   const hrefFor = (code: string | null) => withDisplayCurrency(`${pathname}${searchParams?.toString() ? `?${searchParams.toString()}` : ''}`, code)
   const close = () => setOpen(false)
+  const currentListing = listings?.available ? listings.items.find((item) => item.isCurrent) ?? null : null
 
   return (
     <>
@@ -147,31 +137,38 @@ export default function DisplayCurrencySelect({
         data-converted={selected ? '' : undefined}
         onClick={() => setOpen(true)}
       >
-        <span aria-hidden="true">{listingLabel}{selected ? <> ≈ {selected}</> : null}</span>
+        {selected ? <span className={styles.faceFrom} aria-hidden="true">{listingLabel}</span> : null}
+        <span className={styles.facePill} data-real={selected ? undefined : ''} aria-hidden="true">
+          {selected ? <span className={styles.approx}>≈</span> : null}
+          {selected ?? listingLabel}
+        </span>
       </button>
       {/* Always mounted, so closing (also from a link) returns focus to the button. */}
       <Dialog
           open={open}
           onClose={close}
           labelledBy={titleId}
-          describedBy={descriptionId}
+          describedBy={footnoteId}
           returnFocusRef={buttonRef}
           className={styles.dialog}
         >
           <div className={styles.panel} data-listings-currency-dialog="">
-            <h2 id={titleId} className={styles.title}>Listings and currency</h2>
-            <p id={descriptionId} className={styles.lead}>
-              Where we track {displayName}, and the currencies its page can be shown in.
-            </p>
+            <div className={styles.head}>
+              <h2 id={titleId} className={styles.title}>Listings and currency</h2>
+              <span className={styles.info}>
+                <button type="button" className={styles.infoButton} aria-label="About converted prices" aria-describedby={footnoteId}>
+                  <Info size={14} strokeWidth={1.5} aria-hidden="true" />
+                </button>
+                <span id={footnoteId} role="tooltip" className={styles.tooltip}>
+                  <span className={`${styles.code} ${styles.real}`} aria-hidden="true">{listingLabel}</span> is the traded price.{' '}
+                  <span className={styles.approx}>≈</span> is converted at each day’s rate, not a traded listing. Ratios and scores don’t change.
+                </span>
+              </span>
+            </div>
 
-            {listings ? <ListingsSection ticker={ticker} displayName={displayName} listings={listings} onNavigate={close} /> : null}
+            {listings ? <ListingSwitch ticker={ticker} listings={listings} onNavigate={close} /> : null}
 
-            <section className={styles.section} aria-labelledby={currencyHeadingId} data-display-currencies="">
-              <h3 id={currencyHeadingId} className={styles.sectionTitle}>Show {displayName} in</h3>
-              <p className={styles.note}>
-                Prices and amounts are converted at the exchange rate of their own day. It is not a listing traded in
-                that currency. Ratios, scores and percentages do not change.
-              </p>
+            <div className={styles.currencies} role="group" aria-label="Show prices in" data-display-currencies="">
               <ul className={styles.list}>
                 <li>
                   <Link
@@ -184,37 +181,44 @@ export default function DisplayCurrencySelect({
                     data-currency-option=""
                     onClick={close}
                   >
-                    <span className={styles.listingHead}>
-                      <span className={styles.symbol}>{listingLabel}</span>
-                      <span className={styles.optionNote}>listing currency, no conversion</span>
-                    </span>
+                    <span className={`${styles.code} ${styles.real}`}>{listingLabel}</span>
+                    {currentListing ? (
+                      <span className={styles.optionNote} data-listing-current={currentListing.symbol}>
+                        {placeOf(currentListing)}
+                        <span className="sr-only">, traded price</span>
+                      </span>
+                    ) : <span className={styles.optionNote}>Traded price</span>}
+                    {selected ? null : <Check className={styles.check} size={15} strokeWidth={1.5} aria-hidden="true" />}
                   </Link>
                 </li>
-                {options.map((option) => (
-                  <li key={option.code}>
-                    <Link
-                      href={hrefFor(option.code)}
-                      replace
-                      scroll={false}
-                      prefetch={false}
-                      className={styles.row}
-                      aria-current={selected === option.code ? 'true' : undefined}
-                      data-currency-option={option.code}
-                      onClick={close}
-                    >
-                      <span className={styles.listingHead}>
-                        <span className={styles.symbol}>{option.code}</span>
+              </ul>
+              {options.length > 0 ? (
+                <ul className={`${styles.list} ${styles.grid}`}>
+                  {options.map((option) => (
+                    <li key={option.code}>
+                      <Link
+                        href={hrefFor(option.code)}
+                        replace
+                        scroll={false}
+                        prefetch={false}
+                        className={styles.row}
+                        aria-current={selected === option.code ? 'true' : undefined}
+                        data-currency-option={option.code}
+                        onClick={close}
+                      >
+                        <span className={styles.code}><span className={styles.approx} aria-hidden="true">≈</span>{option.code}</span>
                         <span className={styles.optionNote}>
                           {[nameOf(currencyNames, option.code), option.status === 'stale' ? 'older rates' : null].filter(Boolean).join(' · ')}
                         </span>
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-              {currencies.status === 'loading' ? <p className={styles.note} role="status">Loading the currencies we can show.</p> : null}
-              {unavailable ? <p className={styles.note} role="status" data-display-currencies-unavailable="">Other currencies are unavailable right now.</p> : null}
-            </section>
+                        {selected === option.code ? <Check className={styles.check} size={15} strokeWidth={1.5} aria-hidden="true" /> : null}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {currencies.status === 'loading' ? <p className={styles.note} role="status">Loading currencies…</p> : null}
+              {unavailable ? <p className={styles.note} role="status" data-display-currencies-unavailable="">Other currencies are unavailable.</p> : null}
+            </div>
           </div>
         </Dialog>
     </>

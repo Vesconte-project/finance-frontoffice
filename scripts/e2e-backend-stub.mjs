@@ -242,10 +242,14 @@ const server = createServer((request, response) => {
     const periodDays = url.searchParams.get('period_days')
     if (tickerRoute[2] === 'summary') sendTickerRead(response, url, 'summary', ticker, tickerSummaryFixture(ticker))
     else if (tickerRoute[2] === 'technical-series') sendTickerRead(response, url, 'technical-series', ticker, tickerTechnicalSeriesFixture(ticker))
-    else if (['QA30', 'QANEW', 'QAHIST', 'QASLOW', 'QAFAIL'].includes(ticker)) {
+    else if (['QA30', 'QANEW', 'QAHIST', 'QASLOW', 'QAFAIL', 'QARECOVER'].includes(ticker)) {
       const resource = tickerRoute[2]
       // The complete history (no daily window): QAFAIL's fails, QASLOW's arrives late (ENG-272).
       const complete = !(Number(periodDays) > 0 && Number(periodDays) <= 365)
+      if (!complete && ticker === 'QARECOVER') {
+        send(response, 503, { detail: 'Synthetic initial year failure' })
+        return
+      }
       if (complete && ticker === 'QAFAIL') {
         send(response, 503, { error: 'fixture_history_unavailable', path })
         return

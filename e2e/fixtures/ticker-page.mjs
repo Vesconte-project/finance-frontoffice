@@ -8,11 +8,13 @@
  */
 
 const FIXTURE_TICKERS = {
+  QASUSP: { name: 'Qa Suspended Company', price: 42, change: 0, changePercent: 0, marketCapText: '$1B' },
   QAHIST: {name:'Qa Full Price History Inc.',price:42,change:0,changePercent:0,marketCapText:'$1B'},
   QANEW: {name:'Qa Newly Listed Inc.',price:42,change:0,changePercent:0,marketCapText:'$1B'},
   QA30: {name:'Qa Thirty Five Years Inc.',price:40,change:0,changePercent:0,marketCapText:'$1B'},
   // ENG-272: the complete history streams after the page. QASLOW's arrives late, QAFAIL's never.
   QASLOW: {name:'Qa Slow History Inc.',price:42,change:0,changePercent:0,marketCapText:'$1B'},
+  QARECOVER: {name:'Qa Recovered History Inc.',price:42,change:0,changePercent:0,marketCapText:'$1B'},
   QAFAIL: {name:'Qa Failed History Inc.',price:42,change:0,changePercent:0,marketCapText:'$1B'},
   QAS: { name: 'Qa Short Inc.', price: 341.07, change: 2.41, changePercent: 0.71, marketCapText: '$4.98T' },
   QAM: { name: 'Quality Assurance Micro Devices, Inc.', price: 630.63, change: -4.12, changePercent: -0.65, marketCapText: '$1.03T' },
@@ -152,6 +154,11 @@ export function tickerSummaryFixture(ticker) {
   } : null
   return {
     ticker, analystConsensus,
+    lifecycle_state: ticker === 'QASUSP' ? 'suspended' : 'active',
+    suspension_reason: ticker === 'QASUSP' ? 'invalid_source_data' : null,
+    suspended_at: ticker === 'QASUSP' ? '2026-09-23T12:00:00Z' : null,
+    review_by: ticker === 'QASUSP' ? '2026-11-12T12:00:00Z' : null,
+    lifecycle_revision: 'synthetic-lifecycle-revision',
     asset: { assetType: 'equity', currency: fixtureCurrency(ticker), exchange: fixture.exchange ?? 'NASDAQ', exchangeMic: null, region: fixture.currency === 'KRW' ? 'KR' : 'US' },
     quote: {
       price_basis: 'raw',
@@ -312,6 +319,11 @@ const STATEMENT_FIXTURES = {
     const revenue = 180e9 * 1.09 ** index
     return { year, revenue, gross_profit: revenue * 0.44, operating_income: revenue * 0.3, net_income: revenue * 0.24,
       cost_of_revenue: revenue * 0.56, operating_expenses: revenue * 0.14, income_tax_expense: revenue * 0.06,
+      research_and_development: revenue * .06, selling_general_and_administrative: revenue * .08,
+      general_and_administrative: revenue * .03, selling_and_marketing: revenue * .05,
+      interest_expense: 2e9, non_operating_interest_expense: 1.5e9, interest_income: 1e9,
+      research_and_development_share_of_revenue: .06, selling_general_and_administrative_share_of_revenue: .08,
+      research_and_development_growth_yoy: .09, selling_general_and_administrative_growth_yoy: .09,
       revenue_share_of_revenue: 1, gross_profit_share_of_revenue: .44, operating_income_share_of_revenue: .3,
       net_income_share_of_revenue: .24, cost_of_revenue_share_of_revenue: .56,
       operating_expenses_share_of_revenue: .14, income_tax_expense_share_of_revenue: .06,
@@ -323,7 +335,10 @@ const STATEMENT_FIXTURES = {
     { year: 2022, revenue: 42e9, gross_profit: 21e9, operating_income: 6.1e9, net_income: 4.4e9 },
     { year: 2023, revenue: 45e9, gross_profit: null, operating_income: 3.2e9, net_income: 1.9e9 },
     { year: 2024, revenue: 39e9, gross_profit: 15e9, operating_income: -2.4e9, net_income: -3.1e9 },
-    { year: 2025, revenue: 47e9, gross_profit: 22e9, operating_income: 5.3e9, net_income: 3.8e9 },
+    { year: 2025, revenue: 47e9, gross_profit: 22e9, operating_income: 5.3e9, net_income: 3.8e9,
+      research_and_development: 0, general_and_administrative: 700e6, selling_and_marketing: 500e6,
+      income_tax_expense: -100e6, interest_expense: 0, non_operating_interest_expense: 50e6,
+      interest_income: 250e6, net_interest_income: 1.2e9 },
   ],
   QAL: [],
   // Won amounts: ten years, so the earliest ones fall before the fixture's first KRW rate.
@@ -337,6 +352,18 @@ const STATEMENT_FIXTURES = {
 STATEMENT_FIXTURES.QA30 = Array.from({length:35},(_,i)=>({...STATEMENT_FIXTURES.QAS[i%10],year:1991+i}))
 
 const LINE_LABELS = {
+  research_and_development: 'Research And Development',
+  selling_general_and_administrative: 'Selling General And Administrative',
+  general_and_administrative: 'General And Administrative',
+  selling_and_marketing: 'Selling And Marketing',
+  interest_expense: 'Interest Expense',
+  non_operating_interest_expense: 'Non Operating Interest Expense',
+  interest_income: 'Interest Income',
+  net_interest_income: 'Net Interest Income',
+  research_and_development_share_of_revenue: 'Research And Development Share Of Revenue',
+  selling_general_and_administrative_share_of_revenue: 'Selling General And Administrative Share Of Revenue',
+  research_and_development_growth_yoy: 'Research And Development Growth YoY',
+  selling_general_and_administrative_growth_yoy: 'Selling General And Administrative Growth YoY',
   cost_of_revenue: 'Cost Of Revenue', operating_expenses: 'Operating Expenses', income_tax_expense: 'Income Tax Expense',
   revenue_share_of_revenue: 'Revenue Share Of Revenue', gross_profit_share_of_revenue: 'Gross Profit Share Of Revenue',
   operating_income_share_of_revenue: 'Operating Income Share Of Revenue', net_income_share_of_revenue: 'Net Income Share Of Revenue',
