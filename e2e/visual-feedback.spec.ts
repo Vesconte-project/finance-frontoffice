@@ -45,7 +45,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await page.goto('/pricing', { waitUntil: 'load' })
     await page.evaluate(() => document.fonts.ready)
     await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' })
-    await expect(page.locator('.pricing-plan-card--basic .pricing-plan-summary')).toBeVisible()
+    await expect(page.locator('.pricing-plan-card--pro .pricing-plan-summary')).toBeVisible()
     await page.screenshot({ path: join(directory, `pricing-${colorScheme}.png`) })
   })
 }

@@ -2715,23 +2715,23 @@ main.marketing-pricing .site-header__backdrop {
 }
 
 .pricing-plan-card--free:hover,
-.pricing-plan-card--pro:hover {
+.pricing-plan-card--premium:hover {
   border-color: color-mix(in srgb, var(--line) 34%, transparent) !important;
   box-shadow: none !important;
 }
 
-.pricing-plan-card--basic:hover {
+.pricing-plan-card--pro:hover {
   border-color: color-mix(in srgb, var(--line) 72%, transparent) !important;
   box-shadow: none !important;
 }
 
 .pricing-plan-card--free,
-.pricing-plan-card--pro {
+.pricing-plan-card--premium {
   background: var(--surface) !important;
   color: var(--content-primary);
 }
 
-.pricing-plan-card--basic {
+.pricing-plan-card--pro {
   background: var(--bg) !important;
   border-color: color-mix(in srgb, var(--line) 42%, transparent) !important;
   box-shadow: none !important;
@@ -2739,31 +2739,31 @@ main.marketing-pricing .site-header__backdrop {
 }
 
 .pricing-plan-card--free .pricing-display,
-.pricing-plan-card--pro .pricing-display {
+.pricing-plan-card--premium .pricing-display {
   color: var(--content-primary);
 }
 
 .pricing-plan-card--free .pricing-copy,
-.pricing-plan-card--pro .pricing-copy {
+.pricing-plan-card--premium .pricing-copy {
   color: var(--content-secondary);
 }
 
-.pricing-plan-card--basic .pricing-display,
-.pricing-plan-card--basic .pricing-period,
-.pricing-plan-card--basic .pricing-plan-summary,
-.pricing-plan-card--basic .pricing-plan-features {
+.pricing-plan-card--pro .pricing-display,
+.pricing-plan-card--pro .pricing-period,
+.pricing-plan-card--pro .pricing-plan-summary,
+.pricing-plan-card--pro .pricing-plan-features {
   color: var(--text);
 }
 
-.pricing-plan-card--basic .pricing-feature-state {
+.pricing-plan-card--pro .pricing-feature-state {
   color: var(--text-muted);
 }
 
-.pricing-plan-card--basic .pricing-plan-features {
+.pricing-plan-card--pro .pricing-plan-features {
   border-color: color-mix(in srgb, var(--line) 13%, transparent);
 }
 
-.pricing-plan-card--basic .pricing-check {
+.pricing-plan-card--pro .pricing-check {
   background: var(--text);
   color: var(--bg);
 }
@@ -2776,26 +2776,26 @@ main.marketing-pricing .site-header__backdrop {
 }
 
 .pricing-plan-card--free .pricing-status,
-.pricing-plan-card--pro .pricing-status {
+.pricing-plan-card--premium .pricing-status {
   border-color: color-mix(in srgb, var(--line) 28%, transparent);
   background: var(--surface);
   color: var(--text-muted);
 }
 
 .pricing-plan-card--free .pricing-status:hover,
-.pricing-plan-card--pro .pricing-status:hover {
+.pricing-plan-card--premium .pricing-status:hover {
   border-color: color-mix(in srgb, var(--line) 42%, transparent);
   background: var(--surface);
   color: var(--text);
 }
 
-.pricing-plan-card--basic .pricing-status--future {
+.pricing-plan-card--pro .pricing-status--future {
   border-color: color-mix(in srgb, var(--line) 42%, transparent);
   background: var(--surface);
   color: var(--text-muted);
 }
 
-.pricing-plan-card--basic .pricing-status--future:hover {
+.pricing-plan-card--pro .pricing-status--future:hover {
   border-color: color-mix(in srgb, var(--line) 72%, transparent);
   background: var(--surface);
   color: var(--text);
@@ -2876,7 +2876,7 @@ main.marketing-pricing .site-header__backdrop {
   line-height: 1.55;
 }
 
-.pricing-plan-card--basic .pricing-future-note {
+.pricing-plan-card--pro .pricing-future-note {
   border-color: color-mix(in srgb, var(--line) 13%, transparent);
   color: var(--text-muted);
 }
@@ -2931,7 +2931,7 @@ main.marketing-pricing .site-header__backdrop {
 @media (prefers-reduced-motion: reduce) {
   .pricing-plan-card,
   .pricing-plan-card:hover,
-  .pricing-plan-card--basic {
+  .pricing-plan-card--pro {
     transform: none;
     transition: none;
   }

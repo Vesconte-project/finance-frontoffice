@@ -11,17 +11,17 @@ const freeFeatures = [
   "This week's ranking",
 ] as const
 
-const basicFeatures = [
+const proFeatures = [
   'Extended ML Lab usage',
   'Daily rankings',
   'Faster watchlist alerts',
 ] as const
 
-const proFeatures = [
+const premiumFeatures = [
   'Pre-configured models',
   'More complex analysis systems',
   'Advanced ML Lab tools',
-  'Additional benefits over Basic',
+  'Additional benefits over Pro',
 ] as const
 
 function FeatureList({ features, future = false }: { features: readonly string[]; future?: boolean }) {
@@ -76,10 +76,10 @@ export default async function PricingPage() {
           </Link>
         </GlassPanel>
 
-        <GlassPanel className="pricing-plan-card pricing-plan-card--basic p-6 sm:p-7">
+        <GlassPanel className="pricing-plan-card pricing-plan-card--pro p-6 sm:p-7">
           <div className="pricing-plan-heading">
             <div>
-              <p className="pricing-kicker">Basic</p>
+              <p className="pricing-kicker">Pro</p>
               <div className="pricing-price-row mt-5">
                 <span className="pricing-display pricing-price">€3,99</span>
                 <span className="pricing-copy pricing-period">/ month</span>
@@ -88,14 +88,14 @@ export default async function PricingPage() {
             <FutureStatus />
           </div>
           <p className="pricing-plan-summary mt-6">The planned paid tier for a broader, more timely workflow.</p>
-          <FeatureList features={basicFeatures} future />
+          <FeatureList features={proFeatures} future />
           <div className="pricing-future-note mt-7">No checkout yet. Subscription details will follow when this tier is live.</div>
         </GlassPanel>
 
-        <GlassPanel className="pricing-plan-card pricing-plan-card--pro p-6 sm:p-7">
+        <GlassPanel className="pricing-plan-card pricing-plan-card--premium p-6 sm:p-7">
           <div className="pricing-plan-heading">
             <div>
-              <p className="pricing-kicker">Pro</p>
+              <p className="pricing-kicker">Premium</p>
               <div className="pricing-price-row mt-5">
                 <span className="pricing-display pricing-price">€9,99</span>
                 <span className="pricing-copy pricing-period">/ month</span>
@@ -104,7 +104,7 @@ export default async function PricingPage() {
             <FutureStatus />
           </div>
           <p className="pricing-plan-summary mt-6">A future layer for deeper systems and advanced analysis.</p>
-          <FeatureList features={proFeatures} future />
+          <FeatureList features={premiumFeatures} future />
           <div className="pricing-future-note mt-7">Future direction only. No payment flow or launch date is available.</div>
         </GlassPanel>
       </section>
@@ -121,7 +121,7 @@ export default async function PricingPage() {
             </h2>
           </div>
           <p className="pricing-copy max-w-xl text-sm leading-6">
-            The Basic and Pro benefits shown above are planned direction, not current entitlements. Exact access, cadence, and billing will be published when implemented.
+            The Pro and Premium benefits shown above are planned direction, not current entitlements. Exact access, cadence, and billing will be published when implemented.
           </p>
         </div>
       </section>

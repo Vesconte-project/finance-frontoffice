@@ -7,7 +7,7 @@ This register contains approved durable decisions only. GitHub is the durable re
 - **Naming:** The product is named **Vesconte**, after the cartographer Pietro Vesconte. The legacy cutover is resolved and closed. `Longbrunch` and `Spy Signal` are retired: they are not aliases and must not appear in copy, metadata, identifiers, storage keys, hostnames, or documentation. Rationale and usage rules live in `docs/brand/naming.md`. Service and ownership identifiers stay decoupled from the brand and use the repository name `finance-frontoffice`; do not create new brand-coupled identifiers.
 - **Prioritization user:** a self-directed individual investor monitoring a focused set of assets.
 - **Recurring decision:** “Which asset I already care about deserves my attention now, and what evidence changed?”
-- **Value ladder:** Anonymous establishes trust; Free establishes the habit; Pro scales a validated habit. Basic is excluded for now.
+- **Value ladder:** Anonymous establishes trust; Free establishes the habit; Pro and Premium scale a validated habit. The paid plans are Pro (€3,99/month) and Premium (€9,99/month); the former "Basic" name is retired (founder, 2026-11-12, PRD-80). Plans differ by credits, storage and live model slots (Free 1, Pro 3, Premium 5) plus a short list of advanced features; concurrent tests are never a plan limit.
 - **Signals:** Signals stays closed as a core capability until all six trust gates pass:
   1. signal intent and methodology are explicit and versioned;
   2. source data, point-in-time semantics, freshness, and lineage are trustworthy;
