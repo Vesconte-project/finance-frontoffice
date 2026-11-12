@@ -288,7 +288,7 @@ export default function ProductPage() {
               Explore first. Decide what you need next.
             </h2>
             <p className="mt-4 text-base leading-7 text-content-secondary">
-              Public exploration is available now. Basic and Pro are planned and do not yet have checkout or live entitlements; pricing shows the current state.
+              Public exploration is available now. Pro and Premium are planned and do not yet have checkout or live entitlements; pricing shows the current state.
             </p>
           </div>
           <div className="flex flex-wrap gap-4 text-sm font-semibold">
