@@ -1,7 +1,9 @@
 import 'server-only'
 import { backendOriginHeaders } from './backend-origin'
 import { auth } from '@clerk/nextjs/server'
+import { unstable_rethrow } from 'next/navigation'
 import { createPlatformClient, PlatformError } from './platform-client'
+import { reportPlatformSessionFailure, type PlatformSessionPhase } from './platform-session-diagnostics'
 
 export type PlatformAccount = {
   id: string; type: 'personal' | 'organization'; status: 'active' | 'suspended' | 'closed'
@@ -24,23 +26,36 @@ export function platformEnabled() {
 
 /** Resolve the active Clerk organization to an account verified by the Backend. */
 export async function platformSession() {
-  const session = await auth()
-  if (!session.userId) throw new PlatformError(401)
-  const request = createPlatformClient({ baseUrl: process.env.BACKEND_BASE_URL || '',
-    originHeaders: backendOriginHeaders,
-    // Server auth has no skipCache option. An explicit lifetime requests a new
-    // default session token from Clerk on the single 401 retry, never a template.
-    getToken: options => session.getToken(options?.skipCache ? { expiresInSeconds: 60 } : undefined) })
-  const me = await (await request('/me')).json() as { user?: { id?: unknown }; accounts?: PlatformAccount[] }
-  if (!me.user || typeof me.user.id !== 'string' || !uuid.test(me.user.id) || !Array.isArray(me.accounts))
-    throw new PlatformError(502)
-  const account = me.accounts.find(row => session.orgId
-    ? row.type === 'organization' && row.clerk_organization_id === session.orgId
-    : row.type === 'personal')
-  // Do not silently switch an unverified organization request to a personal account.
-  if (!account || !uuid.test(account.id)) throw new PlatformError(404)
-  if (account.status !== 'active') throw new PlatformError(403)
-  return { request, account, clerkUserId: session.userId, userId: me.user.id }
+  let phase: PlatformSessionPhase = 'identity'
+  try {
+    const session = await auth()
+    if (!session.userId) throw new PlatformError(401)
+    phase = 'client'
+    const request = createPlatformClient({ baseUrl: process.env.BACKEND_BASE_URL || '',
+      originHeaders: backendOriginHeaders,
+      // Server auth has no skipCache option. An explicit lifetime requests a new
+      // default session token from Clerk on the single 401 retry, never a template.
+      getToken: options => session.getToken(options?.skipCache ? { expiresInSeconds: 60 } : undefined) })
+    phase = 'account_request'
+    const response = await request('/me')
+    phase = 'account_response'
+    const me = await response.json() as { user?: { id?: unknown }; accounts?: PlatformAccount[] }
+    phase = 'account_validation'
+    if (!me.user || typeof me.user.id !== 'string' || !uuid.test(me.user.id) || !Array.isArray(me.accounts))
+      throw new PlatformError(502)
+    phase = 'account_selection'
+    const account = me.accounts.find(row => session.orgId
+      ? row.type === 'organization' && row.clerk_organization_id === session.orgId
+      : row.type === 'personal')
+    // Do not silently switch an unverified organization request to a personal account.
+    if (!account || !uuid.test(account.id)) throw new PlatformError(404)
+    if (account.status !== 'active') throw new PlatformError(403)
+    return { request, account, clerkUserId: session.userId, userId: me.user.id }
+  } catch (error) {
+    unstable_rethrow(error)
+    reportPlatformSessionFailure(phase, error)
+    throw error
+  }
 }
 
 export async function platformAccess() {

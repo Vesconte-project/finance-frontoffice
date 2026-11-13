@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
+import { redirect, unstable_rethrow } from 'next/navigation.js'
 import * as React from 'react'
 import * as JSXRuntime from 'react/jsx-runtime'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -14,7 +15,7 @@ function load(file, imports, env, fetch) {
   }).outputText
   const exports = {}
   runInNewContext(code, { exports, process: { env }, fetch, AbortSignal, TextEncoder, TextDecoder,
-    URL, URLSearchParams, Response, Request, ReadableStream, Date,
+    URL, URLSearchParams, Response, Request, ReadableStream, Date, SyntaxError,
     require(name) { assert.ok(Object.hasOwn(imports, name), `Unexpected import: ${name}`); return imports[name] },
   }, { filename: file })
   return exports
@@ -39,6 +40,9 @@ function setup(options = {}) {
     assert.equal(init.headers['x-backend-shared-secret'], undefined)
     assert.equal(init.cache, 'no-store')
     assert.equal(init.redirect, 'error')
+    if (parsed.pathname === '/v1/me' && options.meReject) return new Response('private-provider-body', { status: options.meReject })
+    if (parsed.pathname === '/v1/me' && options.malformedMe) return new Response('private-invalid-json')
+    if (parsed.pathname === '/v1/me' && options.invalidMe) return Response.json({ user: {}, accounts: [] })
     if (parsed.pathname === '/v1/me') return Response.json({ user: { id: user }, accounts: [{
       id: account, type: options.org ? 'organization' : 'personal', status: 'active', role: 'member',
       clerk_organization_id: options.wrongOrg ? 'org_wrong0001' : options.org || null }] })
@@ -54,9 +58,14 @@ function setup(options = {}) {
   }
   const retryPolicy = load('lib/retry-policy.ts', {}, env, fetch)
   const platform = load('lib/platform-client.ts', { './retry-policy': retryPolicy }, env, fetch)
+  const diagnostics = load('lib/platform-session-diagnostics.ts', { './platform-client': platform,
+    './observability/vercel-log': { logServerEvent: (...args) => logs.push(args) } }, env, fetch)
   const session = load('lib/platform-server.ts', { 'server-only': {}, './platform-client': platform, './backend-origin': {backendOriginHeaders:async()=>({})},
-    '@clerk/nextjs/server': { auth: async () => ({ userId: options.anonymous ? null : 'user_synthetic001',
-      orgId: options.org, getToken: async () => options.anonymous ? null : token }) } }, env, fetch)
+    './platform-session-diagnostics': diagnostics, 'next/navigation': { unstable_rethrow },
+    '@clerk/nextjs/server': { auth: async () => {
+      if (options.frameworkRedirect) redirect('/sign-in')
+      return ({ userId: options.anonymous ? null : 'user_synthetic001',
+      orgId: options.org, getToken: async () => options.anonymous ? null : token }) } } }, env, fetch)
   const personal = load('lib/personal-server.ts', { 'server-only': {}, './platform-server': session,
     './platform-client': platform }, env, fetch)
   const watchlist = load('lib/watchlist.ts', { 'server-only': {}, './personal-server': personal }, env, fetch)
@@ -72,7 +81,7 @@ function setup(options = {}) {
     '@/lib/observability/vercel-log': { logServerEvent: (...args) => logs.push(args), logTelemetryEvent: event => logs.push(event) } }, env, fetch)
   const request = body => new Request('https://example.invalid/api/test', { method: 'POST',
     headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-  return { calls, logs, account, runId, watch, watchlist, ai, feedback, analytics, research, request }
+  return { calls, logs, account, runId, watch, watchlist, ai, feedback, analytics, research, request, session }
 }
 
 test('watchlist BFF uses the verified active account and sends no owner', async () => {
@@ -225,4 +234,33 @@ test('anonymous telemetry does not depend on Clerk even when the integration is 
   assert.equal(clerkCalls, 0)
   proxy.default({ ...request, cookies: { getAll: () => [{ name: '__session_fixture', value: randomUUID() }] } })
   assert.equal(clerkCalls, 1, 'A presented credential must be passed to the actual verifier')
+})
+
+
+test('actual platform session failures retain HTTP/JSON/contract phases and keep account data private', async () => {
+  for (const [options, phase, status, failure] of [
+    [{ meReject: 500 }, 'account_request', 500, 'platform_error'],
+    [{ malformedMe: true }, 'account_response', null, 'invalid_json'],
+    [{ invalidMe: true }, 'account_validation', 502, 'platform_error'],
+  ]) {
+    const c = setup(options)
+    await assert.rejects(c.session.platformSession())
+    assert.equal(c.logs.length, 1)
+    const [event, fields, level] = c.logs[0]
+    assert.equal(event, 'platform_session_failed')
+    assert.equal(level, 'error')
+    assert.deepEqual(Object.keys(fields).sort(), ['failure', 'phase', 'status'])
+    assert.equal(fields.phase, phase)
+    assert.equal(fields.status, status)
+    assert.equal(fields.failure, failure)
+    assert.ok(!JSON.stringify(c.logs).includes('private-'))
+    assert.ok(!JSON.stringify(c.logs).includes(c.account))
+  }
+})
+
+test('Next framework redirects propagate without being logged as platform failures', async () => {
+  const c = setup({ frameworkRedirect: true })
+  await assert.rejects(c.session.platformSession(), error => String(error.digest).startsWith('NEXT_REDIRECT;'))
+  assert.equal(c.logs.length, 0)
+  assert.equal(c.calls.length, 0)
 })
