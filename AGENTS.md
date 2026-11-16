@@ -90,3 +90,21 @@ Do not manually run a QA server, choose a port, kill processes, or launch Chromi
 For visual/interaction work, follow `docs/qa/viewport-matrix.md` and `docs/qa/browser-qa.md`; inspect console errors, overflow, layout shift, focus order, keyboard, touch, bidirectional scroll, and reduced motion. Report infrastructure blockers exactly rather than improvising.
 
 Keep the diff scoped. Inspect every changed file and the final diff. Unless explicitly asked, do not commit, push, or open a PR. Report exact checks/results, pre-existing failures, deviations, unresolved assumptions, risks, and next steps.
+
+## Deliver and stop
+
+An execution ends when its delivery is recorded, not when the change reaches
+production (ENG-248, package P0).
+
+- Once the PR is open and CI has started, write the next action in the PR and in
+  the Linear issue, then end the execution. Another agent resumes the same PR later.
+- Do not wait for merges, approvals, reviews, installation or deployment windows.
+  Leave no background command, watcher or sleep loop polling for them.
+- Wait for CI only while it may still require your own fixes, for at most two fix
+  rounds. If a third would be needed, hand off with the failing checks and your
+  diagnosis, and stop.
+- A merge does not mean installed. This repository deploys through the GitHub-connected
+  Vercel project, not the self-host release engine. A merge to main is not
+  verified until the Vercel production deployment for that commit succeeded.
+- Never copy deployment hours or windows into instructions, PRs or issues as rules.
+  The installed gate policy in finance-infra is their only source.
