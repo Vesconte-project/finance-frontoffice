@@ -108,6 +108,16 @@ test('personal AI and optional analytics establish verified session context', ()
   assert.ok(!protectedRoutes(source).includes('/api/analytics/event'), 'anonymous telemetry remains public')
 })
 
+test('the Model Lab pages and BFF establish auth context without being protected', () => {
+  const source = readProxySource()
+  // platformSession() calls auth(); unmatched, it throws a non-platform error before
+  // any /v1/model-lab request, and every page shows "Something went wrong on our side".
+  for (const route of ['/models(.*)', '/api/model-lab(.*)'])
+    assert.ok(matcherRoutes(source).includes(route), `${route} must run clerkMiddleware`)
+  assert.ok(!protectedRoutes(source).some(route => route.startsWith('/models') || route.startsWith('/api/model-lab')),
+    'signed-out readers get the Model Lab sign-in state, not a Clerk redirect')
+})
+
 test('the display-currency list establishes auth context and stays public', () => {
   const source = readProxySource()
   // Its backend read calls auth(); unmatched, auth() throws and the list fails as unavailable.

@@ -53,6 +53,12 @@ export const config = {
     '/api/ai-analyst(.*)',
     '/api/analytics/event',
     '/api/platform(.*)',
+    // The Model Lab resolves the platform session with auth() on every page and
+    // BFF call. Unmatched, auth() throws before /v1/model-lab/* is ever sent and
+    // the viewer sees the generic upstream error. Each page shows its own
+    // signed-out state, so these entries establish context without protecting.
+    '/models(.*)',
+    '/api/model-lab(.*)',
     // Telemetry stays public; only an authenticated session may forward to /v1.
   ],
 }
