@@ -523,3 +523,15 @@ test('Signals, Events, Relationships, AI Research and Methodology are research c
   // A fund is not scored, so its methodology does not define the score.
   assert.match(methodology, /isFund \? null : <div><strong>Score<\/strong>/)
 })
+
+test('the daily change keeps its up/down colour: the global identity colour rule excludes it (PRD-73)', () => {
+  const css = readRepoFile('app/globals.css')
+  const rule = css.split('\n').find((line) => line.includes('[data-ticker-identity] :is(h1, p, span, strong)'))
+  assert.ok(rule, 'identity colour rule present')
+  assert.match(rule, /:not\([^)]*\[data-ticker-delta\][^)]*\)/)
+  const identity = readRepoFile('components/stocks/StockTickerIdentity.tsx')
+  assert.match(identity, /styles\.delta, deltaClass\(dailyMoveAmount\)\)\}\s+data-ticker-delta=""/)
+  const module = readRepoFile('components/stocks/StockTickerIdentity.module.css')
+  assert.match(module, /\.deltaPositive \{\s*color: var\(--up-ink\);/)
+  assert.match(module, /\.deltaNegative \{\s*color: var\(--color-negative\);/)
+})
