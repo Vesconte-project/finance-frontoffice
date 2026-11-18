@@ -48,3 +48,41 @@ for (const width of [820, 1920]) {
     expect(fits).toBe(true)
   })
 }
+
+for (const width of [768, 820, 1024]) {
+  test(`internal header bar fits ${width}px without clipping (PRD-70)`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/faq')
+    const header = page.locator('.site-header')
+    await expect(header.getByRole('button', { name: 'Correlation' })).toBeVisible()
+    const fit = await page.evaluate(() => {
+      const bar = document.querySelector('.site-header__bar')!.getBoundingClientRect()
+      const parts = {
+        brand: '.site-header__brand',
+        search: '[data-header-search]',
+      }
+      const buttons = Array.from(document.querySelectorAll('.site-header__cluster nav button'))
+      const nodes: Record<string, Element | null | undefined> = {
+        brand: document.querySelector(parts.brand),
+        search: document.querySelector(parts.search),
+        today: buttons[0],
+        correlation: buttons[buttons.length - 1],
+        account: document.querySelector('.site-header__cluster')?.lastElementChild,
+      }
+      const rects = Object.fromEntries(Object.entries(nodes).map(([name, node]) => {
+        const rect = node?.getBoundingClientRect()
+        return [name, rect ? { left: rect.left, right: rect.right, width: rect.width } : null]
+      }))
+      return { rects, barRight: bar.right, viewport: window.innerWidth, scrollWidth: document.documentElement.scrollWidth }
+    })
+    expect(fit.scrollWidth).toBeLessThanOrEqual(fit.viewport)
+    for (const [name, rect] of Object.entries(fit.rects)) {
+      expect(rect, `${name} is rendered`).not.toBeNull()
+      expect(rect!.left, `${name} starts inside the screen`).toBeGreaterThanOrEqual(0)
+      expect(rect!.right, `${name} ends inside the screen`).toBeLessThanOrEqual(fit.viewport)
+    }
+    expect(fit.rects.search!.width, 'search keeps a usable width').toBeGreaterThanOrEqual(160)
+    expect(fit.rects.search!.right, 'search does not overlap the nav').toBeLessThanOrEqual(fit.rects.today!.left)
+  })
+}
+
