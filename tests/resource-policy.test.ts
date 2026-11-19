@@ -16,6 +16,19 @@ test('calendar and research tab links fetch only on navigation', () => {
     assert.ok(links.length > 0, file)
     for (const link of links) assert.match(link[0], /prefetch=\{false\}/, file)
   }
+  // Links to dynamic routes that every page or a ticker tab shows: each automatic
+  // prefetch would be a function and middleware run for a page nobody opened.
+  for (const [file, destination] of [
+    ['components/marketing/HeaderBar.tsx', /href="\/"/],
+    ['components/SiteFooter.tsx', /href="\/"/],
+    ['components/stocks/StockEventsResearch.tsx', /href="\/calendar"/],
+    ['app/(app)/stocks/[ticker]/signals/page.tsx', /href="\/calendar"/],
+    ['components/stocks/StockRankingsResearch.tsx', /href=\{href\}/],
+  ] as const) {
+    const links = [...source(file).matchAll(/<Link\b[^>]*>/g)].filter((link) => destination.test(link[0]))
+    assert.ok(links.length > 0, file)
+    for (const link of links) assert.match(link[0], /prefetch=\{false\}/, file)
+  }
   assert.doesNotMatch(source('components/stocks/TickerTabSwipe.tsx'), /router\.prefetch\(/)
   assert.match(source('components/stocks/TickerTabSwipe.tsx'), /router\.push\(/)
 })

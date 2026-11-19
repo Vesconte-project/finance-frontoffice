@@ -106,6 +106,7 @@ export default function SegmentedControl<T extends string>({
       aria-label={ariaLabel}
       className={cn(styles.control, fill && styles.fill, className)}
       data-segmented-control=""
+      data-swipe-ignore=""
       data-dragging={preview !== null ? 'true' : 'false'}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}

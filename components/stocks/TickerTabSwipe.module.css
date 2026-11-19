@@ -1,5 +1,45 @@
-/* The destination of a sideways swipe, shown at the edge the content is moving
-   away from. Solid surface, mono label, no motion of its own. */
+/* The neighbouring tab, sliding in beside the page as the finger moves it.
+   Fixed to the viewport below the content's top edge, under the site header
+   (z 90), on the page's own background so it reads as the next page. */
+.peek {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+  display: none;
+  overflow: hidden;
+  background: var(--bg, var(--page-bg));
+  pointer-events: none;
+  will-change: transform;
+}
+
+.peek[data-visible='true'] {
+  display: block;
+}
+
+/* The content column's box (StockTickerLayout .content), so the loading sits
+   exactly where the tab's own loading appears. */
+.peekInner {
+  max-width: 1400px;
+  margin-inline: auto;
+  padding: 20px 20px 56px;
+}
+
+@media (max-width: 339.98px) {
+  .peekInner {
+    padding-inline: 14px;
+  }
+}
+
+@media (min-width: 768px) {
+  .peekInner {
+    padding-inline: 24px;
+  }
+}
+
+/* Reduced motion only: the page stays still, so the destination is named at the
+   edge instead. Solid surface, mono label, no motion of its own. */
 .hint {
   position: fixed;
   top: 50%;

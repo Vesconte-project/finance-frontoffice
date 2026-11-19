@@ -66,7 +66,7 @@ export default function StockRankingsResearch({
                 >
                   <div className={styles.standingHead}>
                     <span className={styles.standingLabel}>{content.label}</span>
-                    <Link href={href} className={styles.standingLink}>
+                    <Link prefetch={false} href={href} className={styles.standingLink}>
                       The model
                     </Link>
                   </div>

@@ -185,7 +185,7 @@ export default function StockEventsResearch({
         <ResearchChapter
           id="timeline"
           label="Events on the price"
-          actions={<Link href="/calendar" className={styles.action}>Open the full calendar →</Link>}
+          actions={<Link prefetch={false} href="/calendar" className={styles.action}>Open the full calendar →</Link>}
         >
           {past.length || scheduled.length ? (
             <EventTimeline ticker={data.ticker} closes={closes} past={past} upcoming={scheduled} today={today} details={details} side={nextCard} />

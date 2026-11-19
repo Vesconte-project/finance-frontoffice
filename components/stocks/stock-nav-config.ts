@@ -70,3 +70,19 @@ export function stockResearchKeyFromPath(pathname: string): StockResearchNavKey 
   if (segment === 'methodology') return 'methodology'
   return 'overview'
 }
+
+/**
+ * TickerTabSwipe reports a sideways swipe's progress on `window` under this
+ * name, so the tab bar's rail can follow the finger: -1 is the tab before
+ * `from`, 1 the one after, 0 `from` itself, and null means the rail rests on the
+ * current tab again. `from` is the tab the gesture started on (an index into
+ * stockResearchPrimaryItems); it differs from the current tab while swipes
+ * follow one another faster than tabs arrive. Absent, it is the current tab.
+ */
+export const TICKER_TAB_SWIPE_EVENT = 'vesconte:ticker-tab-swipe'
+export type TickerTabSwipeDetail = {
+  progress: number | null
+  from?: number
+  /** Set once a swipe commits: the tab now on its way, so the bar can select it at once. */
+  committed?: number
+}

@@ -48,6 +48,33 @@ test('swiping left opens the next tab, swiping right the previous one', async ({
   await expect(page).toHaveURL(/\/stocks\/QAS\/signals$/)
 })
 
+test('the page follows the finger and the next tab slides in beside it', async ({ page }) => {
+  await page.goto('/stocks/QAS/rankings')
+  await page.waitForLoadState('networkidle')
+  await swipeReady(page)
+  const start = await headingCentre(page)
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 300, y: start.y }] })
+  for (const x of [290, 260, 230, 200]) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: start.y }] })
+  }
+  const peek = page.locator('[data-ticker-tab-peek="next"]')
+  await expect(peek).toHaveAttribute('data-visible', 'true')
+  // The same loading a tab shows while its route loads, in the same place.
+  await expect(peek.locator('[data-loading-pulse]')).toHaveCount(1)
+  // One to one: the page has moved as far as the finger has since the swipe began.
+  const offset = await page.locator('[data-stock-ticker-layout] [data-arrival-part="content"]').evaluate(
+    (el) => new DOMMatrix(getComputedStyle(el).transform).m41,
+  )
+  expect(offset).toBeLessThan(-50)
+  // Let go short of a commit, slowly: it springs back.
+  await page.waitForTimeout(150)
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  await page.waitForTimeout(600)
+  await expect(page).toHaveURL(/\/stocks\/QAS\/rankings$/)
+  await expect(peek).toHaveAttribute('data-visible', 'false')
+})
+
 test('a vertical or short gesture never changes the tab', async ({ page }) => {
   await page.goto('/stocks/QAS/rankings')
   await page.waitForLoadState('networkidle')
@@ -75,4 +102,81 @@ test('a swipe that starts on a chart stays with the chart', async ({ page }) => 
   await swipe(page, { x: box!.x + box!.width - 30, y }, { x: box!.x + 30, y })
   await page.waitForTimeout(600)
   await expect(page).toHaveURL(/\/stocks\/QAM$/)
+})
+
+async function quickSwipe(page: Page, y: number) {
+  await swipe(page, { x: 330, y }, { x: 90, y })
+}
+
+test('swipes that follow one another faster than tabs load are never ignored', async ({ page }) => {
+  await page.goto('/stocks/QAS/rankings')
+  await page.waitForLoadState('networkidle')
+  await swipeReady(page)
+  const { y } = await headingCentre(page)
+
+  // Two in a row, the second before the first tab has arrived.
+  await quickSwipe(page, y)
+  await quickSwipe(page, y)
+  await expect(page).toHaveURL(/\/stocks\/QAS\/relationships$/)
+
+  // Three in a row the other way: Rankings, Signals, Valuation, Financials.
+  await page.goto('/stocks/QAS/rankings')
+  await page.waitForLoadState('networkidle')
+  await swipeReady(page)
+  const back = async () => swipe(page, { x: 90, y }, { x: 330, y })
+  await back()
+  await back()
+  await back()
+  await expect(page).toHaveURL(/\/stocks\/QAS\/financials$/)
+})
+
+test('a swipe while the next tab is still on its way works anywhere below the tab bar', async ({ page }) => {
+  await page.goto('/stocks/QAS/rankings')
+  await page.waitForLoadState('networkidle')
+  await swipeReady(page)
+  // Hold the Events tab back, so the second swipe happens while it is loading.
+  await page.route(/\/stocks\/QAS\/events\?_rsc/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+    await route.continue()
+  })
+  const { y } = await headingCentre(page)
+  await quickSwipe(page, y)
+  await page.waitForTimeout(300)
+  // Low on the screen, where a loading tab has no content of its own.
+  await quickSwipe(page, 780)
+  await expect(page).toHaveURL(/\/stocks\/QAS\/relationships$/)
+  // Nothing is left covering the page once it has arrived.
+  await expect(page.locator('[data-ticker-tab-peek][data-visible="true"]')).toHaveCount(0, { timeout: 5000 })
+})
+
+test('the tab bar selects the chosen tab at once, before its route arrives', async ({ page }) => {
+  await page.goto('/stocks/QAS/rankings')
+  await page.waitForLoadState('networkidle')
+  await swipeReady(page)
+  await page.route(/\/stocks\/QAS\/events\?_rsc/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+    await route.continue()
+  })
+  const bar = page.locator('[data-stock-research-nav]')
+  const selected = bar.locator('[data-active="true"]')
+
+  // A swipe that commits.
+  const { y } = await headingCentre(page)
+  await quickSwipe(page, y)
+  await expect(selected).toHaveText('Events', { timeout: 400 })
+  // The page on screen is still Rankings until Events arrives.
+  await expect(bar.locator('[aria-current="page"]')).toHaveText('Rankings')
+  await expect(page).toHaveURL(/\/stocks\/QAS\/rankings$/)
+  await expect(page).toHaveURL(/\/stocks\/QAS\/events$/)
+  await expect(bar.locator('[aria-current="page"]')).toHaveText('Events')
+
+  // A click on a tab, while it loads.
+  await page.route(/\/stocks\/QAS\/relationships\?_rsc/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+    await route.continue()
+  })
+  await bar.getByRole('link', { name: 'Relationships' }).click()
+  await expect(selected).toHaveText('Relationships', { timeout: 400 })
+  await expect(page).toHaveURL(/\/stocks\/QAS\/relationships$/)
+  await expect(selected).toHaveText('Relationships')
 })

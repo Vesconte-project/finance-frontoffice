@@ -24,8 +24,15 @@ export default async function EventsPage({ params, searchParams }: { params: Pro
   const end = new Date(today)
   end.setUTCFullYear(end.getUTCFullYear() + 1)
 
-  const [data, events, disclosures, actions] = await Promise.all([
-    getStockResearchIdentity(ticker, displayCurrency).catch(() => null),
+  const identity = getStockResearchIdentity(ticker, displayCurrency).catch(() => null)
+  // Prices only draw the line under the events; without them the events still show. They follow the page's
+  // currency, so they wait for the identity alone, not for the other reads (one backend round fewer).
+  const prices = identity.then((data) => data
+    ? getClosesIn(ticker.toUpperCase(), TIMELINE_DAYS, data.displayCurrency).catch(() => ({ points: [], currency: null }))
+    : { points: [], currency: null })
+
+  const [data, events, disclosures, actions, { points }] = await Promise.all([
+    identity,
     getTickerEvents(ticker, {
       startDate: isoDate(start),
       endDate: isoDate(end),
@@ -35,10 +42,9 @@ export default async function EventsPage({ params, searchParams }: { params: Pro
     getTickerDisclosures(ticker, { latestOnly: true, limit: 100 }).catch(() => null),
     // Amounts and dates of dividends and splits, for the chosen event's detail.
     getTickerCorporateActions(ticker, { limit: 200, displayCurrency }).catch(() => null),
+    prices,
   ])
   if (!data) return <ResearchUnavailable ticker={ticker.toUpperCase()} />
-  // Prices only draw the line under the events; without them the events still show. They follow the page's currency.
-  const { points } = await getClosesIn(ticker.toUpperCase(), TIMELINE_DAYS, data.displayCurrency).catch(() => ({ points: [], currency: null }))
   const closes = points.map((row) => ({ date: row.date.slice(0, 10), close: row.close }))
   return (
     <>
