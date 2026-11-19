@@ -256,6 +256,7 @@ export default function ExpandingSelector({
           <div
             id={viewportId}
             className={styles.reel}
+            data-swipe-ignore=""
             role="radiogroup"
             aria-label={ariaLabel}
             onPointerDown={handlePointerDown}

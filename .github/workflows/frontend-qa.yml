@@ -17,7 +17,9 @@ jobs:
   candidate:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Frontend candidate
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moved to 26.04, where Playwright 1.59 cannot install
+    # Chromium or its system dependencies. Unpin when Playwright supports it.
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
