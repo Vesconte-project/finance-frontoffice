@@ -12,6 +12,8 @@ import {
 } from '@/components/stocks/stock-nav-config'
 import { useDisplayCurrencyParam } from '@/hooks/useDisplayCurrency'
 import { withDisplayCurrency } from '@/lib/display-currency'
+import LoadingPulse from '@/components/ui/LoadingPulse'
+import loadingStyles from './TickerResearchLoading.module.css'
 import styles from './TickerTabSwipe.module.css'
 
 // A gesture becomes a swipe once it has moved this far, mostly sideways.
@@ -39,10 +41,12 @@ type Side = 'next' | 'previous'
  * in the order of the tab bar. Touch only: a mouse or trackpad keeps the bar.
  *
  * The page follows the finger one to one and the neighbouring tab slides in
- * beside it, as a panel carrying its name. Released far enough, or flicked, the
- * page leaves and the neighbour settles into place while its route loads; the
- * panel lifts once the new tab has arrived. Otherwise both spring back. The tab
- * bar's rail follows the same progress (TICKER_TAB_SWIPE_EVENT).
+ * beside it, showing the same loading as a tab that is loading
+ * (TickerResearchLoading), so the reader sees one loading, not two. Released far
+ * enough, or flicked, the page leaves and the neighbour settles into place while
+ * its route loads; the panel lifts once the new tab shows its content, not its
+ * loading. Otherwise both spring back. The tab bar's rail follows the same
+ * progress (TICKER_TAB_SWIPE_EVENT).
  *
  * Gestures that already belong to something else are left alone: charts and
  * canvases (pan, measure), anything that scrolls sideways, form fields, sliders,
@@ -105,7 +109,17 @@ export default function TickerTabSwipe() {
     }
 
     // A new tab has arrived under the panel that was covering it: put the content
-    // back in place and lift the panel.
+    // back in place, and lift the panel once the tab shows its content. While the
+    // tab still shows its loading, the panel stays: it is the same loading, so
+    // nothing changes for the reader until the content is there.
+    let arrival: MutationObserver | null = null
+    const lift = (cover: HTMLElement) => {
+      arrival?.disconnect()
+      arrival = null
+      cover.style.transition = 'opacity 180ms ease-out'
+      cover.style.opacity = '0'
+      later(() => hidePeek(cover), 200)
+    }
     const pending = pendingRef.current
     if (pending) {
       window.clearTimeout(pending.timer)
@@ -113,10 +127,14 @@ export default function TickerTabSwipe() {
       const cover = peekOf(pending.side)
       content.style.transition = ''
       content.style.transform = ''
-      cover.style.transition = 'opacity 180ms ease-out'
-      cover.style.opacity = '0'
-      later(() => hidePeek(cover), 200)
       emit(null)
+      const loading = () => content.querySelector('[data-ticker-research-loading]') !== null
+      if (!loading()) lift(cover)
+      else {
+        arrival = new MutationObserver(() => { if (!loading()) lift(cover) })
+        arrival.observe(content, { childList: true, subtree: true })
+        later(() => { if (arrival) lift(cover) }, ARRIVAL_TIMEOUT_MS)
+      }
     }
 
     let startX = 0, startY = 0
@@ -142,12 +160,7 @@ export default function TickerTabSwipe() {
     // The panels start where the content does, or at the top once it has scrolled past.
     const placePeeks = () => {
       const top = Math.max(0, content.getBoundingClientRect().top)
-      for (const side of ['next', 'previous'] as const) {
-        const peek = peekOf(side)
-        peek.style.top = `${top}px`
-        const title = peek.querySelector<HTMLElement>('[data-ticker-tab-peek-title]')
-        if (title) title.textContent = (side === 'next' ? next : previous)?.label ?? ''
-      }
+      for (const peek of [nextPeek, previousPeek]) peek.style.top = `${top}px`
     }
 
     const position = (offset: number, transition: string) => {
@@ -310,6 +323,8 @@ export default function TickerTabSwipe() {
       html.style.overscrollBehaviorX = previousOverscroll
       for (const timer of timers) window.clearTimeout(timer)
       clearHint()
+      // A panel waiting for content to arrive must not be left covering the page.
+      if (arrival) { arrival.disconnect(); arrival = null; hidePeek(nextPeek); hidePeek(previousPeek) }
       // While a panel covers a tab that is still loading, the next run lifts it.
       if (pendingRef.current) return
       content.style.transition = ''
@@ -328,10 +343,10 @@ export default function TickerTabSwipe() {
   return (
     <>
       <div ref={previousPeekRef} className={styles.peek} aria-hidden="true" data-visible="false" data-ticker-tab-peek="previous">
-        <Peek ticker={ticker} />
+        <Peek />
       </div>
       <div ref={nextPeekRef} className={styles.peek} aria-hidden="true" data-visible="false" data-ticker-tab-peek="next">
-        <Peek ticker={ticker} />
+        <Peek />
       </div>
       <div ref={hintRef} className={styles.hint} aria-hidden="true" data-ticker-tab-swipe-hint="" />
     </>
@@ -339,18 +354,15 @@ export default function TickerTabSwipe() {
 }
 
 /**
- * The neighbouring tab as it slides in: its name, and a pulse while its route
- * loads. The swipe writes the name when a gesture starts, so it cannot change
- * to the new neighbour while the panel still covers the tab that just arrived.
+ * The neighbouring tab as it slides in: exactly the loading a tab shows while
+ * its route loads (TickerResearchLoading), in the content column's place.
  */
-function Peek({ ticker }: { ticker: string }) {
+function Peek() {
   return (
     <div className={styles.peekInner}>
-      <span className={styles.peekEyebrow}>{ticker}</span>
-      <span className={styles.peekTitle} data-ticker-tab-peek-title="" />
-      <span className={styles.peekPulse}>
-        {Array.from({ length: 7 }, (_, index) => <i key={index} style={{ animationDelay: `${index * 90}ms` }} />)}
-      </span>
+      <section className={loadingStyles.root}>
+        <LoadingPulse label="Loading" />
+      </section>
     </div>
   )
 }

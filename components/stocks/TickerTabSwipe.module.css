@@ -18,61 +18,23 @@
   display: block;
 }
 
-/* Matches the content column's margins (StockTickerLayout .content). */
+/* The content column's box (StockTickerLayout .content), so the loading sits
+   exactly where the tab's own loading appears. */
 .peekInner {
-  display: flex;
   max-width: 1400px;
   margin-inline: auto;
-  padding: 28px 20px 0;
-  flex-direction: column;
-  gap: 10px;
+  padding: 20px 20px 56px;
+}
+
+@media (max-width: 339.98px) {
+  .peekInner {
+    padding-inline: 14px;
+  }
 }
 
 @media (min-width: 768px) {
   .peekInner {
     padding-inline: 24px;
-  }
-}
-
-.peekEyebrow {
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  letter-spacing: 0.08em;
-  color: var(--content-secondary);
-  text-transform: uppercase;
-}
-
-.peekTitle {
-  font-size: clamp(1.75rem, 7vw, 2.5rem);
-  font-weight: 500;
-  line-height: 1.1;
-  letter-spacing: -0.01em;
-  color: var(--text);
-}
-
-.peekPulse {
-  display: flex;
-  gap: 6px;
-  margin-top: 18px;
-}
-
-.peekPulse i {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--accent);
-  opacity: 0.25;
-  animation: peek-pulse 1.1s ease-in-out infinite;
-}
-
-@keyframes peek-pulse {
-  0%, 100% { opacity: 0.2; }
-  45% { opacity: 0.9; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .peekPulse i {
-    animation: none;
   }
 }
 

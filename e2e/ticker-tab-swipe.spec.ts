@@ -60,7 +60,8 @@ test('the page follows the finger and the next tab slides in beside it', async (
   }
   const peek = page.locator('[data-ticker-tab-peek="next"]')
   await expect(peek).toHaveAttribute('data-visible', 'true')
-  await expect(peek).toContainText('Events')
+  // The same loading a tab shows while its route loads, in the same place.
+  await expect(peek.locator('[data-loading-pulse]')).toHaveCount(1)
   // One to one: the page has moved as far as the finger has since the swipe began.
   const offset = await page.locator('[data-stock-ticker-layout] [data-arrival-part="content"]').evaluate(
     (el) => new DOMMatrix(getComputedStyle(el).transform).m41,
