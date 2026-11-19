@@ -1,43 +1,17 @@
 import { SiteHeader } from '@/components/marketing/site-chrome'
-import HomeBoard, { loadHomeBoardData } from '@/components/marketing/HomeBoard'
-import HomeClose from '@/components/marketing/HomeClose'
-import HomeIndex from '@/components/marketing/HomeIndex'
+import HomeMarketStory from '@/components/marketing/HomeMarketStory'
 import HeroConstellation from '@/components/marketing/HeroConstellation'
-import HomeNeighborhood from '@/components/marketing/HomeNeighborhood'
 import DockingSearch from '@/components/marketing/DockingSearch'
 import { ScrollExperience } from '@/components/motion/ScrollRuntime'
-
-
-async function Sections() {
-  const boardData = await loadHomeBoardData()
-
-  return (
-    // `data-field-foreground` marks this as content painted over the fixed
-    // constellation. HeroConstellation softens the field while any marked
-    // element is over the viewport and sharpens it while none is, so the one
-    // stretch of the page where the network is alone is the one where it is
-    // in focus. See FIELD_SOFTEN there.
-    <div data-field-foreground className="relative z-30 text-content-primary">
-      <div className="pt-24 md:pt-28 lg:pt-32">
-        <HomeBoard data={boardData} />
-        <HomeNeighborhood items={boardData.longTerm.status === 'ok' ? boardData.longTerm.items.slice(0, 5) : []} />
-        <HomeIndex />
-      </div>
-      <HomeClose />
-    </div>
-  )
-}
 
 export default function MarketingHomePage() {
   return (
     <ScrollExperience profile="narrative">
-      <main
-        className="marketing-home relative min-h-screen bg-[var(--page-bg)] text-content-primary"
-      >
+      <main className="marketing-home relative min-h-screen bg-[var(--page-bg)] text-content-primary">
         <SiteHeader activeHref="/" />
         <DockingSearch />
         <HeroConstellation />
-        <Sections />
+        <HomeMarketStory />
       </main>
     </ScrollExperience>
   )

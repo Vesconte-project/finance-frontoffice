@@ -209,7 +209,8 @@ test('homepage search exposes four stable options and complete combobox semantic
     }
   })
   expect(relationships).toEqual({ ctaOutsideCombobox: true, ctaOutsideListbox: true })
-  await expect(page.getByRole('link', { name: 'Open correlations network' })).toBeVisible()
+  const startingPoints = page.locator('.dock-search__support')
+  await expect(startingPoints).toBeHidden()
 
   await input.press('ArrowDown')
   const firstActiveId = await input.getAttribute('aria-activedescendant')
@@ -226,6 +227,7 @@ test('homepage search exposes four stable options and complete combobox semantic
   await input.press('Escape')
   await expect(input).toHaveAttribute('aria-expanded', 'false')
   await expect(input).not.toHaveAttribute('aria-activedescendant', /.+/)
+  await expect(startingPoints.getByRole('link', { name: 'What moves with Nvidia' })).toBeVisible()
 
   await input.press('ArrowDown')
   await expect(input).toHaveAttribute('aria-expanded', 'true')

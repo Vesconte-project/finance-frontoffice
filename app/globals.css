@@ -326,8 +326,6 @@
     --glass-shadow: none;
     --glass-thumb-bg: color-mix(in srgb, var(--surface) 95%, transparent);
     --glass-thumb-border: color-mix(in srgb, var(--line) 10%, transparent);
-    /* Specular edge of the liquid-glass selection lens (selectors only). */
-    --glass-lens-specular: color-mix(in srgb, var(--surface) 92%, transparent);
     --content-primary: var(--text);
     --content-secondary: var(--text-muted);
     --content-muted: var(--text-muted);
@@ -533,8 +531,6 @@
       --glass-shadow: none;
       --glass-thumb-bg: color-mix(in srgb, var(--surface) 16%, transparent);
       --glass-thumb-border: color-mix(in srgb, var(--line) 26%, transparent);
-      /* Specular edge of the liquid-glass selection lens (selectors only). */
-      --glass-lens-specular: color-mix(in srgb, var(--text) 24%, transparent);
       --content-primary: var(--surface);
       --content-secondary: var(--line);
       --content-muted: var(--text-muted);
@@ -654,8 +650,6 @@
     --glass-shadow: none;
     --glass-thumb-bg: color-mix(in srgb, var(--surface) 16%, transparent);
     --glass-thumb-border: color-mix(in srgb, var(--line) 26%, transparent);
-    /* Specular edge of the liquid-glass selection lens (selectors only). */
-    --glass-lens-specular: color-mix(in srgb, var(--text) 24%, transparent);
     --content-primary: var(--surface);
     --content-secondary: var(--line);
     --content-muted: var(--text-muted);
@@ -3943,3 +3937,78 @@ html[data-universe-arrival] [data-stock-ticker-layout] [data-arrival-part='ident
 html[data-universe-arrival] [data-stock-ticker-layout] [data-ticker-navigation] { animation-delay: calc(860ms - var(--universe-arrival-elapsed, 0ms)); }
 html[data-universe-arrival] [data-stock-ticker-layout] [data-arrival-part='content'] { animation-delay: calc(940ms - var(--universe-arrival-elapsed, 0ms)); }
 html[data-universe-orb] [data-stock-ticker-layout] [data-selected-ticker-anchor] { opacity: 0; }
+
+/* Homepage research prompts sit below the search field. */
+.dock-search__support {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.dock-search__prompt {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+}
+
+.dock-search__ideas {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dock-search__ideas .dock-search__cta {
+  min-height: 38px;
+  padding-inline: 0.8rem;
+  border-radius: 999px;
+}
+
+.dock-search:has(.ticker-search__root[data-open='true']) .dock-search__support {
+  visibility: hidden;
+}
+
+.site-header__home-auth {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.site-header__sign-in,
+.site-header__signup-full {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .site-header__sign-in {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding-inline: 0.25rem;
+    color: var(--text);
+    font-size: 0.8125rem;
+    white-space: nowrap;
+  }
+
+  .site-header__signup-full {
+    display: inline;
+    white-space: nowrap;
+  }
+
+  .site-header__signup-short {
+    display: none;
+  }
+
+  html.chrome-scrolled .site-header__row[data-home]:has(.site-header__home-auth):not([data-menu-open], :focus-within) {
+    max-width: 560px;
+  }
+}
+
+@media (pointer: coarse) {
+  .dock-search__ideas .dock-search__cta {
+    min-height: 44px;
+  }
+}

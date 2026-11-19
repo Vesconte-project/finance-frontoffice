@@ -2,11 +2,16 @@
 
 import { Fragment, useEffect, useState, type CSSProperties, type FocusEvent } from 'react'
 import Link from 'next/link'
-import { ChartNetwork } from 'lucide-react'
 import HeaderSearch from '@/components/HeaderSearch'
 import TapToActivateField from '@/components/search/TapToActivateField'
 
 const HEADLINE = 'Invest smarter, not harder'
+
+const STARTING_POINTS = [
+  { label: 'Dividends their cash covers', href: '/picks/income' },
+  { label: 'Strong businesses, fair prices', href: '/picks/long-term' },
+  { label: 'What moves with Nvidia', href: '/stocks/NVDA/relationships' },
+]
 
 /* Typed into the hero's placeholder as examples of what the field takes.
    Company names only, never symbols: someone who does not already know what a
@@ -30,7 +35,7 @@ const TYPING_HINTS = ['Apple', 'Siemens', 'Samsung', 'Toyota', 'Alibaba', 'Micro
  * Homepage hero search.
  *
  * At the top it's the centrepiece of the first screen — a large centred search
- * with an editorial heading above and a compact correlations action below. On scroll it lifts
+ * with an editorial heading above and suggested research below. On scroll it lifts
  * and fades as the small in-flow header pill search takes over (see .dock-search
  * in globals.css).
  *
@@ -93,16 +98,15 @@ export default function DockingSearch() {
       <TapToActivateField className="dock-search__field">
         <HeaderSearch className="w-full" maxSuggestions={4} placeholder="Search a ticker or company…" typingHints={TYPING_HINTS} />
       </TapToActivateField>
-      <div className="dock-search__support">
-        <Link
-          href="/markets/network"
-          className="dock-search__cta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-page-bg"
-          aria-label="Open correlations network"
-          title="Open correlations network"
-        >
-          <ChartNetwork className="dock-search__cta-icon size-4" aria-hidden="true" />
-          <span className="dock-search__cta-label">Correlations</span>
-        </Link>
+      <div className="dock-search__support" aria-label="Suggested research">
+        <span className="dock-search__prompt" data-field-obstacle>Not sure where to start?</span>
+        <ul className="dock-search__ideas">
+          {STARTING_POINTS.map(({ href, label }) => (
+            <li key={href}>
+              <Link href={href} prefetch={false} className="dock-search__cta">{label}</Link>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   )
