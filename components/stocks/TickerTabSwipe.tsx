@@ -105,8 +105,8 @@ export default function TickerTabSwipe() {
     const previousOverscroll = html.style.overscrollBehaviorX
     html.style.overscrollBehaviorX = 'none'
 
-    const emit = (progress: number | null, from?: number) => {
-      window.dispatchEvent(new CustomEvent<TickerTabSwipeDetail>(TICKER_TAB_SWIPE_EVENT, { detail: { progress, from } }))
+    const emit = (progress: number | null, from?: number, committed?: number) => {
+      window.dispatchEvent(new CustomEvent<TickerTabSwipeDetail>(TICKER_TAB_SWIPE_EVENT, { detail: { progress, from, committed } }))
     }
     const timers = new Set<number>()
     const later = (fn: () => void, ms: number) => {
@@ -273,7 +273,7 @@ export default function TickerTabSwipe() {
       place(cover, 0, transition)
       // A panel that was standing in for a tab the reader went past is done.
       if (leaving !== content) later(() => { if (front.el !== leaving && incoming !== leaving) hidePeek(leaving) }, duration + 20)
-      emit(towards, front.index)
+      emit(towards, front.index, at)
       if (pendingRef.current) window.clearTimeout(pendingRef.current.timer)
       const timer = window.setTimeout(() => {
         // The destination never arrived: bring the page back.
