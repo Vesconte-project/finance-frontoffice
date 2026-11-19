@@ -11,7 +11,7 @@ export default function SiteFooter() {
     >
       <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-10 px-5 py-12 md:px-10">
         <div>
-          <Link href="/" className="marketing-logo-type text-lg text-content-primary">{BRAND_NAME}</Link>
+          <Link prefetch={false} href="/" className="marketing-logo-type text-lg text-content-primary">{BRAND_NAME}</Link>
           <p className="mt-3 max-w-sm text-sm leading-6 text-content-secondary">
             Market signals, research, watchlists, and alerts in one workspace.
           </p>
