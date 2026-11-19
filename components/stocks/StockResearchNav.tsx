@@ -81,7 +81,7 @@ export default function StockResearchNav({ ticker }: { ticker: string }) {
 
   const choose = (event: MouseEvent<HTMLAnchorElement>, key: string) => {
     // A new tab or window, or another handler, leaves this page where it is.
-    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
     setChosen(key === activeKey ? null : { key, from: activeKey })
   }
 
