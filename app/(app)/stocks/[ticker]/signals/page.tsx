@@ -4,5 +4,5 @@ import { buttonClass } from '@/components/ui/Button'
 
 export default function DirectionalSignalsUnavailablePage() {
   return <EmptyState title="Directional signals" description="Directional signals are currently unavailable. Price history and company research remain available."
-    action={<Link href="/calendar" className={buttonClass({ variant: 'secondary' })}>Open market calendar</Link>} />
+    action={<Link prefetch={false} href="/calendar" className={buttonClass({ variant: 'secondary' })}>Open market calendar</Link>} />
 }

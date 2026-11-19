@@ -80,6 +80,7 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
         )}
       >
         <Link
+          prefetch={false}
           href="/"
           aria-label={BRAND_NAME}
           data-analytics-id="header_brand_home"
