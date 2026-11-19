@@ -80,4 +80,9 @@ export function stockResearchKeyFromPath(pathname: string): StockResearchNavKey 
  * follow one another faster than tabs arrive. Absent, it is the current tab.
  */
 export const TICKER_TAB_SWIPE_EVENT = 'vesconte:ticker-tab-swipe'
-export type TickerTabSwipeDetail = { progress: number | null; from?: number }
+export type TickerTabSwipeDetail = {
+  progress: number | null
+  from?: number
+  /** Set once a swipe commits: the tab now on its way, so the bar can select it at once. */
+  committed?: number
+}
