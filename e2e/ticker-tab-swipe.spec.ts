@@ -48,6 +48,32 @@ test('swiping left opens the next tab, swiping right the previous one', async ({
   await expect(page).toHaveURL(/\/stocks\/QAS\/signals$/)
 })
 
+test('the page follows the finger and the next tab slides in beside it', async ({ page }) => {
+  await page.goto('/stocks/QAS/rankings')
+  await page.waitForLoadState('networkidle')
+  await swipeReady(page)
+  const start = await headingCentre(page)
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 300, y: start.y }] })
+  for (const x of [290, 260, 230, 200]) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: start.y }] })
+  }
+  const peek = page.locator('[data-ticker-tab-peek="next"]')
+  await expect(peek).toHaveAttribute('data-visible', 'true')
+  await expect(peek).toContainText('Events')
+  // One to one: the page has moved as far as the finger has since the swipe began.
+  const offset = await page.locator('[data-stock-ticker-layout] [data-arrival-part="content"]').evaluate(
+    (el) => new DOMMatrix(getComputedStyle(el).transform).m41,
+  )
+  expect(offset).toBeLessThan(-50)
+  // Let go short of a commit, slowly: it springs back.
+  await page.waitForTimeout(150)
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  await page.waitForTimeout(600)
+  await expect(page).toHaveURL(/\/stocks\/QAS\/rankings$/)
+  await expect(peek).toHaveAttribute('data-visible', 'false')
+})
+
 test('a vertical or short gesture never changes the tab', async ({ page }) => {
   await page.goto('/stocks/QAS/rankings')
   await page.waitForLoadState('networkidle')
