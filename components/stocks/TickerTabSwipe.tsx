@@ -293,8 +293,29 @@ export default function TickerTabSwipe() {
       router.push(href)
     }
 
+    // The rest of a touch is read on the element it started on. Its events keep
+    // going to that element even when a tab arriving mid-gesture replaces it,
+    // and once it is out of the document they no longer bubble to it.
+    let touched: EventTarget | null = null
+    const release = () => {
+      if (!touched) return
+      touched.removeEventListener('touchmove', onMove as EventListener)
+      touched.removeEventListener('touchend', onEnd as EventListener)
+      touched.removeEventListener('touchcancel', onCancel)
+      touched = null
+    }
+    const hold = (target: EventTarget) => {
+      release()
+      touched = target
+      // Not passive: once a gesture is a swipe, it stops the page scrolling vertically.
+      target.addEventListener('touchmove', onMove as EventListener, { passive: false })
+      target.addEventListener('touchend', onEnd as EventListener)
+      target.addEventListener('touchcancel', onCancel)
+    }
+
     const onStart = (event: TouchEvent) => {
       tracking = false
+      release()
       if (event.touches.length !== 1 || blocked(event.target)) return
       const touch = event.touches[0]!
       if (touch.clientX < EDGE_PX || touch.clientX > window.innerWidth - EDGE_PX) return
@@ -304,6 +325,7 @@ export default function TickerTabSwipe() {
       startX = touch.clientX; startY = touch.clientY
       tracking = true; swiping = false; dx = 0
       samples = [{ t: event.timeStamp, x: touch.clientX }]
+      if (event.target) hold(event.target)
     }
 
     const beginSwipe = () => {
@@ -373,6 +395,7 @@ export default function TickerTabSwipe() {
 
     const onEnd = (event: TouchEvent) => {
       if (!tracking) return
+      release()
       tracking = false
       if (!swiping) return
       swiping = false
@@ -392,6 +415,7 @@ export default function TickerTabSwipe() {
     }
 
     const onCancel = () => {
+      release()
       if (!swiping) { tracking = false; return }
       tracking = false; swiping = false
       clearHint()
@@ -404,17 +428,11 @@ export default function TickerTabSwipe() {
     // On the document, not the content: the content can be off screen behind a
     // panel, or shorter than the screen while a tab loads.
     document.addEventListener('touchstart', onStart, { passive: true })
-    // Not passive: once a gesture is a swipe, it stops the page scrolling vertically.
-    document.addEventListener('touchmove', onMove, { passive: false })
-    document.addEventListener('touchend', onEnd)
-    document.addEventListener('touchcancel', onCancel)
 
     return () => {
       arriveRef.current = null
       document.removeEventListener('touchstart', onStart)
-      document.removeEventListener('touchmove', onMove)
-      document.removeEventListener('touchend', onEnd)
-      document.removeEventListener('touchcancel', onCancel)
+      release()
       html.style.overscrollBehaviorX = previousOverscroll
       clearTimers()
       clearHint()
