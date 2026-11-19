@@ -12,6 +12,8 @@ import {
 } from '@/components/stocks/stock-nav-config'
 import { useDisplayCurrencyParam } from '@/hooks/useDisplayCurrency'
 import { withDisplayCurrency } from '@/lib/display-currency'
+import LoadingPulse from '@/components/ui/LoadingPulse'
+import loadingStyles from './TickerResearchLoading.module.css'
 import styles from './TickerTabSwipe.module.css'
 
 // A gesture becomes a swipe once it has moved this far, mostly sideways.
@@ -32,17 +34,25 @@ const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)'
 // If the destination never arrives, the cover lifts and the page comes back.
 const ARRIVAL_TIMEOUT_MS = 10000
 
-type Side = 'next' | 'previous'
-
 /**
  * A sideways swipe over a ticker page moves to the next or previous research tab,
  * in the order of the tab bar. Touch only: a mouse or trackpad keeps the bar.
  *
  * The page follows the finger one to one and the neighbouring tab slides in
- * beside it, as a panel carrying its name. Released far enough, or flicked, the
- * page leaves and the neighbour settles into place while its route loads; the
- * panel lifts once the new tab has arrived. Otherwise both spring back. The tab
- * bar's rail follows the same progress (TICKER_TAB_SWIPE_EVENT).
+ * beside it, showing the same loading as a tab that is loading
+ * (TickerResearchLoading), so the reader sees one loading, not two. Released far
+ * enough, or flicked, the page leaves and the neighbour settles into place while
+ * its route loads; the panel lifts once the new tab shows its content, not its
+ * loading. Otherwise both spring back. The tab bar's rail follows the same
+ * progress (TICKER_TAB_SWIPE_EVENT).
+ *
+ * A swipe is never ignored because a tab is loading. Swipes can follow one
+ * another faster than tabs arrive: the panel standing in for a tab on its way is
+ * moved like the page, the next neighbour comes in beside it, and only the
+ * newest destination is pushed. Gestures are read from the whole screen below
+ * the top of the tab's content, so the empty space under a loading tab works
+ * too. Each tab committed to is still requested: a tab swiped past mid-chain is
+ * fetched and rendered once, though the reader never sees it.
  *
  * Gestures that already belong to something else are left alone: charts and
  * canvases (pan, measure), anything that scrolls sideways, form fields, sliders,
@@ -62,15 +72,22 @@ export default function TickerTabSwipe() {
   const hintRef = useRef<HTMLDivElement>(null)
   const nextPeekRef = useRef<HTMLDivElement>(null)
   const previousPeekRef = useRef<HTMLDivElement>(null)
-  // The side whose panel is covering the content while its route loads.
-  const pendingRef = useRef<{ side: Side; timer: number } | null>(null)
+  // The panel covering the content while the tab it stands for loads, and that tab.
+  const pendingRef = useRef<{ cover: HTMLElement; index: number; timer: number } | null>(null)
 
   const ticker = decodeURIComponent(pathname.split('/').filter(Boolean)[1] ?? '').toUpperCase()
   const activeKey = stockResearchKeyFromPath(pathname)
   const displayCurrency = useDisplayCurrencyParam()
   const index = stockResearchPrimaryItems.findIndex((item) => item.key === activeKey)
-  const previous = index > 0 ? stockResearchPrimaryItems[index - 1] : null
-  const next = index >= 0 && index < stockResearchPrimaryItems.length - 1 ? stockResearchPrimaryItems[index + 1] : null
+  // The gesture outlives tab changes: it reads the current tab from here, and the
+  // arrival of a tab is handed to it rather than tearing it down mid-swipe.
+  const tabRef = useRef({ index, displayCurrency })
+  const arriveRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    tabRef.current = { index, displayCurrency }
+    arriveRef.current?.()
+  }, [index, displayCurrency])
 
   useEffect(() => {
     if (!ticker) return
@@ -79,23 +96,24 @@ export default function TickerTabSwipe() {
     const nextPeek = nextPeekRef.current
     const previousPeek = previousPeekRef.current
     if (!content || !hint || !nextPeek || !previousPeek) return
-
-    const previousHref = previous ? withDisplayCurrency(stockResearchHref(ticker, previous), displayCurrency) : null
-    const nextHref = next ? withDisplayCurrency(stockResearchHref(ticker, next), displayCurrency) : null
+    const peeks = [previousPeek, nextPeek]
+    const tabs = stockResearchPrimaryItems
+    const hrefOf = (at: number) => withDisplayCurrency(stockResearchHref(ticker, tabs[at]!), tabRef.current.displayCurrency)
+    const currentIndex = () => tabRef.current.index
 
     const html = document.documentElement
     const previousOverscroll = html.style.overscrollBehaviorX
     html.style.overscrollBehaviorX = 'none'
 
-    const peekOf = (side: Side) => (side === 'next' ? nextPeek : previousPeek)
-    const emit = (progress: number | null) => {
-      window.dispatchEvent(new CustomEvent<TickerTabSwipeDetail>(TICKER_TAB_SWIPE_EVENT, { detail: { progress } }))
+    const emit = (progress: number | null, from?: number) => {
+      window.dispatchEvent(new CustomEvent<TickerTabSwipeDetail>(TICKER_TAB_SWIPE_EVENT, { detail: { progress, from } }))
     }
     const timers = new Set<number>()
     const later = (fn: () => void, ms: number) => {
       const id = window.setTimeout(() => { timers.delete(id); fn() }, ms)
       timers.add(id)
     }
+    const clearTimers = () => { for (const timer of timers) window.clearTimeout(timer); timers.clear() }
 
     const hidePeek = (peek: HTMLElement) => {
       peek.style.transition = ''
@@ -103,21 +121,63 @@ export default function TickerTabSwipe() {
       peek.style.opacity = ''
       peek.dataset.visible = 'false'
     }
+    const offsetOf = (el: HTMLElement) => new DOMMatrix(getComputedStyle(el).transform).m41
+    const place = (el: HTMLElement, x: number, transition: string) => {
+      el.style.transition = transition
+      el.style.transform = x || el !== content ? `translate3d(${x}px, 0, 0)` : ''
+    }
 
     // A new tab has arrived under the panel that was covering it: put the content
-    // back in place and lift the panel.
-    const pending = pendingRef.current
-    if (pending) {
-      window.clearTimeout(pending.timer)
-      pendingRef.current = null
-      const cover = peekOf(pending.side)
-      content.style.transition = ''
-      content.style.transform = ''
+    // back in place, and lift the panel once the tab shows its content. While the
+    // tab still shows its loading, the panel stays: it is the same loading, so
+    // nothing changes for the reader until the content is there.
+    let arrival: { cover: HTMLElement; observer: MutationObserver } | null = null
+    const endArrival = (fade: boolean) => {
+      if (!arrival) return
+      const { cover, observer } = arrival
+      observer.disconnect()
+      arrival = null
+      if (!fade) { hidePeek(cover); return }
       cover.style.transition = 'opacity 180ms ease-out'
       cover.style.opacity = '0'
-      later(() => hidePeek(cover), 200)
-      emit(null)
+      later(() => { if (cover.style.opacity === '0') hidePeek(cover) }, 200)
     }
+    const loading = () => content.querySelector('[data-ticker-research-loading]') !== null
+    const watchArrival = (cover: HTMLElement) => {
+      endArrival(false)
+      arrival = { cover, observer: new MutationObserver(() => { if (!loading()) endArrival(true) }) }
+      if (!loading()) { endArrival(true); return }
+      arrival.observer.observe(content, { childList: true, subtree: true })
+      later(() => endArrival(true), ARRIVAL_TIMEOUT_MS)
+    }
+    // A panel left in front by a gesture over a tab that arrived meanwhile.
+    let arrivedUnder: HTMLElement | null = null
+    const arrive = () => {
+      const pending = pendingRef.current
+      if (!pending) return
+      window.clearTimeout(pending.timer)
+      pendingRef.current = null
+      // The content is now the arrived tab: back in place, behind the panel.
+      content.style.transition = ''
+      content.style.transform = ''
+      if (swiping) {
+        // Mid-gesture the panel keeps following the finger; what happens to it is
+        // decided when the finger lifts.
+        front = { ...front, index: currentIndex() }
+        arrivedUnder = pending.cover
+        return
+      }
+      for (const peek of peeks) if (peek !== pending.cover) hidePeek(peek)
+      emit(null)
+      front = { el: content, index: currentIndex(), origin: 0 }
+      watchArrival(pending.cover)
+    }
+
+    // What a gesture moves: the content, or the panel standing in for a tab that
+    // is still on its way. Never nothing: a swipe is never ignored for loading.
+    let front: { el: HTMLElement; index: number; origin: number } = { el: content, index: currentIndex(), origin: 0 }
+    let incoming: HTMLElement | null = null
+    let direction = 0
 
     let startX = 0, startY = 0
     let tracking = false
@@ -128,8 +188,8 @@ export default function TickerTabSwipe() {
 
     const blocked = (target: EventTarget | null) => {
       let el = target instanceof Element ? target : null
-      if (el?.closest('canvas, svg, input, textarea, select, dialog, [role="slider"], [data-swipe-ignore]')) return true
-      while (el && el !== content) {
+      if (el?.closest('canvas, svg, input, textarea, select, dialog, [role="dialog"], [role="slider"], [data-swipe-ignore], .site-header')) return true
+      while (el && el !== document.body) {
         if (el instanceof HTMLElement && el.scrollWidth > el.clientWidth + 1) {
           const overflow = getComputedStyle(el).overflowX
           if (overflow === 'auto' || overflow === 'scroll') return true
@@ -142,44 +202,49 @@ export default function TickerTabSwipe() {
     // The panels start where the content does, or at the top once it has scrolled past.
     const placePeeks = () => {
       const top = Math.max(0, content.getBoundingClientRect().top)
-      for (const side of ['next', 'previous'] as const) {
-        const peek = peekOf(side)
-        peek.style.top = `${top}px`
-        const title = peek.querySelector<HTMLElement>('[data-ticker-tab-peek-title]')
-        if (title) title.textContent = (side === 'next' ? next : previous)?.label ?? ''
-      }
+      for (const peek of peeks) peek.style.top = `${top}px`
     }
 
-    const position = (offset: number, transition: string) => {
-      content.style.transition = transition
-      content.style.transform = offset ? `translate3d(${offset}px, 0, 0)` : ''
-      for (const side of ['next', 'previous'] as const) {
-        const peek = peekOf(side)
-        const target = side === 'next' ? next : previous
-        const active = target && (side === 'next' ? offset < 0 : offset > 0)
-        if (!active) { if (!transition) hidePeek(peek); continue }
-        peek.dataset.visible = 'true'
-        peek.style.transition = transition
-        const base = side === 'next' ? width : -width
-        peek.style.transform = `translate3d(${base + offset}px, 0, 0)`
+    const neighbour = (from: number, towards: number) => {
+      const at = from + towards
+      return towards !== 0 && at >= 0 && at < tabs.length ? at : null
+    }
+
+    // The front element at `offset`, and the neighbour on the side it moves away from.
+    const follow = (offset: number) => {
+      place(front.el, offset, '')
+      const towards = offset < 0 ? 1 : offset > 0 ? -1 : 0
+      if (towards !== direction && incoming) { hidePeek(incoming); incoming = null }
+      direction = towards
+      if (neighbour(front.index, towards) === null) return
+      if (!incoming) {
+        // Any panel but the one in front: they all show the same loading.
+        incoming = towards > 0 ? (front.el === nextPeek ? previousPeek : nextPeek) : (front.el === previousPeek ? nextPeek : previousPeek)
+        incoming.style.opacity = ''
+        incoming.dataset.visible = 'true'
       }
+      place(incoming, (towards > 0 ? width : -width) + offset, '')
     }
 
     const springBack = () => {
       const transition = `transform 260ms ${EASE}`
-      position(0, transition)
-      for (const peek of [nextPeek, previousPeek]) {
-        if (peek.dataset.visible !== 'true') continue
-        const base = peek === nextPeek ? width : -width
-        peek.style.transition = transition
-        peek.style.transform = `translate3d(${base}px, 0, 0)`
-      }
-      emit(null)
+      const { el, index: at } = front
+      place(el, 0, transition)
+      const leaving = incoming
+      if (leaving) place(leaving, direction > 0 ? width : -width, transition)
+      incoming = null
+      direction = 0
+      emit(at === currentIndex() ? null : 0, at)
       later(() => {
-        content.style.transition = ''
-        content.style.transform = ''
-        hidePeek(nextPeek)
-        hidePeek(previousPeek)
+        if (leaving && leaving !== front.el) hidePeek(leaving)
+        if (el === content) { content.style.transition = ''; content.style.transform = '' }
+        // The tab this panel stood for arrived during the gesture: lift it once the
+        // tab shows its content, as on any arrival.
+        if (arrivedUnder && arrivedUnder === el) {
+          arrivedUnder = null
+          front = { el: content, index: currentIndex(), origin: 0 }
+          watchArrival(el)
+        }
       }, 280)
     }
 
@@ -188,42 +253,101 @@ export default function TickerTabSwipe() {
       hint.style.opacity = ''
     }
 
-    const commit = (side: Side, href: string, velocity: number) => {
+    const commit = (towards: number, velocity: number) => {
+      const at = front.index + towards
+      const href = hrefOf(at)
       if (reducedMotion) {
         hint.style.opacity = '1'
         router.push(href)
         return
       }
-      const target = side === 'next' ? -width : width
+      const cover = incoming!
+      arrivedUnder = null
+      const target = towards > 0 ? -width : width
       const remaining = Math.abs(target - dx)
       // A fast flick finishes as fast as it was thrown; a slow release settles calmly.
       const duration = Math.round(Math.min(320, Math.max(180, remaining / Math.max(Math.abs(velocity), 1.2))))
       const transition = `transform ${duration}ms ${EASE}`
-      content.style.transition = transition
-      content.style.transform = `translate3d(${target}px, 0, 0)`
-      const cover = peekOf(side)
-      cover.dataset.visible = 'true'
-      cover.style.transition = transition
-      cover.style.transform = 'translate3d(0, 0, 0)'
-      emit(side === 'next' ? 1 : -1)
+      const leaving = front.el
+      place(leaving, target, transition)
+      place(cover, 0, transition)
+      // A panel that was standing in for a tab the reader went past is done.
+      if (leaving !== content) later(() => { if (front.el !== leaving && incoming !== leaving) hidePeek(leaving) }, duration + 20)
+      emit(towards, front.index)
+      if (pendingRef.current) window.clearTimeout(pendingRef.current.timer)
       const timer = window.setTimeout(() => {
         // The destination never arrived: bring the page back.
         if (pendingRef.current?.timer !== timer) return
         pendingRef.current = null
-        dx = side === 'next' ? -width : width
-        springBack()
+        content.style.transition = ''
+        content.style.transform = ''
+        for (const peek of peeks) hidePeek(peek)
+        front = { el: content, index: currentIndex(), origin: 0 }
+        emit(null)
       }, ARRIVAL_TIMEOUT_MS)
-      pendingRef.current = { side, timer }
+      pendingRef.current = { cover, index: at, timer }
+      front = { el: cover, index: at, origin: 0 }
+      incoming = null
+      direction = 0
+      // Only the tab the reader stops on is shown: a newer push replaces an older one.
       router.push(href)
     }
 
+    // The rest of a touch is read on the element it started on. Its events keep
+    // going to that element even when a tab arriving mid-gesture replaces it,
+    // and once it is out of the document they no longer bubble to it.
+    let touched: EventTarget | null = null
+    const release = () => {
+      if (!touched) return
+      touched.removeEventListener('touchmove', onMove as EventListener)
+      touched.removeEventListener('touchend', onEnd as EventListener)
+      touched.removeEventListener('touchcancel', onCancel)
+      touched = null
+    }
+    const hold = (target: EventTarget) => {
+      release()
+      touched = target
+      // Not passive: once a gesture is a swipe, it stops the page scrolling vertically.
+      target.addEventListener('touchmove', onMove as EventListener, { passive: false })
+      target.addEventListener('touchend', onEnd as EventListener)
+      target.addEventListener('touchcancel', onCancel)
+    }
+
     const onStart = (event: TouchEvent) => {
-      if (pendingRef.current || event.touches.length !== 1 || blocked(event.target)) { tracking = false; return }
+      tracking = false
+      release()
+      if (event.touches.length !== 1 || blocked(event.target)) return
       const touch = event.touches[0]!
-      if (touch.clientX < EDGE_PX || touch.clientX > window.innerWidth - EDGE_PX) { tracking = false; return }
+      if (touch.clientX < EDGE_PX || touch.clientX > window.innerWidth - EDGE_PX) return
+      // Anywhere from the top of the tab's content down, including the empty space
+      // under a loading tab; the header and tab bar above keep their own gestures.
+      if (touch.clientY < content.getBoundingClientRect().top) return
       startX = touch.clientX; startY = touch.clientY
       tracking = true; swiping = false; dx = 0
       samples = [{ t: event.timeStamp, x: touch.clientX }]
+      if (event.target) hold(event.target)
+    }
+
+    const beginSwipe = () => {
+      width = window.innerWidth
+      clearTimers()
+      placePeeks()
+      // The panel waiting for a tab's content looks exactly like the tab's own
+      // loading underneath, so it can go at once and the content takes the gesture.
+      endArrival(false)
+      const waiting = pendingRef.current
+      const el = waiting ? waiting.cover : arrivedUnder ?? content
+      const at = waiting ? waiting.index : currentIndex()
+      // Mid-animation, the gesture picks the element up where it is.
+      const origin = offsetOf(el)
+      front = { el, index: at, origin }
+      for (const peek of peeks) {
+        if (peek === el) continue
+        // A panel still on its way out (a release a moment ago) leaves now.
+        hidePeek(peek)
+      }
+      incoming = null
+      direction = 0
     }
 
     const onMove = (event: TouchEvent) => {
@@ -236,10 +360,7 @@ export default function TickerTabSwipe() {
         // Vertical first: this is a scroll, not a swipe.
         if (Math.abs(mx) < Math.abs(my) * SIDEWAYS_RATIO) { tracking = false; return }
         swiping = true
-        width = window.innerWidth
-        placePeeks()
-        for (const timer of timers) window.clearTimeout(timer)
-        timers.clear()
+        if (!reducedMotion) beginSwipe()
         // Measure from here, so the page does not jump by the intent distance.
         startX = touch.clientX
       }
@@ -248,18 +369,20 @@ export default function TickerTabSwipe() {
       const raw = touch.clientX - startX
       samples.push({ t: event.timeStamp, x: touch.clientX })
       while (samples.length > 2 && event.timeStamp - samples[0]!.t > VELOCITY_WINDOW_MS) samples.shift()
-      const towards = raw < 0 ? next : previous
-      dx = towards ? Math.max(-width, Math.min(width, raw)) : raw * EDGE_GIVE
       if (reducedMotion) {
-        if (towards) {
-          hint.textContent = raw < 0 ? `${towards.label} →` : `← ${towards.label}`
+        const towards = neighbour(currentIndex(), raw < 0 ? 1 : -1)
+        if (towards !== null) {
+          hint.textContent = raw < 0 ? `${tabs[towards]!.label} →` : `← ${tabs[towards]!.label}`
           hint.dataset.side = raw < 0 ? 'right' : 'left'
           hint.style.opacity = String(Math.min(1, Math.abs(raw) / (width * COMMIT_SHARE)))
         }
         return
       }
-      position(dx, '')
-      emit(towards ? dx / -width : 0)
+      const total = front.origin + raw
+      const open = neighbour(front.index, total < 0 ? 1 : -1) !== null
+      dx = open ? Math.max(-width, Math.min(width, total)) : total * EDGE_GIVE
+      follow(dx)
+      emit(open ? dx / -width : 0, front.index)
     }
 
     const velocityAt = (now: number) => {
@@ -272,6 +395,7 @@ export default function TickerTabSwipe() {
 
     const onEnd = (event: TouchEvent) => {
       if (!tracking) return
+      release()
       tracking = false
       if (!swiping) return
       swiping = false
@@ -279,10 +403,11 @@ export default function TickerTabSwipe() {
       const distance = reducedMotion ? samples[samples.length - 1]!.x - startX : dx
       const far = Math.abs(distance) >= width * COMMIT_SHARE
       const flicked = Math.abs(velocity) >= FLICK_VELOCITY && Math.abs(distance) >= FLICK_MIN_PX && Math.sign(velocity) === Math.sign(distance)
-      const side: Side = distance < 0 ? 'next' : 'previous'
-      const href = side === 'next' ? nextHref : previousHref
-      if ((far || flicked) && href) {
-        commit(side, href, velocity)
+      const towards = distance < 0 ? 1 : -1
+      const from = reducedMotion ? currentIndex() : front.index
+      if ((far || flicked) && neighbour(from, towards) !== null && (reducedMotion || incoming)) {
+        if (reducedMotion) { router.push(hrefOf(from + towards)); hint.style.opacity = '1'; return }
+        commit(towards, velocity)
         return
       }
       clearHint()
@@ -290,34 +415,36 @@ export default function TickerTabSwipe() {
     }
 
     const onCancel = () => {
+      release()
       if (!swiping) { tracking = false; return }
       tracking = false; swiping = false
       clearHint()
       if (!reducedMotion) springBack()
     }
 
-    content.addEventListener('touchstart', onStart, { passive: true })
-    // Not passive: once a gesture is a swipe, it stops the page scrolling vertically.
-    content.addEventListener('touchmove', onMove, { passive: false })
-    content.addEventListener('touchend', onEnd)
-    content.addEventListener('touchcancel', onCancel)
+    arriveRef.current = arrive
+    arrive()
+
+    // On the document, not the content: the content can be off screen behind a
+    // panel, or shorter than the screen while a tab loads.
+    document.addEventListener('touchstart', onStart, { passive: true })
 
     return () => {
-      content.removeEventListener('touchstart', onStart)
-      content.removeEventListener('touchmove', onMove)
-      content.removeEventListener('touchend', onEnd)
-      content.removeEventListener('touchcancel', onCancel)
+      arriveRef.current = null
+      document.removeEventListener('touchstart', onStart)
+      release()
       html.style.overscrollBehaviorX = previousOverscroll
-      for (const timer of timers) window.clearTimeout(timer)
+      clearTimers()
       clearHint()
-      // While a panel covers a tab that is still loading, the next run lifts it.
+      // A panel waiting for content to arrive must not be left covering the page.
+      endArrival(false)
+      // While a panel stands in for a tab still on its way, the next run takes over.
       if (pendingRef.current) return
       content.style.transition = ''
       content.style.transform = ''
-      hidePeek(nextPeek)
-      hidePeek(previousPeek)
+      for (const peek of peeks) hidePeek(peek)
     }
-  }, [ticker, previous, next, reducedMotion, router, displayCurrency])
+  }, [ticker, reducedMotion, router])
 
   // Clear the cover if the whole ticker layout goes away mid-swipe.
   useEffect(() => () => {
@@ -328,10 +455,10 @@ export default function TickerTabSwipe() {
   return (
     <>
       <div ref={previousPeekRef} className={styles.peek} aria-hidden="true" data-visible="false" data-ticker-tab-peek="previous">
-        <Peek ticker={ticker} />
+        <Peek />
       </div>
       <div ref={nextPeekRef} className={styles.peek} aria-hidden="true" data-visible="false" data-ticker-tab-peek="next">
-        <Peek ticker={ticker} />
+        <Peek />
       </div>
       <div ref={hintRef} className={styles.hint} aria-hidden="true" data-ticker-tab-swipe-hint="" />
     </>
@@ -339,18 +466,15 @@ export default function TickerTabSwipe() {
 }
 
 /**
- * The neighbouring tab as it slides in: its name, and a pulse while its route
- * loads. The swipe writes the name when a gesture starts, so it cannot change
- * to the new neighbour while the panel still covers the tab that just arrived.
+ * The neighbouring tab as it slides in: exactly the loading a tab shows while
+ * its route loads (TickerResearchLoading), in the content column's place.
  */
-function Peek({ ticker }: { ticker: string }) {
+function Peek() {
   return (
     <div className={styles.peekInner}>
-      <span className={styles.peekEyebrow}>{ticker}</span>
-      <span className={styles.peekTitle} data-ticker-tab-peek-title="" />
-      <span className={styles.peekPulse}>
-        {Array.from({ length: 7 }, (_, index) => <i key={index} style={{ animationDelay: `${index * 90}ms` }} />)}
-      </span>
+      <section className={loadingStyles.root}>
+        <LoadingPulse label="Loading" />
+      </section>
     </div>
   )
 }
