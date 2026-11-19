@@ -52,7 +52,7 @@ export default function StockResearchNav({ ticker }: { ticker: string }) {
       const rail = railRef.current
       const scroller = scrollerRef.current
       if (!rail || !scroller) return
-      const { progress } = (event as CustomEvent<TickerTabSwipeDetail>).detail
+      const { progress, from: start } = (event as CustomEvent<TickerTabSwipeDetail>).detail
       if (progress === null) {
         // Back to where React placed it, easing.
         rail.style.transition = ''
@@ -61,15 +61,15 @@ export default function StockResearchNav({ ticker }: { ticker: string }) {
         return
       }
       const items = Array.from(scroller.querySelectorAll<HTMLElement>('[data-active]'))
-      const current = items.findIndex((item) => item.dataset.active === 'true')
+      const current = start ?? items.findIndex((item) => item.dataset.active === 'true')
       const from = items[current]
-      const to = items[current + Math.sign(progress)]
+      const to = items[current + Math.sign(progress)] ?? from
       if (!from || !to) return
       const share = Math.min(1, Math.abs(progress))
       const left = from.offsetLeft + (to.offsetLeft - from.offsetLeft) * share
       const width = from.offsetWidth + (to.offsetWidth - from.offsetWidth) * share
-      // Follows the finger directly; a commit (±1) or release eases.
-      rail.style.transition = share === 1 ? '' : 'none'
+      // Follows the finger directly; a commit (±1) or a release back to a tab (0) eases.
+      rail.style.transition = share === 1 || progress === 0 ? '' : 'none'
       rail.style.setProperty('--active-rail-left', `${left}px`)
       rail.style.setProperty('--active-rail-width', `${width}px`)
     }

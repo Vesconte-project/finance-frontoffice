@@ -103,3 +103,48 @@ test('a swipe that starts on a chart stays with the chart', async ({ page }) => 
   await page.waitForTimeout(600)
   await expect(page).toHaveURL(/\/stocks\/QAM$/)
 })
+
+async function quickSwipe(page: Page, y: number) {
+  await swipe(page, { x: 330, y }, { x: 90, y })
+}
+
+test('swipes that follow one another faster than tabs load are never ignored', async ({ page }) => {
+  await page.goto('/stocks/QAS/rankings')
+  await page.waitForLoadState('networkidle')
+  await swipeReady(page)
+  const { y } = await headingCentre(page)
+
+  // Two in a row, the second before the first tab has arrived.
+  await quickSwipe(page, y)
+  await quickSwipe(page, y)
+  await expect(page).toHaveURL(/\/stocks\/QAS\/relationships$/)
+
+  // Three in a row the other way: Rankings, Signals, Valuation, Financials.
+  await page.goto('/stocks/QAS/rankings')
+  await page.waitForLoadState('networkidle')
+  await swipeReady(page)
+  const back = async () => swipe(page, { x: 90, y }, { x: 330, y })
+  await back()
+  await back()
+  await back()
+  await expect(page).toHaveURL(/\/stocks\/QAS\/financials$/)
+})
+
+test('a swipe while the next tab is still on its way works anywhere below the tab bar', async ({ page }) => {
+  await page.goto('/stocks/QAS/rankings')
+  await page.waitForLoadState('networkidle')
+  await swipeReady(page)
+  // Hold the Events tab back, so the second swipe happens while it is loading.
+  await page.route(/\/stocks\/QAS\/events\?_rsc/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+    await route.continue()
+  })
+  const { y } = await headingCentre(page)
+  await quickSwipe(page, y)
+  await page.waitForTimeout(300)
+  // Low on the screen, where a loading tab has no content of its own.
+  await quickSwipe(page, 780)
+  await expect(page).toHaveURL(/\/stocks\/QAS\/relationships$/)
+  // Nothing is left covering the page once it has arrived.
+  await expect(page.locator('[data-ticker-tab-peek][data-visible="true"]')).toHaveCount(0, { timeout: 5000 })
+})
