@@ -234,6 +234,8 @@ test('canonical research views use shared ticker-scoped backend contracts', () =
   assert.match(financialsPage, /getTickerFinancialStatements/)
   assert.match(eventsPage, /getTickerEvents/)
   assert.match(eventsPage, /getTickerDisclosures/)
+  // The timeline's prices wait for the identity alone, not for every other read (one backend round fewer).
+  assert.match(eventsPage, /identity\.then\(\(data\) => data\s*\? getClosesIn\(/)
   assert.match(valuationPage, /getTickerMarketMetrics/)
   assert.match(overview, /TemporalLineChart/)
   assert.match(valuation, /MultiplesChapter/)
