@@ -125,6 +125,7 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
             ))}
           </nav>
           <HeaderAccountControl
+            isHome={isHome}
             accountOpen={openKey === 'account'}
             controls={PANEL_ID}
             onToggleAccount={(trigger, viaKeyboard) => toggle('account', trigger, viaKeyboard)}

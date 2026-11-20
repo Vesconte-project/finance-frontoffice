@@ -8,9 +8,10 @@ import { scrollMotionTokens } from '@/components/motion/scroll-tokens'
 import { parseCompanyPanel } from '@/lib/atlas-model'
 import { PICK_READING_CONTENT, PICK_READING_KEYS } from '@/lib/picks-content'
 import { provideUniverse, startFlight } from '@/lib/universe-flight'
+import { createHomeStory, homeStoryProgress, homeStoryScrollProgress, type StoryFieldNode } from './home-story-field'
 
 
-type HcNode = {
+type HcNode = StoryFieldNode & {
   bx: number; by: number; bz: number; r: number; label: string | null; signal: boolean
   rgb: [number, number, number]
   A1: number; A2: number; A3: number; S1: number; S2: number; S3: number
@@ -38,10 +39,11 @@ const CSS = `
 .hc-root #hc-bg{position:fixed;inset:0;z-index:0;display:block;background:var(--bg)}
 .hc-root .hc-veil{position:fixed;inset:0;z-index:1;pointer-events:none}
 .hc-root .hc-veil::before,.hc-root .hc-veil::after{content:"";position:absolute;inset:0}
-.hc-root .hc-veil::after{background:var(--bg);opacity:calc(var(--hc-field-progress,0) * .65)}
+.hc-root .hc-veil::after{background:var(--bg);opacity:calc(var(--hc-field-progress,0) * .65 * (1 - var(--hc-story-presence,0)))}
 .hc-root .hc-veil::before{background:none}
 .hc-root .hc-progress{display:none}
 .hc-root #hc-stage{position:relative;height:100vh;z-index:10;pointer-events:none}
+.marketing-home:has([data-field-story-live]) #hc-stage{height:28svh}
 .hc-root .hc-beat{position:absolute;inset:0;display:flex;align-items:center;padding:0 clamp(24px,6vw,90px);will-change:opacity,transform}
 .hc-root .hc-in{max-width:1080px;width:100%;margin:0 auto}
 .hc-root .hc-in a,.hc-root .hc-in button{pointer-events:auto}
@@ -50,10 +52,12 @@ const CSS = `
 .hc-root .hc-fieldcaption,.hc-root .hc-fieldreadings{position:fixed;bottom:16px;z-index:40;font-family:var(--font-mono);font-size:11px;color:var(--text-2);pointer-events:none}
 .hc-root .hc-fieldcaption{left:24px}
 .hc-root .hc-fieldreadings{right:24px;text-align:right}
-.hc-root #hc-focusLayer{position:fixed;inset:0;z-index:70;opacity:0;pointer-events:none}
-.hc-root #hc-focusDim{position:absolute;inset:0;background:color-mix(in srgb,var(--bg) 70%,transparent)}
+.hc-root #hc-focusLayer{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;border:0;overflow:hidden;background:transparent;color:inherit;opacity:0}
+.hc-root #hc-focusLayer::backdrop{background:transparent}
+html:has(#hc-focusLayer[open]){overflow:hidden;scrollbar-gutter:stable}
+.hc-root #hc-focusDim{position:absolute;inset:0;background:var(--bg);opacity:0}
 .hc-root #hc-focusFront{position:absolute;top:0;left:0;pointer-events:none}
-.hc-root #hc-focusCard{position:absolute;left:54%;top:50%;width:min(360px,46vw);padding:22px;border-radius:6px;background:var(--surface);color:var(--text);border:1px solid var(--line)}
+.hc-root #hc-focusCard{position:absolute;left:54%;top:50%;width:min(360px,46vw);padding:22px;border-radius:6px;background:var(--surface);color:var(--text);border:1px solid var(--line);max-height:calc(100% - 24px);overflow:auto;overscroll-behavior:contain}
 .hc-root #hc-focusBack{display:block;background:none;border:none;color:var(--focus-muted);font-family:var(--font-mono);font-size:12px;cursor:pointer;padding:0;margin-bottom:14px}
 .hc-root #hc-focusBack:hover{color:var(--text)}
 .hc-root .hc-fc-backIcon{display:none}
@@ -137,9 +141,7 @@ export default function HeroConstellation() {
     let occlusionPrimed = false
     let mx = 0, my = 0, tmx = 0, tmy = 0, mpx = -1e4, mpy = -1e4
     let rafId = 0
-    let heroVisible = true
     let releaseScrollLock: (() => void) | null = null
-    let scrollWithRuntime: ((top: number, onComplete: () => void) => void) | null = null
     const revealStartedAt = performance.now()
     let reveal = reducedMotion ? 1 : 0
     let revealFinishedByGesture = reducedMotion
@@ -216,6 +218,14 @@ export default function HeroConstellation() {
     const sparkRgb = G.join(',')
     const lineRgb = themeRgb('--network-node').join(',')
     const labelColor = themeColor('--text-muted')
+    const storyElement = root.parentElement?.querySelector<HTMLElement>('[data-field-story]')
+    const story = !reducedMotion && storyElement ? createHomeStory(storyElement, G, COLORS[0]) : null
+    let storyProgress = 0, footerReveal = 0
+    // One camera path for the whole story. Each visit varies the framing slightly.
+    const closestAt = 0.405 + Math.random() * 0.025
+    const closestZoom = 1.7 + Math.random() * 0.10
+    const endZoom = 0.87 + Math.random() * 0.09
+    const turn = Math.PI * (0.88 + Math.random() * 0.12)
     // The ETF light is thin and faint, so it travels past the first node without
     // competing with the foreground in either theme.
     const LIGHT_STRENGTH = 0.35
@@ -241,6 +251,7 @@ export default function HeroConstellation() {
       spanX = W * 0.78; spanY = H * 0.62; spanZ = R * 0.9
     }
     function build() {
+      story?.resetNodes()
       nodes = []; const HUBS = TICKERS.length, EXTRA = Math.min(260, Math.max(120, Math.round(Math.sqrt(W * H) / 5.8))), N = HUBS + EXTRA
       // Nothing about the layout is regular: a few clusters at random places, with
       // the rest of the nodes scattered between them. The ETFs take a random cell of
@@ -290,7 +301,7 @@ export default function HeroConstellation() {
           A1: R * (0.02 + Math.random() * 0.05), A2: R * (0.02 + Math.random() * 0.05), A3: R * (0.02 + Math.random() * 0.05),
           S1: 0.2 + Math.random() * 0.4, S2: 0.2 + Math.random() * 0.4, S3: 0.2 + Math.random() * 0.4,
           P1: Math.random() * 6.28, P2: Math.random() * 6.28, P3: Math.random() * 6.28,
-          ph: Math.random() * 6.28, sx: 0, sy: 0, sc: 1, da: 1, hover: 0, clar: 1, light: 0, fg: 1, cov: 0 })
+          ph: Math.random() * 6.28, sx: 0, sy: 0, sc: 1, da: 1, hover: 0, clar: 1, light: 0, fg: 1, cov: 0, storyWeight: 0, storyRadius: 0, storyRgb: [0, 0, 0] })
       }
       // Nearby nodes link at random, but each takes only a handful of links and the
       // shortest first, so the links are spread over the whole universe instead of
@@ -345,15 +356,14 @@ export default function HeroConstellation() {
       nodes.forEach((n, i) => { n.light = Math.exp(-travelled[i] / lightReach) })
     }
 
-    let tt = 0, p = 0, targetP = 0
+    let tt = 0, p = 0, targetP = 0, cameraProgress = 0
     let lightReach = 1
     // The camera of the last frame, handed to the ticker page with the network.
     let viewAx = 0, viewAy = 0, viewZoom = 1
     let searchMode = 0, searchModeTarget = 0, dismissingSearch = false
-    const focus = { i: -1, t: 0, tone: spark as string }
-    const oc = document.createElement('canvas'); const octx = oc.getContext('2d')!
-    // The focused node and its links are drawn above the focus veil, so the
-    // rest of the field dims while the node itself stays in full light.
+    const focus = { i: -1, t: 0, ticker: '' }
+    const FOCUS_ZOOM = 1.35
+    // The zoomed field is drawn on the dialog layer above the foreground.
     const front = $('hc-focusFront') as HTMLCanvasElement; const fx = front.getContext('2d')!
     let frontDrawn = false
     // Where the focused node settles: beside the card on a wide screen, and
@@ -485,12 +495,14 @@ export default function HeroConstellation() {
     const ALPHA_LEVELS = 20
     const alphaBuckets: number[][] = Array.from({ length: ALPHA_LEVELS + 1 }, () => [])
     const litEdges: number[] = []
-    function drawScene(g: CanvasRenderingContext2D, sig: number, mode: string) {
+    const ambientOpacity = () => (1 - (story?.presence ?? 0) * 0.78) * (1 - (story?.fieldQuiet ?? 0) * 0.6) * (1 - footerReveal)
+    function drawScene(g: CanvasRenderingContext2D, sig: number, focused: boolean) {
       const nodeReveal = smooth(0, 0.45, reveal)
-      const edgeReveal = smooth(0.35, 1, reveal)
+      const ambient = focused ? 0.42 : ambientOpacity()
+      const edgeReveal = smooth(0.35, 1, reveal) * ambient
       for (let k = 0; k < pairs.length; k += 2) {
         const ia = pairs[k], ib = pairs[k + 1], conn = (ia === focus.i || ib === focus.i)
-        if (mode === 'conn' && !conn) continue; if (mode === 'bg' && conn) continue
+        if (focused && conn) continue
         const a = nodes[ia], b = nodes[ib]
         // A link wholly outside the screen is not worth drawing (not while the focus
         // view has the field scaled around a node).
@@ -498,21 +510,22 @@ export default function HeroConstellation() {
         const da = Math.min(a.da, b.da), hv = Math.max(a.hover, b.hover)
         const clar = conn ? 1 : Math.min(a.clar, b.clar), ld = 1 - focus.t * (1 - (0.06 + 0.94 * clar))
         const aA = (conn ? (0.32 + 0.5 * focus.t) : ((0.03 + 0.11 * da + 0.05 * p + 0.25 * hv) * ld * edgeDim[k >> 1] * smooth(0, 0.7, edgeV[k >> 1]))) * edgeReveal
+        const topology = 1 - Math.max(a.storyWeight, b.storyWeight)
         const peak = Math.max(a.light, b.light)
         const lit = !conn && peak > LIGHT_FLOOR
         if (conn || hv >= 0.02) {
           // Under the pointer, or joined to the focused node: drawn on its own.
-          g.strokeStyle = 'rgba(' + (conn ? sparkRgb : lineRgb) + ',' + aA + ')'; g.lineWidth = 1 + hv * 0.5 + (conn ? focus.t * 2 : 0)
+          g.strokeStyle = 'rgba(' + (conn ? sparkRgb : lineRgb) + ',' + aA * topology + ')'; g.lineWidth = 1 + hv * 0.5 + (conn ? focus.t * 2 : 0)
           g.beginPath(); edgePath(g, a, b, edgeV[k >> 1], edgeDir[k >> 1]); g.stroke()
         } else {
           // Every other link shares a stroke with the others of about its opacity,
           // so the field costs a handful of draws rather than one per link.
-          const q = Math.min(ALPHA_LEVELS, Math.round(aA * ALPHA_LEVELS * 2))
+          const q = Math.min(ALPHA_LEVELS, Math.round(aA * topology * ALPHA_LEVELS * 2))
           if (q > 0) alphaBuckets[q].push(k)
         }
         // The ETF light along this link: strongest at the end nearer an ETF,
         // fading towards the other, and never a flat colour across the link.
-        if (lit) litEdges.push(k, LIGHT_STRENGTH * edgeReveal * ld * edgeDim[k >> 1] * smooth(0, 0.7, edgeV[k >> 1]), 1 + LIGHT_WIDTH * peak + hv * 0.5)
+        if (lit) litEdges.push(k, LIGHT_STRENGTH * topology * edgeReveal * ld * edgeDim[k >> 1] * smooth(0, 0.7, edgeV[k >> 1]), 1 + LIGHT_WIDTH * peak + hv * 0.5)
       }
       for (let q = 1; q <= ALPHA_LEVELS; q++) {
         const bucket = alphaBuckets[q]
@@ -533,29 +546,35 @@ export default function HeroConstellation() {
         g.beginPath(); edgePath(g, a, b, edgeV[k >> 1], edgeDir[k >> 1]); g.stroke()
       }
       litEdges.length = 0
-      if (mode !== 'conn') {
-        for (let idx = 0; idx < nodes.length; idx++) { const n = nodes[idx]
-          if (idx === focus.i) continue
-          n.ph += reducedMotion ? 0 : (focus.i < 0 ? 0.006 : 0.002)
-          let col: string; if (n.signal) col = spark; else { col = 'rgb(' + n.rgb.join(',') + ')' }
-          const r = Math.min(15, Math.max(0.5, ((n.signal ? (n.r + sig * 1.2) : n.r) + n.hover * 3) * n.sc))
-          const dim = 1 - focus.t * (1 - (0.10 + 0.90 * n.clar))
-          g.globalAlpha = Math.min(1, (n.da + n.hover * 0.6) * dim * nodeReveal) * n.fg
-          g.beginPath(); g.arc(n.sx, n.sy, r, 0, 6.28); g.fillStyle = col; g.fill()
-          const lab = n.label
-          // The label fades in and out with the node's depth, its hover and the foreground, rather than switching at a threshold.
-          const labelAlpha = Math.max(smooth(0.32, 0.5, n.da), smooth(0.15, 0.3, n.hover)) * smooth(0.3, 0.75, n.fg)
-          if (lab && labelAlpha > 0.01) { g.globalAlpha = labelAlpha; g.font = n.signal ? '600 12px IBM Plex Mono, monospace' : '500 11px IBM Plex Mono, monospace'; g.fillStyle = n.signal ? spark : labelColor; g.fillText(lab, n.sx + r + 4, n.sy + 3) }
-          g.globalAlpha = 1
-        }
+      if (!focused) story?.drawEdges(g, 'rgb(' + lineRgb + ')')
+      for (let idx = 0; idx < nodes.length; idx++) { const n = nodes[idx]
+        if (idx === focus.i) continue
+        n.ph += reducedMotion ? 0 : (focus.i < 0 ? 0.006 : 0.002)
+        const weight = n.storyWeight
+        const baseRadius = Math.min(15, Math.max(0.5, ((n.signal ? (n.r + sig * 1.2) : n.r) + n.hover * 3) * n.sc))
+        const r = baseRadius + (n.storyRadius - baseRadius) * weight
+        const dim = 1 - focus.t * (1 - (0.10 + 0.90 * n.clar))
+        const baseAlpha = Math.min(1, (n.da + n.hover * 0.6) * dim * nodeReveal) * n.fg * ambient
+        const storyAlpha = focused ? 0.48 : 0.96
+        g.globalAlpha = baseAlpha + (storyAlpha - baseAlpha) * weight
+        const colour = weight > 0
+          ? n.rgb.map((channel, index) => Math.round(channel + (n.storyRgb[index] - channel) * weight)).join(',')
+          : n.rgb.join(',')
+        g.beginPath(); g.arc(n.sx, n.sy, r, 0, 6.28); g.fillStyle = 'rgb(' + colour + ')'; g.fill()
+        const lab = n.label
+        // The label fades in and out with the node's depth, its hover and the foreground, rather than switching at a threshold.
+        const labelAlpha = Math.max(smooth(0.32, 0.5, n.da), smooth(0.15, 0.3, n.hover)) * smooth(0.3, 0.75, n.fg) * ambient * (1 - weight)
+        if (lab && labelAlpha > 0.01) { g.globalAlpha = labelAlpha; g.font = n.signal ? '600 12px IBM Plex Mono, monospace' : '500 11px IBM Plex Mono, monospace'; g.fillStyle = n.signal ? spark : labelColor; g.fillText(lab, n.sx + r + 4, n.sy + 3) }
+        g.globalAlpha = 1
       }
+      if (!focused) story?.drawArrivingPortfolio(g)
     }
     function orb(g: CanvasRenderingContext2D, aX: number, aY: number) {
-      const fn = nodes[focus.i], tone = focus.tone || spark, rr = 6 + focus.t * 15
+      const tone = spark, rr = 6 + focus.t * 15
       g.globalAlpha = Math.min(1, focus.t) * 0.28; g.beginPath(); g.arc(aX, aY, rr * 3, 0, 6.28); g.fillStyle = tone; g.fill()
       g.globalAlpha = Math.min(1, focus.t * 1.8); g.beginPath(); g.arc(aX, aY, rr * 1.1, 0, 6.28); g.fillStyle = tone; g.fill()
       g.globalAlpha = Math.min(1, focus.t * 2); g.beginPath(); g.arc(aX, aY, rr * 0.66, 0, 6.28); g.fillStyle = themeColor('--surface'); g.fill()
-      const lab = fn.label; if (lab) { g.globalAlpha = Math.min(1, focus.t); g.font = '500 14px IBM Plex Mono, monospace'; g.fillStyle = themeColor('--text'); g.fillText(lab, aX + rr + 14, aY + 5) }
+      const lab = focus.ticker; if (lab) { g.globalAlpha = Math.min(1, focus.t); g.font = '500 14px IBM Plex Mono, monospace'; g.fillStyle = themeColor('--text'); g.fillText(lab, aX + rr + 14, aY + 5) }
       g.globalAlpha = 1
     }
     const applyCanvasFilter = () => {
@@ -608,16 +627,20 @@ export default function HeroConstellation() {
         soften = softenFrom + (softenTarget - softenFrom) * smooth(softenStartedAt, softenStartedAt + SOFTEN_FADE, now)
       }
       tt += reducedMotion ? 0 : (focus.i < 0 ? 0.016 : 0.016 * 0.22)
-      p += (targetP - p) * 0.07; if (focus.i < 0) { mx += (tmx - mx) * 0.03; my += (tmy - my) * 0.03 }
+      if (focus.i < 0) {
+        p += (targetP - p) * 0.07
+        cameraProgress += (storyProgress - cameraProgress) * 0.12
+        mx += (tmx - mx) * 0.03
+        my += (tmy - my) * 0.03
+      }
       searchMode += (searchModeTarget - searchMode) * 0.08
       const sig = smooth(0.15, 0.95, p)
-      const breathe = reducedMotion ? 1 : 1 + 0.07 * Math.sin(tt * 0.10)
-      // Start a touch closer (base 1.2), keeping the scrolled-in end roughly the same.
-      // While searching the camera rises over the universe and draws back until the
-      // whole of it is in view, centred, as one body with room round it.
-      const heroZoom = 1.2 + smooth(0, 1, p) * 0.95
-      const ay = (reducedMotion ? 0 : tt * 0.016) + p * Math.PI * 1.4 + mx * 0.4
-      const heroTilt = 0.16 + (reducedMotion ? 0 : Math.sin(tt * 0.028) * 0.05) + my * 0.26
+      const breathe = reducedMotion ? 1 : 1 + 0.03 * Math.sin(tt * 0.10)
+      const approach = smooth(0, closestAt, cameraProgress)
+      const pullback = smooth(closestAt, 0.615, cameraProgress)
+      const heroZoom = 1.2 + (closestZoom - 1.2) * approach + (endZoom - closestZoom) * pullback
+      const ay = cameraProgress * turn + (reducedMotion ? 0 : tt * 0.016) + mx * 0.09
+      const heroTilt = 0.16 + Math.sin(cameraProgress * Math.PI) * 0.10 + my * 0.065
       if (searchMode > 0.001) fitSearchView(ay)
       const zoom = breathe * (heroZoom + (searchFit.zoom - heroZoom) * searchMode)
       const ax = heroTilt + (SEARCH_TILT - heroTilt) * searchMode
@@ -630,46 +653,87 @@ export default function HeroConstellation() {
         const Y1 = Y0 * cA - Z0 * sA, Z1 = Y0 * sA + Z0 * cA
         const sc = cam / (cam - Z1) * zoom
         const SX = cx + panX + X0 * sc, SY = cy + panY + Y1 * sc
-        const dx = mpx - SX, dy = mpy - SY, dd = Math.sqrt(dx * dx + dy * dy), RAD = 120
-        const h = (focus.i < 0 && dd < RAD) ? (1 - dd / RAD) : 0; n.hover += (h - n.hover) * 0.1
-        n.sx = SX; n.sy = SY; n.sc = sc; n.da = 0.26 + 0.74 * ((Z1 + R) / (2 * R))
+        const dx = mpx - SX, dy = mpy - SY, dd = Math.sqrt(dx * dx + dy * dy), RAD = 80
+        const h = (focus.i < 0 && dd < RAD) ? (1 - dd / RAD) * 0.26 : 0; n.hover += (h - n.hover) * 0.1
+        n.sx = SX; n.sy = SY; n.sc = sc; n.da = 0.26 + 0.74 * ((Z1 + R) / (2 * R)); n.storyWeight = 0
       }
       if (focus.i >= 0 && nodes[focus.i]) { const fn = nodes[focus.i]; for (const n of nodes) { const ddx = n.bx - fn.bx, ddy = n.by - fn.by, ddz = n.bz - fn.bz; n.clar = 1 - smooth(R * 0.12, R * 0.95, Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz)) } } else { for (const n of nodes) n.clar = 1 }
       updateOcclusion(now)
+      story?.apply(nodes, W, H)
       stageEl.style.opacity = String(Math.max(0, 1 - focus.t * 1.3))
       applyCanvasFilter()
-      if (focus.t < 0.01 || focus.i < 0 || !nodes[focus.i]) {
-        x.setTransform(DPR, 0, 0, DPR, 0, 0); x.clearRect(0, 0, W, H)
-        drawScene(x, sig, 'all')
-        if (frontDrawn) { fx.setTransform(1, 0, 0, 1, 0, 0); fx.clearRect(0, 0, front.width, front.height); frontDrawn = false }
-      } else {
-        const fn = nodes[focus.i], anchor = focusAnchor()
-        const aX = fn.sx + (anchor.x - fn.sx) * focus.t, aY = fn.sy + (anchor.y - fn.sy) * focus.t, fs = 1 + focus.t * 3.0
-        if (oc.width !== c.width || oc.height !== c.height) { oc.width = c.width; oc.height = c.height }
-        octx.setTransform(DPR, 0, 0, DPR, 0, 0); octx.clearRect(0, 0, W, H)
-        octx.save(); octx.translate(aX, aY); octx.scale(fs, fs); octx.translate(-fn.sx, -fn.sy)
-        drawScene(octx, sig, 'bg')
-        octx.restore()
-        x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, c.width, c.height)
-        x.drawImage(oc, 0, 0)
-        fx.setTransform(1, 0, 0, 1, 0, 0); fx.clearRect(0, 0, front.width, front.height)
+      const selected = nodes[focus.i]
+      if (!selected || focus.t < 0.68) {
+        x.setTransform(DPR, 0, 0, DPR, 0, 0)
+        x.clearRect(0, 0, W, H)
+        drawScene(x, sig, false)
+      }
+      if (selected && focus.t >= 0.01) {
+        const anchor = focusAnchor()
+        const aX = selected.sx + (anchor.x - selected.sx) * focus.t
+        const aY = selected.sy + (anchor.y - selected.sy) * focus.t
+        const fs = 1 + focus.t * FOCUS_ZOOM
         fx.setTransform(DPR, 0, 0, DPR, 0, 0)
+        fx.clearRect(0, 0, W, H)
+        fx.save()
+        fx.translate(aX, aY)
+        fx.scale(fs, fs)
+        fx.translate(-selected.sx, -selected.sy)
+        drawScene(fx, sig, true)
+        fx.restore()
+
+        fx.strokeStyle = 'rgba(' + sparkRgb + ',' + (0.68 * focus.t) + ')'
+        fx.lineWidth = 1.4
+        fx.beginPath()
         for (let k = 0; k < pairs.length; k += 2) {
           const ia = pairs[k], ib = pairs[k + 1]
           if (ia !== focus.i && ib !== focus.i) continue
-          const o = (ia === focus.i) ? nodes[ib] : nodes[ia]
-          const ox = aX + (o.sx - fn.sx) * fs, oy = aY + (o.sy - fn.sy) * fs
-          fx.strokeStyle = 'rgba(' + sparkRgb + ',' + (0.68 * focus.t) + ')'; fx.lineWidth = 1.4
-          fx.beginPath(); fx.moveTo(aX, aY); fx.lineTo(ox, oy); fx.stroke()
+          const neighbour = nodes[ia === focus.i ? ib : ia]
+          fx.moveTo(aX, aY)
+          fx.lineTo(aX + (neighbour.sx - selected.sx) * fs, aY + (neighbour.sy - selected.sy) * fs)
         }
+        fx.stroke()
         orb(fx, aX, aY)
         frontDrawn = true
+      } else if (frontDrawn) {
+        fx.setTransform(DPR, 0, 0, DPR, 0, 0)
+        fx.clearRect(0, 0, W, H)
+        frontDrawn = false
       }
       if (!reducedMotion) rafId = requestAnimationFrame(render)
     }
 
-    const onMove = (e: MouseEvent) => { tmx = (e.clientX / window.innerWidth - .5); tmy = (e.clientY / window.innerHeight - .5); mpx = e.clientX; mpy = e.clientY }
-    const onOut = () => { mpx = -1e4; mpy = -1e4 }
+    const interactiveForeground = 'a,button,input,textarea,select,label,header,nav,footer,[contenteditable],[data-dock-search],[role="button"],[role="radio"]'
+    const isForegroundControl = (target: EventTarget | null) => target instanceof Element && !!target.closest(interactiveForeground)
+    const particleAt = (clientX: number, clientY: number, touch = false) => {
+      const ambient = ambientOpacity()
+      let best = -1
+      let distance = Infinity
+      nodes.forEach((node, i) => {
+        const visibility = node.storyWeight * 0.96 + (1 - node.storyWeight) * node.da * node.fg * ambient
+        if (visibility < 0.025 || node.sx < 0 || node.sx > W || node.sy < 0 || node.sy > window.innerHeight) return
+        const radius = node.storyWeight ? node.storyRadius : Math.min(15, node.r * node.sc)
+        const gap = Math.hypot(node.sx - clientX, node.sy - clientY)
+        if (gap > Math.max(touch ? 22 : 12, radius + 5)) return
+        const hit = gap - 2 * node.storyWeight
+        if (hit >= distance) return
+        best = i
+        distance = hit
+      })
+      return best
+    }
+
+    const onMove = (event: MouseEvent) => {
+      tmx = event.clientX / window.innerWidth - 0.5
+      tmy = event.clientY / window.innerHeight - 0.5
+      mpx = event.clientX
+      mpy = event.clientY
+    }
+    const onOut = (event: MouseEvent) => {
+      if (event.relatedTarget) return
+      tmx = tmy = 0
+      mpx = mpy = -1e4
+    }
     const onResize = () => {
       if (document.documentElement.clientWidth === W) {
         // A browser without the large viewport unit only learns the tallest
@@ -724,11 +788,12 @@ export default function HeroConstellation() {
 
     // How many screens of scroll the camera's turn spans.
     const TURN_SCREENS = 1.6
-    const updateField = (progress: number, interactive = progress < 0.999) => {
+    c.style.pointerEvents = 'none'
+    let fieldStrength = 0
+    const updateField = (progress: number) => {
       const strength = Math.max(0, Math.min(1, progress))
-      heroVisible = interactive
-      c.style.opacity = String(1 - strength * 0.55)
-      c.style.pointerEvents = interactive ? 'auto' : 'none'
+      fieldStrength = strength
+      c.style.opacity = String(1 - strength * 0.55 * (1 - (story?.presence ?? 0)))
       root.style.setProperty('--hc-field-progress', String(strength))
       $('hc-prog').style.opacity = String(1 - strength)
     }
@@ -737,15 +802,11 @@ export default function HeroConstellation() {
     const unsubscribeStaticScroll = reducedMotion
       ? runtime.subscribeScroll(() => updateField(
           window.scrollY / Math.max(1, root.offsetTop),
-          root.getBoundingClientRect().top >= 0,
         ))
       : undefined
 
     const unregisterScrollScene = runtime.registerScene(({ gsap: runtimeGsap, lenis, ScrollTrigger }) => {
-      scrollWithRuntime = (top, onComplete) => lenis.scrollTo(top, { duration: 0.28, lock: false, onComplete })
-      // Nothing is pinned: the sections scroll in over the field from the
-      // first wheel tick while the camera turns and closes in behind them, so
-      // the turn is still under way as the first section passes.
+      // The original camera turn follows the first screens of scroll.
       const s = { p: 0 }
       const tween = runtimeGsap.to(s, {
         p: 1,
@@ -768,21 +829,68 @@ export default function HeroConstellation() {
       })
       updateField(hideTrigger.progress)
 
+      const updateStory = (progress: number) => {
+        storyProgress = homeStoryProgress(progress)
+        story?.update(storyProgress)
+        const presence = story?.presence ?? 0
+        root.style.setProperty('--hc-story-presence', String(presence))
+        c.style.opacity = String(1 - fieldStrength * 0.55 * (1 - presence))
+      }
+      let storyTrigger: ReturnType<typeof ScrollTrigger.create> | undefined
+      let footerTrigger: ReturnType<typeof ScrollTrigger.create> | undefined
+      const revealFocusedChapter = (event: FocusEvent) => {
+        if (focus.i >= 0) return
+        const progress = story?.focusProgress(event.target)
+        if (progress == null || !storyTrigger) return
+        lenis.scrollTo(storyTrigger.start + (storyTrigger.end - storyTrigger.start) * homeStoryScrollProgress(progress), { immediate: true })
+        ScrollTrigger.update()
+      }
+      if (story && storyElement) {
+        storyElement.setAttribute('data-field-story-live', '')
+        storyTrigger = ScrollTrigger.create({
+          trigger: storyElement,
+          start: 'clamp(top bottom)',
+          end: 'bottom bottom',
+          onUpdate: ({ progress }) => updateStory(progress),
+          onRefresh: ({ progress }) => updateStory(progress),
+        })
+        const updateFooter = ({ progress }: { progress: number }) => {
+          footerReveal = smooth(0, 1, progress)
+          story.syncDiagrams()
+        }
+        footerTrigger = ScrollTrigger.create({
+          trigger: storyElement,
+          start: 'bottom bottom',
+          end: 'max',
+          onUpdate: updateFooter,
+          onRefresh: updateFooter,
+        })
+        storyElement.addEventListener('focusin', revealFocusedChapter)
+        updateStory(storyTrigger.progress)
+      }
+
       return () => {
-        scrollWithRuntime = null
         tween.scrollTrigger?.kill()
         tween.kill()
         hideTrigger.kill()
+        storyTrigger?.kill()
+        footerTrigger?.kill()
+        cameraProgress = storyProgress = footerReveal = 0
+        storyElement?.removeEventListener('focusin', revealFocusedChapter)
+        story?.reset()
+        root.style.removeProperty('--hc-story-presence')
         updateField(0)
       }
     })
 
     // focus / zoom-into-node
-    const fL = $('hc-focusLayer'), fCard = $('hc-focusCard'), fDim = $('hc-focusDim')
+    const fL = $('hc-focusLayer') as HTMLDialogElement, fCard = $('hc-focusCard'), fDim = $('hc-focusDim')
     const focusConnections = $('hc-fcC')
     let focusReturn: HTMLElement | null = null
+    let pressFocus: HTMLElement | null = null
     let focusAbort: AbortController | null = null
     let focusGeneration = 0
+    let closingFocus = false
     const neighborhoodCache = new Map<string, string[]>()
     const tickerName = (ticker: string) => {
       try {
@@ -818,6 +926,8 @@ export default function HeroConstellation() {
     }
     const updateCard = () => {
       fL.style.opacity = focus.t > 0.001 ? '1' : '0'
+      fDim.style.opacity = String(smooth(0.04, 0.67, focus.t))
+      front.style.opacity = String(smooth(0.02, 0.42, focus.t))
       fCard.style.opacity = String(Math.max(0, (focus.t - 0.45) / 0.55))
       const narrow = window.matchMedia('(max-width:720px)').matches
       fCard.style.transform = (narrow ? 'translateY(0)' : 'translateY(-50%)') + ' translateX(' + ((1 - focus.t) * -20) + 'px)'
@@ -834,19 +944,26 @@ export default function HeroConstellation() {
       if (openedByKey) delete fCard.dataset.openedByPointer
       else fCard.dataset.openedByPointer = ''
       gsap.killTweensOf(focus)
-      const n = nodes[idx]; if (!n.label) n.label = TICKERS[idx % TICKERS.length]
-      const ticker = n.label
+      const n = nodes[idx]
+      const ticker = story?.tickerFor(n) ?? n.label ?? TICKERS[idx % TICKERS.length]
       const generation = ++focusGeneration
       focusAbort?.abort()
       focusAbort = null
-      focus.tone = spark
+      focus.ticker = ticker
       $('hc-fcT').textContent = ticker
       $('hc-fcN').textContent = tickerName(ticker)
       renderConnections(neighborhoodCache.get(ticker) ?? [])
-      ;($('hc-fcO') as HTMLAnchorElement).href = '/stocks/' + encodeURIComponent(n.label)
-      focusReturn = document.activeElement instanceof HTMLElement ? document.activeElement : null
-      focus.i = idx; fL.setAttribute('aria-hidden', 'false'); fL.style.pointerEvents = 'auto'; releaseScrollLock ??= runtime.acquireLock()
-      if (reducedMotion) { focus.t = 1; updateCard(); backBtn.focus() } else gsap.to(focus, { t: 1, duration: 0.55, ease: 'power2.out', onUpdate: updateCard, onComplete: () => backBtn.focus() })
+      ;($('hc-fcO') as HTMLAnchorElement).href = '/stocks/' + encodeURIComponent(ticker)
+      const returnRect = pressFocus?.getBoundingClientRect()
+      const returnChapter = pressFocus?.closest('[data-market-scene]')
+      focusReturn = returnRect && returnRect.bottom > 0 && returnRect.top < window.innerHeight
+        && (!story || !returnChapter || returnChapter.hasAttribute('data-story-active')) ? pressFocus : null
+      focus.i = idx
+      fL.showModal()
+      releaseScrollLock ??= runtime.acquireLock()
+      backBtn.focus({ preventScroll: true })
+      if (reducedMotion) { focus.t = 1; updateCard(); render() }
+      else gsap.to(focus, { t: 1, duration: 0.55, ease: 'power2.out', onUpdate: updateCard })
       if (neighborhoodCache.has(ticker)) return
       const controller = new AbortController()
       focusAbort = controller
@@ -872,31 +989,39 @@ export default function HeroConstellation() {
           if (!payload || controller.signal.aborted) return
           const connections = readConnections(ticker, payload)
           neighborhoodCache.set(ticker, connections)
-          if (generation !== focusGeneration || focus.i !== idx || fL.getAttribute('aria-hidden') !== 'false') return
+          if (generation !== focusGeneration || focus.i !== idx || !fL.open || closingFocus) return
           renderConnections(connections)
         })
         .catch(() => undefined)
     }
     const closeFocus = () => {
-      if (focus.i < 0 && focus.t < 0.01) return
+      if (!fL.open || closingFocus) return
+      closingFocus = true
       focusGeneration += 1
       focusAbort?.abort()
       focusAbort = null
       gsap.killTweensOf(focus)
-      fL.style.pointerEvents = 'none'
       const finishClose = () => {
-        focus.t = 0; focus.i = -1; fL.setAttribute('aria-hidden', 'true'); updateCard()
+        focus.t = 0
+        closingFocus = false
+        fL.close()
+        updateCard()
         releaseScrollLock?.()
         releaseScrollLock = null
-        if (focusReturn?.isConnected) focusReturn.focus()
+        if (focusReturn?.isConnected) focusReturn.focus({ preventScroll: true })
         focusReturn = null
+        focus.i = -1
+        focus.ticker = ''
       }
       if (reducedMotion) { finishClose(); render() } else gsap.to(focus, { t: 0, duration: 0.28, ease: 'power2.in', onUpdate: updateCard, onComplete: finishClose })
     }
     const backBtn = $('hc-focusBack'); backBtn.addEventListener('click', closeFocus)
     fDim.addEventListener('click', closeFocus)
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && focus.i >= 0) closeFocus() }
-    window.addEventListener('keydown', onKey)
+    const onCancel = (event: Event) => {
+      event.preventDefault()
+      closeFocus()
+    }
+    fL.addEventListener('cancel', onCancel)
 
     // Opening the focused node's full page hands this network to the ticker
     // page (TickerUniverse), which keeps the same world going and turns the
@@ -905,21 +1030,21 @@ export default function HeroConstellation() {
     const openLink = $('hc-fcO') as HTMLAnchorElement
     // The network as it stands this frame, with `index` as the node the
     // ticker page will carry.
-    const universeNow = (index: number) => ({
-      nodes: nodes.map((n) => ({
+    const universeNow = (index: number, ticker?: string) => ({
+      nodes: nodes.map((n, nodeIndex) => ({
         x: n.bx + Math.sin(tt * n.S1 + n.P1) * n.A1, y: n.by + Math.cos(tt * n.S2 + n.P2) * n.A2, z: n.bz + Math.sin(tt * n.S3 + n.P3) * n.A3,
-        r: n.r, label: n.label, signal: n.signal, light: n.light, clar: n.clar,
+        r: n.r, label: nodeIndex === index && ticker ? ticker : n.label, signal: n.signal, light: n.light, clar: n.clar,
       })),
       pairs: [...pairs], pairLengths: [...pairLengths], lightReach, R, cam, focus: index,
     })
     const onOpen = (event: MouseEvent) => {
       const fn = focus.i >= 0 ? nodes[focus.i] : null
-      if (!fn?.label || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      if (!fn || !focus.ticker || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
       event.preventDefault()
-      const fs = 1 + focus.t * 3, anchor = focusAnchor()
+      const fs = 1 + focus.t * FOCUS_ZOOM, anchor = focusAnchor()
       startFlight({
-        ticker: fn.label,
-        universe: universeNow(focus.i),
+        ticker: focus.ticker,
+        universe: universeNow(focus.i, focus.ticker),
         view: { ax: viewAx, ay: viewAy, zoom: viewZoom * fs, x: fn.sx + (anchor.x - fn.sx) * focus.t, y: fn.sy + (anchor.y - fn.sy) * focus.t },
         lineScale: fs,
         progress: p,
@@ -929,7 +1054,7 @@ export default function HeroConstellation() {
         focusLinks: 1,
         createdAt: Date.now(),
       })
-      routerRef.current.push(openLink.getAttribute('href') ?? '/stocks/' + encodeURIComponent(fn.label))
+      routerRef.current.push(openLink.getAttribute('href') ?? '/stocks/' + encodeURIComponent(focus.ticker))
     }
     // A search from the homepage carries the network too: a node with no
     // ticker of its own, picked at random among those on screen, becomes the
@@ -964,63 +1089,24 @@ export default function HeroConstellation() {
       }
     })
     openLink.addEventListener('click', onOpen)
-    let pendingFocus = false
-    const openAfterChromeSettles = (idx: number) => {
-      if (pendingFocus || focus.i >= 0) return
-      if (window.scrollY > 40) { openFocus(idx); return }
-      pendingFocus = true
-      const finish = () => {
-        pendingFocus = false
-        openFocus(idx)
-      }
-      if (reducedMotion) {
-        window.scrollTo({ top: 48, behavior: 'auto' })
-        requestAnimationFrame(() => requestAnimationFrame(finish))
-      } else if (scrollWithRuntime) {
-        scrollWithRuntime(48, finish)
-      } else {
-        finish()
-      }
-    }
     // If a search field is focused when the press starts, the click is dismissing
     // it — don't also grab a particle.
     const searchSel = 'input,textarea,[data-dock-search],[data-header-search],[data-pill-search]'
     const onDown = () => {
-      const ae = document.activeElement as HTMLElement | null
+      const ae = document.activeElement
+      pressFocus = ae instanceof HTMLElement ? ae : null
       const dismissingDisclosure = Boolean(document.querySelector('[data-site-header-row][data-menu-open]'))
       dismissingSearch = dismissingDisclosure || !!(ae && ae.closest && ae.closest(searchSel))
     }
-    window.addEventListener('mousedown', onDown, true)
-    const onClick = (e: MouseEvent) => {
+    window.addEventListener('pointerdown', onDown, true)
+    const onClick = (event: MouseEvent) => {
       if (dismissingSearch) { dismissingSearch = false; return }
-      if (focus.i >= 0 || !heroVisible) return
-      const tgt = e.target as HTMLElement
-      if (tgt && tgt.closest && tgt.closest('.hc-in a,.hc-in button,#hc-focusCard,header,nav,[data-dock-search]')) return
-      let best = -1, bd = 48
-      for (let i = 0; i < nodes.length; i++) { const n = nodes[i]; const d = Math.hypot(n.sx - e.clientX, n.sy - e.clientY); if (d < bd) { bd = d; best = i } }
-      if (best >= 0) openAfterChromeSettles(best)
+      if (fL.open || event.button !== 0 || event.defaultPrevented || isForegroundControl(event.target)) return
+      if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return
+      const index = particleAt(event.clientX, event.clientY, event instanceof PointerEvent && event.pointerType === 'touch')
+      if (index >= 0) openFocus(index)
     }
     window.addEventListener('click', onClick, true)
-    let wheelDistance = 0
-    let touchStartY: number | null = null
-    const closeForScroll = () => {
-      wheelDistance = 0
-      touchStartY = null
-      closeFocus()
-    }
-    const onWheel = (event: WheelEvent) => {
-      if (focus.i < 0) return
-      wheelDistance += Math.abs(event.deltaY)
-      if (wheelDistance >= 60) closeForScroll()
-    }
-    const onTouchStart = (event: TouchEvent) => { touchStartY = focus.i >= 0 ? event.touches[0]?.clientY ?? null : null }
-    const onTouchMove = (event: TouchEvent) => {
-      if (focus.i < 0 || touchStartY === null) return
-      if (Math.abs((event.touches[0]?.clientY ?? touchStartY) - touchStartY) >= 48) closeForScroll()
-    }
-    window.addEventListener('wheel', onWheel, { passive: true, capture: true })
-    window.addEventListener('touchstart', onTouchStart, { passive: true, capture: true })
-    window.addEventListener('touchmove', onTouchMove, { passive: true, capture: true })
     // Zoom-out + blur the constellation while the hero search is focused.
     const onSearchFocus = (e: Event) => { searchModeTarget = (e as CustomEvent).detail?.focused ? 1 : 0 }
     window.addEventListener('meridian:search-focus', onSearchFocus)
@@ -1033,13 +1119,15 @@ export default function HeroConstellation() {
       window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseout', onOut); window.removeEventListener('resize', onResize)
       probe.remove()
       window.removeEventListener('pointerdown', finishReveal); window.removeEventListener('keydown', finishReveal); window.removeEventListener('wheel', finishReveal); window.removeEventListener('touchstart', finishReveal); window.removeEventListener('focusin', finishReveal)
-      window.removeEventListener('keydown', onKey); window.removeEventListener('click', onClick, true)
+      fL.removeEventListener('cancel', onCancel)
+      window.removeEventListener('click', onClick, true)
       openLink.removeEventListener('click', onOpen); releaseUniverse()
-      window.removeEventListener('mousedown', onDown, true); window.removeEventListener('meridian:search-focus', onSearchFocus)
-      window.removeEventListener('wheel', onWheel, true); window.removeEventListener('touchstart', onTouchStart, true); window.removeEventListener('touchmove', onTouchMove, true)
+      window.removeEventListener('pointerdown', onDown, true); window.removeEventListener('meridian:search-focus', onSearchFocus)
       backBtn.removeEventListener('click', closeFocus); fDim.removeEventListener('click', closeFocus)
       window.removeEventListener('keydown', noteKey, true); window.removeEventListener('pointerdown', notePointer, true)
       focusAbort?.abort()
+      gsap.killTweensOf(focus)
+      if (fL.open) fL.close()
       releaseScrollLock?.()
       unregisterScrollScene()
     }
@@ -1061,10 +1149,10 @@ export default function HeroConstellation() {
       <div className="hc-fieldcaption" id="hc-caption">Nothing moves alone.</div>
       <div className="hc-fieldreadings" id="hc-readings">{PICK_READING_KEYS.map((key) => PICK_READING_CONTENT[key].label).join(' · ')}</div>
 
-      <div id="hc-focusLayer" aria-hidden="true">
+      <dialog id="hc-focusLayer" aria-labelledby="hc-fcT" aria-describedby="hc-fcN">
         <div id="hc-focusDim" />
         <canvas id="hc-focusFront" aria-hidden="true" />
-        <div id="hc-focusCard" role="dialog" aria-modal="true" aria-labelledby="hc-fcT" aria-describedby="hc-fcN">
+        <div id="hc-focusCard">
           <button id="hc-focusBack" type="button" aria-label="Back to the network">
             <span className="hc-fc-backText" aria-hidden="true">← back</span>
             <svg className="hc-fc-backIcon" aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M5 5l10 10M15 5L5 15" /></svg>
@@ -1074,7 +1162,7 @@ export default function HeroConstellation() {
           <div className="hc-fc-connections" id="hc-fcC" />
           <a className="hc-fc-open" id="hc-fcO" href="#">Open full page →</a>
         </div>
-      </div>
+      </dialog>
     </div>
   )
 }

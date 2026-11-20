@@ -18,10 +18,12 @@ const joinClassName =
  * disclosure the other header menus use; see `HeaderBar`.
  */
 export default function HeaderAccountControl({
+  isHome = false,
   accountOpen,
   controls,
   onToggleAccount,
 }: {
+  isHome?: boolean
   accountOpen: boolean
   controls: string
   onToggleAccount: (trigger: HTMLButtonElement, viaKeyboard: boolean) => void
@@ -35,7 +37,7 @@ export default function HeaderAccountControl({
   if (!isLoaded) return <span className="site-header__account-slot" aria-hidden="true" />
 
   if (!isSignedIn) {
-    return (
+    const signup = (
       <Link
         href="/sign-up"
         data-analytics-id="header_join"
@@ -43,9 +45,20 @@ export default function HeaderAccountControl({
         data-analytics-intent="sign_up"
         className={joinClassName}
       >
-        Join
+        {isHome ? (
+          <>
+            <span className="site-header__signup-full">Create free account</span>
+            <span className="site-header__signup-short">Join</span>
+          </>
+        ) : 'Join'}
       </Link>
     )
+    return isHome ? (
+      <div className="site-header__home-auth">
+        <Link href="/sign-in" className="site-header__sign-in">Sign in</Link>
+        {signup}
+      </div>
+    ) : signup
   }
 
   const label = user?.primaryEmailAddress?.emailAddress ?? user?.username ?? 'Account'

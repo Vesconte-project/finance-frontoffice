@@ -91,7 +91,7 @@ PRD-78 phase 3. Founder rule for these tabs (2026-10-04): only values the backen
   - From 900px of chart space the full flow runs left to right. The reported chain (sales → gross profit → operating income → net income) is drawn to scale and bottom-aligned, so profit runs along the bottom.
   - Branches that are not reported are outlined nodes of a fixed size, with a thin dashed ribbon. They say where money goes, never how much.
   - Below 900px: three columns. Sales is a bar; then its four parts (› where they open); then the children of the open part.
-  - The year and Amount / % of sales use the liquid-glass segmented control.
+  - The year and Amount / % of sales use the shared solid segmented control.
 
 ## Ticker Valuation — 2026-10-05
 
@@ -198,14 +198,9 @@ The dedicated Relationships view extends the approved ticker selected-node langu
 
 Do not add an external reference merely to justify a predetermined visual. State what was learned, what was rejected, and how the result remains specific to Vesconte.
 
-## Liquid-glass selector drop — 2026-10-03
+## Segmented selector study — 2026-10-03
 
-| Reference | Principle retained | Rejected or replaced |
-| --- | --- | --- |
-| iOS 26 segmented controls and tab bars, as described by the founder from use on a phone | Press-and-drag selection: the selection lifts as a drop of glass, magnifies what is beneath it, follows the finger and settles on the nearest option when released | Refraction of the backdrop through an SVG displacement filter (not supported by Safari's `backdrop-filter`), system tint and vibrancy colours, and any Apple assets or code |
-| `components/ui/ExpandingSelector.tsx` (2026-07-21 study above) | Pointer capture with a direction threshold, so vertical page scroll still wins; controlled commit owned by the parent | The reel layout, which stays specific to that selector |
-
-Vesconte transformation: the magnification is a second, clipped copy of the labels inside the drop, counter-scaled against the drop's own stretch so text grows uniformly and works the same in every engine. The drop's geometry, lift and stretch are driven by damped springs in script; commit goes through the option's own click so selection and telemetry match a tap. The track is a solid `--surface` capsule; only the drop is translucent. No external code or assets were copied.
+The former glass selector explored a press-and-drag gesture. The current shared selector uses a solid selected option. Horizontal dragging previews the nearest option and commits on release, while vertical dragging can still scroll the page. Keyboard and touch use the same selection callback.
 
 ## Events calendar week view — 2026-10-08
 
