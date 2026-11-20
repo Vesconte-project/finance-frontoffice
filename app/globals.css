@@ -4002,8 +4002,13 @@ html[data-universe-orb] [data-stock-ticker-layout] [data-selected-ticker-anchor]
     display: none;
   }
 
-  html.chrome-scrolled .site-header__row[data-home]:has(.site-header__home-auth):not([data-menu-open], :focus-within) {
-    max-width: 560px;
+  /* Reserve room for both guest actions in the compact and expanded pill. */
+  html.chrome-scrolled .site-header__row[data-home]:has(.site-header__home-auth):not([data-menu-open]) {
+    max-width: 576px;
+  }
+
+  html.chrome-scrolled .site-header__row[data-home]:has(.site-header__home-auth):focus-within:not([data-menu-open]) {
+    max-width: 720px;
   }
 }
 
