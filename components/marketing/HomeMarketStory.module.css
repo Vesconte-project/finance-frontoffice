@@ -491,8 +491,7 @@
 }
 
 .featureCompany strong,
-.otherScores strong,
-.sectorMoves strong {
+.otherScores strong {
   color: var(--text);
   font-family: var(--font-mono);
 }
@@ -569,29 +568,20 @@
   text-align: end;
 }
 
-.otherScores,
-.sectorMoves {
-  margin: 0;
+.otherScores {
+  margin: clamp(0.75rem, 3.5svh, 2rem) 0 0;
   padding: 0;
   list-style: none;
 }
 
-.otherScores {
-  margin-top: clamp(0.75rem, 3.5svh, 2rem);
-}
-
-.otherScores li,
-.sectorMoves li {
+.otherScores li {
   display: grid;
+  grid-template-columns: 8ch minmax(0, 1fr) auto;
   align-items: center;
   gap: clamp(0.45rem, 1vw, 0.85rem);
   border-top: 1px solid var(--line);
   padding-block: clamp(0.3rem, 1.5svh, 1rem);
   font-size: clamp(0.75rem, 1.2vw, 1rem);
-}
-
-.otherScores li {
-  grid-template-columns: 4ch minmax(0, 1fr) auto;
   color: var(--text-muted);
 }
 
@@ -609,61 +599,6 @@
   flex-direction: column;
   justify-content: space-between;
   gap: clamp(0.85rem, 3svh, 2rem);
-}
-
-.sectorMoves {
-  margin-top: clamp(0.45rem, 1.6svh, 1rem);
-}
-
-.sectorMoves li {
-  --move-color: var(--signal-bearish);
-  grid-template-columns: minmax(0, 1fr) minmax(2.75rem, 0.48fr) 6ch;
-}
-
-.sectorMoves [data-direction='up'] {
-  --move-color: var(--signal-bullish);
-}
-
-.stage .sectorMoves p {
-  margin: 0.12rem 0 0;
-  font-size: 0.89em;
-  line-height: 1.25;
-}
-
-.sectorBar {
-  position: relative;
-  display: flex;
-  height: 1.2rem;
-  align-items: center;
-}
-
-.sectorBar::before {
-  position: absolute;
-  inset-block: 0;
-  left: 50%;
-  width: 1px;
-  background: var(--line);
-  content: "";
-}
-
-.sectorBar::after {
-  position: absolute;
-  right: 50%;
-  width: var(--move);
-  height: 0.3rem;
-  background: var(--move-color);
-  content: "";
-}
-
-[data-direction='up'] .sectorBar::after {
-  right: auto;
-  left: 50%;
-}
-
-.sectorValue {
-  color: var(--move-color);
-  font-family: var(--font-mono);
-  text-align: end;
 }
 
 .watchlistCard {
@@ -746,16 +681,8 @@
     margin-block: 0.35rem;
   }
 
-  .otherScores li,
-  .sectorMoves li {
+  .otherScores li {
     padding-block: 0.25rem;
-  }
-
-  .sectorMoves li > div {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    column-gap: 0.35rem;
   }
 
   .featureHeader {
@@ -769,10 +696,6 @@
   .featureDelta svg {
     width: 0.75rem;
     height: 0.75rem;
-  }
-
-  .sectorMoves li {
-    grid-template-columns: minmax(0, 1fr) 2rem 5.5ch;
   }
 
   .watchlistCard {
@@ -803,8 +726,7 @@
     margin-block: 0.45rem;
   }
 
-  .otherScores li,
-  .sectorMoves li {
+  .otherScores li {
     padding-block: 0.3rem;
   }
 }

@@ -1,23 +1,12 @@
-import type { CSSProperties } from 'react'
+import { Suspense, type CSSProperties } from 'react'
 import { ArrowDownLeft, ArrowRight, ArrowUpRight } from 'lucide-react'
 import AccountEntryLink from '@/components/AccountEntryLink'
+import { fetchBackendJson } from '@/lib/backend'
+import { parseHomeScoreChanges, type HomeScoreChange } from '@/lib/home-market-briefing'
+import { PICK_READING_CONTENT } from '@/lib/picks-content'
 import styles from './HomeMarketStory.module.css'
 
-type ScoreChange = { symbol: string; reading: string; previous: number; next: number }
-type SectorMove = { symbol: string; context: string; change: number }
-
-type MarketBriefing = {
-  scoreChanges: readonly ScoreChange[]
-  sectorMoves: readonly SectorMove[]
-}
-
-const PERCENT = new Intl.NumberFormat('en', { signDisplay: 'exceptZero', maximumFractionDigits: 1 })
-
-export default function HomeMarketChanges({ briefing }: { briefing: MarketBriefing | null }) {
-  const [featured, ...otherScores] = briefing?.scoreChanges ?? []
-  const sectorMoves = briefing?.sectorMoves ?? []
-  const sectorScale = Math.max(5, ...sectorMoves.map(({ change }) => Math.abs(change)))
-
+export default function HomeMarketChanges() {
   return (
     <section data-market-scene="updates" className={styles.scene} aria-labelledby="home-updates-title">
       <div className={`${styles.stage} ${styles.updatesStage}`}>
@@ -28,25 +17,16 @@ export default function HomeMarketChanges({ briefing }: { briefing: MarketBriefi
         <div className={styles.updateGrid}>
           <article className={styles.scoreFeature} aria-labelledby="home-score-title">
             <h3 id="home-score-title">Score changes</h3>
-            {featured
-              ? <ScoreChangeFeature change={featured} otherScores={otherScores} />
-              : <p>Daily score changes are unavailable.</p>}
+            <Suspense fallback={<p role="status">Loading score changes…</p>}>
+              <HomeScoreChanges />
+            </Suspense>
           </article>
 
           <div className={styles.briefingSide}>
             <section aria-labelledby="home-sector-title">
               <h3 id="home-sector-title">Against the sector</h3>
-              {sectorMoves.length ? (
-                <ul className={styles.sectorMoves}>
-                  {sectorMoves.map(({ symbol, context, change }) => (
-                    <li key={symbol} data-direction={change > 0 ? 'up' : 'down'}>
-                      <div><strong>{symbol}</strong><p>{context}</p></div>
-                      <span className={styles.sectorBar} style={{ '--move': `${Math.abs(change) / sectorScale * 50}%` } as CSSProperties} aria-hidden="true" />
-                      <span className={styles.sectorValue}>{PERCENT.format(change)}%</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : <p>Daily sector comparisons are unavailable.</p>}
+              {/* The briefing contract defines sectorMoves as unavailable until ENG-159. */}
+              <p>Daily sector comparisons are unavailable.</p>
             </section>
             <aside className={styles.watchlistCard}>
               <div>
@@ -68,7 +48,19 @@ export default function HomeMarketChanges({ briefing }: { briefing: MarketBriefi
   )
 }
 
-function ScoreChangeFeature({ change, otherScores }: { change: ScoreChange; otherScores: readonly ScoreChange[] }) {
+async function HomeScoreChanges() {
+  const payload = await fetchBackendJson<unknown>('/v1/market/briefing', {
+    context: 'backend.market.briefing',
+    timeoutMs: 2500,
+  }).catch(() => null)
+  const changes = parseHomeScoreChanges(payload)
+  if (changes === null) return <p>Daily score changes are unavailable.</p>
+  const [featured, ...otherScores] = changes
+  if (!featured) return <p>No score changes in the latest briefing.</p>
+  return <ScoreChangeFeature change={featured} otherScores={otherScores} />
+}
+
+function ScoreChangeFeature({ change, otherScores }: { change: HomeScoreChange; otherScores: readonly HomeScoreChange[] }) {
   const { symbol, reading, previous, next } = change
   const rising = next > previous
   const Direction = rising ? ArrowUpRight : ArrowDownLeft
@@ -79,7 +71,7 @@ function ScoreChangeFeature({ change, otherScores }: { change: ScoreChange; othe
       <div className={styles.featureHeader}>
         <div className={styles.featureCompany}>
           <strong>{symbol}</strong>
-          <span>{reading}</span>
+          <span>{PICK_READING_CONTENT[reading].label}</span>
         </div>
         <span className={styles.featureDelta}>
           <Direction aria-hidden="true" size={16} /> {delta} {delta === 1 ? 'point' : 'points'} {rising ? 'higher' : 'lower'}
@@ -107,7 +99,7 @@ function ScoreChangeFeature({ change, otherScores }: { change: ScoreChange; othe
           {otherScores.map(({ symbol, reading, previous, next }) => (
             <li key={`${symbol}-${reading}`} data-direction={next > previous ? 'up' : 'down'}>
               <strong>{symbol}</strong>
-              <span>{reading}</span>
+              <span>{PICK_READING_CONTENT[reading].label}</span>
               <span>{previous} → {next}</span>
             </li>
           ))}

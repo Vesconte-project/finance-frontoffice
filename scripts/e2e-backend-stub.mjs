@@ -3,10 +3,9 @@
  *
  * The market atlas page fetches its atlas server-side, so a Playwright
  * page.route() mock cannot reach it. This serves the weekly atlas endpoints
- * from repository-owned synthetic data, an explicitly empty Picks ranking
- * needed by the homepage smoke test, three synthetic ticker pages and a synthetic
- * public calendar. Browser QA needs no external backend
- * infrastructure or credentials.
+ * from repository-owned synthetic data, a homepage briefing, an empty Picks
+ * ranking, three synthetic ticker pages and a synthetic public calendar.
+ * Browser QA needs no external backend infrastructure or credentials.
  *
  * Every other path answers 503, which is what the app already sees when no
  * backend is reachable. That keeps the unrelated specs on the behaviour they
@@ -100,6 +99,25 @@ const server = createServer((request, response) => {
   if (path === '/health') {
     send(response, 200, { status: 'ok', fixture: true })
     return
+  }
+
+  if (path === '/v1/market/briefing' && request.method === 'GET' && !url.search) {
+    const dates = { previousAsOf: '2026-11-18', asOf: '2026-11-19' }
+    const evidence = { ...dates, knownAt: '2026-11-19T23:30:00Z', methodologyVersion: '1.0' }
+    return send(response, 200, {
+      scoreChanges: {
+        ...dates,
+        status: 'available',
+        reason: null,
+        source: 'feature_store.scorecard_daily',
+        methodology: 'same-reading-comparable-snapshots-v1',
+        items: [
+          { ...evidence, ticker: 'QATEST', reading: 'income', previous: 68, next: 25 },
+          { ...evidence, ticker: 'QADEMO.T', reading: 'shortTerm', previous: 51, next: 82 },
+        ],
+      },
+      sectorMoves: { status: 'unavailable', reason: 'sector_benchmark_unavailable', items: [] },
+    })
   }
 
   // Every page renders the header search, which loads this once. Serving it

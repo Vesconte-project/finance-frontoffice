@@ -24,8 +24,7 @@ export default function HomeMarketStory() {
             <RevenueFlow />
           </div>
         </section>
-        {/* The market API currently exposes single score snapshots, without a daily briefing. */}
-        <HomeMarketChanges briefing={null} />
+        <HomeMarketChanges />
         <section data-market-scene="relationships" className={styles.scene} aria-labelledby="home-relationships-title">
           <div className={styles.stage}>
             <header className={styles.copy}>
