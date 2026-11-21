@@ -84,6 +84,7 @@ Do not manually run a QA server, choose a port, kill processes, or launch Chromi
 - Browser code calls local routes; server helpers call the configured backend. Never expose secrets or call providers directly from the browser.
 - Ticker autocomplete loads `/api/tickers/index` once and filters locally; it never calls enrichment, scorecard, per-symbol, or external lookup endpoints while suggesting. Read `DATA_SOURCE_POLICY.md` before changing ticker or stock data.
 - Cover applicable loading, empty, malformed, unauthorized, upstream error, timeout, retry, unavailable, partial, and stale states while preserving documented fail-open behavior.
+- Never render a placeholder for a value. If a number, price, date, score, or other value is unavailable, render nothing: no em dash, no zero, no sample value. This qualifies the states rule above and sits beside never inventing backend support and never fabricating data to fill a layout. Structure is not a value: a feature that depends on the backend may appear in its final place with a title, one sentence on what it will show, and a "Being built" badge. Inside that block, dashes, zeros, and charts with sample data stay forbidden.
 
 ## Validation and completion
 
