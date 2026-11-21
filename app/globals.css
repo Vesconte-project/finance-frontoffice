@@ -1727,6 +1727,14 @@ html[data-scroll-profile='operational'] .site-header[data-internal] .site-header
 .site-header[data-internal] .site-header__bar {
   grid-template-columns: minmax(0, 1fr) minmax(0, 520px) minmax(0, 1fr);
 }
+/* Tablet: the desktop grid reserves 520px for the search and leaves each side a
+   fraction of the rest, which cannot hold Today, Correlation and Join/avatar
+   (PRD-70). Size the sides to their content and let the search take what is left. */
+@media (min-width: 768px) and (max-width: 1099px) {
+  .site-header[data-internal] .site-header__bar {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+}
 .site-header[data-internal] .site-header__row [data-header-search] {
   width: min(520px, 100%);
   max-width: 520px;
