@@ -124,7 +124,7 @@ export default function StockTickerIdentity({
                 </span>
               )}
               {metadata || actions ? (
-                <div className={styles.rail}>
+                <div className={styles.rail} data-ticker-rail="">
                   {metadata ? (
                     <span
                       className={styles.metadata}

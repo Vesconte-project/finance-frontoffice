@@ -138,6 +138,13 @@
     display: none;
   }
 
+  /* Only the star is left beside the quote, so the rail claims its own width
+     rather than the 8.5rem it needs with the currency and export controls. */
+  .identity :global([data-ticker-rail]) {
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+
   .identity :global([data-ticker-name]) {
     max-height: 1.4em;
     transition:

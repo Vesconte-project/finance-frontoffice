@@ -103,8 +103,14 @@ export default function Dialog({
       aria-describedby={describedBy}
       data-lenis-prevent=""
       data-closing={closing ? 'true' : undefined}
-      onClose={handleClose}
+      onClose={(event) => {
+        // React carries a nested dialog's close and cancel up through this one
+        // (they are not target-only like scroll); only this dialog's own count.
+        if (event.target !== event.currentTarget) return
+        handleClose()
+      }}
       onCancel={(event) => {
+        if (event.target !== event.currentTarget) return
         // Escape: animate out first, then close.
         event.preventDefault()
         requestClose()
