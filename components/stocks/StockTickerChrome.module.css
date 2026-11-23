@@ -49,3 +49,132 @@
     margin-top: 5px;
   }
 }
+
+/* --- The band on wider screens: the identity alone, as before PRD-84. --- */
+.bar {
+  display: block;
+  min-width: 0;
+}
+
+.brand {
+  display: none;
+}
+
+.identity {
+  min-width: 0;
+}
+
+.wideActions {
+  display: contents;
+}
+
+/*
+ * Phone (PRD-84, founder decision 2026-11-23): the site header steps aside on
+ * ticker pages (StockTickerLayout) and this band takes its place, fixed to the
+ * top: brand mark, identity and star, search and menu, tabs beneath. The
+ * company name folds away once the page scrolls (the shared `chrome-scrolled`
+ * state), so the chart starts right under the tabs.
+ */
+@media (max-width: 767.98px) {
+  .chrome {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    padding-top: calc(6px + env(safe-area-inset-top, 0px));
+    border: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 64%, transparent);
+    border-radius: 0;
+    transition: background-color var(--motion-fast, 120ms) ease;
+  }
+
+  :global(html.chrome-scrolled) .chrome {
+    background: var(--page-bg);
+  }
+
+  .content {
+    padding-right: 4px;
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
+  }
+
+  .bar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .brand {
+    display: inline-flex;
+    flex: none;
+    width: 32px;
+    height: 44px;
+    align-items: center;
+    justify-content: flex-start;
+    color: var(--text);
+  }
+
+  .brand > span {
+    display: inline-grid;
+    width: 26px;
+    height: 26px;
+    place-items: center;
+    border: 1.5px solid currentColor;
+    border-radius: 7px;
+    font-family: var(--font-display), serif;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .brand:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .identity {
+    flex: 1 1 auto;
+  }
+
+  .wideActions {
+    display: none;
+  }
+
+  .identity :global([data-ticker-name]) {
+    max-height: 1.4em;
+    transition:
+      max-height var(--motion-base, 200ms) var(--motion-ease-standard, ease),
+      opacity var(--motion-fast, 120ms) ease;
+  }
+
+  :global(html.chrome-scrolled) .identity :global([data-ticker-name]) {
+    max-height: 0;
+    opacity: 0;
+  }
+
+  /* The daily change keeps its percentage; the amount is in the chart. */
+  .identity :global([data-delta-amount]),
+  .identity :global([data-delta-paren]) {
+    display: none;
+  }
+
+  .navigation {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 339.98px) {
+  /* The menu still leads home; the ticker needs the room more. */
+  .brand {
+    display: none;
+  }
+
+  .content {
+    padding-left: max(10px, env(safe-area-inset-left, 0px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chrome,
+  .identity :global([data-ticker-name]) {
+    transition: none;
+  }
+}

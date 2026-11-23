@@ -4,6 +4,11 @@ for (const width of [320, 390, 1366, 1920]) {
   test(`CSV export sign-in recovery and focus at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/stocks/QAK')
+    // On a phone the export lives in the ticker band's menu (PRD-84).
+    if (width < 768) {
+      await page.locator('[data-ticker-chrome="ready"]').getByRole('button', { name: 'Menu' }).click()
+      await expect(page.getByRole('dialog', { name: 'Menu' })).toBeVisible()
+    }
     const trigger = page.getByRole('button', { name: 'Export QAK data as CSV' })
     await trigger.click()
     const dialog = page.getByRole('dialog', { name: 'Export QAK' })

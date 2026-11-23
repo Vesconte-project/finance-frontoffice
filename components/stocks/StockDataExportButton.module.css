@@ -37,3 +37,24 @@
 .status:empty { display: none; }
 .panel a { text-decoration: underline; text-underline-offset: 3px; }
 @media (max-width: 400px) { .panel { padding-inline: 16px; } }
+
+/* The phone menu's line (PRD-84), matching the currency line above it. */
+.row {
+  display: flex;
+  width: 100%;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px 8px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rowLabel { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.rowTitle { font-size: 15px; font-weight: 500; }
+.rowHint { color: var(--text-muted); font-size: 13px; }
