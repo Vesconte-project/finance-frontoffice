@@ -84,10 +84,14 @@ export default function TickerMobileControls({
         returnFocusRef={searchButton}
         className={styles.sheet}
       >
-        <div className={styles.sheetBody} data-ticker-mobile-search="">
-          <h2 id={searchTitle} className={styles.sheetTitle}>Search</h2>
-          <HeaderSearch className="w-full" />
-        </div>
+        {/* Rendered only while open: nothing in the sheets is part of the
+            server HTML, so account state and search never differ at hydration. */}
+        {searchOpen ? (
+          <div className={styles.sheetBody} data-ticker-mobile-search="">
+            <h2 id={searchTitle} className={styles.sheetTitle}>Search</h2>
+            <HeaderSearch className="w-full" />
+          </div>
+        ) : <h2 id={searchTitle} className="sr-only">Search</h2>}
       </Dialog>
 
       <Dialog
@@ -97,6 +101,7 @@ export default function TickerMobileControls({
         returnFocusRef={menuButton}
         className={styles.sheet}
       >
+        {menuOpen ? (
         <div className={styles.sheetBody} data-ticker-mobile-menu="">
           <h2 id={menuTitle} className={styles.sheetTitle}>Menu</h2>
 
@@ -175,6 +180,7 @@ export default function TickerMobileControls({
             )
           ) : null}
         </div>
+        ) : <h2 id={menuTitle} className="sr-only">Menu</h2>}
       </Dialog>
     </div>
   )
