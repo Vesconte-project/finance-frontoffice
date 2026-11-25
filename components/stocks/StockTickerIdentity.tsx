@@ -116,7 +116,7 @@ export default function StockTickerIdentity({
                     </span>
                   ) : null}
                   {isFiniteNumber(price) && isFiniteNumber(dailyMoveAmount) && isFiniteNumber(dailyMovePercent) ? (
-                    <span className={cn(styles.delta, deltaClass(dailyMoveAmount))}>
+                    <span className={cn(styles.delta, deltaClass(dailyMoveAmount))} data-ticker-delta="">
                       {formatSignedMoney(dailyMoveAmount, currency)} ({formatCompactPercent(dailyMovePercent)})
                     </span>
                   ) : null}
