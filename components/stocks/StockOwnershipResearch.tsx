@@ -200,7 +200,7 @@ function EquityOwnership({ data, annual, buybackYears, mixedCurrencies, sharesBo
           : <BeingBuilt size="chart">The number of shares outstanding over time is being added.</BeingBuilt>}
       </ResearchChapter>
 
-      <PricePaysForChapter marketCap={tickerMarketCap(data.summary)} marketCapAsOf={snapshot.marketCap !== null ? snapshot.reportingPeriod : null} currency={currency} />
+      <PricePaysForChapter marketCap={tickerMarketCap(data.summary)} marketCapAsOf={snapshot.marketCap !== null ? snapshot.reportingPeriod : null} currency={currency} cashDebt={annual?.cashDebt.at(-1) ?? null} />
 
       <PriceHistoryChapter byYear={priceByYear} byQuarter={priceByQuarter} currency={currency} />
     </>

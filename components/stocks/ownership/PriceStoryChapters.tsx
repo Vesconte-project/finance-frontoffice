@@ -6,6 +6,7 @@ import ChartFrame, { ChartLabel, ChartPlot } from '@/components/stocks/research/
 import ResearchChapter, { ChapterCard } from '@/components/stocks/research/ResearchChapter'
 import SegmentedControl from '@/components/ui/SegmentedControl'
 import type { PricePeriod } from '@/lib/capital-reading'
+import type { CashDebtPoint } from '@/lib/capital-statements'
 import type { PlotBox } from '@/lib/chart-labels'
 import { formatCompactMoney, formatMoney, formatSignedMoney } from '@/lib/currency'
 import { connectorPath } from '@/lib/sales-flow'
@@ -38,15 +39,27 @@ const PAYS_COLUMNS: readonly PaysNode[][] = [['shares', 'debt'], ['company'], ['
 /** Each column's links to the next: [from index, to index]. */
 const PAYS_LINKS: ReadonlyArray<Array<[number, number]>> = [[[0, 0], [1, 0]], [[0, 0], [0, 1]], [[0, 0], [0, 1]]]
 
+/** The reported balance-sheet parts of the flow, and what each one still needs. */
+const PAYS_REPORTED: Partial<Record<PaysNode, { sentence: string; pending: string }>> = {
+  debt: { sentence: 'The company’s total debt', pending: 'How it changed on the year before is being added.' },
+  cash: { sentence: 'The cash and equivalents the company holds', pending: 'How it changed on the year before is being added.' },
+}
+
 /**
  * What the price pays for (Spec PRD-78): a horizontal flow from the shares and
  * the debt to the whole company, the business and its cash, and what backs the
- * business — today's profits and a bet on growth. Only the market value of the
- * shares is reported today; the rest is being built (ENG-164, ENG-168).
+ * business — today's profits and a bet on growth. The market value of the shares
+ * and the latest fiscal year's reported debt and cash are shown, each with its own
+ * date and currency: they are the same cash and debt as the Fundamentals tab. The
+ * whole company, the business and what backs it stay being built (ENG-164,
+ * ENG-168); they are not added up here (no economic derivation in the browser).
  */
-export function PricePaysForChapter({ marketCap, marketCapAsOf, currency }: { marketCap: number | null; marketCapAsOf: string | null; currency: string }) {
+export function PricePaysForChapter({ marketCap, marketCapAsOf, currency, cashDebt }: { marketCap: number | null; marketCapAsOf: string | null; currency: string; cashDebt?: CashDebtPoint | null }) {
   const [selected, setSelected] = useState<PaysNode>('growth')
-  const valueOf = (node: PaysNode) => (node === 'shares' ? marketCap : null)
+  const valueOf = (node: PaysNode) => (node === 'shares' ? marketCap : node === 'debt' ? cashDebt?.debt ?? null : node === 'cash' ? cashDebt?.cash ?? null : null)
+  const currencyOf = (node: PaysNode) => (node === 'debt' || node === 'cash') && cashDebt ? cashDebt.currency : currency
+  const reported = PAYS_REPORTED[selected]
+  const selectedValue = valueOf(selected)
 
   return (
     <ResearchChapter
@@ -59,6 +72,13 @@ export function PricePaysForChapter({ marketCap, marketCapAsOf, currency }: { ma
             {PAYS_SENTENCE.shares}{marketCapAsOf ? ` As of ${formatDay(marketCapAsOf)}.` : ''}
           </p>
           <p className={styles.cardNote}><BeingBuiltBadge /> Its share of each share’s price, its change and its history are being added.</p>
+        </ChapterCard>
+      ) : reported && selectedValue !== null && cashDebt ? (
+        <ChapterCard title={PAYS_LABEL[selected]} meta={formatCompactMoney(selectedValue, cashDebt.currency)}>
+          <p className={styles.cardText} data-pays-card={selected}>
+            {reported.sentence} at the end of fiscal {cashDebt.year} ({formatDay(cashDebt.periodEnd)}), as reported.
+          </p>
+          <p className={styles.cardNote}><BeingBuiltBadge /> {reported.pending}</p>
         </ChapterCard>
       ) : (
         <BeingBuilt label={PAYS_LABEL[selected]}>{PAYS_SENTENCE[selected]}</BeingBuilt>
@@ -78,11 +98,11 @@ export function PricePaysForChapter({ marketCap, marketCapAsOf, currency }: { ma
                     data-pays-node={node}
                     data-pending={value === null ? 'true' : undefined}
                     aria-pressed={selected === node}
-                    aria-label={value === null ? `${PAYS_LABEL[node]}, being built` : `${PAYS_LABEL[node]}, ${formatCompactMoney(value, currency)}`}
+                    aria-label={value === null ? `${PAYS_LABEL[node]}, being built` : `${PAYS_LABEL[node]}, ${formatCompactMoney(value, currencyOf(node))}`}
                     onClick={() => setSelected(node)}
                   >
                     <span className={styles.paysName}>{PAYS_LABEL[node]}</span>
-                    {value !== null ? <span className={styles.paysValue}>{formatCompactMoney(value, currency)}</span> : <BeingBuiltBadge />}
+                    {value !== null ? <span className={styles.paysValue}>{formatCompactMoney(value, currencyOf(node))}</span> : <BeingBuiltBadge />}
                   </button>
                 )
               })}
@@ -93,7 +113,7 @@ export function PricePaysForChapter({ marketCap, marketCapAsOf, currency }: { ma
                   <path
                     key={`${from}-${to}`}
                     className={styles.paysLink}
-                    data-pending={columnIndex === 0 && from === 0 && marketCap !== null ? undefined : 'true'}
+                    data-pending={columnIndex === 0 && valueOf(column[from]) !== null ? undefined : 'true'}
                     d={connectorPath(from, column.length, to, PAYS_COLUMNS[columnIndex + 1].length)}
                   />
                 ))}

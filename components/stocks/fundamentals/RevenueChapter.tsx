@@ -82,7 +82,9 @@ export default function RevenueChapter({
           />
           <p className={styles.chartNote}>
             <BeingBuiltBadge />{' '}
-            {shown.length < 10 ? 'Growth, earlier years and the split by business are being added.' : 'Growth and the split by business are being added.'}
+            {growth.length > 0
+              ? (shown.length < 10 ? 'Earlier years and the split by business are being added.' : 'The split by business is being added.')
+              : (shown.length < 10 ? 'Growth, earlier years and the split by business are being added.' : 'Growth and the split by business are being added.')}
           </p>
         </div>
       ) : (
