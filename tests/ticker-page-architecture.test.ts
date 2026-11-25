@@ -428,6 +428,16 @@ test('Business and Ownership & Capital follow the accepted ticker Spec (PRD-78, 
   assert.match(storyStyles, /\.paysFlow \{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\) 1\.25rem\) minmax\(0, 1fr\)/)
   assert.doesNotMatch(storyStyles, /writing-mode|flex-direction: column[^}]*paysFlow/)
   assert.doesNotMatch(story, /bridgeFormula|Enterprise value/)
+  // The reported debt and cash are the Fundamentals tab's latest fiscal-year
+  // pair, each with its own date and currency; the whole company and the
+  // business are not added up in the browser and stay being built.
+  assert.match(ownership, /<PricePaysForChapter [^>]*cashDebt=\{annual\?\.cashDebt\.at\(-1\) \?\? null\}/)
+  assert.match(story, /node === 'debt' \? cashDebt\?\.debt \?\? null : node === 'cash' \? cashDebt\?\.cash \?\? null : null/)
+  assert.match(story, /at the end of fiscal \{cashDebt\.year\}/)
+  assert.doesNotMatch(story, /marketCap \+|\+ cashDebt|- cashDebt/)
+  // Revenue: the note no longer announces growth as coming when the growth view has data.
+  const revenue = readRepoFile('components/stocks/fundamentals/RevenueChapter.tsx')
+  assert.match(revenue, /growth\.length > 0\s*\? \(shown\.length < 10 \? 'Earlier years and the split by business are being added\.' : 'The split by business is being added\.'\)/)
 })
 
 test('conformance with the accepted ticker Spec (PRD-78): the items the review found', () => {
