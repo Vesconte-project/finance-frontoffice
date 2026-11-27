@@ -1693,6 +1693,13 @@ html.chrome-collision .site-header:focus-within {
   line-height: 1;
   transition: font-size var(--chrome-dur) var(--chrome-ease);
 }
+/* The mark scales with the brand font-size, so the condensed and small-screen
+   sizes below shrink it too. */
+.site-header__brand-mark {
+  display: block;
+  height: 1.85em;
+  width: auto;
+}
 html.chrome-scrolled .site-header__row:not([data-menu-open]) .site-header__brand {
   font-size: 16px;
 }

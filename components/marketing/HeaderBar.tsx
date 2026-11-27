@@ -17,6 +17,7 @@ import { HEADER_MENUS, accountMenu, type HeaderMenuData } from '@/components/hea
 import { useHeaderDisclosure } from '@/components/header-menu/useHeaderDisclosure'
 import { cn } from '@/lib/utils'
 import { BRAND_NAME } from '@/components/marketing/site-config'
+import VesconteMark from '@/components/brand/VesconteMark'
 import { ATLAS_PICK_TICKER } from '@/lib/atlas-ticker-pick'
 
 const PANEL_ID = 'site-header-menu'
@@ -84,9 +85,9 @@ export default function HeaderBar({ isHome }: { isHome: boolean }) {
           href="/"
           aria-label={BRAND_NAME}
           data-analytics-id="header_brand_home"
-          className="site-header__brand marketing-logo-type shrink-0 pl-1 text-content-primary transition-opacity hover:opacity-80 md:justify-self-start"
+          className="site-header__brand inline-flex shrink-0 items-center pl-1 text-content-primary transition-opacity hover:opacity-80 md:justify-self-start"
         >
-          <span className="site-header__brand-full">{BRAND_NAME}</span>
+          <VesconteMark className="site-header__brand-mark" />
         </Link>
 
         {isHome ? (
