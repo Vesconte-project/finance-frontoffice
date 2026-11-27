@@ -60,7 +60,19 @@ export type FinancialStatementLineItem = {
   ingestedAt: string | null
   methodologyVersion: string
   dataQualityFlags: unknown
+  /**
+   * Where the value comes from (backend #113, spec "Definições próprias das
+   * rubricas V1", ENG-216). Older payloads leave them out.
+   */
+  definitionId?: string | null
+  concept?: string | null
+  accession?: string | null
+  composition?: StatementComponent[] | null
+  emptyReason?: string | null
 }
+
+/** One reported line a composed value adds, from the same filing and period. */
+export type StatementComponent = { lineItemId: string; concept: string | null }
 
 export type FinancialStatementsPayload = CanonicalAvailability & {
   rows: FinancialStatementLineItem[]

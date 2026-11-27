@@ -12,6 +12,10 @@ import {
   valueInYear,
   valueInPeriod,
   largestAnnualChanges,
+  emptyReasonText,
+  lineItemOrigin,
+  measureOrigin,
+  sourceName,
   type StatementRowLike,
 } from '../lib/statement-reading'
 
@@ -200,4 +204,43 @@ test('raw series select reported rows even if a derived-source row reuses a raw 
     row('gross_profit',2025,.2,{source:'derived_reported_statements'}),
     row('gross_profit',2025,40,{source:'yahoo_finance'}),
   ],'grossProfit')[0]?.value,40)
+})
+
+test('a series states where its latest figure comes from, exactly as the backend sends it', () => {
+  const sec = { source: 'sec_selection', definitionId: 'sec_selection.revenue.v1' }
+  const rows = [
+    row('revenue', 2025, 400, { ...sec, concept: 'us-gaap:Revenues', accession: '0000320193-25-000079' }),
+    row('revenue', 2025, 390, { ...sec, concept: 'us-gaap:SalesRevenueNet', accession: 'older' }), // older revision
+    row('revenue', 2024, 390, { ...sec, concept: 'us-gaap:Revenues', accession: '0000320193-24-000123' }),
+  ]
+  const origin = measureOrigin(rows, 'revenue')
+  assert.deepEqual(origin.latest, {
+    periodEnd: '2025-09-30', year: 2025, source: 'sec_selection', definitionId: 'sec_selection.revenue.v1',
+    concept: 'us-gaap:Revenues', accession: '0000320193-25-000079', composition: [],
+  })
+  assert.deepEqual(origin.empty, [])
+  // Without provenance (an older payload) nothing is claimed.
+  assert.equal(measureOrigin([row('revenue', 2025, 400)], 'revenue').latest, null)
+  // The points themselves stay the reported values only.
+  assert.deepEqual(Object.keys(annualSeries(rows, 'revenue')[0]).sort(), ['currency', 'periodEnd', 'value', 'year'])
+})
+
+test('an empty value is a named gap with its reason, never a zero or an older revision', () => {
+  const rows = [
+    row('total_debt', 2025, null, { source: 'sec_selection', emptyReason: 'exceeds_productive_asset_purchases' }),
+    row('total_debt', 2025, 70, { source: 'sec_selection', definitionId: 'sec_selection.total_debt.v1' }), // older revision
+    row('total_debt', 2024, 60, {
+      source: 'sec_selection', definitionId: 'sec_selection.total_debt.v1', accession: 'a-24',
+      composition: [{ lineItemId: 'long_term_debt_including_current', concept: 'us-gaap:LongTermDebt' }, { lineItemId: 'commercial_paper', concept: 'us-gaap:CommercialPaper' }],
+    }),
+    row('total_debt', 2023, null), // empty without a stated reason: not claimed as a gap
+  ]
+  const origin = lineItemOrigin(rows, 'total_debt')
+  assert.deepEqual(origin.empty, [{ periodEnd: '2025-09-30', year: 2025, reason: 'exceeds_productive_asset_purchases' }])
+  assert.equal(origin.latest?.year, 2024)
+  assert.deepEqual(origin.latest?.composition.map((part) => part.lineItemId), ['long_term_debt_including_current', 'commercial_paper'])
+  assert.match(emptyReasonText('split_history_unverified'), /share basis/)
+  assert.equal(emptyReasonText('something_new'), 'the figure could not be verified')
+  assert.equal(sourceName('sec_selection'), 'The company’s SEC filing')
+  assert.equal(sourceName(null), null)
 })

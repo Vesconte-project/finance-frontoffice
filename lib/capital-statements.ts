@@ -4,7 +4,11 @@ import type { StatementRowLike, ReportedPoint } from './statement-reading'
 type Row = StatementRowLike & { statementType?: string; knownAt?: string; dataQualityFlags?: unknown }
 type SelectedPoint = ReportedPoint & { evidence: Row }
 export type CashDebtPoint = { periodEnd: string; year: number; cash: number; debt: number; netCash: number; currency: string }
-export type CapitalHistory = { cashDebt: CashDebtPoint[]; dividends: ReportedPoint[]; buybacks: ReportedPoint[]; shares: ReportedPoint[] }
+export type CapitalHistory = {
+  cashDebt: CashDebtPoint[]; dividends: ReportedPoint[]; buybacks: ReportedPoint[]; shares: ReportedPoint[]
+  /** Operating-lease liabilities, kept apart from debt (spec "Definições próprias das rubricas V1", 3.8). */
+  leases: ReportedPoint[]
+}
 
 function annual(rows: readonly Row[], id: string, statement: string, derived = false): SelectedPoint[] {
   const seen = new Set<string>()
@@ -45,5 +49,6 @@ export function capitalHistory(balance: readonly Row[], cashflow: readonly Row[]
       ? [{periodEnd:point.periodEnd,year:point.year,cash:c.value,debt:d.value,netCash:point.value,currency:point.currency}] : []
   })
   return {cashDebt,dividends:annual(cashflow,'dividends_paid_amount','cash_flow',true).map(plain),
-    buybacks:annual(cashflow,'share_repurchases_amount','cash_flow',true).map(plain),shares:annual(balance,'shares_outstanding','balance_sheet').map(plain)}
+    buybacks:annual(cashflow,'share_repurchases_amount','cash_flow',true).map(plain),shares:annual(balance,'shares_outstanding','balance_sheet').map(plain),
+    leases:annual(balance,'operating_lease_liability','balance_sheet').filter(point=>point.value>=0).map(plain)}
 }

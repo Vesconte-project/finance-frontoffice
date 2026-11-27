@@ -137,3 +137,12 @@ test('a partially published balance cannot combine new raw values with an old ne
   assert.deepEqual(capitalHistory([statement('cash_and_equivalents',70),...rows.slice(1)],[]).cashDebt,[])
   assert.deepEqual(capitalHistory([{...rows[0],knownAt:'2026-01-01'},...rows.slice(1)],[]).cashDebt,[])
 })
+
+test('operating leases are their own line beside debt, never added to it', () => {
+  const balance = [statement('cash_and_equivalents', 50), statement('total_debt', 80), statement('net_cash', -30),
+    statement('operating_lease_liability', 15), statement('operating_lease_liability', 12, '2024-09-30')]
+  const facts = capitalHistory(balance, [])
+  assert.deepEqual(facts.leases.map((point) => [point.year, point.value]), [[2024, 12], [2025, 15]])
+  assert.equal(facts.cashDebt[0].debt, 80)
+  assert.deepEqual(capitalHistory([statement('operating_lease_liability', null)], []).leases, [])
+})
