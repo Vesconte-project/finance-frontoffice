@@ -8,6 +8,64 @@ export type CapitalHistory = {
   cashDebt: CashDebtPoint[]; dividends: ReportedPoint[]; buybacks: ReportedPoint[]; shares: ReportedPoint[]
   /** Operating-lease liabilities, kept apart from debt (spec "Definições próprias das rubricas V1", 3.8). */
   leases: ReportedPoint[]
+  /** When the debt falls due, as the latest filing reports it (spec 3.8). */
+  maturities: DebtMaturities | null
+}
+
+/** The SEC debt maturities by year, in the order they fall due. */
+export const MATURITY_BUCKETS = [
+  ['debt_maturity_next_12_months', 'Within a year'],
+  ['debt_maturity_year_2', 'In the second year'],
+  ['debt_maturity_year_3', 'In the third year'],
+  ['debt_maturity_year_4', 'In the fourth year'],
+  ['debt_maturity_year_5', 'In the fifth year'],
+  ['debt_maturity_after_year_5', 'After five years'],
+] as const
+
+export type DebtMaturities = {
+  periodEnd: string
+  year: number
+  currency: string
+  accession: string
+  /** Only the years the filing reports, in order; a missing year is never a zero. */
+  buckets: Array<{ lineItemId: string; label: string; value: number }>
+}
+
+/**
+ * The debt maturities of the latest year that reports any, all from one filing
+ * and in one currency. Selection only: nothing is added up.
+ */
+export function debtMaturities(balance: readonly Row[]): DebtMaturities | null {
+  const newest = MATURITY_BUCKETS.map(([id, label]) => ({ id, label, rows: annualNewest(balance, id, 'balance_sheet') }))
+  const ends = newest.flatMap(({ rows }) => rows.filter(row => row.value !== null && Number.isFinite(row.value)).map(row => row.periodEnd))
+  const periodEnd = ends.sort().at(-1)
+  if (!periodEnd) return null
+  const found = newest.flatMap(({ id, label, rows }) => {
+    const row = rows.find(candidate => candidate.periodEnd === periodEnd)
+    return row && row.value !== null && Number.isFinite(row.value) && row.value >= 0 ? [{ lineItemId: id, label, row }] : []
+  })
+  const accession = found[0]?.row.accession
+  const currency = found[0]?.row.currency
+  if (!accession || !currency || found.some(({ row }) => row.accession !== accession || row.currency !== currency)) return null
+  return {
+    periodEnd,
+    year: found[0].row.fiscalYear ?? Number(periodEnd.slice(0, 4)),
+    currency,
+    accession,
+    buckets: found.map(({ lineItemId, label, row }) => ({ lineItemId, label, value: row.value as number })),
+  }
+}
+
+/** The newest revision of each annual period of one exact line item, empty ones included. */
+function annualNewest(rows: readonly Row[], id: string, statement: string): Row[] {
+  const seen = new Set<string>()
+  return rows.filter(row => {
+    if (row.lineItemId !== id || row.periodType !== 'annual' || !/^\d{4}-\d{2}-\d{2}$/.test(row.periodEnd)) return false
+    if ((row.statementType && row.statementType !== statement) || row.source === 'derived_reported_statements') return false
+    if (seen.has(row.periodEnd)) return false
+    seen.add(row.periodEnd)
+    return true
+  })
 }
 
 function annual(rows: readonly Row[], id: string, statement: string, derived = false): SelectedPoint[] {
@@ -50,5 +108,6 @@ export function capitalHistory(balance: readonly Row[], cashflow: readonly Row[]
   })
   return {cashDebt,dividends:annual(cashflow,'dividends_paid_amount','cash_flow',true).map(plain),
     buybacks:annual(cashflow,'share_repurchases_amount','cash_flow',true).map(plain),shares:annual(balance,'shares_outstanding','balance_sheet').map(plain),
-    leases:annual(balance,'operating_lease_liability','balance_sheet').filter(point=>point.value>=0).map(plain)}
+    leases:annual(balance,'operating_lease_liability','balance_sheet').filter(point=>point.value>=0).map(plain),
+    maturities:debtMaturities(balance)}
 }

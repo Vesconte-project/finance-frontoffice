@@ -393,7 +393,11 @@ function capitalStatementRows(ticker,statementType) {
       ?{...make('total_debt',80e9),definitionId:'sec_selection.total_debt.v1',accession:`0000000000-${String(year).slice(-2)}-000001`,
         composition:[{lineItemId:'long_term_debt_including_current',concept:'us-gaap:LongTermDebt'},{lineItemId:'commercial_paper',concept:'us-gaap:CommercialPaper'}]}
       :make('total_debt',80e9)
-    if (statementType==='balance_sheet') return [make('cash_and_equivalents',50e9),debt,
+    // QAS's debt maturities, all from that year's filing (spec 3.8); year 3 is not reported.
+    const due=(id,value)=>({...make(id,value),accession:`0000000000-${String(year).slice(-2)}-000001`})
+    const maturities=ticker==='QAS'?[due('debt_maturity_next_12_months',6e9),due('debt_maturity_year_2',9e9),
+      due('debt_maturity_year_4',7e9),due('debt_maturity_year_5',8e9),due('debt_maturity_after_year_5',45e9)]:[]
+    if (statementType==='balance_sheet') return [...maturities,make('cash_and_equivalents',50e9),debt,
       make('net_cash',-30e9,true),...(ticker==='QAS'?[make('shares_outstanding',12e9+(year-2022)*1e9),make('operating_lease_liability',11e9)]:[make('shares_issued',30e9)]),
       ...(ticker==='QAS'&&year===2022?[{...make('total_debt',null),fiscalYear:2021,periodEnd:'2021-09-30',emptyReason:'definition_changed'}]:[])]
     if (statementType==='cash_flow') return [make('dividends_paid',-12e9),make('dividends_paid_amount',12e9,true),

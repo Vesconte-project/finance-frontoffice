@@ -81,3 +81,21 @@ test('debt says where it comes from, names empty years with their reason and kee
   await expect(origin.locator('[data-composition]')).toBeHidden()
   expect(errors).toEqual([])
 })
+
+test('debt maturities show the reported years of one filing beside the cash of that year end',async({page},info)=>{
+  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message))
+  await page.goto('/stocks/QAS/fundamentals')
+  const card=page.locator('#cash-and-debt [data-debt-maturities]')
+  await expect(card.locator('[data-maturity]')).toHaveCount(5)
+  await expect(card.locator('[data-maturity="debt_maturity_next_12_months"]')).toContainText('$6B')
+  await expect(card.locator('[data-maturity="debt_maturity_after_year_5"]')).toContainText('$45B')
+  await expect(card.locator('[data-maturity="debt_maturity_year_3"]')).toHaveCount(0)
+  await expect(card.locator('[data-maturity-cash]')).toContainText('$50B')
+  await expect(page.locator('#cash-and-debt')).toContainText('At the FY2025 year end')
+  for (const [width,height] of [[320,568],[390,844],[1440,900]]) {
+    await page.setViewportSize({width,height});await overflow(page);await capture(page,info,`fundamentals-maturities-${width}`)
+  }
+  await page.goto('/stocks/QAM/fundamentals')
+  await expect(page.locator('#cash-and-debt [data-debt-maturities]')).toHaveCount(0)
+  expect(errors).toEqual([])
+})

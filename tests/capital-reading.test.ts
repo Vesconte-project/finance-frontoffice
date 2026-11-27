@@ -146,3 +146,16 @@ test('operating leases are their own line beside debt, never added to it', () =>
   assert.equal(facts.cashDebt[0].debt, 80)
   assert.deepEqual(capitalHistory([statement('operating_lease_liability', null)], []).leases, [])
 })
+
+test('debt maturities are the reported years of one filing, never filled with zeros', () => {
+  const due = (id: string, value: number | null, extra = {}) => statement(id, value, '2025-09-30', { source: 'sec_selection', accession: 'a-25', ...extra })
+  const balance = [due('debt_maturity_year_2', 9e9), due('debt_maturity_next_12_months', 5e9), due('debt_maturity_after_year_5', 40e9),
+    due('debt_maturity_year_3', null), statement('debt_maturity_next_12_months', 4e9, '2024-09-30', { source: 'sec_selection', accession: 'a-24' })]
+  const maturities = capitalHistory(balance, []).maturities
+  assert.equal(maturities?.year, 2025)
+  assert.deepEqual(maturities?.buckets.map((bucket) => [bucket.lineItemId, bucket.value]),
+    [['debt_maturity_next_12_months', 5e9], ['debt_maturity_year_2', 9e9], ['debt_maturity_after_year_5', 40e9]])
+  // Years from two filings are not shown together.
+  assert.equal(capitalHistory([...balance, due('debt_maturity_year_4', 3e9, { accession: 'other' })], []).maturities, null)
+  assert.equal(capitalHistory([], []).maturities, null)
+})
