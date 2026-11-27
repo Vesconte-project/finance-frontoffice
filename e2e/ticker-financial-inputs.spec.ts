@@ -190,11 +190,15 @@ test('items inside operating income and the interest received and paid are named
   await page.getByRole('button', {name: 'View interest and income tax'}).click()
   const interest = page.locator('[data-statement-detail="taxesParts"]')
   await expect(interest.locator('[data-detail-line="investmentInterestIncome"]')).toContainText('$90M')
-  await expect(interest.locator('[data-detail-line="interestPaid"]')).toContainText('60M') // an outflow, as reported
+  await expect(interest.locator('[data-detail-line="interestPaid"] [data-detail-value]')).toHaveText('$-60M')
   for (const width of [320, 390, 1440]) {
     await page.setViewportSize({width, height: 900})
     await overflow(page)
     await capture(page, info, `financials-components-${width}`)
   }
+  await page.getByRole('radiogroup', {name: 'Fiscal year'}).getByRole('radio', {name: '2022', exact: true}).click()
+  await wide.locator('[data-flow-node="operatingIncome"]').click()
+  await expect(card).toContainText('Operating income for FY2022 is being added.')
+  await expect(inside).toHaveCount(0)
   expect(errors).toEqual([])
 })

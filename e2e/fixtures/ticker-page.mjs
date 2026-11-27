@@ -332,7 +332,8 @@ const STATEMENT_FIXTURES = {
     }
   }),
   QAM: [
-    { year: 2022, revenue: 42e9, gross_profit: 21e9, operating_income: 6.1e9, net_income: 4.4e9 },
+    { year: 2022, revenue: 42e9, gross_profit: 21e9, operating_income: null, net_income: 4.4e9,
+      stock_based_compensation_expense: 200e6 },
     { year: 2023, revenue: 45e9, gross_profit: null, operating_income: 3.2e9, net_income: 1.9e9 },
     { year: 2024, revenue: 39e9, gross_profit: 15e9, operating_income: -2.4e9, net_income: -3.1e9 },
     { year: 2025, revenue: 47e9, gross_profit: 22e9, operating_income: 5.3e9, net_income: 3.8e9,
