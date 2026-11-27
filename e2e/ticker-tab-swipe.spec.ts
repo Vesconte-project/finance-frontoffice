@@ -130,6 +130,43 @@ test('swipes that follow one another faster than tabs load are never ignored', a
   await expect(page).toHaveURL(/\/stocks\/QAS\/financials$/)
 })
 
+// A swipe that starts while the panel in front is still sliding picks it up where
+// it is. Where it is must not decide the tab: the finger does. The panel is put
+// at the offset by hand, so the case does not depend on the runner's timing.
+for (const offset of [-170, -300]) {
+  test(`a swipe over a panel still ${-offset}px from its place follows the finger`, async ({ page }) => {
+    await page.goto('/stocks/QAS/rankings')
+    await page.waitForLoadState('networkidle')
+    await swipeReady(page)
+    const { y } = await headingCentre(page)
+    const back = async () => swipe(page, { x: 90, y }, { x: 330, y })
+
+    await back()
+    await expect(page).toHaveURL(/\/stocks\/QAS\/signals$/)
+    await expect(page.locator('[data-ticker-tab-peek][data-visible="true"]')).toHaveCount(0, { timeout: 5000 })
+
+    // Valuation stays on its way until the third gesture has been let go.
+    let arrive!: () => void
+    const held = new Promise<void>((resolve) => { arrive = resolve })
+    await page.route(/\/stocks\/QAS\/valuation\?_rsc/, async (route) => {
+      await held
+      await route.continue()
+    })
+    await back()
+    const cover = page.locator('[data-ticker-tab-peek][data-visible="true"]')
+    await expect(cover).toHaveCount(1)
+    await page.waitForTimeout(400)
+    await cover.evaluate((el, x) => {
+      el.style.transition = 'none'
+      el.style.transform = `translate3d(${x}px, 0, 0)`
+    }, offset)
+
+    await back()
+    arrive()
+    await expect(page).toHaveURL(/\/stocks\/QAS\/financials$/)
+  })
+}
+
 test('a swipe while the next tab is still on its way works anywhere below the tab bar', async ({ page }) => {
   await page.goto('/stocks/QAS/rankings')
   await page.waitForLoadState('networkidle')
