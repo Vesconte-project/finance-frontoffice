@@ -3,7 +3,7 @@ import { PriceHistoryChapter, PricePaysForChapter } from '@/components/stocks/ow
 import BeingBuilt, { BeingBuiltBadge } from '@/components/stocks/research/BeingBuilt'
 import PairedBars from '@/components/stocks/research/PairedBars'
 import ResearchChapter, { ChapterCard, LeadStat } from '@/components/stocks/research/ResearchChapter'
-import type { CapitalHistory } from '@/lib/capital-statements'
+import type { CapitalHistory, ShareCounts } from '@/lib/capital-statements'
 import { shortYear, type ReportedPoint } from '@/lib/statement-reading'
 import ReportedBars from '@/components/stocks/research/ReportedBars'
 import type { BuybackSummary, PricePeriod } from '@/lib/capital-reading'
@@ -65,8 +65,10 @@ function BuybacksChapter({
   sharesToday,
   sharesTodayAsOf,
   annual,
+  counts = null,
 }: {
   annual?: CapitalHistory
+  counts?: ShareCounts | null
   summary: BuybackSummary | null
   mixedCurrencies: boolean
   currency: string
@@ -77,9 +79,21 @@ function BuybacksChapter({
   const payments=annual?.buybacks ?? []
   if (payments.length) {
     const current=payments.at(-1)!
+    // The shares bought back in the same year as the cash shown (spec 3.7), never another year's.
+    const bought=counts?.repurchased.find(point=>point.periodEnd===current.periodEnd) ?? null
     return <ResearchChapter id="buybacks" label="Buybacks"
       lead={<LeadStat value={formatCompactMoney(current.value,current.currency!)} context={`cash spent on buybacks · year ended ${formatDay(current.periodEnd)}`} />}
-      aside={<ShareBalanceCard bought={sharesBought} today={sharesToday} todayAsOf={sharesTodayAsOf} history={annual?.shares} />}>
+      aside={<>
+        {bought ? (
+          <ChapterCard title="Shares bought back" meta={`FY${bought.year}`}>
+            <p className={styles.cardFigure} data-shares-repurchased="">
+              <strong>{shareCount.format(bought.value)}</strong>
+              <span>shares bought back that year with that cash, as the company’s filing reports them{counts?.outstandingOnCurrentBasis ? ', on today’s share basis' : ''}.</span>
+            </p>
+          </ChapterCard>
+        ) : null}
+        <ShareBalanceCard bought={sharesBought} today={sharesToday} todayAsOf={sharesTodayAsOf} history={annual?.shares} />
+      </>}>
       <ReportedBars ariaLabel="Annual cash spent on buybacks" bars={payments.map(point=>({key:point.periodEnd,value:point.value,valueLabel:formatCompactMoney(point.value,point.currency!),axisLabel:String(point.year),axisShort:shortYear(point.year)}))} />
       <p className={styles.chartNote}><BeingBuiltBadge /> What those shares are worth now is being added.</p>
     </ResearchChapter>
@@ -145,9 +159,11 @@ type OwnershipProps = {
   sharesTodayAsOf: string | null
   priceByYear: PricePeriod[]
   priceByQuarter: PricePeriod[]
+  /** Shares bought back by year and whether counts are on today's basis (spec 3.7). */
+  shareCounts?: ShareCounts | null
 }
 
-function EquityOwnership({ data, annual, buybackYears, mixedCurrencies, sharesBought, sharesToday, sharesTodayAsOf, priceByYear, priceByQuarter }: OwnershipProps) {
+function EquityOwnership({ data, annual, buybackYears, mixedCurrencies, sharesBought, sharesToday, sharesTodayAsOf, priceByYear, priceByQuarter, shareCounts = null }: OwnershipProps) {
   const snapshot = currentResearchSnapshot(data)
   const currency = snapshot.currency || data.currency
   const ownership = parseOwnershipSnapshot(data.summary.ownershipSnapshot, data.ticker)
@@ -193,11 +209,15 @@ function EquityOwnership({ data, annual, buybackYears, mixedCurrencies, sharesBo
         sharesBought={sharesBought}
         sharesToday={sharesToday}
         sharesTodayAsOf={sharesTodayAsOf}
+        counts={shareCounts}
       />
 
       <ResearchChapter id="shares-outstanding" label="Shares outstanding" band>
         {annual?.shares.length ? <ReportedBars ariaLabel="Annual shares outstanding" bars={annual.shares.map(point=>({key:point.periodEnd,value:point.value,valueLabel:shareCount.format(point.value),axisLabel:String(point.year),axisShort:shortYear(point.year)}))} />
           : <BeingBuilt size="chart">The number of shares outstanding over time is being added.</BeingBuilt>}
+        {annual?.shares.length && shareCounts?.outstandingOnCurrentBasis ? (
+          <p className={styles.chartNote} data-share-basis="">Every year is on today’s share basis: counts before a stock split are restated, as the company’s filings report the split.</p>
+        ) : null}
       </ResearchChapter>
 
       <PricePaysForChapter marketCap={tickerMarketCap(data.summary)} marketCapAsOf={snapshot.marketCap !== null ? snapshot.reportingPeriod : null} currency={currency} cashDebt={annual?.cashDebt.at(-1) ?? null} />
