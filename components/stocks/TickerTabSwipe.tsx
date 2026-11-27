@@ -182,7 +182,10 @@ export default function TickerTabSwipe() {
     let startX = 0, startY = 0
     let tracking = false
     let swiping = false
+    // Where the front element is drawn (dx), and how far the finger has moved since
+    // the swipe began (moved). The finger decides; the position only draws.
     let dx = 0
+    let moved = 0
     let width = window.innerWidth
     let samples: { t: number; x: number }[] = []
 
@@ -210,10 +213,12 @@ export default function TickerTabSwipe() {
       return towards !== 0 && at >= 0 && at < tabs.length ? at : null
     }
 
-    // The front element at `offset`, and the neighbour on the side it moves away from.
-    const follow = (offset: number) => {
+    // The front element at `offset`, and the neighbour on the side the finger moves
+    // towards (`towards`: 1 the next tab, -1 the previous one, 0 neither). The side
+    // comes from the finger, not from `offset`: an element picked up mid-animation
+    // starts away from 0, and its position must not choose the tab.
+    const follow = (offset: number, towards: number) => {
       place(front.el, offset, '')
-      const towards = offset < 0 ? 1 : offset > 0 ? -1 : 0
       if (towards !== direction && incoming) { hidePeek(incoming); incoming = null }
       direction = towards
       if (neighbour(front.index, towards) === null) return
@@ -323,7 +328,7 @@ export default function TickerTabSwipe() {
       // under a loading tab; the header and tab bar above keep their own gestures.
       if (touch.clientY < content.getBoundingClientRect().top) return
       startX = touch.clientX; startY = touch.clientY
-      tracking = true; swiping = false; dx = 0
+      tracking = true; swiping = false; dx = 0; moved = 0
       samples = [{ t: event.timeStamp, x: touch.clientX }]
       if (event.target) hold(event.target)
     }
@@ -367,6 +372,7 @@ export default function TickerTabSwipe() {
       // A sideways swipe holds the page still vertically.
       if (event.cancelable) event.preventDefault()
       const raw = touch.clientX - startX
+      moved = raw
       samples.push({ t: event.timeStamp, x: touch.clientX })
       while (samples.length > 2 && event.timeStamp - samples[0]!.t > VELOCITY_WINDOW_MS) samples.shift()
       if (reducedMotion) {
@@ -378,11 +384,12 @@ export default function TickerTabSwipe() {
         }
         return
       }
-      const total = front.origin + raw
-      const open = neighbour(front.index, total < 0 ? 1 : -1) !== null
-      dx = open ? Math.max(-width, Math.min(width, total)) : total * EDGE_GIVE
-      follow(dx)
-      emit(open ? dx / -width : 0, front.index)
+      const towards = raw < 0 ? 1 : raw > 0 ? -1 : 0
+      const open = neighbour(front.index, towards) !== null
+      dx = open ? Math.max(-width, Math.min(width, front.origin + raw)) : front.origin + raw * EDGE_GIVE
+      follow(dx, towards)
+      // The rail shows the decision the finger is making, as the release will read it.
+      emit(open ? Math.max(-1, Math.min(1, raw / -width)) : 0, front.index)
     }
 
     const velocityAt = (now: number) => {
@@ -400,7 +407,7 @@ export default function TickerTabSwipe() {
       if (!swiping) return
       swiping = false
       const velocity = velocityAt(event.timeStamp)
-      const distance = reducedMotion ? samples[samples.length - 1]!.x - startX : dx
+      const distance = reducedMotion ? samples[samples.length - 1]!.x - startX : moved
       const far = Math.abs(distance) >= width * COMMIT_SHARE
       const flicked = Math.abs(velocity) >= FLICK_VELOCITY && Math.abs(distance) >= FLICK_MIN_PX && Math.sign(velocity) === Math.sign(distance)
       const towards = distance < 0 ? 1 : -1
