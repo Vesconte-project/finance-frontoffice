@@ -37,7 +37,9 @@ export type ReportedPoint = {
 type DetailRatioKey = `${'researchAndDevelopment' | 'sga' | 'interestExpense' | 'nonOperatingInterestExpense'}${'Share' | 'Growth'}`
 
 type CoreMeasureKey = 'revenue' | 'grossProfit' | 'operatingIncome' | 'netIncome'
-export type MeasureKey = CoreMeasureKey | DetailRatioKey | 'generalAndAdministrative' | 'sellingAndMarketing' | 'interestIncome' | 'netInterestIncome' | 'costOfSales' | 'operatingCosts' | 'incomeTax' | 'researchAndDevelopment' | 'sga' | 'interestExpense' | 'nonOperatingInterestExpense' | 'revenueGrowth' | 'netIncomeGrowth' | 'revenueShare' | 'grossProfitShare' | 'operatingIncomeShare' | 'netIncomeShare' | 'costOfSalesShare' | 'operatingCostsShare' | 'incomeTaxShare' | 'grossProfitGrowth' | 'operatingIncomeGrowth' | 'costOfSalesGrowth' | 'operatingCostsGrowth' | 'incomeTaxGrowth'
+/** SEC components shown by name beside the lines they belong to (spec "Definições próprias das rubricas V1", 3.1 and 3.4). */
+type ComponentKey = 'shareBasedPayExpense' | 'restructuringCharges' | 'goodwillImpairment' | 'investmentInterestIncome' | 'interestPaid'
+export type MeasureKey = CoreMeasureKey | DetailRatioKey | ComponentKey | 'generalAndAdministrative' | 'sellingAndMarketing' | 'interestIncome' | 'netInterestIncome' | 'costOfSales' | 'operatingCosts' | 'incomeTax' | 'researchAndDevelopment' | 'sga' | 'interestExpense' | 'nonOperatingInterestExpense' | 'revenueGrowth' | 'netIncomeGrowth' | 'revenueShare' | 'grossProfitShare' | 'operatingIncomeShare' | 'netIncomeShare' | 'costOfSalesShare' | 'operatingCostsShare' | 'incomeTaxShare' | 'grossProfitGrowth' | 'operatingIncomeGrowth' | 'costOfSalesGrowth' | 'operatingCostsGrowth' | 'incomeTaxGrowth'
 
 type MeasureMatcher = {
   /** Exact `lineItemId` spellings, tried first (the vocabulary is undocumented, ENG-87). */
@@ -48,6 +50,11 @@ type MeasureMatcher = {
 }
 
 const MEASURES: Record<MeasureKey, MeasureMatcher> = {
+  shareBasedPayExpense: { prefer: /^stock_based_compensation_expense$/, accept: /^stock_based_compensation_expense$/, reject: /(?!) / },
+  restructuringCharges: { prefer: /^restructuring_charges$/, accept: /^restructuring_charges$/, reject: /(?!) / },
+  goodwillImpairment: { prefer: /^goodwill_impairment$/, accept: /^goodwill_impairment$/, reject: /(?!) / },
+  investmentInterestIncome: { prefer: /^investment_interest_income$/, accept: /^investment_interest_income$/, reject: /(?!) / },
+  interestPaid: { prefer: /^interest_paid$/, accept: /^interest_paid$/, reject: /(?!) / },
   generalAndAdministrative: { prefer: /^general_and_administrative$/, accept: /^general_and_administrative$/, reject: /(?!) / },
   sellingAndMarketing: { prefer: /^selling_and_marketing$/, accept: /^selling_and_marketing$/, reject: /(?!) / },
   interestIncome: { prefer: /^interest_income$/, accept: /^interest_income$/, reject: /(?!) / },
@@ -205,7 +212,10 @@ export function incomeSeries(rows: readonly StatementRowLike[]): IncomeSeries {
     costOfSalesShare: annualSeries(rows, 'costOfSalesShare'),
     operatingCostsShare: annualSeries(rows, 'operatingCostsShare'),
     incomeTaxShare: annualSeries(rows, 'incomeTaxShare'),
-
+    shareBasedPayExpense: annualSeries(rows, 'shareBasedPayExpense'),
+    restructuringCharges: annualSeries(rows, 'restructuringCharges'),
+    goodwillImpairment: annualSeries(rows, 'goodwillImpairment'),
+    investmentInterestIncome: annualSeries(rows, 'investmentInterestIncome'),
   }
 }
 
