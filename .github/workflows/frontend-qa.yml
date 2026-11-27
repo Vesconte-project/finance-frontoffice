@@ -14,17 +14,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  candidate:
+  prepare:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
-    name: Frontend candidate
+    name: Prepare frontend candidate
     # Pinned: ubuntu-latest moved to 26.04, where Playwright 1.59 cannot install
     # Chromium or its system dependencies. Unpin when Playwright supports it.
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 15
+    outputs:
+      browser: ${{ steps.route.outputs.browser }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Route changed files
         id: route
@@ -55,12 +58,9 @@ jobs:
         timeout-minutes: 5
         if: steps.route.outputs.build == 'true'
         env:
-          # A dedicated disposable Clerk development application, scoped to this
-          # build/browser steps rather than the job or workflow. clerkMiddleware() needs a
-          # publishable key wherever it runs, and without one it throws on every
-          # matched route.
+          # The public build artifact uses only the publishable development key.
+          # The secret key is supplied separately to each browser test runtime.
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.CLERK_CI_PUBLISHABLE_KEY }}
-          CLERK_SECRET_KEY: ${{ secrets.CLERK_CI_SECRET_KEY }}
           # Keyless stays off. Runners set CI, which the Next server reads to
           # disable keyless while the browser bundle never sees it and would
           # enable it; the extra client-only provider that follows shifts every
@@ -69,8 +69,59 @@ jobs:
           NEXT_PUBLIC_CLERK_KEYLESS_DISABLED: '1'
         run: npm run build
 
-      - name: Install Chromium
+      - name: Package production candidate
         if: steps.route.outputs.browser == 'true'
+        run: |
+          test -s .next/BUILD_ID
+          tar -czf "$RUNNER_TEMP/frontend-candidate.tgz" --exclude=.next/cache .next
+          du -h "$RUNNER_TEMP/frontend-candidate.tgz"
+
+      - name: Upload production candidate
+        if: steps.route.outputs.browser == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-production-build
+          path: ${{ runner.temp }}/frontend-candidate.tgz
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: true
+          retention-days: 14
+
+  browser:
+    name: Browser QA (${{ matrix.shard }}/2)
+    needs: prepare
+    if: needs.prepare.outputs.browser == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download production candidate
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-production-build
+          path: ${{ runner.temp }}
+
+      - name: Extract production candidate
+        run: |
+          tar -xzf "$RUNNER_TEMP/frontend-candidate.tgz"
+          test -s .next/BUILD_ID
+
+      - name: Install Chromium
         # Includes fresh apt packages/fonts: runner mirror latency can exceed 3m
         # before the browser download starts. Keep this bounded and browser QA mandatory.
         timeout-minutes: 10
@@ -85,7 +136,6 @@ jobs:
           npx playwright install --with-deps chromium
 
       - name: Check browser runtime and interface
-        if: steps.route.outputs.browser == 'true'
         timeout-minutes: 12
         env:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.CLERK_CI_PUBLISHABLE_KEY }}
@@ -93,19 +143,35 @@ jobs:
           NEXT_PUBLIC_CLERK_KEYLESS_DISABLED: '1'
           PLAYWRIGHT_SERVER_MODE: production
           PLAYWRIGHT_CAPTURE: '1'
-        run: npm run qa:browser
+          BROWSER_SHARD: ${{ matrix.shard }}
+        run: npm run qa:browser -- --workers=1 "--shard=${BROWSER_SHARD}/2"
 
       - name: Keep browser report and failure evidence for review
-        if: always() && steps.route.outputs.browser == 'true'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-browser-evidence
+          name: frontend-browser-evidence-${{ github.run_attempt }}-${{ matrix.shard }}
           path: |
             test-results/
             playwright-report/
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Record not-applicable result
-        if: steps.route.outputs.build != 'true'
-        run: echo "No frontend/runtime candidate paths changed; frontend QA is not applicable."
+  candidate:
+    name: Frontend candidate
+    needs: [prepare, browser]
+    if: ${{ always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Require applicable checks to pass
+        env:
+          PREPARE_RESULT: ${{ needs.prepare.result }}
+          BROWSER_REQUIRED: ${{ needs.prepare.outputs.browser }}
+          BROWSER_RESULT: ${{ needs.browser.result }}
+        run: |
+          case "$PREPARE_RESULT:$BROWSER_REQUIRED:$BROWSER_RESULT" in
+            success:true:success) echo "Build and both browser shards passed." ;;
+            success:false:skipped) echo "Preparation passed; browser QA is not applicable." ;;
+            *) echo "Frontend QA did not pass (prepare=$PREPARE_RESULT, browser required=$BROWSER_REQUIRED, browser=$BROWSER_RESULT)."; exit 1 ;;
+          esac
