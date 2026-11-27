@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import ResearchViewShell, { ResearchAdPlacement } from '@/components/stocks/ResearchViewShell'
 import CashDebtChart from '@/components/stocks/fundamentals/CashDebtChart'
+import CashForOwnersChapter from '@/components/stocks/fundamentals/CashForOwnersChapter'
+import type { CashForOwners } from '@/lib/cash-for-owners'
 import type { CapitalHistory } from '@/lib/capital-statements'
 import { FUNDAMENTALS_MEASURES } from '@/components/stocks/fundamentals/measures'
 import RevenueChapter from '@/components/stocks/fundamentals/RevenueChapter'
@@ -175,7 +177,6 @@ function DividendsChapter({
     <ResearchChapter
       id="dividends"
       label="Dividends"
-      band
       measure={FUNDAMENTALS_MEASURES.dividends}
       lead={latest ? (
         <>
@@ -282,7 +283,10 @@ export default function StockFundamentalsResearch({
   capital,
   revenueOrigin = null,
   debtOrigin = null,
+  cash = null,
 }: {
+  /** Free cash flow and what it is made of (spec 3.2, 3.3). */
+  cash?: CashForOwners | null
   data: StockResearchData
   capital?: CapitalHistory
   /** Where the revenue and debt figures come from, as the backend states it. */
@@ -308,6 +312,7 @@ export default function StockFundamentalsResearch({
             <RevenueChapter points={revenue} currency={revenue[0]?.currency ?? data.currency} growth={revenueGrowth} origin={revenueOrigin} />
             <OperatingMarginChapter data={data} sinceYear={revenue.length ? revenue[0].year : null} history={operatingMargins} />
             <CashAndDebtChapter data={data} history={capital?.cashDebt ?? []} leases={capital?.leases ?? []} origin={debtOrigin} />
+            <CashForOwnersChapter cash={cash} band />
             <DividendsChapter ticker={data.ticker} dividends={dividends} currency={data.currency} annualPayments={capital?.dividends ?? []} />
           </>
         )}
