@@ -189,6 +189,8 @@ test('the Atlas highlights follow the arriving particles and settle shortly befo
 })
 
 test('the camera pulls back through Relationships and keeps turning through the Atlas', async ({ page }) => {
+  // It waits for an eased camera to settle twice, which a slow runner can stretch.
+  test.slow()
   await page.setViewportSize({ width: 1440, height: 900 })
   await recordCanvasDots(page)
   await page.goto('/')
@@ -199,11 +201,25 @@ test('the camera pulls back through Relationships and keeps turning through the 
     return radii[Math.floor(radii.length / 2)]
   }
 
+  // The camera eases towards the scroll position frame by frame, so on a slow
+  // runner it is still moving when the scroll has landed. Read the closest
+  // approach once it has settled, never on its way in.
+  const settledRadius = async () => {
+    let previous = 0
+    await expect.poll(async () => {
+      const now = await medianDotRadius()
+      const still = previous > 0 && Math.abs(now - previous) / previous < 0.01
+      previous = now
+      return still
+    }, { intervals: [300], timeout: 20_000 }).toBe(true)
+    return previous
+  }
+
   await scrollStory(page, 0.42)
-  await expect.poll(medianDotRadius).toBeGreaterThan(2.6)
-  const approach = await medianDotRadius()
+  const approach = await settledRadius()
+  expect(approach).toBeGreaterThan(2.6)
   await scrollStory(page, 0.615)
-  await expect.poll(medianDotRadius).toBeLessThan(approach * 0.70)
+  await expect.poll(medianDotRadius, { timeout: 20_000 }).toBeLessThan(approach * 0.70)
 
   await scrollStory(page, 0.84)
   const before = await canvasDots()

@@ -444,7 +444,6 @@ test('conformance with the accepted ticker Spec (PRD-78): the items the review f
   const overview = readRepoFile('components/stocks/StockOverviewClient.tsx')
   const signals = readRepoFile('lib/technicalSignals.ts')
   const dialog = readRepoFile('components/stocks/ExpandedChartDialog.tsx')
-  const page = readRepoFile('app/(app)/stocks/[ticker]/page.tsx')
   const layout = readRepoFile('app/(app)/stocks/[ticker]/StockTickerLayout.module.css')
   const chrome = readRepoFile('components/stocks/StockTickerChrome.module.css')
   const flow = readRepoFile('components/stocks/financials/SalesFlowChapter.tsx')

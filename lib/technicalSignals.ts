@@ -113,11 +113,6 @@ function buildBars(data: OhlcPoint[], timeframe: TechnicalTimeframe): Bar[] {
   })
 }
 
-function takeLast(values: number[], count: number): number[] {
-  if (values.length <= count) return values
-  return values.slice(-count)
-}
-
 function average(values: number[]): number | null {
   if (values.length === 0) return null
   return values.reduce((sum, value) => sum + value, 0) / values.length
