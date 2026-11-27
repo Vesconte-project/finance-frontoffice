@@ -92,12 +92,14 @@ function OperatingMarginChapter({ data, sinceYear, history }: { data: StockResea
   )
 }
 
-function CashAndDebtChapter({ data, history, leases, origin }: {
+function CashAndDebtChapter({ data, history, leases, maturities = null, origin }: {
   data: StockResearchData
   history: CapitalHistory['cashDebt']
   leases: CapitalHistory['leases']
+  maturities?: CapitalHistory['maturities']
   origin: SeriesOrigin | null
 }) {
+  const cashThen = maturities ? history.find((point) => point.periodEnd === maturities.periodEnd && point.currency === maturities.currency) ?? null : null
   // Leases sit beside debt, never in it (spec 3.8): the year of the latest debt row, else the latest reported.
   const latestDebt = history.at(-1) ?? null
   const lease = latestDebt
@@ -136,8 +138,30 @@ function CashAndDebtChapter({ data, history, leases, origin }: {
               </p>
             </ChapterCard>
           ) : null}
+          {maturities ? (
+            <ChapterCard title="When the debt falls due" meta={`At the FY${maturities.year} year end`}>
+              <div data-debt-maturities="">
+                <dl className={styles.factList}>
+                  {maturities.buckets.map((bucket) => (
+                    <div key={bucket.lineItemId} data-maturity={bucket.lineItemId}>
+                      <dt>{bucket.label}</dt>
+                      <dd>{formatCompactMoney(bucket.value, maturities.currency)}</dd>
+                    </div>
+                  ))}
+                </dl>
+                {cashThen ? (
+                  <p className={styles.cardNote} data-maturity-cash="">Cash at that year end: {formatCompactMoney(cashThen.cash, cashThen.currency)}.</p>
+                ) : null}
+                <p className={styles.cardNote}>
+                  The long-term debt the company owes, by the year it is due, as its filing reports it. A year not listed was not reported.
+                </p>
+              </div>
+            </ChapterCard>
+          ) : null}
           <BeingBuilt label="If a bad year came">
-            How many times profit covers interest, the next debt to fall due and the room left if sales fell 30% are being added.
+            {maturities
+              ? 'How many times profit covers interest and the room left if sales fell 30% are being added.'
+              : 'How many times profit covers interest, the next debt to fall due and the room left if sales fell 30% are being added.'}
           </BeingBuilt>
         </>
       )}
@@ -311,7 +335,7 @@ export default function StockFundamentalsResearch({
             {/* A series is labelled in its own rows' currency: converted only when every amount converted. */}
             <RevenueChapter points={revenue} currency={revenue[0]?.currency ?? data.currency} growth={revenueGrowth} origin={revenueOrigin} />
             <OperatingMarginChapter data={data} sinceYear={revenue.length ? revenue[0].year : null} history={operatingMargins} />
-            <CashAndDebtChapter data={data} history={capital?.cashDebt ?? []} leases={capital?.leases ?? []} origin={debtOrigin} />
+            <CashAndDebtChapter data={data} history={capital?.cashDebt ?? []} leases={capital?.leases ?? []} maturities={capital?.maturities ?? null} origin={debtOrigin} />
             <CashForOwnersChapter cash={cash} band />
             <DividendsChapter ticker={data.ticker} dividends={dividends} currency={data.currency} annualPayments={capital?.dividends ?? []} />
           </>
