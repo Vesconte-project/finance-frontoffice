@@ -1,4 +1,4 @@
-import { capitalHistory } from '../lib/capital-statements'
+import { capitalHistory, shareCounts } from '../lib/capital-statements'
 import type { StatementRowLike } from '../lib/statement-reading'
 import assert from 'node:assert/strict'
 import test from 'node:test'
@@ -145,4 +145,15 @@ test('operating leases are their own line beside debt, never added to it', () =>
   assert.deepEqual(facts.leases.map((point) => [point.year, point.value]), [[2024, 12], [2025, 15]])
   assert.equal(facts.cashDebt[0].debt, 80)
   assert.deepEqual(capitalHistory([statement('operating_lease_liability', null)], []).leases, [])
+})
+
+test('shares bought back are the reported counts by year, and the basis note needs the SEC series', () => {
+  const cash = [statement('shares_repurchased', 5e8, '2025-09-30', { currency: null, source: 'sec_selection' }),
+    statement('shares_repurchased', 4e8, '2025-09-30', { currency: null }), // older revision
+    statement('shares_repurchased', 0, '2024-09-30', { currency: null })]
+  const sec = [statement('shares_outstanding', 15e9, '2025-09-30', { currency: null, definitionId: 'sec_selection.shares_outstanding.v1' })]
+  const counts = shareCounts(sec, cash)
+  assert.deepEqual(counts.repurchased.map((point) => [point.year, point.value]), [[2025, 5e8]])
+  assert.equal(counts.outstandingOnCurrentBasis, true)
+  assert.equal(shareCounts([statement('shares_outstanding', 15e9, '2025-09-30', { currency: null })], []).outstandingOnCurrentBasis, false)
 })
