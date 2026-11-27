@@ -27,12 +27,18 @@ not repeat their internals or run verification twice. The complete browser
 candidate remains available locally as `npm run qa:frontend`.
 GitHub-connected Vercel—not Actions—creates the frontend Preview.
 
-The CI candidate job has a 25-minute upper bound. Verify and build each have
-5-minute step limits; browser QA has a 12-minute step limit around Playwright's
-10-minute global timeout, leaving time to flush reports. CI stops after three
-failed tests and does not automatically retry failures. It still cancels obsolete
-runs on new pushes. These are safety ceilings, not promised healthy durations.
-The non-visual job is capped at 10 minutes.
+CI prepares the candidate once. For browser changes it archives the production
+build without its build cache and runs two Playwright shards on separate runners,
+each with one worker and its own runtime preflight and report. The build receives
+the Clerk publishable key. The Clerk secret is scoped to each browser runtime.
+The `Frontend candidate` check requires prepare and both shards to pass for
+browser changes, and requires prepare alone when browser QA is not applicable.
+
+Prepare has a 15-minute job limit, with 5-minute limits on verify and build.
+Each browser job has a 25-minute limit. Its browser step allows 12 minutes around
+Playwright's 10-minute global timeout so it can flush reports. Each shard stops
+after three failed tests and uses no automatic retries. New pushes cancel
+obsolete runs. The non-visual job is capped at 10 minutes.
 
 The `runtime` Playwright dependency first checks that the real anonymous home
 request stays on the app origin, returns successful HTML, renders main content
