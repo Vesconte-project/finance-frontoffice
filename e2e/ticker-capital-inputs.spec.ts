@@ -81,3 +81,20 @@ test('debt says where it comes from, names empty years with their reason and kee
   await expect(origin.locator('[data-composition]')).toBeHidden()
   expect(errors).toEqual([])
 })
+
+test('shares bought back sit beside the cash of the same year, on today’s share basis',async({page},info)=>{
+  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message))
+  await page.goto('/stocks/QAS/ownership')
+  const card=page.locator('#buybacks [data-shares-repurchased]')
+  await expect(card).toContainText('120M')
+  await expect(card).toContainText('on today’s share basis')
+  await expect(page.locator('#buybacks')).toContainText('FY2025')
+  await expect(page.locator('#shares-outstanding [data-share-basis]')).toBeVisible()
+  for (const [width,height] of [[320,568],[390,844],[1440,900]]) {
+    await page.setViewportSize({width,height});await overflow(page);await capture(page,info,`ownership-shares-${width}`)
+  }
+  await page.goto('/stocks/QAM/ownership')
+  await expect(page.locator('#buybacks [data-shares-repurchased]')).toHaveCount(0)
+  await expect(page.locator('#shares-outstanding [data-share-basis]')).toHaveCount(0)
+  expect(errors).toEqual([])
+})

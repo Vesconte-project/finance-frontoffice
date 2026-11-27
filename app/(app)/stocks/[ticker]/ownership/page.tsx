@@ -2,7 +2,7 @@ import CurrencyNotice, { keptAsReported } from '@/components/stocks/CurrencyNoti
 import StockOwnershipResearch from '@/components/stocks/StockOwnershipResearch'
 import ResearchUnavailable from '@/components/stocks/ResearchUnavailable'
 import { getTickerEquityCapitalEvents, getTickerFinancialStatements } from '@/lib/canonical-research'
-import { capitalHistory } from '@/lib/capital-statements'
+import { capitalHistory, shareCounts } from '@/lib/capital-statements'
 import { buybackExecutions, buybackSummary, pricePeriods, sharesBoughtBack, singleCurrency } from '@/lib/capital-reading'
 import { BACKEND_HISTORY_PERIOD_DAYS_MAX, getClosesIn } from '@/lib/finance'
 import { currentResearchSnapshot } from '@/lib/research-evidence'
@@ -53,6 +53,7 @@ export default async function OwnershipPage({ params, searchParams }: { params: 
       sharesTodayAsOf={snapshot.sharesOutstanding === null ? null : summaryDate(data.summary.latestFundamentals, /shares.*outstanding/i)}
       priceByYear={pricePeriods(prices, 'year', priceSince)}
       priceByQuarter={pricePeriods(prices, 'quarter', priceSince)}
+      shareCounts={shareCounts(balance?.available ? balance.rows : [], cashflow?.available ? cashflow.rows : [])}
     />
     </>
   )

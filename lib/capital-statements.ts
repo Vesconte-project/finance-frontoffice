@@ -52,3 +52,34 @@ export function capitalHistory(balance: readonly Row[], cashflow: readonly Row[]
     buybacks:annual(cashflow,'share_repurchases_amount','cash_flow',true).map(plain),shares:annual(balance,'shares_outstanding','balance_sheet').map(plain),
     leases:annual(balance,'operating_lease_liability','balance_sheet').filter(point=>point.value>=0).map(plain)}
 }
+
+/** Share counts beside the buyback cash (spec "Definições próprias das rubricas V1", 3.7). */
+export type ShareCounts = {
+  /** Shares the company bought back each year, as its filing reports them, oldest first. */
+  repurchased: ReportedPoint[]
+  /**
+   * True when the shares-outstanding series is the SEC one, which the
+   * feature-store restates to the issuer's current share basis (ENG-216,
+   * comment afebcda8): counts before a split are comparable with today's.
+   */
+  outstandingOnCurrentBasis: boolean
+}
+
+function newestCounts(rows: readonly Row[], id: string, statement: string): Row[] {
+  const seen = new Set<string>()
+  return rows.filter(row => {
+    if (row.lineItemId !== id || row.periodType !== 'annual' || !/^\d{4}-\d{2}-\d{2}$/.test(row.periodEnd)) return false
+    if ((row.statementType && row.statementType !== statement) || row.source === 'derived_reported_statements') return false
+    if (seen.has(row.periodEnd)) return false
+    seen.add(row.periodEnd)
+    return true
+  }).sort((left, right) => left.periodEnd.localeCompare(right.periodEnd))
+}
+
+export function shareCounts(balance: readonly Row[], cashflow: readonly Row[]): ShareCounts {
+  const repurchased = newestCounts(cashflow, 'shares_repurchased', 'cash_flow')
+    .filter(row => row.value !== null && Number.isFinite(row.value) && row.value > 0)
+    .map(row => ({ periodEnd: row.periodEnd, year: row.fiscalYear ?? Number(row.periodEnd.slice(0, 4)), value: row.value as number, currency: null }))
+  const outstanding = newestCounts(balance, 'shares_outstanding', 'balance_sheet').filter(row => row.value !== null)
+  return { repurchased, outstandingOnCurrentBasis: Boolean(outstanding.at(-1)?.definitionId?.startsWith('sec_selection.')) }
+}
