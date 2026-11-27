@@ -402,7 +402,16 @@ function capitalStatementRows(ticker,statementType) {
     if (statementType==='balance_sheet') return [make('cash_and_equivalents',50e9),debt,
       make('net_cash',-30e9,true),...(ticker==='QAS'?[{...make('shares_outstanding',12e9+(year-2022)*1e9),currency:null,definitionId:'sec_selection.shares_outstanding.v1'},make('operating_lease_liability',11e9)]:[make('shares_issued',30e9)]),
       ...(ticker==='QAS'&&year===2022?[{...make('total_debt',null),fiscalYear:2021,periodEnd:'2021-09-30',emptyReason:'definition_changed'}]:[])]
-    if (statementType==='cash_flow') return [make('dividends_paid',-12e9),make('dividends_paid_amount',12e9,true),
+    // QAS's free cash flow is our filing definition: its lines come from the same filing (spec 3.2, 3.3).
+    const filing=(id,value,extra={})=>({...make(id,value),accession:`0000000000-${String(year).slice(-2)}-000001`,...extra})
+    const cashForOwners=ticker==='QAS'?[
+      filing('free_cash_flow',70e9,{definitionId:'sec_selection.free_cash_flow.v1',composition:[
+        {lineItemId:'operating_cash_flow',concept:'us-gaap:NetCashProvidedByUsedInOperatingActivities'},
+        {lineItemId:'capital_expenditure',concept:'us-gaap:PaymentsToAcquirePropertyPlantAndEquipment'},
+        {lineItemId:'capitalized_software_payments',concept:'us-gaap:PaymentsToDevelopSoftware'}]}),
+      filing('operating_cash_flow',100e9),filing('capital_expenditure',-25e9),filing('capitalized_software_payments',-5e9),
+      filing('reinvestment_total',-30e9),make('stock_based_compensation',9e9)]:[]
+    if (statementType==='cash_flow') return [...cashForOwners,make('dividends_paid',-12e9),make('dividends_paid_amount',12e9,true),
       ...(ticker==='QAS'?[make('share_repurchases',-20e9),make('share_repurchases_amount',20e9,true),{...make('shares_repurchased',1.2e8),currency:null}]
         :[make('share_repurchases',-20e9),make('share_repurchases_amount',20e9,true),make('net_common_stock_issuance',-12e9),
           // In the income statement's currency, so it sits on the same year as the interest expense.

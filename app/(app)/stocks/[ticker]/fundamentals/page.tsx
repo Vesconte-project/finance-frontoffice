@@ -3,6 +3,7 @@ import StockFundamentalsResearch from '@/components/stocks/StockFundamentalsRese
 import ResearchUnavailable from '@/components/stocks/ResearchUnavailable'
 import { getTickerCorporateActions, getTickerFinancialStatements } from '@/lib/canonical-research'
 import { capitalHistory } from '@/lib/capital-statements'
+import { cashForOwners } from '@/lib/cash-for-owners'
 import { annualSeries, dividendHistory, lineItemOrigin, measureOrigin } from '@/lib/statement-reading'
 import { getStockResearchData } from '@/lib/stock-research'
 import { resolveDisplayCurrency } from '@/lib/display-currency-server'
@@ -30,7 +31,7 @@ export default async function FundamentalsPage({ params, searchParams }: { param
   const today = new Date().toISOString().slice(0, 10)
   return (
     <>
-      <CurrencyNotice display={displayCurrency} listing={data.listingCurrency} summaryConverted={data.displayCurrency !== null} kept={keptAsReported([{ label: 'revenue', read: income }, { label: 'cash and debt', read: balance }, { label: 'dividends', read: dividends }])} />
+      <CurrencyNotice display={displayCurrency} listing={data.listingCurrency} summaryConverted={data.displayCurrency !== null} kept={keptAsReported([{ label: 'revenue', read: income }, { label: 'cash and debt', read: balance }, { label: 'dividends', read: dividends }, { label: 'free cash flow', read: cashflow }])} />
     <StockFundamentalsResearch
       data={data}
       capital={capital}
@@ -40,6 +41,7 @@ export default async function FundamentalsPage({ params, searchParams }: { param
       operatingMargins={income?.available ? annualSeries(income.rows, 'operatingIncomeShare') : []}
       revenueOrigin={income?.available ? measureOrigin(income.rows, 'revenue') : null}
       debtOrigin={balance?.available ? lineItemOrigin(balance.rows, 'total_debt') : null}
+      cash={cashflow?.available ? cashForOwners(cashflow.rows) : null}
     />
     </>
   )
