@@ -349,3 +349,43 @@
     border: 2px solid Highlight;
   }
 }
+
+/* The phone menu's line for the same control (PRD-84): the label on the left,
+   the same pill on the right, at least a 52px touch target. */
+.row {
+  display: flex;
+  width: 100%;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.rowLabel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rowTitle {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.rowHint {
+  color: var(--text-muted);
+  font-size: 13px;
+}

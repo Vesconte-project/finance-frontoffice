@@ -39,3 +39,12 @@
     padding-inline: 24px;
   }
 }
+
+/* Phone (PRD-84): the ticker band carries the site header's brand, search and
+   menu, so the site header steps aside on ticker pages. The band sits at the
+   top of the page instead of under the header (StockTickerChrome). */
+@media (max-width: 767.98px) {
+  :global(.app-shell:has([data-stock-ticker-layout]) .site-header) {
+    display: none;
+  }
+}

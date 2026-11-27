@@ -97,10 +97,16 @@ export default function DisplayCurrencySelect({
   ticker,
   listingCurrency,
   listings,
+  appearance = 'pill',
 }: {
   ticker: string
   listingCurrency: string | null
   listings: TrackedListings | null
+  /**
+   * `pill` is the header control. `row` is a full-width line in the phone
+   * menu, where the ticker's actions live on small screens (PRD-84).
+   */
+  appearance?: 'pill' | 'row'
 }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -129,7 +135,8 @@ export default function DisplayCurrencySelect({
       <button
         ref={buttonRef}
         type="button"
-        className={styles.face}
+        className={appearance === 'row' ? styles.row : styles.face}
+        data-appearance={appearance}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={`Listings and currency: ${listingLabel} listing${selected ? `, shown in ${selected}` : ''}`}
@@ -137,11 +144,26 @@ export default function DisplayCurrencySelect({
         data-converted={selected ? '' : undefined}
         onClick={() => setOpen(true)}
       >
-        {selected ? <span className={styles.faceFrom} aria-hidden="true">{listingLabel}</span> : null}
-        <span className={styles.facePill} data-real={selected ? undefined : ''} aria-hidden="true">
-          {selected ? <span className={styles.approx}>≈</span> : null}
-          {selected ?? listingLabel}
-        </span>
+        {appearance === 'row' ? (
+          <>
+            <span className={styles.rowLabel} aria-hidden="true">
+              <span className={styles.rowTitle}>Currency</span>
+              <span className={styles.rowHint}>{selected ? `Converted from ${listingLabel}` : 'Traded price'}</span>
+            </span>
+            <span className={styles.facePill} data-real={selected ? undefined : ''} aria-hidden="true">
+              {selected ? <span className={styles.approx}>≈</span> : null}
+              {selected ?? listingLabel}
+            </span>
+          </>
+        ) : (
+          <>
+            {selected ? <span className={styles.faceFrom} aria-hidden="true">{listingLabel}</span> : null}
+            <span className={styles.facePill} data-real={selected ? undefined : ''} aria-hidden="true">
+              {selected ? <span className={styles.approx}>≈</span> : null}
+              {selected ?? listingLabel}
+            </span>
+          </>
+        )}
       </button>
       {/* Always mounted, so closing (also from a link) returns focus to the button. */}
       <Dialog

@@ -117,13 +117,14 @@ export default function StockTickerIdentity({
                   ) : null}
                   {isFiniteNumber(price) && isFiniteNumber(dailyMoveAmount) && isFiniteNumber(dailyMovePercent) ? (
                     <span className={cn(styles.delta, deltaClass(dailyMoveAmount))}>
-                      {formatSignedMoney(dailyMoveAmount, currency)} ({formatCompactPercent(dailyMovePercent)})
+                      <span data-delta-amount="">{formatSignedMoney(dailyMoveAmount, currency)} </span>
+                      <span data-delta-paren="">(</span>{formatCompactPercent(dailyMovePercent)}<span data-delta-paren="">)</span>
                     </span>
                   ) : null}
                 </span>
               )}
               {metadata || actions ? (
-                <div className={styles.rail}>
+                <div className={styles.rail} data-ticker-rail="">
                   {metadata ? (
                     <span
                       className={styles.metadata}

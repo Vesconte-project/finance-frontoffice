@@ -7,7 +7,12 @@ import Button from '@/components/ui/Button'
 import Dialog from '@/components/ui/Dialog'
 import styles from './StockDataExportButton.module.css'
 
-export default function StockDataExportButton({ ticker, signedIn }: { ticker: string; signedIn: boolean }) {
+export default function StockDataExportButton({ ticker, signedIn, appearance = 'icon' }: {
+  ticker: string
+  signedIn: boolean
+  /** `row` is the full-width line in the phone menu (PRD-84). */
+  appearance?: 'icon' | 'row'
+}) {
   const [open, setOpen] = useState(false)
   const [dataset, setDataset] = useState('prices')
   const [statement, setStatement] = useState('income_statement')
@@ -66,10 +71,22 @@ export default function StockDataExportButton({ ticker, signedIn }: { ticker: st
     } finally { if (!attempt.signal.aborted) setPending(false) }
   }
   return <>
-    <button ref={trigger} type="button" className={styles.trigger} aria-label={`Export ${ticker} data as CSV`}
-      aria-haspopup="dialog" aria-expanded={open} onClick={() => { clear(); setOpen(true) }}>
-      <Download size={16} strokeWidth={1.5} aria-hidden="true" />
-      <span className="sr-only">Export CSV</span>
+    <button ref={trigger} type="button" className={appearance === 'row' ? styles.row : styles.trigger} aria-label={`Export ${ticker} data as CSV`}
+      aria-haspopup="dialog" aria-expanded={open} data-appearance={appearance} onClick={() => { clear(); setOpen(true) }}>
+      {appearance === 'row' ? (
+        <>
+          <span className={styles.rowLabel} aria-hidden="true">
+            <span className={styles.rowTitle}>Export</span>
+            <span className={styles.rowHint}>Prices or fundamentals as CSV</span>
+          </span>
+          <Download size={18} strokeWidth={1.5} aria-hidden="true" />
+        </>
+      ) : (
+        <>
+          <Download size={16} strokeWidth={1.5} aria-hidden="true" />
+          <span className="sr-only">Export CSV</span>
+        </>
+      )}
     </button>
     <Dialog open={open} onClose={close} labelledBy={`${id}-title`} describedBy={`${id}-description`} returnFocusRef={trigger} className={styles.dialog}>
       <div className={styles.panel}>

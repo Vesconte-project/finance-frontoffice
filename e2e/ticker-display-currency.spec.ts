@@ -186,6 +186,9 @@ test.describe('phone', () => {
   test('the control, the dialog and the converted chart fit a 375px screen', async ({ page }) => {
     await page.goto('/stocks/QAK?currency=USD')
     await expect(page.locator('[data-ticker-price-converted="USD"]')).toContainText('≈ $', { timeout: 15_000 })
+    // On a phone the control is a line in the ticker band's menu (PRD-84).
+    await page.locator('[data-ticker-chrome="ready"]').getByRole('button', { name: 'Menu' }).click()
+    await expect(page.getByRole('dialog', { name: 'Menu' })).toBeVisible()
     const box = await control(page).boundingBox()
     expect(box).not.toBeNull()
     await noHorizontalOverflow(page)
@@ -207,6 +210,9 @@ test.describe('phone', () => {
     }
     await capture(page, 'qak-375-dialog')
     await page.keyboard.press('Escape')
+    await expect(panel).toBeHidden()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog', { name: 'Menu' })).toBeHidden()
 
     await expect(page.locator('#currency [data-currency-decomposition]')).toBeVisible({ timeout: 15_000 })
     await noHorizontalOverflow(page)
