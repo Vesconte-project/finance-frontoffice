@@ -21,7 +21,7 @@ import {
   type FlowValues,
   type WideNode,
 } from '@/lib/sales-flow'
-import { formatFraction, largestAnnualChanges, shortYear, valueInPeriod, valueInYear, type IncomeSeries, type MeasureKey } from '@/lib/statement-reading'
+import { formatFraction, largestAnnualChanges, shortYear, valueInPeriod, valueInYear, type IncomeSeries, type MeasureKey, type ReportedPoint } from '@/lib/statement-reading'
 import { STATEMENT_DETAILS, statementDetailLines, type StatementDetailId } from '@/lib/financial-statement-details'
 import styles from './Financials.module.css'
 
@@ -348,6 +348,27 @@ function StatementDetailCard({ id, year, series, unit }: {
   </ChapterCard>
 }
 
+/**
+ * Items the company reports inside its operating income (spec "Definições
+ * próprias das rubricas V1", 3.1). The published figure stays as reported;
+ * these lines are named beside it so the reader can judge them, and are never
+ * added to it or taken off.
+ */
+function InsideOperatingIncome({ series, operatingIncome }: { series: IncomeSeries; operatingIncome: ReportedPoint }) {
+  const rows = statementDetailLines(series, 'operatingIncomeInside', operatingIncome).filter(row => row.amount)
+  if (rows.length === 0) return null
+  return <div className={styles.inside} data-operating-inside="">
+    <h4 className={styles.insideTitle}>{STATEMENT_DETAILS.operatingIncomeInside.title}</h4>
+    <dl className={styles.detailList}>
+      {rows.map(row => <div key={row.key} data-detail-line={row.key}>
+        <dt>{row.label}</dt>
+        <dd><strong data-detail-value="">{formatCompactMoney(row.amount!.value, row.amount!.currency!)}</strong></dd>
+      </div>)}
+    </dl>
+    <p className={styles.cardNote}>Already counted in the figure above, shown by name. They are not added back or taken off.</p>
+  </div>
+}
+
 function NodeCard({
   id,
   year,
@@ -397,6 +418,7 @@ function NodeCard({
           {growth ? <span>{formatFraction(growth.value)} against the year before. </span> : <BeingBuiltBadge />}
           {share ? <span>{formatFraction(share.value)} of sales.</span> : <BeingBuiltBadge />}
         </p>
+        {id === 'operatingIncome' && point ? <InsideOperatingIncome series={series} operatingIncome={point} /> : null}
         {id === 'taxes' ? <button type="button" className={styles.detailButton} onClick={() => onSelect('taxesParts')}>View interest and income tax</button> : null}
         {history.length > 0 ? (
           <div className={styles.history} data-flow-history={id}>

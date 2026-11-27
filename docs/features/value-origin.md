@@ -29,8 +29,20 @@ contract `docs/statement-sources.md`.
   (ENG-216, comment afebcda8); the page never re-adjusts them for splits.
 - Unknown `emptyReason` codes read "the figure could not be verified".
 
-## Not in this change
+## Components beside the lines they belong to (Financials)
 
-Components beside operating income and interest (spec 3.1, 3.4), free cash flow
-and total reinvestment (3.2, 3.3), and the provider comparison ("other sites
-show X because they include Y") follow in later changes.
+- **Inside operating income** (spec 3.1): under the operating income card, the
+  SEC lines `stock_based_compensation_expense`, `restructuring_charges` and
+  `goodwill_impairment` for the selected year, named as "already counted in the
+  figure above". The published operating income stays as reported; they are
+  never added back or taken off.
+- **Interest** (spec 3.4): the "Interest and income tax" card adds
+  `investment_interest_income` (interest received on investments) and the cash
+  flow statement's `interest_paid` (interest paid in cash, an outflow as
+  reported). They are never netted against the interest expense. The Financials
+  page reads the annual cash flow statement only for this line.
+
+## Not done yet
+
+Free cash flow and total reinvestment (3.2, 3.3) and the provider comparison
+("other sites show X because they include Y") follow in later changes.

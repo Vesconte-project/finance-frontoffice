@@ -444,3 +444,19 @@
 
 .detailButton { min-height: 44px; padding: 0.5rem 0; border: 0; background: transparent; color: var(--text); font: inherit; text-align: start; text-decoration: underline; text-underline-offset: 0.2em; cursor: pointer; }
 .detailButton:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+
+/* Items inside operating income, named under its figure (spec 3.1). */
+.inside {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line-strong);
+}
+
+.insideTitle {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text);
+}
