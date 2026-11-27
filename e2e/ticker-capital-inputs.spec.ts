@@ -81,3 +81,27 @@ test('debt says where it comes from, names empty years with their reason and kee
   await expect(origin.locator('[data-composition]')).toBeHidden()
   expect(errors).toEqual([])
 })
+
+test('free cash flow shows what it is made of, from one filing, with pay in shares beside it',async({page},info)=>{
+  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message))
+  await page.goto('/stocks/QAS/fundamentals')
+  const chapter=page.locator('#free-cash-flow')
+  await expect(chapter).toContainText('Left for the owners')
+  await expect(chapter).toContainText('$70B')
+  await expect(chapter).toContainText('after everything the business reinvested')
+  await expect(page.getByRole('figure',{name:'Annual free cash flow, fiscal 2022 to 2025',exact:true})).toBeVisible()
+  const parts=chapter.locator('[data-cash-parts]')
+  await expect(parts.locator('[data-cash-part="operating_cash_flow"]')).toContainText('$100B')
+  await expect(parts.locator('[data-cash-part="capital_expenditure"]')).toContainText('−$25B')
+  await expect(parts.locator('[data-cash-part="capitalized_software_payments"]')).toContainText('−$5B')
+  await expect(parts.locator('[data-cash-part="reinvestment_total"]')).toContainText('−$30B')
+  await expect(parts.locator('[data-cash-part="free_cash_flow"]')).toContainText('$70B')
+  await expect(chapter.locator('[data-share-based-pay]')).toContainText('$9B')
+  await expect(chapter.locator('[data-share-based-pay]')).toContainText('not taken off')
+  for (const [width,height] of [[320,568],[390,844],[1440,900]]) {
+    await page.setViewportSize({width,height});await overflow(page);await capture(page,info,`fundamentals-fcf-${width}`)
+  }
+  await page.goto('/stocks/QAM/fundamentals')
+  await expect(page.locator('#free-cash-flow')).toContainText('being added')
+  expect(errors).toEqual([])
+})
