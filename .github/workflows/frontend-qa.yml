@@ -133,6 +133,15 @@ jobs:
               's|https\?://azure\.archive\.ubuntu\.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' \
               /etc/apt/apt-mirrors.txt
           fi
+          # The image's packages.microsoft.com source has answered 403 to apt update,
+          # failing the install before any test ran. Chromium needs nothing from it:
+          # set it aside for this job only; the Ubuntu archive stays signature-checked.
+          for source in /etc/apt/sources.list.d/*; do
+            if [[ -f "$source" ]] && grep -q 'packages\.microsoft\.com' "$source"; then
+              sudo mv "$source" "$source.disabled"
+              echo "Set aside $source"
+            fi
+          done
           npx playwright install --with-deps chromium
 
       - name: Check browser runtime and interface
