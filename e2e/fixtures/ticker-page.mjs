@@ -403,7 +403,9 @@ function capitalStatementRows(ticker,statementType) {
       ...(ticker==='QAS'&&year===2022?[{...make('total_debt',null),fiscalYear:2021,periodEnd:'2021-09-30',emptyReason:'definition_changed'}]:[])]
     if (statementType==='cash_flow') return [make('dividends_paid',-12e9),make('dividends_paid_amount',12e9,true),
       ...(ticker==='QAS'?[make('share_repurchases',-20e9),make('share_repurchases_amount',20e9,true)]
-        :[make('share_repurchases',-20e9),make('share_repurchases_amount',20e9,true),make('net_common_stock_issuance',-12e9),make('interest_paid',-60e6)])]
+        :[make('share_repurchases',-20e9),make('share_repurchases_amount',20e9,true),make('net_common_stock_issuance',-12e9),
+          // In the income statement's currency, so it sits on the same year as the interest expense.
+          {...make('interest_paid',-60e6),currency:fixtureCurrency(ticker)}])]
     return []
   })
 }
