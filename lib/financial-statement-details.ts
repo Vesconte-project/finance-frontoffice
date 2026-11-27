@@ -1,7 +1,7 @@
 /** Selection only: independent reported lines, never a reconciled cost split. */
 import { valueInPeriod, type IncomeSeries, type MeasureKey, type ReportedPoint } from './statement-reading'
 
-export type StatementDetailId = 'operatingCostsParts' | 'taxesParts'
+export type StatementDetailId = 'operatingCostsParts' | 'taxesParts' | 'operatingIncomeInside'
 type Line = { key: MeasureKey; label: string; share?: MeasureKey; growth?: MeasureKey }
 
 export const STATEMENT_DETAILS: Record<StatementDetailId, { title: string; lines: readonly Line[] }> = {
@@ -22,6 +22,18 @@ export const STATEMENT_DETAILS: Record<StatementDetailId, { title: string; lines
       { key: 'nonOperatingInterestExpense', label: 'Non-operating interest expense', share: 'nonOperatingInterestExpenseShare', growth: 'nonOperatingInterestExpenseGrowth' },
       { key: 'interestIncome', label: 'Interest income' },
       { key: 'netInterestIncome', label: 'Net interest income' },
+      // Spec "Definições próprias das rubricas V1", 3.4: beside the interest expense, never netted against it.
+      { key: 'investmentInterestIncome', label: 'Interest received on investments' },
+      { key: 'interestPaid', label: 'Interest paid in cash' },
+    ],
+  },
+  // Spec 3.1: already inside the reported operating income, shown by name; never added or taken off.
+  operatingIncomeInside: {
+    title: 'Inside operating income',
+    lines: [
+      { key: 'shareBasedPayExpense', label: 'Pay in shares to employees' },
+      { key: 'restructuringCharges', label: 'Restructuring' },
+      { key: 'goodwillImpairment', label: 'Goodwill written down' },
     ],
   },
 }

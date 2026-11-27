@@ -332,13 +332,16 @@ const STATEMENT_FIXTURES = {
     }
   }),
   QAM: [
-    { year: 2022, revenue: 42e9, gross_profit: 21e9, operating_income: 6.1e9, net_income: 4.4e9 },
+    { year: 2022, revenue: 42e9, gross_profit: 21e9, operating_income: null, net_income: 4.4e9,
+      stock_based_compensation_expense: 200e6 },
     { year: 2023, revenue: 45e9, gross_profit: null, operating_income: 3.2e9, net_income: 1.9e9 },
     { year: 2024, revenue: 39e9, gross_profit: 15e9, operating_income: -2.4e9, net_income: -3.1e9 },
     { year: 2025, revenue: 47e9, gross_profit: 22e9, operating_income: 5.3e9, net_income: 3.8e9,
       research_and_development: 0, general_and_administrative: 700e6, selling_and_marketing: 500e6,
       income_tax_expense: -100e6, interest_expense: 0, non_operating_interest_expense: 50e6,
-      interest_income: 250e6, net_interest_income: 1.2e9 },
+      interest_income: 250e6, net_interest_income: 1.2e9,
+      // SEC components named beside the lines they belong to (spec 3.1, 3.4).
+      stock_based_compensation_expense: 400e6, restructuring_charges: 120e6, investment_interest_income: 90e6 },
   ],
   QAL: [],
   // Won amounts: ten years, so the earliest ones fall before the fixture's first KRW rate.
@@ -352,6 +355,9 @@ const STATEMENT_FIXTURES = {
 STATEMENT_FIXTURES.QA30 = Array.from({length:35},(_,i)=>({...STATEMENT_FIXTURES.QAS[i%10],year:1991+i}))
 
 const LINE_LABELS = {
+  stock_based_compensation_expense: 'Stock Based Compensation Expense',
+  restructuring_charges: 'Restructuring Charges',
+  investment_interest_income: 'Investment Interest Income',
   research_and_development: 'Research And Development',
   selling_general_and_administrative: 'Selling General And Administrative',
   general_and_administrative: 'General And Administrative',
@@ -398,7 +404,9 @@ function capitalStatementRows(ticker,statementType) {
       ...(ticker==='QAS'&&year===2022?[{...make('total_debt',null),fiscalYear:2021,periodEnd:'2021-09-30',emptyReason:'definition_changed'}]:[])]
     if (statementType==='cash_flow') return [make('dividends_paid',-12e9),make('dividends_paid_amount',12e9,true),
       ...(ticker==='QAS'?[make('share_repurchases',-20e9),make('share_repurchases_amount',20e9,true),{...make('shares_repurchased',1.2e8),currency:null}]
-        :[make('share_repurchases',-20e9),make('share_repurchases_amount',20e9,true),make('net_common_stock_issuance',-12e9)])]
+        :[make('share_repurchases',-20e9),make('share_repurchases_amount',20e9,true),make('net_common_stock_issuance',-12e9),
+          // In the income statement's currency, so it sits on the same year as the interest expense.
+          {...make('interest_paid',-60e6),currency:fixtureCurrency(ticker)}])]
     return []
   })
 }

@@ -171,3 +171,34 @@ test('financial routes fit the viewport matrix and enlarged text', async ({page}
     await page.evaluate(()=>{document.documentElement.style.fontSize=''})
   }
 })
+
+test('items inside operating income and the interest received and paid are named, never summed', async ({page}, info) => {
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  await page.setViewportSize({width: 1440, height: 900})
+  await page.goto('/stocks/QAM/financials')
+  const wide = page.locator('[data-flow-variant="wide"]')
+  await wide.locator('[data-flow-node="operatingIncome"]').click()
+  const card = page.locator('[data-flow-card="operatingIncome"]').locator('xpath=ancestor::*[@data-chapter-card][1]')
+  await expect(card).toContainText('$5.3B')
+  const inside = card.locator('[data-operating-inside]')
+  await expect(inside.locator('[data-detail-line]')).toHaveCount(2)
+  await expect(inside.locator('[data-detail-line="shareBasedPayExpense"]')).toContainText('$400M')
+  await expect(inside.locator('[data-detail-line="restructuringCharges"]')).toContainText('$120M')
+  await expect(inside).toContainText('not added back or taken off')
+  await wide.locator('[data-flow-node="taxes"]').click()
+  await page.getByRole('button', {name: 'View interest and income tax'}).click()
+  const interest = page.locator('[data-statement-detail="taxesParts"]')
+  await expect(interest.locator('[data-detail-line="investmentInterestIncome"]')).toContainText('$90M')
+  await expect(interest.locator('[data-detail-line="interestPaid"] [data-detail-value]')).toHaveText('$-60M')
+  for (const width of [320, 390, 1440]) {
+    await page.setViewportSize({width, height: 900})
+    await overflow(page)
+    await capture(page, info, `financials-components-${width}`)
+  }
+  await page.getByRole('radiogroup', {name: 'Fiscal year'}).getByRole('radio', {name: '2022', exact: true}).click()
+  await wide.locator('[data-flow-node="operatingIncome"]').click()
+  await expect(card).toContainText('Operating income for FY2022 is being added.')
+  await expect(inside).toHaveCount(0)
+  expect(errors).toEqual([])
+})
