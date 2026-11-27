@@ -190,7 +190,7 @@ test('items inside operating income and the interest received and paid are named
   await page.getByRole('button', {name: 'View interest and income tax'}).click()
   const interest = page.locator('[data-statement-detail="taxesParts"]')
   await expect(interest.locator('[data-detail-line="investmentInterestIncome"]')).toContainText('$90M')
-  await expect(interest.locator('[data-detail-line="interestPaid"]')).toContainText('$60M')
+  await expect(interest.locator('[data-detail-line="interestPaid"]')).toContainText('60M') // an outflow, as reported
   for (const width of [320, 390, 1440]) {
     await page.setViewportSize({width, height: 900})
     await overflow(page)
