@@ -3,7 +3,7 @@ import StockFundamentalsResearch from '@/components/stocks/StockFundamentalsRese
 import ResearchUnavailable from '@/components/stocks/ResearchUnavailable'
 import { getTickerCorporateActions, getTickerFinancialStatements } from '@/lib/canonical-research'
 import { capitalHistory } from '@/lib/capital-statements'
-import { annualSeries, dividendHistory } from '@/lib/statement-reading'
+import { annualSeries, dividendHistory, lineItemOrigin, measureOrigin } from '@/lib/statement-reading'
 import { getStockResearchData } from '@/lib/stock-research'
 import { resolveDisplayCurrency } from '@/lib/display-currency-server'
 
@@ -38,6 +38,8 @@ export default async function FundamentalsPage({ params, searchParams }: { param
       dividends={dividends?.available ? dividendHistory(dividends.rows, today) : null}
       revenueGrowth={income?.available ? annualSeries(income.rows, 'revenueGrowth') : []}
       operatingMargins={income?.available ? annualSeries(income.rows, 'operatingIncomeShare') : []}
+      revenueOrigin={income?.available ? measureOrigin(income.rows, 'revenue') : null}
+      debtOrigin={balance?.available ? lineItemOrigin(balance.rows, 'total_debt') : null}
     />
     </>
   )

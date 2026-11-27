@@ -58,3 +58,26 @@ test('capital routes fit intermediate widths, keyboard and reduced motion',async
     await expect(page.locator(':focus')).toHaveCount(1)
   }
 })
+
+test('debt says where it comes from, names empty years with their reason and keeps leases apart',async({page},info)=>{
+  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message))
+  await page.goto('/stocks/QAS/fundamentals')
+  const chapter=page.locator('#cash-and-debt')
+  await expect(chapter.locator('[data-leases]')).toContainText('$11B')
+  const origin=chapter.locator('[data-value-origin]')
+  await expect(origin).toBeVisible()
+  await expect(origin.locator('[data-composition]')).toBeHidden()
+  await origin.getByText('Where debt comes from').click()
+  await expect(origin.locator('[data-composition] li')).toHaveCount(2)
+  await expect(origin).toContainText('us-gaap:CommercialPaper')
+  await expect(origin.locator('[data-accession]')).toHaveText('0000000000-25-000001')
+  await expect(origin.locator('[data-empty-reason="definition_changed"]')).toHaveText('No figure for 2021: the two years are measured on different definitions.')
+  // Debt itself is unchanged by the leases beside it.
+  await expect(page.getByRole('figure',{name:'Annual cash, debt and net cash',exact:true})).toContainText('$80B')
+  for (const [width,height] of [[320,568],[390,844],[1440,900]]) {
+    await page.setViewportSize({width,height});await overflow(page);await capture(page,info,`fundamentals-origin-${width}`)
+  }
+  await origin.locator('summary').focus();await page.keyboard.press('Enter')
+  await expect(origin.locator('[data-composition]')).toBeHidden()
+  expect(errors).toEqual([])
+})

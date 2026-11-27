@@ -7,6 +7,7 @@ import RevenueChapter from '@/components/stocks/fundamentals/RevenueChapter'
 import styles from '@/components/stocks/fundamentals/Fundamentals.module.css'
 import BeingBuilt, { BeingBuiltBadge } from '@/components/stocks/research/BeingBuilt'
 import ReportedBars from '@/components/stocks/research/ReportedBars'
+import ValueOrigin from '@/components/stocks/research/ValueOrigin'
 import ResearchChapter, { ChapterCard, ChapterNote, LeadStat } from '@/components/stocks/research/ResearchChapter'
 import { formatChartMoney, formatCompactMoney, formatMoney } from '@/lib/currency'
 import {
@@ -17,6 +18,7 @@ import {
   summaryPercent,
   type DividendHistory,
   type ReportedPoint,
+  type SeriesOrigin,
 } from '@/lib/statement-reading'
 import type { StockResearchData } from '@/lib/stock-research'
 
@@ -88,7 +90,17 @@ function OperatingMarginChapter({ data, sinceYear, history }: { data: StockResea
   )
 }
 
-function CashAndDebtChapter({ data, history }: { data: StockResearchData; history: CapitalHistory['cashDebt'] }) {
+function CashAndDebtChapter({ data, history, leases, origin }: {
+  data: StockResearchData
+  history: CapitalHistory['cashDebt']
+  leases: CapitalHistory['leases']
+  origin: SeriesOrigin | null
+}) {
+  // Leases sit beside debt, never in it (spec 3.8): the year of the latest debt row, else the latest reported.
+  const latestDebt = history.at(-1) ?? null
+  const lease = latestDebt
+    ? leases.find((point) => point.periodEnd === latestDebt.periodEnd && point.currency === latestDebt.currency) ?? null
+    : leases.at(-1) ?? null
   const netCash = summaryAmount(data.summary.latestFundamentals, /^net\s+cash\b/i)
   const netCashRow = data.summary.latestFundamentals.find((row) => /^net\s+cash\b/i.test(row.metricLabel || row.metric.replace(/_/g, ' ')))
   const netCashCurrency = netCashRow?.currency ?? data.currency
@@ -109,12 +121,27 @@ function CashAndDebtChapter({ data, history }: { data: StockResearchData; histor
         <BeingBuilt size="inline">Net cash, the cash left after all debt, is being added.</BeingBuilt>
       )}
       aside={(
-        <BeingBuilt label="If a bad year came">
-          How many times profit covers interest, the next debt to fall due and the room left if sales fell 30% are being added.
-        </BeingBuilt>
+        <>
+          {lease && lease.currency ? (
+            <ChapterCard title="Leases" meta={`FY${lease.year}`}>
+              <p className={styles.cardFigure} data-card-figure="" data-leases="">
+                <strong>{formatCompactMoney(lease.value, lease.currency)}</strong>
+                <span>
+                  owed on operating leases at the year end.
+                  {/* Only our filing definition is known to leave leases out; a provider's total may include them. */}
+                  {origin?.latest?.definitionId?.startsWith('sec_selection.') ? ' Leases are not borrowings, so they are kept out of debt.' : ''}
+                </span>
+              </p>
+            </ChapterCard>
+          ) : null}
+          <BeingBuilt label="If a bad year came">
+            How many times profit covers interest, the next debt to fall due and the room left if sales fell 30% are being added.
+          </BeingBuilt>
+        </>
       )}
     >
       {history.length ? <div className={styles.chartPanel}><CashDebtChart points={history} /></div> : <BeingBuilt size="chart">Cash and debt for each year, side by side, are being added.</BeingBuilt>}
+      <ValueOrigin subject="debt" origin={origin} />
       <ChapterNote>{asOfNote([netCashDate])}{history.length ? 'Yearly rows are at each fiscal year end.' : ''}</ChapterNote>
     </ResearchChapter>
   )
@@ -253,9 +280,14 @@ export default function StockFundamentalsResearch({
   revenueGrowth = [],
   operatingMargins = [],
   capital,
+  revenueOrigin = null,
+  debtOrigin = null,
 }: {
   data: StockResearchData
   capital?: CapitalHistory
+  /** Where the revenue and debt figures come from, as the backend states it. */
+  revenueOrigin?: SeriesOrigin | null
+  debtOrigin?: SeriesOrigin | null
   /** Reported annual revenue, oldest first. */
   revenue: ReportedPoint[]
   revenueGrowth?: ReportedPoint[]
@@ -273,9 +305,9 @@ export default function StockFundamentalsResearch({
         ) : (
           <>
             {/* A series is labelled in its own rows' currency: converted only when every amount converted. */}
-            <RevenueChapter points={revenue} currency={revenue[0]?.currency ?? data.currency} growth={revenueGrowth} />
+            <RevenueChapter points={revenue} currency={revenue[0]?.currency ?? data.currency} growth={revenueGrowth} origin={revenueOrigin} />
             <OperatingMarginChapter data={data} sinceYear={revenue.length ? revenue[0].year : null} history={operatingMargins} />
-            <CashAndDebtChapter data={data} history={capital?.cashDebt ?? []} />
+            <CashAndDebtChapter data={data} history={capital?.cashDebt ?? []} leases={capital?.leases ?? []} origin={debtOrigin} />
             <DividendsChapter ticker={data.ticker} dividends={dividends} currency={data.currency} annualPayments={capital?.dividends ?? []} />
           </>
         )}

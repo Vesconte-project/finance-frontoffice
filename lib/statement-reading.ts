@@ -18,6 +18,12 @@ export type StatementRowLike = {
   periodType: string
   fiscalYear: number | null
   periodEnd: string
+  /** Provenance of the value (backend #113); absent from older payloads. */
+  definitionId?: string | null
+  concept?: string | null
+  accession?: string | null
+  composition?: ReadonlyArray<{ lineItemId: string; concept: string | null }> | null
+  emptyReason?: string | null
 }
 
 export type ReportedPoint = {
@@ -107,6 +113,11 @@ function yearOf(row: StatementRowLike): number {
  * newest first.
  */
 export function annualSeries(rows: readonly StatementRowLike[], measure: MeasureKey): ReportedPoint[] {
+  return pointsOf(chosenAnnualRows(rows, measure), measure.endsWith('Share') || measure.endsWith('Growth'))
+}
+
+/** The annual rows of the one line item chosen for a measure, newest revision first. */
+function chosenAnnualRows(rows: readonly StatementRowLike[], measure: MeasureKey): StatementRowLike[] {
   const matcher = MEASURES[measure]
   const derivedMeasure = measure.endsWith('Share') || measure.endsWith('Growth')
   const annual = rows.filter((row) => {
@@ -134,8 +145,10 @@ export function annualSeries(rows: readonly StatementRowLike[], measure: Measure
   if (candidates.length === 0) return []
   // The most complete series is the one to chart; the shortest id breaks a tie
   // towards the headline item rather than a qualified variant of it.
-  const [, chosen] = candidates.sort((left, right) => right[1].length - left[1].length || left[0].length - right[0].length)[0]
+  return candidates.sort((left, right) => right[1].length - left[1].length || left[0].length - right[0].length)[0][1]
+}
 
+function pointsOf(chosen: readonly StatementRowLike[], ratio: boolean): ReportedPoint[] {
   const byPeriod = new Map<string, ReportedPoint>()
   const seen = new Set<string>()
   for (const row of chosen) {
@@ -145,7 +158,7 @@ export function annualSeries(rows: readonly StatementRowLike[], measure: Measure
     byPeriod.set(row.periodEnd, { periodEnd: row.periodEnd, year: yearOf(row), value: row.value, currency: row.currency })
   }
   const ordered = [...byPeriod.values()].sort((left, right) => left.periodEnd.localeCompare(right.periodEnd))
-  if (measure.endsWith('Share') || measure.endsWith('Growth')) return ordered
+  if (ratio) return ordered
   const currency = ordered.at(-1)?.currency
   return currency ? ordered.filter((point) => point.currency === currency) : []
 }
@@ -332,4 +345,114 @@ export function summaryCurrency(
   pattern: RegExp,
 ): string | null {
   return rows.find((row) => pattern.test(row.metricLabel || row.metric.replace(/_/g, ' ')))?.currency ?? null
+}
+
+/** Where a published value comes from, as the backend states it. Nothing is inferred. */
+export type ValueOrigin = {
+  periodEnd: string
+  year: number
+  /** The provider of the series: `sec_selection` for the company's own filings. */
+  source: string | null
+  definitionId: string | null
+  /** The reported concept, for a value taken as reported (us-gaap:Revenues). */
+  concept: string | null
+  /** The SEC filing (accession number) the value comes from. */
+  accession: string | null
+  /** For a value our definition composes: the reported lines it adds, from that one filing. */
+  composition: ReadonlyArray<{ lineItemId: string; concept: string | null }>
+}
+
+/** A period the provider has, but whose value is published empty, with the reason. */
+export type EmptyPeriod = { periodEnd: string; year: number; reason: string }
+
+export type SeriesOrigin = {
+  /** Origin of the newest value with a figure; null when the backend sent no provenance for it. */
+  latest: ValueOrigin | null
+  /** Periods whose newest revision is empty with a stated reason, oldest first. */
+  empty: EmptyPeriod[]
+}
+
+function originOf(chosen: readonly StatementRowLike[]): SeriesOrigin {
+  const seen = new Set<string>()
+  const newest: StatementRowLike[] = []
+  for (const row of chosen) {
+    if (seen.has(row.periodEnd)) continue
+    seen.add(row.periodEnd)
+    newest.push(row)
+  }
+  newest.sort((left, right) => left.periodEnd.localeCompare(right.periodEnd))
+  const valued = newest.filter((row) => row.value !== null && Number.isFinite(row.value))
+  const last = valued.at(-1)
+  const stated = last && (last.definitionId || last.concept || last.accession || last.composition?.length)
+  return {
+    latest: last && stated ? {
+      periodEnd: last.periodEnd,
+      year: yearOf(last),
+      source: last.source ?? null,
+      definitionId: last.definitionId ?? null,
+      concept: last.concept ?? null,
+      accession: last.accession ?? null,
+      composition: last.composition ?? [],
+    } : null,
+    empty: newest.flatMap((row) => (row.value === null && row.emptyReason
+      ? [{ periodEnd: row.periodEnd, year: yearOf(row), reason: row.emptyReason }]
+      : [])),
+  }
+}
+
+/** Origin and empty periods of the series `annualSeries` charts for a measure. */
+export function measureOrigin(rows: readonly StatementRowLike[], measure: MeasureKey): SeriesOrigin {
+  return originOf(chosenAnnualRows(rows, measure))
+}
+
+/** Origin and empty periods of one exact annual line item. */
+export function lineItemOrigin(rows: readonly StatementRowLike[], lineItemId: string): SeriesOrigin {
+  return originOf(rows.filter((row) => row.lineItemId === lineItemId && row.periodType === 'annual'
+    && row.source !== 'derived_reported_statements' && /^\d{4}-\d{2}-\d{2}/.test(row.periodEnd)))
+}
+
+/**
+ * Why a value is empty, in the reader's words. The codes are the backend's
+ * `emptyReason` (feature-store docs/statement-sources.md); an unknown code is
+ * still shown as missing, never as zero.
+ */
+export function emptyReasonText(reason: string): string {
+  switch (reason) {
+    case 'mixed_sources': return 'it would combine figures from different data providers'
+    case 'definition_changed': return 'the two years are measured on different definitions'
+    case 'no_same_filing_comparison': return 'no single filing reports both years'
+    case 'exceeds_productive_asset_purchases': return 'the investment lines add up to more than the company’s own total for them, so they may overlap'
+    case 'split_history_unverified': return 'the share count could not be put on today’s share basis'
+    case 'split_basis_conflict': return 'the filings present this year on another share basis'
+    case 'split_rounding_unresolved': return 'the reported figure is too rounded to restate after the split'
+    default: return 'the figure could not be verified'
+  }
+}
+
+const SOURCE_NAMES: Record<string, string> = {
+  sec_selection: 'The company’s SEC filing',
+  yahoo_finance: 'Yahoo Finance, as it publishes the figure',
+}
+
+/** The provider of a value, named for the reader. */
+export function sourceName(source: string | null): string | null {
+  if (!source) return null
+  return SOURCE_NAMES[source] ?? source.replace(/_/g, ' ').replace(/^./, (first) => first.toUpperCase())
+}
+
+const LINE_NAMES: Record<string, string> = {
+  long_term_debt_including_current: 'Long-term debt, including the part due within a year',
+  long_term_debt_current_portion: 'Long-term debt due within a year',
+  long_term_debt: 'Long-term debt due after a year',
+  commercial_paper: 'Commercial paper',
+  capital_expenditure: 'Purchases of property and equipment',
+  intangible_asset_purchases: 'Purchases of intangible assets',
+  capitalized_software_payments: 'Capitalised software',
+  productive_asset_purchases: 'The company’s own total of those purchases',
+  operating_cash_flow: 'Cash from operations',
+}
+
+/** The name of a line our definition adds, for the reader. */
+export function lineName(lineItemId: string): string {
+  return LINE_NAMES[lineItemId] ?? lineItemId.replace(/_/g, ' ').replace(/^./, (first) => first.toUpperCase())
 }

@@ -388,8 +388,14 @@ function capitalStatementRows(ticker,statementType) {
       periodType:'annual',fiscalYear:year,fiscalQuarter:null,periodEnd:`${year}-09-30`,knownAt:`${year}-11-01`,
       source:derived?'derived_reported_statements':'fixture',sourceUpdatedAt:null,ingestedAt:null,
       methodologyVersion:derived?'capital_financials.v1':'fixture',dataQualityFlags:{synthetic:true,...(id==='net_cash'?{inputValues:{cash_and_equivalents:50e9,total_debt:80e9},inputKnownAt:{cash_and_equivalents:`${year}-11-01`,total_debt:`${year}-11-01`}}:{})}})
-    if (statementType==='balance_sheet') return [make('cash_and_equivalents',50e9),make('total_debt',80e9),
-      make('net_cash',-30e9,true),...(ticker==='QAS'?[make('shares_outstanding',12e9+(year-2022)*1e9)]:[make('shares_issued',30e9)])]
+    // QAS's debt carries the provenance of our composed definition (backend #113), with leases beside it.
+    const debt=ticker==='QAS'
+      ?{...make('total_debt',80e9),definitionId:'sec_selection.total_debt.v1',accession:`0000000000-${String(year).slice(-2)}-000001`,
+        composition:[{lineItemId:'long_term_debt_including_current',concept:'us-gaap:LongTermDebt'},{lineItemId:'commercial_paper',concept:'us-gaap:CommercialPaper'}]}
+      :make('total_debt',80e9)
+    if (statementType==='balance_sheet') return [make('cash_and_equivalents',50e9),debt,
+      make('net_cash',-30e9,true),...(ticker==='QAS'?[make('shares_outstanding',12e9+(year-2022)*1e9),make('operating_lease_liability',11e9)]:[make('shares_issued',30e9)]),
+      ...(ticker==='QAS'&&year===2022?[{...make('total_debt',null),fiscalYear:2021,periodEnd:'2021-09-30',emptyReason:'definition_changed'}]:[])]
     if (statementType==='cash_flow') return [make('dividends_paid',-12e9),make('dividends_paid_amount',12e9,true),
       ...(ticker==='QAS'?[make('share_repurchases',-20e9),make('share_repurchases_amount',20e9,true)]
         :[make('share_repurchases',-20e9),make('share_repurchases_amount',20e9,true),make('net_common_stock_issuance',-12e9)])]

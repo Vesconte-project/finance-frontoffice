@@ -4,9 +4,10 @@ import { useState } from 'react'
 import BeingBuilt, { BeingBuiltBadge } from '@/components/stocks/research/BeingBuilt'
 import ReportedBars from '@/components/stocks/research/ReportedBars'
 import ResearchChapter, { LeadStat } from '@/components/stocks/research/ResearchChapter'
+import ValueOrigin from '@/components/stocks/research/ValueOrigin'
 import SegmentedControl from '@/components/ui/SegmentedControl'
 import { formatChartMoney, formatCompactMoney } from '@/lib/currency'
-import { formatFraction, type ReportedPoint } from '@/lib/statement-reading'
+import { formatFraction, type ReportedPoint, type SeriesOrigin } from '@/lib/statement-reading'
 import { FUNDAMENTALS_MEASURES } from './measures'
 import styles from './Fundamentals.module.css'
 
@@ -32,11 +33,14 @@ export default function RevenueChapter({
   points,
   currency,
   growth = [],
+  origin = null,
 }: {
   /** Reported annual revenue, oldest first. */
   points: ReportedPoint[]
   growth?: ReportedPoint[]
   currency: string
+  /** Where the revenue figures come from, and the years published empty. */
+  origin?: SeriesOrigin | null
 }) {
   const amount = billionsUnit(points.at(-1)?.currency ?? currency)
   const options = [amount, '% growth'] as const
@@ -95,6 +99,7 @@ export default function RevenueChapter({
             valueLabel: formatFraction(point.value), axisLabel: String(point.year), axisShort: `'${String(point.year).slice(-2)}` }))}
         /></div> : <BeingBuilt size="chart">Each year’s revenue growth against the year before is being added.</BeingBuilt>
       )}
+      {shown.length > 0 && view === amount ? <ValueOrigin subject="revenue" origin={origin} /> : null}
     </ResearchChapter>
   )
 }
