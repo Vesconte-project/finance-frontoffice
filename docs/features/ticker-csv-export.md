@@ -19,4 +19,4 @@ One upstream market-data request in addition to existing access verification, 15
 
 Contract discovery: finance-backend `origin/main` at `c9e60a15c033`, contract version `2026-11-06.2`, OpenAPI `OhlcPointResponse`, `FinancialStatementsResponse`, `FinancialStatementLineItemResponse`; owning implementation `app/financial_statements.py` and `app/market_context.py`. This feature changes only the frontoffice. No schema migration, deployment configuration, credentials or infrastructure release is required.
 
-The founder explicitly authorized proceeding without Company OS/preflight in the task conversation. That instruction overrides the task's earlier preflight stop; it does not create an AcceptanceEvent or authorize a merge/deploy.
+Francisco authorised implementation in the task conversation.

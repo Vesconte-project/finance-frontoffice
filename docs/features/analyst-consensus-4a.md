@@ -3,9 +3,9 @@
 ## Implementation packet
 
 Original workstream 4 (datasets), independent of deferred implementation batch 5
-(SEC history). Founder authorized advancing an independent remaining workstream;
-Company OS/preflight waiver and prior push/draft-review authorization remain in
-force. Full scope/status ledger: finance-data-ops `docs/frontend-data-plan.md`.
+(SEC history). Founder authorized advancing an independent remaining workstream.
+The prior authorisation to push and open a draft PR remains in force.
+Full scope/status ledger: finance-data-ops `docs/frontend-data-plan.md`.
 
 Preserve the accepted Valuation composition, chapter order, typography and existing
 ResearchChapter/ChapterCard/LeadStat/BeingBuilt primitives. Populate the current
