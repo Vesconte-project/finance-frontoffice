@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
 /*
- * The liquid-glass timeframe selector on a synthetic ticker page (see
+ * The sliding timeframe selector on a synthetic ticker page (see
  * e2e/fixtures/ticker-page.mjs). Selection must work by tap, keyboard, mouse
  * drag and touch drag; a drag commits only on release.
  */
@@ -40,6 +40,7 @@ test('one selection bubble travels between chart periods', async ({ page }) => {
   // The hero chart opens on 1Y (Spec PRD-78).
   await expect(group.getByRole('radio', { name: '1Y', exact: true })).toHaveAttribute('aria-checked', 'true')
 
+  await expect(group.locator('[data-segmented-drop]')).toHaveCount(1)
   const fiveYears = group.getByRole('radio', { name: '5Y', exact: true })
   const travelled = await fiveYears.evaluate((option: HTMLButtonElement) => {
     const drop = option.parentElement!.querySelector('[data-segmented-drop]')!

@@ -200,7 +200,7 @@ Do not add an external reference merely to justify a predetermined visual. State
 
 ## Segmented selector study — 2026-10-03
 
-The shared selector uses one selection bubble that slides to the next option. During a horizontal drag it lifts, follows the pointer and settles on the nearest option on release. Vertical drags can still scroll the page. The original study used the system controls described by the founder as a reference for the gesture. Vesconte renders the bubble and its clipped labels with its own CSS and spring animation.
+The shared selector uses one solid selection bubble that slides to the next option. During a horizontal drag it lifts, follows the pointer and settles on the nearest option on release. Vertical drags can still scroll the page. The original study used the system controls described by the founder as a reference for the gesture. Vesconte renders the bubble and its clipped labels with its own CSS and spring animation.
 
 ## Events calendar week view — 2026-10-08
 

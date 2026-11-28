@@ -58,13 +58,13 @@ function sameLayout(a: Layout | null, b: Layout): boolean {
 }
 
 /**
- * Liquid-glass segmented control, used as a radio group.
+ * A single-choice control with a sliding selection bubble.
  *
- * A glass drop marks the selected option. It can be dragged: while the pointer
+ * The bubble marks the selected option. It can be dragged: while the pointer
  * moves it lifts, stretches with its speed and magnifies the labels beneath it;
  * on release it settles on the nearest option and only then commits that
  * choice. Taps, clicks and the arrow keys select directly. Reduced motion
- * removes the springs and stretch; reduced transparency makes the drop solid.
+ * places it immediately and disables lift and stretch.
  */
 export default function SegmentedControl<T extends string>({
   options,
@@ -407,7 +407,6 @@ export default function SegmentedControl<T extends string>({
               })}
             </span>
           </span>
-          <span ref={(node) => { surfaceRefs.current[2] = node }} className={styles.rim} />
         </span>
       ) : null}
       {options.map((option, index) => {
