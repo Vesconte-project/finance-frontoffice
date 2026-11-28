@@ -91,7 +91,7 @@ PRD-78 phase 3. Founder rule for these tabs (2026-10-04): only values the backen
   - From 900px of chart space the full flow runs left to right. The reported chain (sales → gross profit → operating income → net income) is drawn to scale and bottom-aligned, so profit runs along the bottom.
   - Branches that are not reported are outlined nodes of a fixed size, with a thin dashed ribbon. They say where money goes, never how much.
   - Below 900px: three columns. Sales is a bar; then its four parts (› where they open); then the children of the open part.
-  - The year and Amount / % of sales use the shared solid segmented control.
+  - The year and Amount / % of sales use the shared segmented control with the sliding selection bubble.
 
 ## Ticker Valuation — 2026-10-05
 
@@ -200,7 +200,7 @@ Do not add an external reference merely to justify a predetermined visual. State
 
 ## Segmented selector study — 2026-10-03
 
-The former glass selector explored a press-and-drag gesture. The current shared selector uses a solid selected option. Horizontal dragging previews the nearest option and commits on release, while vertical dragging can still scroll the page. Keyboard and touch use the same selection callback.
+The shared selector uses one solid selection bubble that slides to the next option. During a horizontal drag it lifts, follows the pointer and settles on the nearest option on release. Vertical drags can still scroll the page. The original study used the system controls described by the founder as a reference for the gesture. Vesconte renders the bubble and its clipped labels with its own CSS and spring animation.
 
 ## Events calendar week view — 2026-10-08
 

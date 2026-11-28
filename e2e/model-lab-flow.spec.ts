@@ -31,6 +31,10 @@ async function preview(page: Page, state: string, depth?: string) {
 test('the home lists theses and opens one with its evidence', async ({ page }) => {
   await page.goto('/models')
   await expect(page.getByRole('heading', { name: 'Your theses', level: 1 })).toBeVisible()
+  const depth = page.getByRole('radiogroup', { name: 'How much detail' })
+  await expect(depth.locator('[data-segmented-drop]')).toBeVisible()
+  await depth.getByRole('radio', { name: 'Guided' }).press('ArrowRight')
+  await expect(depth.getByRole('radio', { name: 'Advanced' })).toBeChecked()
   await page.locator('a[href^="/models/theses/"]').first().click()
   await expect(page.getByRole('heading', { name: 'Does it hold up?' })).toBeVisible()
   await expect(page.getByText('not a forecast', { exact: false }).first()).toBeVisible()

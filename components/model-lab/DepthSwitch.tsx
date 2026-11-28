@@ -2,15 +2,17 @@
 
 import { useRouter } from 'next/navigation'
 import { useTransition } from 'react'
+import SegmentedControl from '@/components/ui/SegmentedControl'
 import { setPreferenceCookie } from '@/lib/model-lab/cookies'
-import { cn } from '@/lib/utils'
 import type { Depth } from '@/lib/model-lab/params'
 
-const DEPTHS: readonly { key: Depth; label: string; hint: string }[] = [
-  { key: 'guided', label: 'Guided', hint: 'The sentence and the essentials' },
-  { key: 'advanced', label: 'Advanced', hint: 'Every rule and trading assumption' },
-  { key: 'lab', label: 'Lab', hint: 'The full engine, for admins' },
-]
+const STANDARD_DEPTHS = ['guided', 'advanced'] as const
+const ADMIN_DEPTHS = [...STANDARD_DEPTHS, 'lab'] as const
+const DEPTH_DETAILS: Record<Depth, { label: string; title: string }> = {
+  guided: { label: 'Guided', title: 'The sentence and the essentials' },
+  advanced: { label: 'Advanced', title: 'Every rule and trading assumption' },
+  lab: { label: 'Lab', title: 'The full engine, for admins' },
+}
 
 export default function DepthSwitch({ depth, lab }: { depth: Depth; lab: boolean }) {
   const router = useRouter()
@@ -23,22 +25,13 @@ export default function DepthSwitch({ depth, lab }: { depth: Depth; lab: boolean
   }
 
   return (
-    <div role="group" aria-label="How much detail" className={cn('inline-flex rounded-md border border-[var(--line)] bg-[var(--surface)] p-0.5', pending && 'opacity-70')}>
-      {DEPTHS.filter((d) => d.key !== 'lab' || lab).map((d) => (
-        <button
-          key={d.key}
-          type="button"
-          aria-pressed={depth === d.key}
-          title={d.hint}
-          onClick={() => choose(d.key)}
-          className={cn(
-            'h-8 cursor-pointer rounded px-3 text-label-sm transition-colors focus-visible:outline-2 focus-visible:outline-[var(--accent)]',
-            depth === d.key ? 'bg-[var(--surface-soft)] text-content-primary' : 'text-content-secondary hover:text-content-primary'
-          )}
-        >
-          {d.label}
-        </button>
-      ))}
-    </div>
+    <SegmentedControl
+      options={lab ? ADMIN_DEPTHS : STANDARD_DEPTHS}
+      optionDetails={DEPTH_DETAILS}
+      value={depth}
+      onChange={choose}
+      ariaLabel="How much detail"
+      className={pending ? 'opacity-70' : undefined}
+    />
   )
 }
