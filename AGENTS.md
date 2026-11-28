@@ -78,6 +78,7 @@ Do not manually run a QA server, choose a port, kill processes, or launch Chromi
 
 ## Engineering invariants
 
+- Use the shared `components/ui/SegmentedControl.tsx` for segmented single-choice controls. Preserve its sliding selection bubble and use the shared component when replacing an existing segmented control.
 - Keep pages/layouts server-rendered unless a focused client boundary is needed. Use semantic, accessible React, strict TypeScript, existing primitives, and the current visual language; add no dependency or parallel design system without necessity.
 - Design mobile-first through wide desktop. Preserve keyboard, focus, contrast, zoom, touch, and reduced motion. Use CSS for simple transitions, Framer Motion for orchestration, and scoped GSAP scenes only for complex scroll; the root scroll runtime owns the site's single Lenis instance.
 - Canvas/3D/force graphs require real data and interaction needs, cleanup, fallback, reduced motion, and browser QA.

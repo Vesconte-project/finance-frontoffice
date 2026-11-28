@@ -355,12 +355,9 @@
   width: fit-content;
   max-width: 100%;
   margin-top: 1.6rem;
-}
-
-.portfolioChoice [role='radio'] {
-  min-height: 38px;
-  padding-inline: clamp(0.6rem, 1vw, 1rem);
-  font-size: clamp(0.75rem, 1vw, 0.9rem);
+  --segmented-option-height: 38px;
+  --segmented-option-padding: clamp(0.6rem, 1vw, 1rem);
+  --segmented-option-font-size: clamp(0.75rem, 1vw, 0.9rem);
 }
 
 .atlasIntro > .link {

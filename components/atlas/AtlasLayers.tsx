@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import SegmentedControl from '@/components/ui/SegmentedControl'
 import type { AtlasLens } from '@/lib/atlas-model'
 import type { ProFeature } from '@/lib/atlas-pro'
 import type { AtlasInfluence } from '@/lib/atlas-pro-model'
@@ -27,6 +28,7 @@ function Row({ feature, pro, onLocked, children }: { feature: ProFeature; pro: b
   return (
     <div
       className={pro ? styles.layerRow : `${styles.layerRow} ${styles.locked}`}
+      onPointerDownCapture={pro ? undefined : (event) => event.stopPropagation()}
       onClickCapture={pro ? undefined : (event) => {
         event.preventDefault()
         event.stopPropagation()
@@ -42,19 +44,35 @@ function ProTag({ pro }: { pro: boolean }) {
   return pro ? null : <span className={styles.proTag}>Pro</span>
 }
 
+const LENSES = ['residual', 'total'] as const
+const LENS_DETAILS = { residual: { label: 'Beyond the market' }, total: { label: 'Total co-movement' } }
+const REGION_SIZES = ['companies', 'value'] as const
+const REGION_SIZE_DETAILS = { companies: { label: 'Companies' }, value: { label: 'Market value' } }
+
 /** A map setting: its name and meaning, and a choice between two ways of drawing. */
-function Mode({ title, hint, options, value, onChange, pro }: { title: string; hint: string; options: Array<[string, string]>; value: string; onChange: (value: string) => void; pro: boolean }) {
+function Mode<T extends string>({ title, hint, options, optionDetails, value, onChange, pro }: {
+  title: string
+  hint: string
+  options: readonly T[]
+  optionDetails: Record<T, { label: string }>
+  value: T
+  onChange: (value: T) => void
+  pro: boolean
+}) {
   return (
     <>
       <div className={styles.layerText}>
         <b>{title} <ProTag pro={pro} /></b>
         <small>{hint}</small>
       </div>
-      <div className={styles.seg} role="group" aria-label={pro ? title : `${title}: Pro`}>
-        {options.map(([key, text]) => (
-          <button key={key} type="button" aria-pressed={value === key} onClick={() => onChange(key)}>{text}</button>
-        ))}
-      </div>
+      <SegmentedControl
+        options={options}
+        optionDetails={optionDetails}
+        value={value}
+        onChange={onChange}
+        ariaLabel={pro ? title : `${title}: Pro`}
+        fill
+      />
     </>
   )
 }
@@ -107,9 +125,10 @@ export default function AtlasLayers(props: Props) {
         <Mode
           title="What moves together"
           hint={pro && props.lens === 'total' ? 'Every price move, the whole market included.' : 'Without the move the whole market shares, so the rest stands out.'}
-          options={[['residual', 'Beyond the market'], ['total', 'Total co-movement']]}
+          options={LENSES}
+          optionDetails={LENS_DETAILS}
           value={pro ? props.lens : 'residual'}
-          onChange={(value) => props.onLens(value as AtlasLens)}
+          onChange={props.onLens}
           pro={pro}
         />
       </Row>
@@ -117,7 +136,8 @@ export default function AtlasLayers(props: Props) {
         <Mode
           title="Region size"
           hint="Draw each region by how many companies it holds, or by their market value."
-          options={[['companies', 'Companies'], ['value', 'Market value']]}
+          options={REGION_SIZES}
+          optionDetails={REGION_SIZE_DETAILS}
           value={pro && props.byValue ? 'value' : 'companies'}
           onChange={(value) => props.onByValue(value === 'value')}
           pro={pro}

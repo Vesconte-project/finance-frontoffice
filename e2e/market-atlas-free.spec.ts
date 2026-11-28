@@ -238,7 +238,7 @@ test('every locked feature opens its upsell, which closes and gives focus back',
   await expect(layers.getByText('Pro', { exact: true })).toHaveCount(4)
   await expect(layers.getByLabel('Map key')).toHaveCount(0)
   await expect(layers.getByLabel('Names on the map')).toHaveCount(0)
-  await layers.getByRole('button', { name: 'Total co-movement' }).click()
+  await layers.getByRole('radio', { name: 'Total co-movement' }).click()
   await expect(page.getByRole('dialog', { name: 'Total co-movement' })).toBeVisible()
   await page.keyboard.press('Escape')
   await layers.getByLabel('Influence arrows').click()

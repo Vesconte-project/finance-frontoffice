@@ -86,13 +86,11 @@
 
 /* A Pro control seen without Pro: the accent dot, and the press opens the upsell. */
 .rail [data-locked],
-.seg [data-locked],
 .actions [data-locked] {
   position: relative;
 }
 
 .rail [data-locked]::after,
-.seg [data-locked]::after,
 .actions [data-locked]::after {
   content: '';
   position: absolute;
@@ -104,8 +102,7 @@
   background: var(--accent);
 }
 
-.actions [data-locked],
-.seg [data-locked] {
+.actions [data-locked] {
   opacity: 0.7;
 }
 
@@ -120,7 +117,6 @@
 .rowActions button:focus-visible,
 .save:focus-visible,
 .rail button:focus-visible,
-.seg button:focus-visible,
 .timeline button:focus-visible,
 .timeline input:focus-visible,
 .upsell a:focus-visible,
@@ -133,39 +129,6 @@
 .rows textarea:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-}
-
-/* segmented control: Movement, lens, region size */
-.seg {
-  display: inline-flex;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
-  border-radius: 7px;
-}
-
-.seg button {
-  min-height: 2rem;
-  padding: 0 0.65rem;
-  border: 0;
-  background: transparent;
-  color: var(--text-muted);
-  font: inherit;
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-
-.seg button + button {
-  border-left: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
-}
-
-.seg button[aria-pressed='true'] {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-  color: var(--accent);
-}
-
-.seg button:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
 }
 
 /* The tools as a named list, in the Tools sheet on a small screen. */
@@ -273,11 +236,6 @@
   color: var(--text-muted);
   font-size: 0.74rem;
   line-height: 1.45;
-}
-
-.layerRow .seg {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
 }
 
 .locked {
@@ -1281,7 +1239,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .seg button,
   .tabs button {
     transition: none;
   }

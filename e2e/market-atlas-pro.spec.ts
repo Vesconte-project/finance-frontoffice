@@ -130,8 +130,8 @@ test('the Pro layers switch the lens, size regions by value, ring accuracy and d
   const layers = page.getByRole('region', { name: 'Layers' })
   await expect(layers.getByText('Pro', { exact: true })).toHaveCount(0)
 
-  await layers.getByRole('button', { name: 'Market value' }).click()
-  await expect(layers.getByRole('button', { name: 'Market value' })).toHaveAttribute('aria-pressed', 'true')
+  await layers.getByRole('radio', { name: 'Market value' }).click()
+  await expect(layers.getByRole('radio', { name: 'Market value' })).toHaveAttribute('aria-checked', 'true')
   // the legend follows the map: sized by value, listed by value
   const byValue = page.getByRole('region', { name: 'Browse the market' }).getByRole('button', { name: /market value$/ })
   await expect(byValue.first()).toContainText('Fixture Alpha')
@@ -150,13 +150,13 @@ test('the Pro layers switch the lens, size regions by value, ring accuracy and d
   await expect(key).toContainText('Influence · green ↑, red ↓')
   if (process.env.PLAYWRIGHT_CAPTURE) await page.screenshot({ path: 'test-results/market-atlas-pro-layers-1440.png' })
 
-  await layers.getByRole('button', { name: 'Total co-movement' }).click()
+  await layers.getByRole('radio', { name: 'Total co-movement' }).click()
   await expect(layers.getByText('Every price move, the whole market included.')).toBeVisible()
   // the total map has loaded once the slider (beyond-the-market only) is gone
   // no history and no influence on the total map
   await expect(page.getByRole('slider', { name: 'Weeks before today' })).toHaveCount(0)
   await expect(layers.getByText('Shown with the "Beyond the market" view.')).toBeVisible()
-  await layers.getByRole('button', { name: 'Beyond the market' }).click()
+  await layers.getByRole('radio', { name: 'Beyond the market' }).click()
   await expect(layers.getByText('Without the move the whole market shares, so the rest stands out.')).toBeVisible()
   await expect(page.getByRole('slider', { name: 'Weeks before today' })).toBeVisible()
 
